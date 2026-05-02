@@ -1,0 +1,58 @@
+{
+  "hermes": {
+    "name": "Hermes",
+    "icon": "🔮",
+    "port": 8787,
+    "color": "#8b5cf6",
+    "desc": "AI Gateway & Agent Runtime"
+  },
+  "paperclip": {
+    "name": "Paperclip",
+    "icon": "📎",
+    "port": 3100,
+    "color": "#f59e0b",
+    "desc": "Task-Management & Plattform"
+  },
+  "openclaw": {
+    "name": "OpenClaw",
+    "icon": "🐾",
+    "port": null,
+    "color": "#10b981",
+    "desc": "Autonomer Agent + Telegram"
+  },
+  "zero": {
+    "name": "Agent Zero",
+    "icon": "⏺️",
+    "port": 50001,
+    "color": "#ef4444",
+    "desc": "Docker-basierter Agent"
+  },
+  "cortex": {
+    "name": "Cortex Hub",
+    "icon": "🧠",
+    "port": 3002,
+    "color": "#06b6d4",
+    "desc": "Zentrales Gedächtnis"
+  },
+  "launcher": {
+    "name": "Agent Launcher",
+    "icon": "🚀",
+    "port": 8899,
+    "color": "#ec4899",
+    "desc": "Agent Management"
+  },
+  "tandem": {
+    "name": "Tandem",
+    "icon": "🌐",
+    "port": 8765,
+    "color": "#64748b",
+    "desc": "Electron AI Browser"
+  },
+  "antigravity": {
+    "name": "Antigravity",
+    "icon": "🧪",
+    "port": null,
+    "color": "#a855f7",
+    "desc": "Google IDE Agent"
+  }
+}
