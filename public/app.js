@@ -45,6 +45,21 @@
   const $modalBody = document.getElementById('modalBody');
   const $modalClose = document.getElementById('modalClose');
   const $contextMenu = document.getElementById('contextMenu');
+  const $hamburger = document.getElementById('hamburger');
+  const $sidebar = document.getElementById('sidebar');
+  const $sidebarOverlay = document.getElementById('sidebarOverlay');
+
+  // ---- Mobile Sidebar Toggle ----
+  if ($hamburger) {
+    $hamburger.addEventListener('click', () => {
+      $sidebar.classList.toggle('open');
+      $sidebarOverlay.classList.toggle('visible');
+    });
+    $sidebarOverlay.addEventListener('click', () => {
+      $sidebar.classList.remove('open');
+      $sidebarOverlay.classList.remove('visible');
+    });
+  }
 
   // ---- WebSocket Connection ----
   function connectWS() {

@@ -222,7 +222,7 @@ async function routeToAgent(agentKey, message) {
     cortex: 'Du bist Cortex Hub — das zentrale Gedächtnis des Feenreichs.',
   };
 
-  // Try to send via Cortex agent command endpoint first
+  // Strategy 1: Cortex agent command endpoint (direct)
   try {
     const resp = await fetchJSON(`${CORTEX_URL}/api/agents/command/${agentKey}`, {
       method: 'POST',
@@ -230,12 +230,34 @@ async function routeToAgent(agentKey, message) {
       body: JSON.stringify({ message }),
     });
     if (resp && resp.response) return resp.response;
-  } catch (e) {
-    // Fall through to OpenRouter
+  } catch (e) { /* fall through */ }
+
+  // Strategy 2: Agent Zero Docker API (direct HTTP)
+  if (agentKey === 'zero' && agent?.port) {
+    try {
+      const resp = await fetchJSON(`http://localhost:${agent.port}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: message }],
+          stream: false,
+        }),
+      });
+      if (resp?.choices?.[0]?.message?.content) return resp.choices[0].message.content;
+    } catch (e) { /* fall through */ }
   }
 
-  // Fallback: use OpenRouter via Cortex with agent-specific system prompt
-  return await queryOpenRouter(message, systemPrompts[agentKey] || `Du bist ${agent.name}.`);
+  // Strategy 3: Cortex message pipe (async — logs the message for the agent)
+  try {
+    await fetchJSON(`${CORTEX_URL}/api/msg/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sender: 'gnom-hub', recipient: agentKey, content: message }),
+    });
+  } catch (e) { /* silent — best effort */ }
+
+  // Strategy 4: OpenRouter with agent-specific persona
+  return await queryOpenRouter(message, systemPrompts[agentKey] || `Du bist ${agent?.name || agentKey}.`);
 }
 
 async function queryConductor(message) {
