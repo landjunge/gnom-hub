@@ -1,5 +1,5 @@
 // ============================================================================
-//  LOCAL CONDUCTOR — Backend Server
+//  GNOM-HUB — Backend Server
 //  Zentrale Kommandozentrale des Feenreichs
 //  Port 4200 | Express + WebSocket
 // ============================================================================
@@ -46,7 +46,7 @@ function saveAgents() {
 loadAgents();
 
 // System prompt for the Conductor AI
-const CONDUCTOR_SYSTEM = `Du bist der Local Conductor — die zentrale Kommandozentrale des Feenreichs.
+const CONDUCTOR_SYSTEM = `Du bist Gnom-Hub — die zentrale Kommandozentrale des Feenreichs.
 Du koordinierst alle Agenten (Hermes, Paperclip, OpenClaw, Agent Zero, Cortex) und hilfst dem König.
 Antworte auf Deutsch, kurz und präzise. Du bist loyal, effizient und hast einen leicht futuristischen Ton.
 Wenn der User einen Agenten ansprechen will, erkenne das und leite weiter.
@@ -595,7 +595,7 @@ server.listen(PORT, () => {
   console.log('');
   console.log('  ⚡ ═══════════════════════════════════════════ ⚡');
   console.log('  ║                                               ║');
-  console.log('  ║     LOCAL CONDUCTOR — Feenreich Command Hub   ║');
+  console.log('  ║     GNOM-HUB — Feenreich Command Hub   ║');
   console.log('  ║                                               ║');
   console.log(`  ║     🌐 http://localhost:${PORT}                  ║`);
   console.log(`  ║     🧠 Cortex: ${CORTEX_URL}            ║`);
