@@ -13,3 +13,6 @@ class AgentEntry(BaseModel):
 
 class AgentIdReq(BaseModel):
     agent_id: str
+
+class SearchReq(BaseModel):
+    query: str

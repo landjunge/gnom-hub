@@ -9,20 +9,16 @@ description = "Gnom-Hub - Minimalistischer Orchestrator"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "fastapi>=0.100.0",
-    "uvicorn>=0.22.0",
-    "pydantic>=2.0.0",
-    "requests>=2.31.0",
-    "mcp>=1.2.1",
-    "psutil>=5.9.0"
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "requests",
+    "mcp",
+    "psutil"
 ]
 
 [project.scripts]
 gnom-hub = "gnom_hub.__main__:main"
-gnom-hub-api = "gnom_hub.hub_app:main"
-gnom-hub-mcp = "gnom_hub.hub_mcp:main"
-gnom-hub-pulse = "gnom_hub.hub_pulse:main"
-gnom-hub-stop = "gnom_hub.hub_app:stop"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,57 +1,77 @@
-# GNOM-HUB
+# 🧠 GNOM-HUB
 
-GNOM-HUB ist ein minimalistischer, schneller Memory- und Tool-Orchestrator für lokale KI-Agenten. Das System dient als zentrales Gehirn und Middleware, über die sich Agenten registrieren, Erinnerungen austauschen und auf externe Werkzeuge zugreifen können.
+Willkommen bei **GNOM-HUB** – dem minimalistischen, blitzschnellen Memory- und Tool-Orchestrator für lokale KI-Agenten. GNOM-HUB dient als zentrales Gehirn, über das sich Agenten im System registrieren, historische Erinnerungen austauschen und auf mächtige externe Werkzeuge zugreifen können.
 
-## Installation
+---
 
-```bash
-# Im Projekt-Hauptverzeichnis ausführen:
-python3 -m pip install -e .
-```
+## 🚀 Installation
 
-## Starten
-
-Das gesamte System (Hub-API & MCP-Server) kann mit einem einfachen Befehl gestartet werden:
+Das Projekt ist als sauberes lokales Python-Paket aufgebaut. Navigiere in das Hauptverzeichnis und installiere es im "Editable Mode", damit Änderungen sofort übernommen werden:
 
 ```bash
-python3 -m gnom_hub
+python3.11 -m pip install -e .
 ```
 
-Beide Server laufen anschließend parallel und können durch Drücken von `Ctrl+C` sauber beendet werden.
+## ⚡ Starten
 
-## Ports & Architektur
+Das gesamte System lässt sich unkompliziert mit einem einzigen Befehl starten. Dabei werden parallel die zentrale Hub-API sowie der Standard-konforme MCP-Server hochgefahren:
 
-Das System teilt sich in zwei unabhängige Kernkomponenten auf:
+```bash
+python3.11 -m gnom_hub
+```
 
-- **Port 3002**: Die Core-API (FastAPI). Zuständig für Memory, Agenten-Verwaltung und Prozess-Kontrolle.
-- **Port 3100**: Der MCP-Server (FastMCP / SSE). Zuständig für die Bereitstellung von Tools.
+Beide Server laufen im Hintergrund. Mit `Ctrl+C` (oder dem Befehl `gnom-hub-stop`) kannst du das System jederzeit sauber beenden.
 
-## Wichtige API-Endpunkte
+---
 
-**Hub API** (`http://127.0.0.1:3002`)
+## ✨ Aktuelle Features
 
-- `GET /` — Status-Check und Versionsinfo.
-- `GET /api/agents` — Listet alle registrierten Agenten auf.
-- `POST /api/agents` — Legt einen neuen Agenten an.
-- `POST /api/memory` — Speichert eine Erinnerung (Memory) für einen Agenten.
-- `GET /api/memory/search?q=...` — Sucht global in allen Memory-Einträgen.
-- `GET /api/agents/{agent_id}/memory` — Ruft den historischen Speicher eines spezifischen Agenten ab.
+Das System läuft auf zwei getrennten, spezialisierten Ports:
 
-**MCP Server** (`http://127.0.0.1:3100`)
+**1. Die Core Hub-API (Port 3002)**
+- **Agenten-Management**: Registrieren und Auflisten lokaler Agenten.
+- **Memory-CRUD**: Speichern, Suchen und Abrufen von Erinnerungen pro Agent.
 
-- `GET /tools` — Listet alle registrierten, aktiven Werkzeuge auf.
+**2. Der FastMCP Server (Port 3100)**
+- **Standard SSE-Transport**: Jeder gängige MCP-Client kann sich unter `/sse` verbinden.
+- **2 Aktive Werkzeuge**:
+  - `save_to_memory`: Lässt Agenten neue Informationen direkt in ihr Memory schreiben.
+  - `get_memory`: Erlaubt Agenten das Zurücklesen ihrer bisherigen Historie.
 
-## Tools hinzufügen
+Zusätzlich bietet die Hub-API komfortable HTTP-Proxy-Routen (wie `POST /api/tools/get_memory`), um die MCP-Werkzeuge unkompliziert über HTTP zu testen.
 
-Der MCP-Server (`src/gnom_hub/hub_mcp.py`) startet standardmäßig als "Blank Slate" mit 0 Tools. Um neue Werkzeuge dynamisch bereitzustellen, nutzt du den extrem einfachen `@mcp.tool()` Decorator aus dem FastMCP SDK:
+---
+
+## 📐 Unsere Philosophie: "Less is More"
+
+Dieses Projekt folgt einer strengen, kompromisslosen Design-Regel, um technische Schulden zu vermeiden und höchste Wartbarkeit zu garantieren:
+
+> **Maximal 40 Zeilen pro Datei. Keine Ausnahmen.**
+
+Wir setzen auf strikte **Modularisierung** anstatt Code in riesigen Dateien zu verstecken. Jedes Modul (`models.py`, `routes_memory.py`, `hub_mcp.py` etc.) hat exakt einen Zweck, verwendet sprechende Variablen, hält sich an PEP-8 und bleibt konsequent unter 40 Zeilen. Das macht den Code extrem robust, fehlerresistent und wunderschön lesbar.
+
+---
+
+## 🛠 Wie man neue Tools hinzufügt
+
+Dank des FastMCP-Frameworks ist das Hinzufügen neuer Werkzeuge denkbar einfach. Füge einfach eine neue Funktion mit dem `@mcp.tool()` Decorator in die Datei `src/gnom_hub/hub_mcp.py` ein:
 
 ```python
-# In src/gnom_hub/hub_mcp.py hinzufügen:
-
 @mcp.tool()
-def get_system_time() -> str:
-    """Gibt die aktuelle Systemzeit zurück."""
-    import datetime
-    return datetime.datetime.now().isoformat()
+def search_web(query: str) -> str:
+    """Sucht im lokalen Netzwerk nach Informationen."""
+    return f"Suchergebnisse für: {query}"
 ```
-Sobald du den Server neu startest, ist das Tool automatisch für alle verbundenen Agenten nutzbar.
+
+Sobald du GNOM-HUB neu startest, ist das Tool sofort für alle verbundenen Agenten nutzbar. Denke nur an die wichtigste Regel: Wenn die Datei durch dein neues Tool die 40-Zeilen-Grenze überschreitet, lagere die Logik in ein neues Modul aus!
+
+---
+
+## 🎯 Nächste Schritte
+
+- Integration eines globalen Such-Tools (`search_memory`).
+- Anpassung des Frontend Admin-Panels an die neue, saubere Architektur.
+- Erweiterung der MCP-Tool-Bibliothek um dateibasierte Werkzeuge.
+
+---
+*GNOM-HUB — Engineered for clarity. Built for agents.*
