@@ -1,43 +1,38 @@
-import requests, os
-from starlette.responses import JSONResponse
-from mcp.server.fastmcp import FastMCP
-API = os.environ.get("GNOM_HUB_PORT", "3002")
+import requests, os; from starlette.responses import JSONResponse; from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("HUB", host="127.0.0.1", port=int(os.environ.get("GNOM_MCP_PORT", 3100)))
 def api(m, p, **k):
-    try: return str(requests.request(m, f"http://127.0.0.1:{API}/api{p}", **k).json())
+    try: return str(requests.request(m, f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT','3002')}/api{p}", **k).json())
     except Exception as e: return f"Err: {e}"
 @mcp.tool()
-def save_to_memory(a: str, c: str) -> str:
-    """Speichert einen Text-Eintrag im Memory eines Agenten."""
-    return api("POST", "/memory", json={"agent_id": a, "content": c})
+def save_to_memory(a: str, c: str): """Speichert Text."""; return api("POST", "/memory", json={"agent_id": a, "content": c})
 @mcp.tool()
-def get_memory(a: str) -> str:
-    """Liest alle Memory-Einträge eines Agenten aus."""
-    return api("GET", f"/agents/{a}/memory")
+def get_memory(a: str): """Liest Memory."""; return api("GET", f"/agents/{a}/memory")
 @mcp.tool()
-def search_memory(q: str) -> str:
-    """Sucht global im Memory nach einem Begriff."""
-    return api("GET", "/memory/search", params={"q": q})
+def search_memory(q: str): """Sucht Memory."""; return api("GET", "/memory/search", params={"q": q})
 @mcp.tool()
-def delete_memory(m: str) -> str:
-    """Löscht einen Memory-Eintrag anhand ID."""
-    return api("DELETE", f"/memory/{m}")
+def delete_memory(m: str): """Löscht Memory."""; return api("DELETE", f"/memory/{m}")
 @mcp.tool()
-def update_memory(m: str, c: str) -> str:
-    """Ändert den Inhalt eines Memory-Eintrags."""
-    return api("PUT", f"/memory/{m}", params={"content": c})
+def update_memory(m: str, c: str): """Ändert Memory."""; return api("PUT", f"/memory/{m}", params={"content": c})
 @mcp.tool()
-def set_agent_status(a: str, s: str) -> str:
-    """Setzt den Status (online/offline)."""
-    return api("PUT", f"/agents/{a}/status", params={"status": s})
+def set_agent_status(a: str, s: str): """Setzt Status."""; return api("PUT", f"/agents/{a}/status", params={"status": s})
 @mcp.tool()
-def list_all_agents() -> str:
-    """Gibt alle Agenten zurück."""
-    return api("GET", "/agents")
+def list_all_agents(): """Alle Agenten."""; return api("GET", "/agents")
 @mcp.tool()
-def clear_agent_memory(a: str) -> str:
-    """Löscht alle Memory-Einträge eines Agenten."""
-    return api("DELETE", f"/agents/{a}/memory")
+def get_agent(a: str): """Agent Infos."""; return api("GET", f"/agents/{a}")
+@mcp.tool()
+def clear_agent_memory(a: str): """Löscht alle Memory."""; return api("DELETE", f"/agents/{a}/memory")
+@mcp.tool()
+def create_agent(n: str, d: str=""): """Neuer Agent."""; return api("POST", "/agents", json={"name": n, "description": d, "status": "offline"})
+@mcp.tool()
+def delete_agent(a: str): """Löscht Agent + Memory."""; return api("DELETE", f"/agents/{a}")
+@mcp.tool()
+def get_agent_status(a: str): """Gibt Status zurück."""; return api("GET", f"/agents/{a}/status")
+@mcp.tool()
+def count_memory(a: str): """Zählt Memory."""; return api("GET", f"/agents/{a}/memory/count")
+@mcp.tool()
+def get_system_stats(): """System Stats."""; return api("GET", "/stats")
+@mcp.tool()
+def search_agents(q: str): """Sucht Agenten."""; return api("GET", "/agents/search", params={"q": q})
 @mcp.custom_route("/tools", methods=["GET"])
 async def tools_route(r): return JSONResponse([{"name": t.name, "desc": t.description} for t in await mcp.list_tools()])
 def main(): mcp.run(transport="sse")
