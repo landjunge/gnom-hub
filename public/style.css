@@ -91,6 +91,42 @@ body {
 .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
 .status-dot.pulse { animation: dotPulse 2s ease-in-out infinite; }
 @keyframes dotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.cortex-status.cortex-recall-pulse {
+  animation: cortexRecallPulse 2s ease-out;
+}
+@keyframes cortexRecallPulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7); background: rgba(0, 240, 255, 0.1); border-radius: 8px; }
+  70% { box-shadow: 0 0 0 15px rgba(0, 240, 255, 0); background: transparent; }
+  100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+}
+
+.cortex-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--bg-panel);
+  border: 1px solid var(--cyan);
+  box-shadow: var(--glow-cyan);
+  color: var(--text-bright);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  z-index: 10000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cortex-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
 .header-clock { font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); letter-spacing: 1px; }
 
 /* --- Hamburger (mobile) --- */

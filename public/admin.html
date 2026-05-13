@@ -7,343 +7,651 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <style>
-    body { overflow: auto; }
-    .admin-layout { padding: 24px; max-width: 1400px; margin: 0 auto; }
-    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-    @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; } }
-    .panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); backdrop-filter: blur(20px); overflow: hidden; }
-    .panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .panel-header h2 { font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px; color: var(--cyan); }
-    .panel-body { padding: 16px; max-height: 500px; overflow-y: auto; }
-    .panel-body.compact { padding: 8px 16px; }
-    .agent-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 8px; background: var(--bg-card); transition: border-color 0.2s; }
-    .agent-row:hover { border-color: var(--border-bright); }
-    .agent-row .icon { font-size: 20px; width: 32px; text-align: center; }
-    .agent-row .info { flex: 1; min-width: 0; }
-    .agent-row .info .name { font-weight: 600; font-size: 13px; }
-    .agent-row .info .detail { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); display: flex; gap: 8px; align-items: center; margin-top: 2px; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .dot.on { background: var(--emerald); box-shadow: 0 0 6px var(--emerald); }
-    .dot.off { background: var(--red); box-shadow: 0 0 6px var(--red); }
-    .agent-row .actions { display: flex; gap: 4px; flex-shrink: 0; }
-    .sm-btn { padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); font-size: 11px; cursor: pointer; font-family: var(--font-sans); transition: all 0.15s; white-space: nowrap; }
-    .sm-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
-    .sm-btn.danger:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.1); }
-    .sm-btn.success:hover { border-color: var(--emerald); color: var(--emerald); background: rgba(16,185,129,0.1); }
-    .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
-    .form-row input, .form-row select { flex: 1; padding: 8px 12px; border-radius: var(--radius); background: var(--bg-input); border: 1px solid var(--border); color: var(--text-bright); font-family: var(--font-sans); font-size: 12px; outline: none; }
-    .form-row input:focus { border-color: var(--cyan); box-shadow: var(--glow-cyan); }
-    .form-row input::placeholder { color: var(--text-dim); }
-    .log-area { font-family: var(--font-mono); font-size: 11px; line-height: 1.7; color: var(--text-dim); max-height: 300px; overflow-y: auto; }
-    .log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
-    .log-line.ok { color: var(--emerald); }
-    .log-line.err { color: var(--red); }
-    .log-line.warn { color: var(--amber); }
-    .proc-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 11px; font-family: var(--font-mono); align-items: center; }
-    .proc-row .pid { color: var(--cyan); width: 60px; }
-    .proc-row .cpu { color: var(--amber); width: 45px; }
-    .proc-row .mem { color: var(--purple); width: 45px; }
-    .proc-row .cmd { flex: 1; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .port-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 11px; font-family: var(--font-mono); align-items: center; }
-    .port-row .pname { color: var(--cyan); width: 100px; }
-    .port-row .ppid { color: var(--text-dim); width: 60px; }
-    .port-row .paddr { flex: 1; color: var(--emerald); }
-    .back-link { color: var(--cyan); text-decoration: none; font-size: 13px; font-family: var(--font-mono); }
-    .back-link:hover { text-decoration: underline; }
-    .test-result { margin-top: 8px; padding: 8px 12px; border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; }
-    .test-result.ok { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--emerald); }
-    .test-result.fail { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+    :root {
+      --bg-panel: rgba(15, 20, 25, 0.7);
+      --bg-card: rgba(20, 25, 30, 0.8);
+      --bg-input: rgba(0, 0, 0, 0.5);
+      --border: rgba(255, 255, 255, 0.1);
+      --border-bright: rgba(255, 255, 255, 0.2);
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --text-bright: #ffffff;
+      --cyan: #06b6d4;
+      --cyan-dim: rgba(6, 182, 212, 0.1);
+      --emerald: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --radius: 8px;
+      --font-sans: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    body { 
+      background-color: #050505; 
+      color: var(--text); 
+      font-family: var(--font-sans); 
+      margin: 0; 
+      padding: 0; 
+      overflow-y: scroll;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
+      background: rgba(0,0,0,0.4);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--cyan);
+    }
+    .admin-layout { 
+      padding: 30px; 
+      max-width: 1200px; 
+      margin: 0 auto; 
+    }
+    .admin-grid { 
+      display: grid; 
+      grid-template-columns: 2fr 1fr; 
+      gap: 25px; 
+    }
+    @media (max-width: 900px) { 
+      .admin-grid { grid-template-columns: 1fr; } 
+    }
+    .panel { 
+      background: var(--bg-panel); 
+      border: 1px solid var(--border); 
+      border-radius: var(--radius); 
+      backdrop-filter: blur(20px); 
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-header { 
+      padding: 15px 20px; 
+      border-bottom: 1px solid var(--border); 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: rgba(255,255,255,0.02);
+    }
+    .panel-header h2 { 
+      margin: 0;
+      font-family: var(--font-mono); 
+      font-size: 13px; 
+      letter-spacing: 1.5px; 
+      color: var(--cyan); 
+    }
+    .panel-body { 
+      padding: 20px; 
+    }
+    
+    /* Agent List Styles */
+    .agent-row { 
+      display: flex; 
+      align-items: center; 
+      gap: 15px; 
+      padding: 15px; 
+      border-radius: var(--radius); 
+      border: 1px solid var(--border); 
+      margin-bottom: 10px; 
+      background: var(--bg-card); 
+      transition: all 0.2s; 
+    }
+    .agent-row:hover { 
+      border-color: var(--border-bright); 
+      transform: translateY(-1px);
+    }
+    .agent-row .icon { 
+      font-size: 24px; 
+      width: 40px; 
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+    }
+    .agent-row .info { 
+      flex: 1; 
+      min-width: 0; 
+    }
+    .agent-row .info .name { 
+      font-weight: 600; 
+      font-size: 15px; 
+      color: var(--text-bright);
+    }
+    .agent-row .info .detail { 
+      font-size: 12px; 
+      color: var(--text-dim); 
+      font-family: var(--font-mono); 
+      display: flex; 
+      gap: 10px; 
+      align-items: center; 
+      margin-top: 5px; 
+    }
+    .dot { 
+      width: 8px; 
+      height: 8px; 
+      border-radius: 50%; 
+      flex-shrink: 0; 
+    }
+    .dot.on { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+    .dot.off { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    
+    .agent-row .actions { 
+      display: flex; 
+      gap: 8px; 
+      flex-shrink: 0; 
+    }
+    
+    /* Buttons */
+    .btn { 
+      padding: 8px 14px; 
+      border-radius: 6px; 
+      border: 1px solid var(--border); 
+      background: rgba(255,255,255,0.03); 
+      color: var(--text-bright); 
+      font-size: 12px; 
+      font-weight: 500;
+      cursor: pointer; 
+      font-family: var(--font-sans); 
+      transition: all 0.2s; 
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:hover { 
+      background: rgba(255,255,255,0.08); 
+    }
+    .btn-start { border-color: var(--emerald); color: var(--emerald); background: rgba(16,185,129,0.1); }
+    .btn-start:hover { background: rgba(16,185,129,0.2); }
+    .btn-stop { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.1); }
+    .btn-stop:hover { background: rgba(239,68,68,0.2); }
+    .btn-restart { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,0.1); }
+    .btn-restart:hover { background: rgba(245,158,11,0.2); }
+    .btn-webui { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+    .btn-webui:hover { background: rgba(6,182,212,0.2); }
+    .btn-delete { border-color: transparent; color: var(--text-dim); padding: 8px; }
+    .btn-delete:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-row { 
+      display: flex; 
+      gap: 12px; 
+      margin-bottom: 12px; 
+    }
+    .form-control { 
+      width: 100%; 
+      padding: 10px 14px; 
+      border-radius: 6px; 
+      background: var(--bg-input); 
+      border: 1px solid var(--border); 
+      color: var(--text-bright); 
+      font-family: var(--font-sans); 
+      font-size: 13px; 
+      outline: none; 
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    .form-control:focus { 
+      border-color: var(--cyan); 
+    }
+    .form-control::placeholder { 
+      color: rgba(255,255,255,0.2); 
+    }
+
+    /* Autocomplete */
+    .search-wrapper { position: relative; margin-bottom: 25px; }
+    .search-icon { position: absolute; left: 14px; top: 12px; font-size: 14px; opacity: 0.5; }
+    .search-input { padding-left: 40px !important; border-color: var(--cyan) !important; box-shadow: 0 0 10px rgba(6,182,212,0.1); font-size: 14px !important; }
+    .autocomplete-list { 
+      position: absolute; 
+      top: 100%; 
+      left: 0; 
+      right: 0; 
+      z-index: 100; 
+      background: rgba(20, 25, 30, 0.95); 
+      border: 1px solid var(--cyan); 
+      border-top: none; 
+      border-radius: 0 0 8px 8px; 
+      max-height: 250px; 
+      overflow-y: auto; 
+      display: none;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .autocomplete-item { 
+      padding: 12px 15px; 
+      cursor: pointer; 
+      border-bottom: 1px solid rgba(255,255,255,0.05); 
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.1s;
+    }
+    .autocomplete-item:hover { 
+      background: rgba(6,182,212,0.15); 
+    }
+    .autocomplete-item:last-child { 
+      border-bottom: none; 
+    }
+    
+    .status-msg {
+      margin-top: 15px;
+      font-size: 13px;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    /* Log Output */
+    .log-box {
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 15px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      height: 150px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .log-line { margin-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 2px; }
+    .log-ok { color: var(--emerald); }
+    .log-err { color: var(--red); }
+    .log-warn { color: var(--amber); }
+
   </style>
 </head>
 <body>
-  <div class="scanlines" aria-hidden="true"></div>
   <header class="header">
-    <div class="header-left">
-      <div class="logo"><span class="logo-icon">🔧</span><h1>GNOM-HUB ADMIN</h1></div>
-      <a href="/" class="back-link">← Zurück zum Chat</a>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 20px;">⚙️</span>
+      <h1>GNOM-HUB ADMIN</h1>
     </div>
-    <div class="header-right">
-      <div class="header-clock" id="clock">--:--:--</div>
-    </div>
+    <div style="color: var(--text-dim); font-family: var(--font-mono); font-size: 13px;" id="clock">--:--:--</div>
   </header>
 
   <div class="admin-layout">
     <div class="admin-grid">
-      <!-- ===== AGENT STATUS ===== -->
+      
+      <!-- LEFT COLUMN: AGENT OVERVIEW -->
       <div class="panel">
         <div class="panel-header">
-          <h2>◆ AGENT STATUS</h2>
-          <button class="sm-btn" onclick="refreshAgents()">⟳ Refresh</button>
+          <h2>◆ LAUFENDE AGENTEN</h2>
+          <button class="btn" onclick="refreshAgents()">⟳ Refresh</button>
         </div>
-        <div class="panel-body" id="agentList">Lade…</div>
-      </div>
-
-      <!-- ===== ADD AGENT ===== -->
-      <div class="panel">
-        <div class="panel-header"><h2>◆ AGENT HINZUFÜGEN</h2></div>
-        <div class="panel-body">
-          <div class="form-row"><input id="newId" placeholder="ID (z.B. myagent)"><input id="newName" placeholder="Name"></div>
-          <div class="form-row"><input id="newIcon" placeholder="Icon" value="🤖"><input id="newPort" placeholder="Port" type="number"></div>
-          <div class="form-row"><input id="newColor" placeholder="Farbe" value="#64748b"><input id="newDesc" placeholder="Beschreibung"></div>
-          <div class="form-row"><button class="sm-btn success" onclick="addAgent()" style="flex:none;padding:8px 20px;">✓ Hinzufügen</button></div>
-          <div id="addResult"></div>
+        <div class="panel-body" id="agentList">
+          <div style="color: var(--text-dim); text-align: center; padding: 40px 0;">Agenten werden geladen...</div>
+        </div>
+        
+        <div class="panel-header" style="border-top: 1px solid var(--border); border-bottom: none; margin-top: auto;">
+          <h2>◆ SYSTEM LOG</h2>
+        </div>
+        <div class="panel-body" style="padding-top: 0;">
+          <div class="log-box" id="systemLog"></div>
         </div>
       </div>
 
-      <!-- ===== KILL PROCESS ===== -->
-      <div class="panel">
-        <div class="panel-header"><h2>◆ PROZESS MANAGEMENT</h2></div>
-        <div class="panel-body">
-          <p style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Prozesse killen nach PID, Name oder Port.</p>
-          <div class="form-row">
-            <input id="killPid" placeholder="PID">
-            <select id="killSig"><option value="TERM">SIGTERM</option><option value="9">SIGKILL (-9)</option></select>
-            <button class="sm-btn danger" onclick="killByPid()">Kill PID</button>
-          </div>
-          <div class="form-row">
-            <input id="killName" placeholder="Prozessname (z.B. hermes)">
-            <button class="sm-btn danger" onclick="killByName()">Kill Name</button>
-          </div>
-          <div class="form-row">
-            <input id="killPort" placeholder="Port (z.B. 8787)" type="number">
-            <button class="sm-btn danger" onclick="killByPort()">Port freimachen</button>
-          </div>
-          <div class="log-area" id="killLog"></div>
-        </div>
-      </div>
-
-      <!-- ===== CONNECTION TEST ===== -->
-      <div class="panel">
-        <div class="panel-header"><h2>◆ VERBINDUNGSTEST</h2></div>
-        <div class="panel-body">
-          <div class="form-row">
-            <input id="testUrl" placeholder="URL (z.B. http://localhost:8787)">
-            <button class="sm-btn success" onclick="testConnection()">Test</button>
-          </div>
-          <button class="sm-btn" onclick="testAllAgents()" style="margin-bottom:10px;width:100%;">⚡ Alle Agenten testen</button>
-          <div id="testResults"></div>
-        </div>
-      </div>
-
-      <!-- ===== RUNNING PROCESSES ===== -->
+      <!-- RIGHT COLUMN: ADD AGENT -->
       <div class="panel">
         <div class="panel-header">
-          <h2>◆ LAUFENDE PROZESSE</h2>
-          <button class="sm-btn" onclick="refreshProcesses()">⟳ Refresh</button>
+          <h2>◆ NEUEN AGENTEN HINZUFÜGEN</h2>
         </div>
-        <div class="panel-body compact" id="procList">Lade…</div>
+        <div class="panel-body">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="agentSearch" class="form-control search-input" placeholder="Suchen (z.B. Hermes, Cortex, Paperclip)..." autocomplete="off">
+            <div id="autocompleteList" class="autocomplete-list"></div>
+          </div>
+
+          <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.03);">
+            <div class="form-row">
+              <div style="flex: 2;">
+                <label>Agent ID</label>
+                <input id="formId" class="form-control" placeholder="z.B. hermes">
+              </div>
+              <div style="flex: 3;">
+                <label>Anzeige-Name</label>
+                <input id="formName" class="form-control" placeholder="z.B. Hermes">
+              </div>
+              <div style="flex: 1;">
+                <label>Icon</label>
+                <input id="formIcon" class="form-control" placeholder="🔮">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div style="flex: 1;">
+                <label>Backend Port</label>
+                <input id="formPort" type="number" class="form-control" placeholder="z.B. 8787">
+              </div>
+              <div style="flex: 1;">
+                <label>WebUI Port (Optional)</label>
+                <input id="formWebUI" type="number" class="form-control" placeholder="z.B. 13100">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Ordner / Pfad</label>
+              <input id="formDir" class="form-control" placeholder="z.B. ~/.hermes">
+            </div>
+
+            <div class="form-group">
+              <label>Start-Befehl</label>
+              <input id="formCmd" class="form-control" placeholder="z.B. hermes --gateway">
+            </div>
+
+            <button type="button" class="btn btn-start" style="width: 100%; padding: 12px; font-size: 14px; margin-top: 10px;" onclick="event.preventDefault(); saveAgent()">
+              + Agent in die Registry aufnehmen
+            </button>
+            <div id="saveResult" class="status-msg"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- ===== LISTENING PORTS ===== -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>◆ BELEGTE PORTS</h2>
-          <button class="sm-btn" onclick="refreshPorts()">⟳ Refresh</button>
-        </div>
-        <div class="panel-body compact" id="portList">Lade…</div>
-      </div>
     </div>
   </div>
 
 <script>
-// ---- Clock ----
+// ==== DATA FROM AGENTS.MD ====
+const AGENT_PRESETS = [
+  { id: 'hermes',      name: 'Hermes',           icon: '🔮', port: 8787,  webui_port: '', dir: '~/.hermes', start_cmd: 'hermes --gateway', desc: 'AI Gateway & Agent Runtime' },
+  { id: 'cortex',      name: 'Cortex Hub',       icon: '🧠', port: 3002,  webui_port: 3102, dir: '~/Documents/AG-Flega/cortex', start_cmd: 'cd ~/Documents/AG-Flega/cortex && node index.js', desc: 'Zentrales Gedächtnis & Filter' },
+  { id: 'openclaw',    name: 'OpenClaw',         icon: '🐾', port: null,  webui_port: '', dir: '~/.openclaw', start_cmd: 'openclaw', desc: 'Autonomer Agent + Telegram' },
+  { id: 'paperclip',   name: 'Paperclip',        icon: '📎', port: 3100,  webui_port: 13100, dir: '~/workspace/paperclip', start_cmd: 'cd ~/workspace/paperclip && pnpm run dev', desc: 'Task-Management & Plattform' },
+  { id: 'antigravity', name: 'Antigravity',      icon: '🧪', port: null,  webui_port: '', dir: '/Applications/Antigravity.app', start_cmd: 'open -a Antigravity', desc: 'Google IDE Agent' },
+  { id: 'tandem',      name: 'Tandem',           icon: '🌐', port: 8765,  webui_port: '', dir: '~/hermes-webui/tandem-browser', start_cmd: 'cd ~/hermes-webui/tandem-browser && npm start', desc: 'Electron AI Browser' },
+];
+
+// ==== CLOCK ====
 setInterval(() => {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('de-DE');
 }, 1000);
 
-// ---- Helpers ----
+// ==== API HELPER ====
 async function api(url, opts = {}) {
-  const r = await fetch(url, { headers: {'Content-Type':'application/json'}, ...opts });
-  return r.json();
-}
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function log(id, msg, cls='') {
-  const el = document.getElementById(id);
-  el.innerHTML = `<div class="log-line ${cls}">${new Date().toLocaleTimeString('de-DE')} — ${esc(msg)}</div>` + el.innerHTML;
+  try {
+    const res = await fetch(url, { headers: {'Content-Type':'application/json'}, ...opts });
+    return await res.json();
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
 }
 
-// ---- Agent Status ----
+function esc(s) { 
+  const d = document.createElement('div'); 
+  d.textContent = s; 
+  return d.innerHTML; 
+}
+
+function systemLog(msg, type='ok') {
+  const el = document.getElementById('systemLog');
+  const time = new Date().toLocaleTimeString('de-DE');
+  el.innerHTML = `<div class="log-line log-${type}">[${time}] ${esc(msg)}</div>` + el.innerHTML;
+}
+
+// ==== AGENT MANAGEMENT ====
 let agentsConfig = {};
+
 async function refreshAgents() {
+  const listEl = document.getElementById('agentList');
+  listEl.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">Lade...</div>';
+  
   const [config, statusResp] = await Promise.all([
     api('/api/agents/config'),
-    api('/api/status'),
+    api('/api/status')
   ]);
-  agentsConfig = config;
-  const agents = statusResp.agents || [];
-  const statusMap = {};
-  for (const a of agents) { statusMap[a.agent_name.toLowerCase()] = a; }
 
-  let html = '';
-  for (const [id, meta] of Object.entries(config)) {
-    const s = agents.find(a => a.agent_name.toLowerCase().includes(id)) || {};
-    const running = s.status === 'running';
-    html += `<div class="agent-row">
-      <span class="icon">${meta.icon}</span>
-      <div class="info">
-        <div class="name">${esc(meta.name)} <span style="color:var(--text-dim);font-size:10px;font-family:var(--font-mono);">(${id})</span></div>
-        <div class="detail">
-          <span class="dot ${running?'on':'off'}"></span>
-          ${running?'Running':'Stopped'}
-          ${meta.port ? '· :'+meta.port : ''}
-        </div>
-      </div>
-      <div class="actions">
-        ${meta.port ? `<button class="sm-btn success" onclick="testSingle('http://localhost:${meta.port}','${esc(meta.name)}')">Test</button>` : ''}
-        <button class="sm-btn" onclick="agentAction('restart','${id}')">⟳</button>
-        <button class="sm-btn" onclick="agentAction('start','${id}')">▶</button>
-        <button class="sm-btn" onclick="agentAction('stop','${id}')">⏹</button>
-        ${meta.port ? `<button class="sm-btn danger" onclick="if(confirm('Port ${meta.port} freimachen?'))killPortDirect(${meta.port})">☠</button>` : ''}
-        <button class="sm-btn danger" onclick="if(confirm('Agent ${esc(meta.name)} entfernen?'))removeAgent('${id}')">✕</button>
-      </div>
-    </div>`;
+  if (!config) {
+    listEl.innerHTML = '<div style="color: var(--red); padding: 20px;">Fehler beim Laden der Agenten.</div>';
+    return;
   }
-  document.getElementById('agentList').innerHTML = html || '<div style="color:var(--text-dim);">Keine Agenten.</div>';
+
+  agentsConfig = config;
+  const liveAgents = statusResp.agents || [];
+  
+  try {
+    let html = '';
+    const entries = Object.entries(config);
+    
+    if (entries.length === 0) {
+      html = '<div style="color: var(--text-dim); text-align: center; padding: 40px 0;">Keine Agenten in der Registry vorhanden.</div>';
+    } else {
+      for (const [id, meta] of entries) {
+        // Match against live status from /api/status (which now does real port checks)
+        const liveInfo = liveAgents.find(a => a.id && a.id.toLowerCase() === id.toLowerCase());
+        const isRunning = liveInfo ? (liveInfo.status === 'running' || liveInfo.portAlive === true) : false;
+        const statusLabel = isRunning ? 'Aktiv' : 'Gestoppt';
+        
+        const portText = meta.port ? `Port ${meta.port}` : 'Kein Port';
+        const webuiText = meta.webui_port ? ` · WebUI ${meta.webui_port}` : '';
+        
+        html += `
+          <div class="agent-row">
+            <div class="icon">${meta.icon || '🤖'}</div>
+            <div class="info">
+              <div class="name">${esc(meta.name)} <span style="font-size:11px; color:var(--text-dim); font-weight:normal;">(${esc(id)})</span></div>
+              <div class="detail">
+                <span class="dot ${isRunning ? 'on' : 'off'}"></span>
+                <span>${statusLabel}</span>
+                <span style="opacity:0.5; margin:0 5px;">|</span>
+                <span>${portText}${webuiText}</span>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-start" onclick="event.preventDefault(); agentAction('start', '${esc(id)}')">▶ Start</button>
+              <button type="button" class="btn btn-stop" onclick="event.preventDefault(); agentAction('stop', '${esc(id)}')">⏹ Stop</button>
+              <button type="button" class="btn btn-restart" onclick="event.preventDefault(); agentAction('restart', '${esc(id)}')">⟳ Restart</button>
+              ${meta.webui_port ? `<button type="button" class="btn btn-webui" onclick="event.preventDefault(); window.open('http://localhost:${meta.webui_port}', '_blank')">🌐 Open WebUI</button>` : ''}
+              <button type="button" class="btn btn-delete" id="delBtn_${esc(id)}" onclick="event.preventDefault(); requestDelete('${esc(id)}')">🗑</button>
+            </div>
+          </div>
+        `;
+      }
+    }
+    
+    listEl.innerHTML = html;
+  } catch(e) {
+    listEl.innerHTML = `<div style="color: var(--red); text-align: center; padding: 40px 0;">Render-Fehler: ${esc(e.message)}</div>`;
+    systemLog(`Render-Fehler: ${e.message}`, 'err');
+  }
 }
 
 async function agentAction(action, id) {
-  log('killLog', `${action} → ${id}…`, 'warn');
-  const r = await api(`/api/agents/config`, { method: 'POST' }).catch(() => null);
-  // Use Cortex agent launcher if available
-  try {
-    await api(`http://localhost:3002/api/agentlauncher/${action}`, { method: 'POST', body: JSON.stringify({ agent_id: id }) });
-    log('killLog', `${action} ${id}: gesendet`, 'ok');
-  } catch (e) {
-    log('killLog', `${action} ${id}: ${e.message}`, 'err');
+  systemLog(`Sende ${action.toUpperCase()} Signal an ${id}...`, 'warn');
+  const r = await api('/api/agents/action', {
+    method: 'POST',
+    body: JSON.stringify({ action, agent_id: id })
+  });
+  
+  if (r.ok) {
+    systemLog(`Erfolg: ${r.message}`, 'ok');
+  } else {
+    systemLog(`Fehler bei ${action} (${id}): ${r.error}`, 'err');
   }
-  setTimeout(refreshAgents, 2000);
+  
+  // Refresh UI shortly after action to show state changes
+  setTimeout(refreshAgents, 1500);
+}
+
+let deleteTimeouts = {};
+
+function requestDelete(id) {
+  const btn = document.getElementById(`delBtn_${id}`);
+  if (!btn) return;
+  
+  if (btn.dataset.confirming === 'true') {
+    // Zweiter Klick: Tatsächlich löschen
+    clearTimeout(deleteTimeouts[id]);
+    removeAgent(id);
+  } else {
+    // Erster Klick: Nachfragen
+    btn.dataset.confirming = 'true';
+    btn.innerHTML = '⚠️ Sicher?';
+    btn.style.color = 'var(--red)';
+    btn.style.background = 'rgba(239,68,68,0.1)';
+    
+    // Nach 3 Sekunden abbrechen
+    deleteTimeouts[id] = setTimeout(() => {
+      const resetBtn = document.getElementById(`delBtn_${id}`);
+      if (resetBtn) {
+        resetBtn.dataset.confirming = 'false';
+        resetBtn.innerHTML = '🗑';
+        resetBtn.style.color = '';
+        resetBtn.style.background = '';
+      }
+    }, 3000);
+  }
 }
 
 async function removeAgent(id) {
-  await api(`/api/agents/config/${id}`, { method: 'DELETE' });
-  refreshAgents();
-}
-
-// ---- Add Agent ----
-async function addAgent() {
-  const id = document.getElementById('newId').value.trim().toLowerCase();
-  const name = document.getElementById('newName').value.trim();
-  if (!id || !name) { document.getElementById('addResult').textContent = '❌ ID und Name nötig'; return; }
-  const r = await api('/api/agents/config', { method: 'POST', body: JSON.stringify({
-    id, name,
-    icon: document.getElementById('newIcon').value.trim() || '🤖',
-    port: parseInt(document.getElementById('newPort').value) || null,
-    color: document.getElementById('newColor').value.trim() || '#64748b',
-    desc: document.getElementById('newDesc').value.trim(),
-  })});
+  const r = await api(`/api/agents/config/${id}`, { method: 'DELETE' });
   if (r.ok) {
-    document.getElementById('addResult').innerHTML = '<span style="color:var(--emerald);">✓ Hinzugefügt</span>';
-    ['newId','newName','newDesc','newPort'].forEach(x => document.getElementById(x).value = '');
+    systemLog(`Agent ${id} aus Registry gelöscht.`, 'ok');
     refreshAgents();
   } else {
-    document.getElementById('addResult').textContent = '❌ ' + (r.error || 'Fehler');
+    systemLog(`Löschen fehlgeschlagen: ${r.error}`, 'err');
   }
 }
 
-// ---- Kill ----
-async function killByPid() {
-  const pid = document.getElementById('killPid').value.trim();
-  const sig = document.getElementById('killSig').value;
-  if (!pid) return;
-  const r = await api('/api/admin/kill/pid', { method:'POST', body: JSON.stringify({ pid: parseInt(pid), signal: sig }) });
-  log('killLog', r.ok ? r.message : `Fehler: ${r.error}`, r.ok ? 'ok' : 'err');
-  document.getElementById('killPid').value = '';
-}
+// ==== AUTOCOMPLETE & FORM ====
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('agentSearch');
+  const autocompleteList = document.getElementById('autocompleteList');
 
-async function killByName() {
-  const name = document.getElementById('killName').value.trim();
-  if (!name) return;
-  const r = await api('/api/admin/kill/name', { method:'POST', body: JSON.stringify({ name, signal: document.getElementById('killSig').value }) });
-  log('killLog', r.ok ? r.message : `Fehler: ${r.error}`, r.ok ? 'ok' : 'err');
-  document.getElementById('killName').value = '';
-}
+  searchInput.addEventListener('input', function() {
+    const val = this.value.toLowerCase().trim();
+    autocompleteList.innerHTML = '';
+    
+    if (!val) {
+      autocompleteList.style.display = 'none';
+      return;
+    }
 
-async function killByPort() {
-  const port = document.getElementById('killPort').value.trim();
-  if (!port) return;
-  const r = await api('/api/admin/kill/port', { method:'POST', body: JSON.stringify({ port: parseInt(port) }) });
-  log('killLog', r.ok ? r.message : `Fehler: ${r.error}`, r.ok ? 'ok' : 'err');
-  document.getElementById('killPort').value = '';
-  setTimeout(refreshPorts, 1000);
-}
+    const matches = AGENT_PRESETS.filter(a => 
+      a.name.toLowerCase().includes(val) || 
+      a.id.toLowerCase().includes(val) ||
+      (a.desc && a.desc.toLowerCase().includes(val))
+    );
+    
+    if (matches.length > 0) {
+      autocompleteList.style.display = 'block';
+      matches.forEach(agent => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.innerHTML = `
+          <div style="font-size:20px;">${agent.icon}</div>
+          <div>
+            <div style="font-weight:600; font-size:14px;">${agent.name} <span style="font-size:11px; color:var(--text-dim); font-weight:normal;">(${agent.id})</span></div>
+            <div style="font-size:11px; color:var(--text-dim);">${agent.desc}</div>
+          </div>
+        `;
+        
+        item.addEventListener('click', () => {
+          searchInput.value = agent.name;
+          autocompleteList.style.display = 'none';
+          
+          // Auto-fill fields
+          document.getElementById('formId').value = agent.id;
+          document.getElementById('formName').value = agent.name;
+          document.getElementById('formIcon').value = agent.icon;
+          document.getElementById('formPort').value = agent.port || '';
+          document.getElementById('formWebUI').value = agent.webui_port || '';
+          document.getElementById('formDir').value = agent.dir || '';
+          document.getElementById('formCmd').value = agent.start_cmd || '';
+          
+          systemLog(`${agent.name} aus Vorlage geladen.`, 'ok');
+        });
+        
+        autocompleteList.appendChild(item);
+      });
+    } else {
+      autocompleteList.style.display = 'none';
+    }
+  });
 
-async function killPortDirect(port) {
-  const r = await api('/api/admin/kill/port', { method:'POST', body: JSON.stringify({ port }) });
-  log('killLog', r.ok ? r.message : `Fehler: ${r.error}`, r.ok ? 'ok' : 'err');
-  setTimeout(() => { refreshAgents(); refreshPorts(); }, 1500);
-}
+  // Hide autocomplete when clicking outside
+  document.addEventListener('click', function (e) {
+    if (e.target !== searchInput) {
+      autocompleteList.style.display = 'none';
+    }
+  });
+});
 
-// ---- Connection Test ----
-async function testConnection() {
-  const url = document.getElementById('testUrl').value.trim();
-  if (!url) return;
-  document.getElementById('testResults').innerHTML = '<div style="color:var(--text-dim);">Testing…</div>';
-  const r = await api('/api/admin/test', { method:'POST', body: JSON.stringify({ url }) });
-  showTestResult(url, r);
-}
+async function saveAgent() {
+  const id = document.getElementById('formId').value.trim();
+  const name = document.getElementById('formName').value.trim();
+  const icon = document.getElementById('formIcon').value.trim() || '🤖';
+  const portVal = document.getElementById('formPort').value.trim();
+  const webuiVal = document.getElementById('formWebUI').value.trim();
+  const dir = document.getElementById('formDir').value.trim();
+  const start_cmd = document.getElementById('formCmd').value.trim();
+  
+  const resEl = document.getElementById('saveResult');
 
-function showTestResult(label, r) {
-  const ok = r.reachable;
-  document.getElementById('testResults').innerHTML += `<div class="test-result ${ok?'ok':'fail'}">
-    ${ok?'✓':'✕'} ${esc(label)} — ${ok ? `HTTP ${r.status} (${r.ms}ms)` : (r.error || 'Nicht erreichbar')}
-  </div>`;
-}
+  if (!id || !name) {
+    resEl.innerHTML = '<span style="color:var(--red);">❌ ID und Name sind zwingend erforderlich!</span>';
+    return;
+  }
 
-async function testSingle(url, name) {
-  document.getElementById('testResults').innerHTML = '<div style="color:var(--text-dim);">Testing…</div>';
-  const r = await api('/api/admin/test', { method:'POST', body: JSON.stringify({ url }) });
-  document.getElementById('testResults').innerHTML = '';
-  showTestResult(`${name} (${url})`, r);
-}
+  const payload = { 
+    id, 
+    name, 
+    icon, 
+    port: portVal ? parseInt(portVal) : null,
+    webui_port: webuiVal ? parseInt(webuiVal) : null,
+    dir,
+    start_cmd,
+    color: '#06b6d4'
+  };
 
-async function testAllAgents() {
-  document.getElementById('testResults').innerHTML = '<div style="color:var(--text-dim);">Teste alle Agenten…</div>';
-  const config = await api('/api/agents/config');
-  document.getElementById('testResults').innerHTML = '';
-  for (const [id, meta] of Object.entries(config)) {
-    if (!meta.port) continue;
-    const url = `http://localhost:${meta.port}`;
-    const r = await api('/api/admin/test', { method:'POST', body: JSON.stringify({ url }) });
-    showTestResult(`${meta.icon} ${meta.name} (:${meta.port})`, r);
+  const r = await api('/api/agents/config', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+
+  if (r.ok) {
+    resEl.innerHTML = `<span style="color:var(--emerald);">✓ Agent ${esc(name)} erfolgreich gespeichert!</span>`;
+    systemLog(`Agent ${name} (${id}) wurde in der Registry gespeichert.`, 'ok');
+    
+    // Clear form
+    document.getElementById('formId').value = '';
+    document.getElementById('formName').value = '';
+    document.getElementById('formIcon').value = '';
+    document.getElementById('formPort').value = '';
+    document.getElementById('formWebUI').value = '';
+    document.getElementById('formDir').value = '';
+    document.getElementById('formCmd').value = '';
+    document.getElementById('agentSearch').value = '';
+    
+    setTimeout(() => { resEl.innerHTML = ''; }, 3000);
+    refreshAgents();
+  } else {
+    resEl.innerHTML = `<span style="color:var(--red);">❌ Fehler: ${r.error}</span>`;
+    systemLog(`Fehler beim Speichern von ${name}: ${r.error}`, 'err');
   }
 }
 
-// ---- Processes ----
-async function refreshProcesses() {
-  const r = await api('/api/admin/processes');
-  const procs = r.processes || [];
-  if (!procs.length) { document.getElementById('procList').innerHTML = '<div style="color:var(--text-dim);">Keine Prozesse.</div>'; return; }
-  let html = '<div class="proc-row" style="font-weight:600;color:var(--text-bright);"><span class="pid">PID</span><span class="cpu">CPU%</span><span class="mem">MEM%</span><span class="cmd">Command</span><span style="width:50px;">Kill</span></div>';
-  for (const p of procs) {
-    html += `<div class="proc-row">
-      <span class="pid">${p.pid}</span><span class="cpu">${p.cpu}</span><span class="mem">${p.mem}</span>
-      <span class="cmd" title="${esc(p.command)}">${esc(p.command)}</span>
-      <button class="sm-btn danger" onclick="if(confirm('PID ${p.pid} killen?')){api('/api/admin/kill/pid',{method:'POST',body:JSON.stringify({pid:${p.pid},signal:'9'})}).then(()=>{log('killLog','Killed PID ${p.pid}','ok');refreshProcesses();})}">☠</button>
-    </div>`;
-  }
-  document.getElementById('procList').innerHTML = html;
-}
-
-// ---- Ports ----
-async function refreshPorts() {
-  const r = await api('/api/admin/ports');
-  const ports = r.ports || [];
-  if (!ports.length) { document.getElementById('portList').innerHTML = '<div style="color:var(--text-dim);">Keine Ports.</div>'; return; }
-  let html = '<div class="port-row" style="font-weight:600;color:var(--text-bright);"><span class="pname">Command</span><span class="ppid">PID</span><span class="paddr">Address</span><span style="width:50px;">Free</span></div>';
-  for (const p of ports) {
-    const portNum = (p.name || '').match(/:(\d+)$/)?.[1];
-    html += `<div class="port-row">
-      <span class="pname">${esc(p.command)}</span><span class="ppid">${p.pid}</span><span class="paddr">${esc(p.name || '')}</span>
-      ${portNum ? `<button class="sm-btn danger" onclick="if(confirm('Port ${portNum} freimachen?'))killPortDirect(${portNum})">☠</button>` : ''}
-    </div>`;
-  }
-  document.getElementById('portList').innerHTML = html;
-}
-
-// ---- Init ----
+// Init
 refreshAgents();
-refreshProcesses();
-refreshPorts();
+systemLog('Admin-Panel initialisiert.', 'ok');
 </script>
 </body>
 </html>

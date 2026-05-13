@@ -1,0 +1,5 @@
+[console_scripts]
+cortex-hub = cortex.cortex_app:main
+cortex-mcp = cortex.cortex_mcp_server:main
+cortex-pulse = cortex.cortex_pulse:main
+cortex-stop = cortex.cortex_app:stop

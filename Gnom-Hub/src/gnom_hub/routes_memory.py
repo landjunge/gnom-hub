@@ -3,13 +3,16 @@ from datetime import datetime
 import uuid
 from .db import get_db, save_db
 from .models import MemoryEntry, AgentIdReq, SearchReq
+from .routes_nudge import nudge
 router = APIRouter()
 @router.post("/api/memory")
 @router.post("/api/tools/save_memory")
 def add_memory(e: MemoryEntry):
     if not any(a.get("id") == e.agent_id for a in get_db("agents")): raise HTTPException(404, "")
     e.timestamp = e.timestamp or (datetime.utcnow().isoformat() + "Z")
-    n = {"id": str(uuid.uuid4()), **e.dict()}; save_db("memory", get_db("memory") + [n]); return n
+    n = {"id": str(uuid.uuid4()), **e.dict()}; save_db("memory", get_db("memory") + [n])
+    nudge(e.agent_id)
+    return n
 @router.get("/api/memory/search")
 def search_memory(q: str): return sorted([e for e in get_db("memory") if q.lower() in str(e.get("content", "")).lower()], key=lambda x: x.get("timestamp", ""), reverse=True)
 @router.get("/api/agents/{a_id}/memory")

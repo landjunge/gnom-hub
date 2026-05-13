@@ -1,8 +1,7 @@
-import requests, os; from starlette.responses import JSONResponse; from mcp.server.fastmcp import FastMCP
-mcp = FastMCP("HUB", host="127.0.0.1", port=int(os.environ.get("GNOM_MCP_PORT", 3100)))
+import requests, os; from mcp.server.fastmcp import FastMCP; mcp = FastMCP("HUB", host="127.0.0.1", port=int(os.environ.get("GNOM_MCP_PORT", 3100)))
 def api(m, p, **k):
-    try: return str(requests.request(m, f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT','3002')}/api{p}", **k).json())
-    except Exception as e: return f"Err: {e}"
+    try: return str(requests.request(m, f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT','3002')}/api"+p, **k).json())
+    except: return "Err"
 @mcp.tool()
 def save_to_memory(a: str, c: str): """Speichert Text."""; return api("POST", "/memory", json={"agent_id": a, "content": c})
 @mcp.tool()
@@ -33,6 +32,8 @@ def count_memory(a: str): """Zählt Memory."""; return api("GET", f"/agents/{a}/
 def get_system_stats(): """System Stats."""; return api("GET", "/stats")
 @mcp.tool()
 def search_agents(q: str): """Sucht Agenten."""; return api("GET", "/agents/search", params={"q": q})
-@mcp.custom_route("/tools", methods=["GET"])
-async def tools_route(r): return JSONResponse([{"name": t.name, "desc": t.description} for t in await mcp.list_tools()])
+@mcp.tool()
+def register_agent(name: str, port: int, desc: str=""): """Agent registriert sich selbst."""; return api("POST", "/agents/register", json={"name": name, "port": port, "description": desc})
+@mcp.tool()
+def nudge_agent(a: str, reason: str="manual"): """Stupst Agent an."""; return api("POST", f"/agents/{a}/nudge", params={"reason": reason})
 def main(): mcp.run(transport="sse")

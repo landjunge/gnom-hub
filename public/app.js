@@ -97,6 +97,9 @@
         removeTyping();
         addAgentMessage(msg.data);
         break;
+      case 'cortex_recall':
+        handleCortexRecall(msg.data);
+        break;
       case 'typing':
         showTyping(msg.data.agent);
         break;
@@ -126,7 +129,7 @@
     // Map status data to our agent meta
     const statusMap = {};
     for (const a of agents) {
-      const key = guessAgentKey(a.agent_name);
+      const key = a.id || guessAgentKey(a.name || a.agent_name || '');
       if (key) statusMap[key] = a;
     }
 
@@ -250,6 +253,36 @@
   function removeTyping() {
     const el = document.getElementById('typingIndicator');
     if (el) el.remove();
+  }
+
+  function handleCortexRecall(data) {
+    // Zeige die Erinnerung ganz normal im Chat an
+    addAgentMessage(data);
+
+    // 1. Icon pulsieren lassen
+    const $cortexStatus = document.getElementById('cortexStatus');
+    if ($cortexStatus) {
+      $cortexStatus.classList.remove('cortex-recall-pulse');
+      // Trigger reflow to restart animation
+      void $cortexStatus.offsetWidth;
+      $cortexStatus.classList.add('cortex-recall-pulse');
+    }
+
+    // 2. Toast Notification einblenden
+    let toast = document.getElementById('cortexToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'cortexToast';
+      toast.className = 'cortex-toast';
+      toast.innerHTML = `<span style="font-size:16px;">🧠</span><span>Cortex erinnert sich an eine alte Regel…</span>`;
+      document.body.appendChild(toast);
+    }
+    
+    toast.classList.add('show');
+    if (toast.hideTimeout) clearTimeout(toast.hideTimeout);
+    toast.hideTimeout = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 4000);
   }
 
   // ---- Autocomplete ----

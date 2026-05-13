@@ -2,3 +2,15 @@ node_modules/
 .DS_Store
 .env
 *.log
+
+# IDE & workspace
+*.code-workspace
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+
+# Debug & temp
+*.bak
+*.tmp
