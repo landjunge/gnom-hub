@@ -39,38 +39,126 @@ gnom-hub
                     └──────────────────────────┘
 ```
 
-## 🔌 Agent-Integration
+## 🔌 Agent-Integration (Copy & Paste)
 
-### 1. Agent registrieren
+So verbindest du einen beliebigen Agenten mit dem Gnom-Hub. 
+Kopiere den folgenden Code und passe `AGENT_NAME` und `AGENT_PORT` an.
 
-```bash
-curl -X POST http://127.0.0.1:3002/api/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Hermes", "port": 9119, "description": "Chat-Agent"}'
-```
-
-### 2. Heartbeat senden (alle 60s)
-
-```bash
-curl -X POST http://127.0.0.1:3002/api/agents/{id}/heartbeat
-```
-
-### 3. Nudge empfangen
-
-Der Hub sendet `POST http://127.0.0.1:{agent_port}/nudge` wenn neue Daten vorliegen.
-Implementiere einen `/nudge`-Endpoint in deinem Agenten:
+### Komplettes Python-Beispiel
 
 ```python
+"""Minimaler Agent, der sich mit dem Gnom-Hub verbindet."""
+import requests, threading, time
+from flask import Flask, request  # oder FastAPI
+
+# ═══════════════════════════════════════════
+# KONFIGURATION — Nur diese zwei Werte ändern
+# ═══════════════════════════════════════════
+AGENT_NAME = "MeinAgent"
+AGENT_PORT = 9200
+HUB_URL    = "http://127.0.0.1:3002/api"
+# ═══════════════════════════════════════════
+
+app = Flask(__name__)
+agent_id = None  # Wird bei Registrierung gesetzt
+
+
+# ── SCHRITT 1: Registrierung ──────────────
+def register():
+    """Meldet den Agent beim Hub an. Wird einmal beim Start aufgerufen."""
+    global agent_id
+    r = requests.post(f"{HUB_URL}/agents/register", json={
+        "name": AGENT_NAME,
+        "port": AGENT_PORT,
+        "description": f"{AGENT_NAME} auf Port {AGENT_PORT}"
+    })
+    data = r.json()
+    agent_id = data["id"]
+    print(f"✅ Registriert als {AGENT_NAME} (ID: {agent_id})")
+
+
+# ── SCHRITT 2: Heartbeat (alle 60 Sekunden) ──
+def heartbeat_loop():
+    """Hält den Agent im Hub als 'online' markiert.
+    Ohne Heartbeat setzt der Hub den Status nach 120s auf 'offline'."""
+    while True:
+        time.sleep(60)
+        try:
+            requests.post(f"{HUB_URL}/agents/{agent_id}/heartbeat")
+        except:
+            pass  # Hub kurz nicht erreichbar? Nächster Versuch in 60s.
+
+
+# ── SCHRITT 3: Nudge empfangen ────────────
 @app.post("/nudge")
 def on_nudge():
-    # Neue Daten vom Hub holen
-    memories = requests.get("http://127.0.0.1:3002/api/agents/{id}/memory").json()
+    """Der Hub ruft diese Route auf, wenn es neue Daten gibt.
+    Zum Beispiel: Jemand schreibt im War Room oder speichert ein Memory."""
+
+    # Neue Memories abrufen
+    memories = requests.get(f"{HUB_URL}/agents/{agent_id}/memory").json()
+    print(f"📢 Nudge! {len(memories)} Memories vorhanden.")
+
+    # Optional: Im War Room antworten
+    requests.post(f"{HUB_URL}/chat", json={
+        "content": f"Ich habe den Nudge erhalten! ({len(memories)} Memories)",
+        "sender": AGENT_NAME
+    })
+
     return {"status": "received"}
+
+
+# ── START ──────────────────────────────────
+if __name__ == "__main__":
+    register()
+    threading.Thread(target=heartbeat_loop, daemon=True).start()
+    app.run(host="0.0.0.0", port=AGENT_PORT)
 ```
 
-### 4. MCP-Anbindung
+### Lifecycle auf einen Blick
 
-In deiner MCP-Config:
+```
+Agent startet
+    │
+    ├─▶ POST /api/agents/register    →  Hub kennt den Agent
+    │       {"name", "port"}              Antwort: {"id": "abc-123"}
+    │
+    ├─▶ Heartbeat-Thread startet     →  Alle 60s:
+    │       POST /api/agents/{id}/heartbeat
+    │       (sonst: nach 120s → Status "offline")
+    │
+    ├─▶ Flask/FastAPI lauscht        →  Wartet auf Nudges:
+    │       POST http://127.0.0.1:{port}/nudge
+    │       (Hub ruft das auf bei neuen Daten)
+    │
+    └─▶ Agent antwortet              →  POST /api/chat
+            {"content": "...", "sender": "MeinAgent"}
+```
+
+### Nur mit curl testen
+
+```bash
+# 1. Registrieren
+curl -X POST http://127.0.0.1:3002/api/agents/register \
+  -H "Content-Type: application/json" \
+  -d '{"name": "TestAgent", "port": 9999}'
+# → {"id": "abc-123-...", "status": "online", ...}
+
+# 2. Heartbeat senden (mit der ID von oben)
+curl -X POST http://127.0.0.1:3002/api/agents/abc-123/heartbeat
+
+# 3. Nudge manuell auslösen
+curl -X POST http://127.0.0.1:3002/api/agents/abc-123/nudge
+
+# 4. Im War Room schreiben
+curl -X POST http://127.0.0.1:3002/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Hallo aus dem Terminal!", "sender": "TestAgent"}'
+```
+
+### MCP-Anbindung (für KI-Agenten)
+
+Wenn dein Agent MCP unterstützt (z.B. Claude, Gemini), trage diese URL ein:
 
 ```json
 {
@@ -81,6 +169,8 @@ In deiner MCP-Config:
   }
 }
 ```
+
+Der Agent bekommt dann Zugriff auf **17 Tools**: Memory lesen/schreiben, Agenten verwalten, Nudges senden, System-Stats abrufen — alles ohne eigene API-Calls.
 
 ## 📋 API Endpoints
 
