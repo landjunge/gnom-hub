@@ -2,6 +2,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from .db import get_db, save_db
+import uuid
+from datetime import datetime
 router = APIRouter(prefix="/api/admin")
 
 class ToolDef(BaseModel):
@@ -22,8 +24,10 @@ def cleanup_offline():
 @router.get("/health")
 def health(): return {"status": "ok", "agents": len(get_db("agents")), "memory": len(get_db("memory")), "tools": len(get_db("tools"))}
 
-ROLES = {"general": "Du bist der General. Koordiniere Agenten, priorisiere Aufgaben, triff Entscheidungen.",
-    "summarizer": "Du bist der Summarizer. Fasse Diskussionen zusammen. Sammle @idea-Einträge separat unter My Ideas."}
+GENERAL = ("Du bist der General. Deine einzige Aufgabe: Jobs verteilen. Kein Diskutieren, kein Brainstormen. "
+    "Bei @job: 1. Aufgabe in 2 Sätzen analysieren. 2. Max 3 Teilaufgaben. 3. Per Nudge an existierende Agenten. "
+    "4. Kurzer Satz wer was bekam. Nur existierende Agenten, keine neuen erfinden.")
+ROLES = {"general": GENERAL, "summarizer": "Du bist der Summarizer. Fasse Diskussionen zusammen. Sammle @idea-Einträge separat."}
 
 @router.put("/agents/{agent_id}/role")
 def set_role(agent_id: str, role: str):
@@ -34,7 +38,8 @@ def set_role(agent_id: str, role: str):
     for x in agents:
         if x.get("role") == role and role != "normal": x["role"] = "normal"
     agent["role"] = role; save_db("agents", agents)
+    mem = [m for m in get_db("memory") if not (m.get("agent_id") == agent_id and m.get("type") == "role")]
     if role in ROLES:
-        mem = get_db("memory"); mem.append({"agent_id": agent_id, "content": f"[SYSTEM-ROLLE] {ROLES[role]}", "type": "role"})
-        save_db("memory", mem)
+        mem.append({"id": str(uuid.uuid4()), "agent_id": agent_id, "content": f"[SYSTEM-ROLLE] {ROLES[role]}", "type": "role", "timestamp": datetime.utcnow().isoformat()+"Z"})
+    save_db("memory", mem)
     return {"agent": agent["name"], "role": role, "prompt_set": role in ROLES}
