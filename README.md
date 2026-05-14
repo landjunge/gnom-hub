@@ -1,5 +1,7 @@
 # 🧠 GNOM-HUB
 
+![Gnom-Hub War Room](screenshot.png)
+
 Ein minimaler, aber mächtiger Orchestrator für lokale KI-Agenten.
 
 Agenten verbinden sich automatisch, teilen ein gemeinsames Memory und arbeiten zusammen über ein zentrales War Room Chat.
