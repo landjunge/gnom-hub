@@ -1,56 +1,35 @@
-"""Summarizer Agent — lauscht autonom im War Room, extrahiert Essenz."""
+"""Summarizer Agent — extrahiert Essenz."""
 import asyncio, json, os, requests
-from mcp import ClientSession
-from mcp.client.sse import sse_client
-
-# ── Konfiguration ──────────────────────────────
-MODEL   = "deepseek-chat"
-API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-DEIN-KEY-HIER")
-API_URL = "https://api.deepseek.com/chat/completions"
-MCP_URL = "http://127.0.0.1:3100/sse"
-POLL, BATCH, NAME = 30, 15, "SummarizerAG"
-SYSTEM  = ("Du bist der Summarizer. Analysiere die neuen War-Room-Nachrichten. "
-    "Extrahiere NUR: Fakten, Entscheidungen, Aufgaben, wichtige Absichten. "
-    "Ignoriere: Grüße, Smalltalk, Witze, Wiederholungen. "
-    "Speichere die Essenz mit save_to_memory(a='summarizer', c=...). "
-    "Max 5 Stichpunkte. Wenn nichts Wichtiges dabei ist, speichere NICHTS.")
-# ────────────────────────────────────────────────
-_seen = set()
+from mcp import ClientSession; from mcp.client.sse import sse_client
+KEY, URL = os.environ.get("DEEPSEEK_API_KEY"), "https://api.deepseek.com/chat/completions"
+MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "SummarizerAG", 30
+SYS = "Du bist Summarizer. Extrahiere Fakten/Entscheidungen/Aufgaben. Max 5 Stichpunkte. Speichere via save_to_memory. Sonst nichts tun."
 
 async def run():
-    async with sse_client(MCP_URL) as (r, w):
+    async with sse_client(MCP) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
-            raw = await s.list_tools()
-            tools = [{"type": "function", "function": {"name": t.name,
-                "description": t.description or "", "parameters": t.inputSchema}} for t in raw.tools]
-            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": "Autonomer Summarizer — extrahiert Essenz"})
-            await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
-            print(f"📋 {NAME} autonom — {len(tools)} tools | pollt alle {POLL}s")
-            msgs = [{"role": "system", "content": SYSTEM}]
+            ts = [{"type": "function", "function": {"name": t.name, "description": t.description or "", "parameters": t.inputSchema}} for t in (await s.list_tools()).tools]
+            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": "Autonomer Summarizer"}); await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
+            print(f"📋 {NAME} aktiv"); seen, msgs = set(), [{"role": "system", "content": SYS}]
             while True:
-                res = await s.call_tool("war_room_read", {"limit": BATCH})
+                res = await s.call_tool("war_room_read", {"limit": 15})
                 chat = json.loads(str(res.content[0].text)) if res.content else []
-                new = [m for m in chat if m.get("id") not in _seen]
-                for m in chat: _seen.add(m.get("id"))
+                new = [m for m in chat if m.get("id") not in seen]
+                for m in chat: seen.add(m.get("id"))
                 if new:
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"})
-                    block = "\n".join(f"[{m.get('metadata',{}).get('sender','?')}] {m.get('content','')}" for m in new)
-                    print(f"  📨 {len(new)} neue Nachrichten")
-                    msgs.append({"role": "user", "content": f"Neue Nachrichten:\n{block}"})
+                    msgs.append({"role": "user", "content": "Neue Nachrichten:\n" + "\n".join(f"[{m.get('metadata',{}).get('sender','?')}] {m.get('content','')}" for m in new)})
                     while True:
-                        r2 = requests.post(API_URL, headers={"Authorization": f"Bearer {API_KEY}"},
-                            json={"model": MODEL, "messages": msgs, "tools": tools, "max_tokens": 300}, timeout=120)
-                        reply = r2.json()["choices"][0]["message"]; msgs.append(reply)
-                        if not reply.get("tool_calls"):
-                            if reply.get("content"): print(f"  📋 {reply['content'][:80]}"); break
+                        r2 = requests.post(URL, headers={"Authorization": f"Bearer {KEY}"}, json={"model": "deepseek-chat", "messages": msgs, "tools": ts}, timeout=60).json()
+                        reply = r2["choices"][0]["message"]; msgs.append(reply)
+                        if not reply.get("tool_calls"): break
                         for tc in reply["tool_calls"]:
                             try: args = json.loads(tc["function"]["arguments"])
-                            except: print(f"  ⚠️ bad args"); args = {}
+                            except: args = {}
                             tr = await s.call_tool(tc["function"]["name"], args)
-                            print(f"  🔧 {tc['function']['name']}"); msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
+                            msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
                 await asyncio.sleep(POLL)
 
-if __name__ == "__main__":
-    asyncio.run(run())
+if __name__ == "__main__": asyncio.run(run())

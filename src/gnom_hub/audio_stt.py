@@ -1,7 +1,8 @@
 """STT Engine — Whisper lokal, OpenAI API Fallback."""
 import os, io, tempfile
+from typing import Optional
 
-def stt_local(audio_bytes: bytes) -> str | None:
+def stt_local(audio_bytes: bytes) -> Optional[str]:
     """Lokales faster-whisper STT."""
     try:
         from faster_whisper import WhisperModel
@@ -13,7 +14,7 @@ def stt_local(audio_bytes: bytes) -> str | None:
         return " ".join(s.text for s in segs).strip()
     except: return None
 
-def stt_cloud(audio_bytes: bytes) -> str | None:
+def stt_cloud(audio_bytes: bytes) -> Optional[str]:
     """OpenAI Whisper API Fallback."""
     key = os.environ.get("OPENAI_API_KEY", "")
     if not key: return None

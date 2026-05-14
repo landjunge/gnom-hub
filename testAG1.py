@@ -1,45 +1,33 @@
-"""TestAG1 — Platzhalter. Echo + Memory + Agents-Liste."""
-import asyncio, json
-from mcp import ClientSession
-from mcp.client.sse import sse_client
-
+"""TestAG1 — LLM Platzhalter."""
+import asyncio, json, os, requests
+from mcp import ClientSession; from mcp.client.sse import sse_client
+KEY, URL = os.environ.get("DEEPSEEK_API_KEY"), "https://api.deepseek.com/chat/completions"
 MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "TestAG1", 15
+SYS = "Du bist Test-Agent. Antworte kurz, präzise und freundlich, wenn du mit @ erwähnt wirst."
 
 async def run():
     async with sse_client(MCP) as (r, w):
         async with ClientSession(r, w) as s:
-            await s.initialize()
-            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": f"Test-Agent — Platzhalter"})
-            await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
-            tools = await s.list_tools()
-            print(f"🧪 {NAME} online — {len(tools.tools)} Tools")
-            seen = set()
+            await s.initialize(); ts = [{"type": "function", "function": {"name": t.name, "description": t.description or "", "parameters": t.inputSchema}} for t in (await s.list_tools()).tools]
+            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": "LLM Test-Agent"}); await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
+            print(f"🧪 {NAME} aktiv"); seen = set()
             while True:
-                res = await s.call_tool("war_room_read", {"limit": 5})
-                chat = json.loads(str(res.content[0].text)) if res.content else []
-                for m in chat:
-                    mid = m.get("id")
-                    if mid in seen: continue
-                    seen.add(mid)
-                    c = m.get("content", "")
-                    if f"@{NAME.lower()}" not in c.lower(): continue
-                    lo = c.lower()
-                    if "merke" in lo:
-                        txt = c.split("merke", 1)[-1].strip()
-                        await s.call_tool("save_to_memory", {"a": NAME, "c": txt})
-                        reply = f"Gemerkt: '{txt[:50]}'"
-                    elif "memory" in lo:
-                        r2 = await s.call_tool("get_memory", {"a": NAME})
-                        mems = json.loads(str(r2.content[0].text)) if r2.content else []
-                        reply = f"Memory: {len(mems)} Einträge"
-                    elif "agents" in lo:
-                        r2 = await s.call_tool("list_all_agents", {})
-                        ags = json.loads(str(r2.content[0].text)) if r2.content else []
-                        reply = ", ".join(f"{a['name']}({a.get('status','?')})" for a in ags)
-                    else:
-                        reply = f"Echo ({len(c)} Zeichen). Befehle: merke/memory/agents"
-                    await s.call_tool("war_room_chat", {"msg": reply, "sender": NAME})
+                res = await s.call_tool("war_room_read", {"limit": 5}); chat = json.loads(str(res.content[0].text)) if res.content else []
+                new = [m for m in chat if m.get("id") not in seen and f"@{NAME.lower()}" in m.get("content","").lower()]
+                for m in chat: seen.add(m.get("id"))
+                for m in new:
+                    await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"}); msgs = [{"role": "system", "content": SYS}, {"role": "user", "content": m["content"]}]
+                    while True:
+                        r2 = requests.post(URL, headers={"Authorization": f"Bearer {KEY}"}, json={"model": "deepseek-chat", "messages": msgs, "tools": ts, "max_tokens": 300}, timeout=60).json()
+                        reply = r2["choices"][0]["message"]; msgs.append(reply)
+                        if not reply.get("tool_calls"):
+                            await s.call_tool("war_room_chat", {"msg": reply.get("content",""), "sender": NAME}); break
+                        for tc in reply["tool_calls"]:
+                            try: args = json.loads(tc["function"]["arguments"])
+                            except: args = {}
+                            tr = await s.call_tool(tc["function"]["name"], args)
+                            msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
+                    await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
                 await asyncio.sleep(POLL)
 
-if __name__ == "__main__":
-    asyncio.run(run())
+if __name__ == "__main__": asyncio.run(run())
