@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid, re
 from .db import get_db, save_db
 from .brainstorm import dispatch
-from .chat_commands import handle_idea, handle_clear, handle_status, handle_job
+from .chat_commands import handle_idea, handle_clear, handle_status, handle_job, handle_summary
 from pydantic import BaseModel
 router = APIRouter()
 class ChatMsg(BaseModel):
@@ -12,7 +12,7 @@ def _parse(t):
     m = re.match(r"@(\w+)\s*(.*)", t, re.DOTALL)
     if not m: return t, None, None
     tag, r = m.group(1).lower(), m.group(2).strip()
-    if tag in ("bs","idea","clear","status","recherche","job"): return r or t, None, tag
+    if tag in ("bs","idea","clear","status","recherche","job","summary"): return r or t, None, tag
     if tag in ("summarizer","general","normal"):
         m2 = re.match(r"@?(\w+)", r)
         return (t, m2.group(1), tag) if m2 else (t, None, None)
@@ -23,7 +23,7 @@ def _role(name, role):
     for x in agents:
         if x.get("role") == role and role != "normal": x["role"] = "normal"
     a["role"] = role; save_db("agents", agents); return a["name"]
-CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job}
+CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content)

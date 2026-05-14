@@ -36,4 +36,8 @@ def war_room_chat(msg: str, sender: str="mcp"): """Sendet an War Room. @bs=Brain
 def war_room_read(limit: int=20): """Liest War Room."""; return api("GET", f"/chat?limit={limit}")
 @mcp.tool()
 def set_agent_role(a: str, role: str): """Setzt Rolle: general|summarizer|normal. Speichert System-Prompt."""; return api("PUT", f"/admin/agents/{a}/role", params={"role": role})
+@mcp.tool()
+def distribute_job(job: str): """General: Verteilt Job an Agenten. Nur @Name → Aufgabe."""; from gnom_hub.role_tools import distribute_job as dj; return dj(job)
+@mcp.tool()
+def summarize_chat(): """Summarizer: Extrahiert wichtige Punkte aus dem Chat."""; from gnom_hub.role_tools import summarize_chat as sc; return sc()
 def main(): mcp.run(transport="sse")

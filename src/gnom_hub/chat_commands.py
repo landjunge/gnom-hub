@@ -3,32 +3,33 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter
 from .db import get_db, save_db
-from .brainstorm import dispatch
 router = APIRouter()
 
-def handle_idea(text):
-    save_db("ideas", get_db("ideas") + [{"id": str(uuid.uuid4()), "content": text, "ts": datetime.utcnow().isoformat()+"Z"}])
-    return {"status": "idea_saved", "content": text}
+def _uid(): return str(uuid.uuid4())
+def _ts(): return datetime.utcnow().isoformat()+"Z"
+def _post_chat(sender, content):
+    save_db("memory", get_db("memory") + [{"id": _uid(), "agent_id": "war-room",
+        "content": content, "metadata": {"type": "role_response", "sender": sender}, "timestamp": _ts()}])
 
+def handle_idea(text):
+    save_db("ideas", get_db("ideas") + [{"id": _uid(), "content": text, "ts": _ts()}])
+    return {"status": "idea_saved", "content": text}
 def handle_clear():
     save_db("memory", [m for m in get_db("memory") if m.get("agent_id") != "war-room"])
     return {"status": "cleared"}
-
 def handle_status():
-    return {"status": "agents", "agents": [{"name":a["name"],"role":a.get("role","—"),"st":a["status"]} for a in get_db("agents")]}
-
+    return {"agents": [{"name":a["name"],"role":a.get("role","—"),"st":a["status"]} for a in get_db("agents")]}
 def handle_job(task):
-    agents = get_db("agents")
-    general = next((a for a in agents if a.get("role") == "general" and a.get("status") == "online"), None)
-    if not general: return {"status": "error", "msg": "Kein General online — erst @general @Name zuweisen"}
-    job = {"id": str(uuid.uuid4()), "task": task, "general": general["name"],
-        "status": "open", "assigned_to": None, "ts": datetime.utcnow().isoformat()+"Z"}
-    save_db("jobs", get_db("jobs") + [job])
-    prompt = (f"[JOB] Neue Aufgabe: {task}\n"
-        f"Online-Agenten: {', '.join(a['name'] for a in agents if a.get('status')=='online' and a['name']!=general['name'])}\n"
-        f"Vergib diese Aufgabe an den passendsten Agenten. Wenn keiner passt, sage 'NEED_AGENT: <vorgeschlagene Beschreibung>'.")
-    asked = dispatch(prompt, target=general["name"])
-    return {"status": "job_created", "job_id": job["id"], "general": general["name"], "task": task, "asked": asked}
+    from .role_tools import distribute_job
+    general = next((a for a in get_db("agents") if a.get("role") == "general"), None)
+    if not general: return {"error": "Kein General — erst @general @Name zuweisen"}
+    save_db("jobs", get_db("jobs") + [{"id": _uid(), "task": task, "general": general["name"], "status": "open", "ts": _ts()}])
+    result = distribute_job(task); _post_chat(general["name"], result)
+    return {"status": "job_created", "general": general["name"], "result": result}
+def handle_summary(q=""):
+    from .role_tools import summarize_chat
+    result = summarize_chat(); _post_chat("Summarizer", result)
+    return {"status": "summarized", "result": result}
 @router.get("/api/ideas")
 def get_ideas(): return get_db("ideas")
 @router.get("/api/jobs")
