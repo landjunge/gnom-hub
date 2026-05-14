@@ -564,16 +564,25 @@ function toggleSTT() {
   else { recognition.start(); btn.classList.add('active'); }
 }
 
+let _lampCount = 0;
 function updateLamps() {
   const colors = {general:'#ff6b35',summarizer:'#36d7b7',skills:'#9b59b6',cronjob:'#f39c12',soul:'#e74c3c',apikeys:'#3498db',watchdog:'#1abc9c'};
   const fallback = ['#4CAF50','#2196F3','#FF9800','#E91E63','#00BCD4','#8BC34A','#FF5722','#607D8B'];
   const el = document.getElementById('status-lamps');
-  el.innerHTML = agents.map((a, i) => {
-    const c = colors[a.role] || colors[a.name?.toLowerCase()] || fallback[i % fallback.length];
-    const cls = a.status === 'busy' ? 'busy' : a.status === 'online' ? 'on' : '';
-    const d = (Math.random() * 2).toFixed(2);
-    return `<div class="lamp ${cls}" title="${a.name} ${a.status||'—'}" style="color:${c};background:${c};animation-delay:${d}s"></div>`;
-  }).join('');
+  if (_lampCount !== agents.length) {
+    el.innerHTML = agents.map((a, i) => {
+      const c = colors[a.role] || colors[a.name?.toLowerCase()] || fallback[i % fallback.length];
+      const d = (Math.random() * 2).toFixed(2);
+      return `<div class="lamp" data-idx="${i}" title="${a.name}" style="color:${c};background:${c};animation-delay:${d}s"></div>`;
+    }).join('');
+    _lampCount = agents.length;
+  }
+  el.querySelectorAll('.lamp').forEach((l, i) => {
+    if (!agents[i]) return;
+    const cls = agents[i].status === 'busy' ? 'busy' : agents[i].status === 'online' ? 'on' : '';
+    l.className = 'lamp ' + cls;
+    l.title = agents[i].name + ' ' + (agents[i].status||'');
+  });
 }
 (async () => {
   await discoverPort();
