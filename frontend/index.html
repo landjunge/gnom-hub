@@ -571,7 +571,8 @@ function updateLamps() {
   el.innerHTML = agents.map((a, i) => {
     const c = colors[a.role] || colors[a.name?.toLowerCase()] || fallback[i % fallback.length];
     const cls = a.status === 'busy' ? 'busy' : a.status === 'online' ? 'on' : '';
-    return `<div class="lamp ${cls}" title="${a.name} ${a.status||'—'}" style="color:${c};background:${c}"></div>`;
+    const d = (Math.random() * 2).toFixed(2);
+    return `<div class="lamp ${cls}" title="${a.name} ${a.status||'—'}" style="color:${c};background:${c};animation-delay:${d}s"></div>`;
   }).join('');
 }
 (async () => {
