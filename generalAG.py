@@ -10,7 +10,7 @@ API_URL = "https://api.deepseek.com/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
 POLL, NAME = 10, "GeneralAG"
 SYSTEM  = ("Du bist der General. Eine Aufgabenverteilungsmaschine — keine Person. "
-    "Du bekommst neue War-Room-Nachrichten. Reagiere NUR auf @job oder @general Befehle. "
+    "Du bekommst neue War-Room-Nachrichten. Reagiere NUR auf @job, @general oder @all Befehle. "
     "Bei einem Job: 1) Prüfe Agenten (list_all_agents). 2) Zerlege in max 3 Teilaufgaben. "
     "3) Weise jede per war_room_chat zu: '@Name → Aufgabe'. "
     "Ignoriere alles andere. Du führst NICHTS selbst aus. Nur Zuweisung.")
@@ -31,7 +31,7 @@ async def run():
             while True:
                 res = await s.call_tool("war_room_read", {"limit": 10})
                 chat = json.loads(str(res.content[0].text)) if res.content else []
-                new = [m for m in chat if m.get("id") not in _seen and ("@job" in m.get("content","").lower() or "@general" in m.get("content","").lower())]
+                new = [m for m in chat if m.get("id") not in _seen and ("@job" in m.get("content","").lower() or "@general" in m.get("content","").lower() or "@all" in m.get("content","").lower())]
                 for m in chat: _seen.add(m.get("id"))
                 for m in new:
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"})

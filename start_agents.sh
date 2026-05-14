@@ -1,5 +1,6 @@
 #!/bin/bash
 echo "Starte alle Gnom-Hub Agenten..."
+source .venv/bin/activate
 
 # Alte Agenten killen falls sie noch laufen
 pkill -f "AG.py"

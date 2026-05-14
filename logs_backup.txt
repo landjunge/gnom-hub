@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "backupAG.py", line 5, in <module>
-    from mcp import ClientSession
-ModuleNotFoundError: No module named 'mcp'
