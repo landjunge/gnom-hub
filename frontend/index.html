@@ -495,13 +495,16 @@ async function refreshChat() {
       <div class="mem-content" id="msg-${mid}">${m.content}</div></div>`;
   }).join('');
 
-  // TTS: letzten Agent-Eintrag vorlesen
+  // TTS: nur die neuste ungesprochene Agent-Nachricht vorlesen
   if (sorted.length) {
-    const last = sorted[sorted.length-1];
-    if (last.metadata?.sender !== 'user' && last.id !== window._lastSpoken) {
-      window._lastSpoken = last.id;
-      speak(`${last.metadata?.sender || 'System'} sagt: ${last.content}`);
+    if (!window._spokenIds) window._spokenIds = new Set();
+    const unspoken = sorted.filter(m => m.metadata?.sender !== 'user' && !window._spokenIds.has(m.id));
+    if (unspoken.length) {
+      const newest = unspoken[unspoken.length - 1];
+      window._spokenIds.add(newest.id);
+      speak(`${newest.metadata?.sender || 'System'} sagt: ${newest.content}`);
     }
+    sorted.forEach(m => window._spokenIds.add(m.id));
   }
 }
 function copyMsg(id) {
