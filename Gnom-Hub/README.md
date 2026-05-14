@@ -20,7 +20,7 @@ gnom-hub
                     H U B
    API:       http://127.0.0.1:3002
    MCP SSE:   http://127.0.0.1:3100/sse
-   Frontend:  frontend/index.html
+   Frontend:  http://127.0.0.1:3002
 ```
 
 ## 📡 Architektur
@@ -28,15 +28,59 @@ gnom-hub
 ```
 ┌──────────────┐    ┌──────────────────────────┐    ┌────────────┐
 │   Frontend   │───▶│   FastAPI Backend :3002   │◀───│  MCP :3100 │
-│  War Room    │    │  7 Router · JSON DB       │    │  17 Tools  │
-│  STT · TTS   │    │  Heartbeat Janitor        │    │  SSE       │
+│  War Room    │    │  8 Router · JSON DB       │    │  19 Tools  │
+│  STT · TTS   │    │  10 @-Befehle · Rollen    │    │  SSE       │
+│  Autocomplete│    │  Job-System · Gruppen     │    │            │
 └──────────────┘    └────────────┬─────────────┘    └────────────┘
-                                 │ nudge
+                                 │ nudge / dispatch
                     ┌────────────▼─────────────┐
                     │     Agenten (beliebig)    │
                     │  register → heartbeat →   │
-                    │  nudge empfangen → antworten│
+                    │  @mention → Brainstorm    │
                     └──────────────────────────┘
+```
+
+## ⌨ Chat-Befehle (10 @-Kommandos)
+
+| Befehl | Funktion |
+|--------|----------|
+| `@bs <Frage>` | 🧠 Brainstorm — alle Online-Agenten antworten via LLM |
+| `@Name <Frage>` | 💬 Gezielt einen Agent fragen |
+| `@general @Name` | 👑 General zuweisen (einzigartig, nur 1 möglich) |
+| `@summarizer @Name` | 📋 Summarizer zuweisen (einzigartig, nur 1 möglich) |
+| `@normal @Name` | ↩️ Rolle zurücksetzen |
+| `@recherche <Frage>` | 🔍 Alle Agenten außer General/Summarizer recherchieren |
+| `@job <Aufgabe>` | 📋 Auftrag an General → verteilt an passenden Agent |
+| `@idea <Text>` | 💡 Idee in My Ideas speichern |
+| `@status` | 📊 Agenten-Übersicht als Toast |
+| `@clear` | 🗑 Chat-Verlauf leeren |
+
+Beim Tippen von `@` erscheint ein Autocomplete-Dropdown mit Befehlen + Agentennamen.
+
+## 🎨 Farbsystem (Dual-Layer)
+
+- **Rahmenfarbe**: Individuell pro Agent (Hash aus Name) — jeder Agent hat seinen eigenen farbigen Rand
+- **Namensfarbe**: Gruppe bestimmt die Textfarbe — Agents in derselben Gruppe teilen die gleiche Namensfarbe
+- Agents ohne Gruppe verwenden ihre individuelle Farbe für beides
+
+## 👑 Rollen-System
+
+| Rolle | Limit | Beschreibung |
+|-------|-------|-------------|
+| `general` | Max 1 | Koordiniert Agenten, priorisiert Aufgaben, vergibt Jobs |
+| `summarizer` | Max 1 | Fasst Diskussionen zusammen, sammelt @idea-Einträge |
+| `normal` | Unbegrenzt | Standard-Rolle |
+
+Rollen sind exklusiv: Bei Neuzuweisung wird der vorherige Inhaber automatisch auf `normal` gesetzt.
+
+## 📋 Job-System
+
+```
+@job Erstelle eine Landingpage
+  → Job in jobs.json gespeichert
+  → General bekommt Aufgabe + Agenten-Liste
+  → General entscheidet wer ausführt
+  → NEED_AGENT wenn kein passender Agent vorhanden
 ```
 
 ## 🔌 Agent-Integration (Copy & Paste)
@@ -79,32 +123,27 @@ def register():
 
 # ── SCHRITT 2: Heartbeat (alle 60 Sekunden) ──
 def heartbeat_loop():
-    """Hält den Agent im Hub als 'online' markiert.
-    Ohne Heartbeat setzt der Hub den Status nach 120s auf 'offline'."""
+    """Hält den Agent im Hub als 'online' markiert."""
     while True:
         time.sleep(60)
         try:
             requests.post(f"{HUB_URL}/agents/{agent_id}/heartbeat")
         except:
-            pass  # Hub kurz nicht erreichbar? Nächster Versuch in 60s.
+            pass
 
 
 # ── SCHRITT 3: Nudge empfangen ────────────
 @app.post("/nudge")
 def on_nudge():
-    """Der Hub ruft diese Route auf, wenn es neue Daten gibt.
-    Zum Beispiel: Jemand schreibt im War Room oder speichert ein Memory."""
-
-    # Neue Memories abrufen
+    """Der Hub ruft diese Route auf, wenn es neue Daten gibt."""
     memories = requests.get(f"{HUB_URL}/agents/{agent_id}/memory").json()
     print(f"📢 Nudge! {len(memories)} Memories vorhanden.")
 
     # Optional: Im War Room antworten
     requests.post(f"{HUB_URL}/chat", json={
-        "content": f"Ich habe den Nudge erhalten! ({len(memories)} Memories)",
+        "content": f"Nudge erhalten! ({len(memories)} Memories)",
         "sender": AGENT_NAME
     })
-
     return {"status": "received"}
 
 
@@ -125,40 +164,15 @@ Agent startet
     │
     ├─▶ Heartbeat-Thread startet     →  Alle 60s:
     │       POST /api/agents/{id}/heartbeat
-    │       (sonst: nach 120s → Status "offline")
     │
     ├─▶ Flask/FastAPI lauscht        →  Wartet auf Nudges:
     │       POST http://127.0.0.1:{port}/nudge
-    │       (Hub ruft das auf bei neuen Daten)
     │
     └─▶ Agent antwortet              →  POST /api/chat
-            {"content": "...", "sender": "MeinAgent"}
-```
-
-### Nur mit curl testen
-
-```bash
-# 1. Registrieren
-curl -X POST http://127.0.0.1:3002/api/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{"name": "TestAgent", "port": 9999}'
-# → {"id": "abc-123-...", "status": "online", ...}
-
-# 2. Heartbeat senden (mit der ID von oben)
-curl -X POST http://127.0.0.1:3002/api/agents/abc-123/heartbeat
-
-# 3. Nudge manuell auslösen
-curl -X POST http://127.0.0.1:3002/api/agents/abc-123/nudge
-
-# 4. Im War Room schreiben
-curl -X POST http://127.0.0.1:3002/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"content": "Hallo aus dem Terminal!", "sender": "TestAgent"}'
+            {"content": "...", "sender": "<name>"}
 ```
 
 ### MCP-Anbindung (für KI-Agenten)
-
-Wenn dein Agent MCP unterstützt (z.B. Claude, Gemini), trage diese URL ein:
 
 ```json
 {
@@ -170,7 +184,7 @@ Wenn dein Agent MCP unterstützt (z.B. Claude, Gemini), trage diese URL ein:
 }
 ```
 
-Der Agent bekommt dann Zugriff auf **17 Tools**: Memory lesen/schreiben, Agenten verwalten, Nudges senden, System-Stats abrufen — alles ohne eigene API-Calls.
+Der Agent bekommt Zugriff auf **19 Tools**: Memory, Agenten, War Room Chat, Rollen, Nudges, System-Stats.
 
 ## 📋 API Endpoints
 
@@ -184,6 +198,7 @@ Der Agent bekommt dann Zugriff auf **17 Tools**: Memory lesen/schreiben, Agenten
 | `PUT` | `/api/agents/{id}/status` | Status setzen |
 | `DELETE` | `/api/agents/{id}` | Agent + Memory löschen |
 | `POST` | `/api/agents/{id}/nudge` | Signal an Agent |
+| `PUT` | `/api/agents/{id}/group` | Gruppe zuweisen |
 
 ### Memory
 | Method | Endpoint | Beschreibung |
@@ -197,8 +212,10 @@ Der Agent bekommt dann Zugriff auf **17 Tools**: Memory lesen/schreiben, Agenten
 ### Chat (War Room)
 | Method | Endpoint | Beschreibung |
 |--------|----------|-------------|
-| `POST` | `/api/chat` | Nachricht senden (+ Broadcast) |
-| `GET` | `/api/chat?limit=50` | Chat-History |
+| `POST` | `/api/chat` | Nachricht senden (10 @-Befehle) |
+| `GET` | `/api/chat?limit=20` | Chat-History |
+| `GET` | `/api/ideas` | Gespeicherte Ideen |
+| `GET` | `/api/jobs` | Job-Liste |
 
 ### Audio
 | Method | Endpoint | Beschreibung |
@@ -206,7 +223,17 @@ Der Agent bekommt dann Zugriff auf **17 Tools**: Memory lesen/schreiben, Agenten
 | `POST` | `/api/audio/tts` | Text → Sprache |
 | `POST` | `/api/audio/stt` | Audio → Text |
 
-## 🛠 MCP Tools (17)
+### Admin
+| Method | Endpoint | Beschreibung |
+|--------|----------|-------------|
+| `GET` | `/api/admin/health` | System Health-Check |
+| `POST` | `/api/admin/tools` | MCP Tool registrieren |
+| `GET` | `/api/admin/tools` | Registrierte Tools listen |
+| `DELETE` | `/api/admin/tools/{name}` | Tool entfernen |
+| `PUT` | `/api/admin/agents/{id}/role` | Rolle zuweisen (general/summarizer/normal) |
+| `POST` | `/api/admin/cleanup` | Offline-Agenten entfernen |
+
+## 🛠 MCP Tools (19)
 
 | Tool | Beschreibung |
 |------|-------------|
@@ -215,22 +242,20 @@ Der Agent bekommt dann Zugriff auf **17 Tools**: Memory lesen/schreiben, Agenten
 | `search_memory` | Memory durchsuchen |
 | `delete_memory` | Eintrag löschen |
 | `update_memory` | Eintrag ändern |
-| `count_memory` | Einträge zählen |
 | `clear_agent_memory` | Alle Memory eines Agenten löschen |
 | `list_all_agents` | Alle Agenten auflisten |
 | `get_agent` | Agent-Details abrufen |
 | `create_agent` | Agent manuell anlegen |
 | `delete_agent` | Agent + Memory löschen |
-| `get_agent_status` | Status abfragen |
 | `set_agent_status` | Status setzen |
-| `search_agents` | Agenten suchen |
 | `register_agent` | Self-Registration (Name + Port) |
 | `nudge_agent` | Agent anstupsen |
 | `get_system_stats` | System-Statistiken |
+| `war_room_chat` | Nachricht an War Room (10 @-Befehle) |
+| `war_room_read` | War Room Chat lesen |
+| `set_agent_role` | Rolle zuweisen: general, summarizer, normal |
 
 ## 🎤 Audio-Engine
-
-TTS und STT mit automatischem Fallback:
 
 ```
 TTS:  ElevenLabs API → Browser Web Speech (kein Key nötig)
@@ -243,6 +268,7 @@ STT:  faster-whisper (lokal) → OpenAI Whisper API → Browser Speech Recogniti
 export ELEVENLABS_API_KEY="sk-..."        # Cloud TTS
 export ELEVENLABS_VOICE_ID="21m00T..."    # Stimmen-ID
 export OPENAI_API_KEY="sk-..."            # Whisper STT Fallback
+export OPENROUTER_API_KEY="sk-or-..."     # LLM für Brainstorm-Dispatch
 ```
 
 ## 🗂 Projektstruktur
@@ -251,42 +277,47 @@ export OPENAI_API_KEY="sk-..."            # Whisper STT Fallback
 src/gnom_hub/
 ├── __init__.py          (1)   Package
 ├── __main__.py         (36)   Startup, Banner, Port-Discovery
-├── hub_app.py          (23)   FastAPI App + 7 Router
-├── hub_mcp.py          (39)   17 MCP Tools (SSE)
-├── hub_pulse.py        (30)   Heartbeat Janitor (120s → offline)
+├── hub_app.py          (29)   FastAPI App + 8 Router + Static Files
+├── hub_mcp.py          (39)   19 MCP Tools (SSE)
+├── hub_pulse.py        (29)   Heartbeat Janitor (Port-Check)
 ├── config.py            (9)   Pfade (~/.gnom-hub/)
 ├── db.py               (14)   JSON Read/Write
 ├── models.py           (18)   Pydantic Models
+├── brainstorm.py       (37)   LLM Dispatch (OpenRouter)
+├── chat_commands.py    (40)   @idea/@clear/@status/@job + Gruppen-API
 ├── routes_agents.py    (29)   Agent CRUD + Stats
 ├── routes_registry.py  (32)   Register + Heartbeat
 ├── routes_memory.py    (34)   Memory CRUD + Search
-├── routes_chat.py      (27)   War Room Chat + @bs
+├── routes_chat.py      (40)   War Room + 10 @-Befehle
 ├── routes_nudge.py     (16)   Agent Nudge Signal
 ├── routes_audio.py     (29)   TTS + STT Endpoints
+├── routes_admin.py     (39)   Tools + Rollen + Cleanup
 ├── audio_engine.py      (3)   Facade (re-export)
 ├── audio_tts.py        (22)   ElevenLabs TTS
 └── audio_stt.py        (31)   Whisper STT
 
 frontend/
-└── index.html         (458)   War Room, Agent-UI, Voice I/O
+└── index.html               War Room, Agent-UI, Voice I/O, Autocomplete
 
-instructions.md                Social Protocol für Agenten
+test_gnom_hub.py              17 Tests (DB, Pulse, Audio, Rollen, Parser)
 ```
 
-> **Regel:** Keine `.py`-Datei darf 40 Zeilen überschreiten.
+> **Regel:** Keine `.py`-Datei im `src/gnom_hub/` darf 40 Zeilen überschreiten.
 
 ## 📜 Social Protocol
 
-Agenten im Gnom-Hub folgen diesen Regeln:
-
 1. **Registrierung** — Agent startet → `POST /api/agents/register`
 2. **Heartbeat** — Alle 60s → `POST /api/agents/{id}/heartbeat`
-3. **Nudge** — Hub signalisiert neue Daten → Agent holt sie ab
-4. **Chat** — Antworten via `POST /api/chat` mit `sender: "<name>"`
-5. **@bs** — Brainstorming: Letzte 5 Nachrichten analysieren
-6. **@Name** — Direktnachricht an Kollegen
-
-Details: siehe `instructions.md`
+3. **Passive Agenten** — Port 0 = wird nie auto-offlined
+4. **Nudge** — Hub signalisiert neue Daten → Agent holt sie ab
+5. **Chat** — Antworten via `POST /api/chat` mit `sender: "<name>"`
+6. **@bs** — Brainstorming: alle Online-Agenten antworten via LLM
+7. **@Name** — Gezielter Dispatch an einen bestimmten Agenten
+8. **@recherche** — Alle außer General/Summarizer recherchieren
+9. **@job** — Aufgabe an General → verteilt an passenden Agent
+10. **Rollen** — `@general/@summarizer` für exklusive Zuweisungen
+11. **Gruppen** — Gleiche Namensfarbe zeigt Zugehörigkeit
+12. **Toast** — Frontend zeigt Echtzeit-Feedback für alle Aktionen
 
 ## ⚙ Konfiguration
 
@@ -295,6 +326,7 @@ Details: siehe `instructions.md`
 | `GNOM_HUB_PORT` | `3002` | API Port |
 | `GNOM_MCP_PORT` | `3100` | MCP SSE Port |
 | `GNOM_HUB_HOME` | `~/.gnom-hub` | Datenverzeichnis |
+| `OPENROUTER_API_KEY` | — | LLM für Brainstorm |
 
 Ports werden automatisch inkrementiert falls belegt.
 

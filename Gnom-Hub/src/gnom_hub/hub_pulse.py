@@ -1,26 +1,25 @@
-import time, threading
+import time, threading, requests
 from datetime import datetime, timedelta
 from .db import get_db, save_db
 
-TIMEOUT = 120  # Sekunden ohne Heartbeat → offline
+TIMEOUT = 120
+
+def _alive(port):
+    try: requests.get(f"http://127.0.0.1:{port}/", timeout=1); return True
+    except: return False
 
 def pulse_janitor():
-    """Setzt Agenten auf offline wenn Heartbeat > 120s alt."""
-    agents = get_db("agents")
-    now = datetime.utcnow()
-    changed = False
+    """Prüft Agenten-Status. Port lebt → auto-online. Kein Agent wird offline gesetzt."""
+    agents, now, changed = get_db("agents"), datetime.utcnow(), False
     for a in agents:
-        ls = a.get("last_seen")
-        if a.get("status") == "online" and ls:
-            try:
-                dt = datetime.fromisoformat(ls.rstrip("Z"))
-                if (now - dt) > timedelta(seconds=TIMEOUT):
-                    a["status"] = "offline"; changed = True
-            except: pass
+        port = a.get("port", 0)
+        if not port: continue
+        if _alive(port):
+            if a.get("status") != "online": a["status"] = "online"; changed = True
+            a["last_seen"] = now.isoformat() + "Z"; changed = True
     if changed: save_db("agents", agents)
 
 def start_pulse(interval=30):
-    """Startet den Janitor als Daemon-Thread."""
     def loop():
         while True:
             try: pulse_janitor()
