@@ -8,9 +8,11 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}
 .status-lamps{display:flex;justify-content:center;gap:5px;padding:3px 0;background:#08080c}
-.lamp{width:90px;height:5px;border-radius:2px;transition:all .3s;opacity:.2}
-.lamp.on{opacity:1;box-shadow:0 0 8px currentColor,0 0 16px currentColor;animation:glow 2s ease-in-out infinite alternate}
-@keyframes glow{from{box-shadow:0 0 6px currentColor}to{box-shadow:0 0 12px currentColor,0 0 20px currentColor}}
+.lamp{width:90px;height:5px;border-radius:2px;transition:all .3s;opacity:.15}
+.lamp.on{opacity:1;box-shadow:0 0 10px currentColor,0 0 25px currentColor,0 0 40px currentColor;animation:glow .8s ease-in-out infinite alternate}
+.lamp.busy{opacity:1;box-shadow:0 0 14px currentColor,0 0 35px currentColor,0 0 60px currentColor;animation:pulse .3s ease-in-out infinite alternate}
+@keyframes glow{from{opacity:.7;box-shadow:0 0 8px currentColor}to{box-shadow:0 0 14px currentColor,0 0 30px currentColor,0 0 50px currentColor}}
+@keyframes pulse{from{opacity:.6}to{opacity:1;box-shadow:0 0 18px currentColor,0 0 40px currentColor,0 0 70px currentColor}}
 .lamp[title]:hover::after{content:attr(title);position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#222;color:#ddd;padding:2px 8px;border-radius:3px;font-size:.7rem;white-space:nowrap;z-index:99}
 .lamp{position:relative}
 header{background:#111118;border-bottom:1px solid #222;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
@@ -568,8 +570,8 @@ function updateLamps() {
   const el = document.getElementById('status-lamps');
   el.innerHTML = agents.map((a, i) => {
     const c = colors[a.role] || colors[a.name?.toLowerCase()] || fallback[i % fallback.length];
-    const on = a.status === 'online' ? 'on' : '';
-    return `<div class="lamp ${on}" title="${a.name} (${a.role||'—'})" style="color:${c};background:${c}"></div>`;
+    const cls = a.status === 'busy' ? 'busy' : a.status === 'online' ? 'on' : '';
+    return `<div class="lamp ${cls}" title="${a.name} ${a.status||'—'}" style="color:${c};background:${c}"></div>`;
   }).join('');
 }
 (async () => {
