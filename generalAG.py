@@ -8,7 +8,7 @@ MODEL   = "deepseek-chat"
 API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-DEIN-KEY-HIER")
 API_URL = "https://api.deepseek.com/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
-POLL    = 10
+POLL, NAME = 10, "GeneralAG"
 SYSTEM  = ("Du bist der General. Eine Aufgabenverteilungsmaschine — keine Person. "
     "Du bekommst neue War-Room-Nachrichten. Reagiere NUR auf @job oder @general Befehle. "
     "Bei einem Job: 1) Prüfe Agenten (list_all_agents). 2) Zerlege in max 3 Teilaufgaben. "
@@ -24,7 +24,9 @@ async def run():
             raw = await s.list_tools()
             tools = [{"type": "function", "function": {"name": t.name,
                 "description": t.description or "", "parameters": t.inputSchema}} for t in raw.tools]
-            print(f"⚔️  General autonom — {len(tools)} tools | pollt alle {POLL}s")
+            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": "Autonomer General — verteilt Jobs"})
+            await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
+            print(f"⚔️  {NAME} autonom — {len(tools)} tools | pollt alle {POLL}s")
             msgs = [{"role": "system", "content": SYSTEM}]
             while True:
                 res = await s.call_tool("war_room_read", {"limit": 10})
@@ -32,6 +34,7 @@ async def run():
                 new = [m for m in chat if m.get("id") not in _seen and ("@job" in m.get("content","").lower() or "@general" in m.get("content","").lower())]
                 for m in chat: _seen.add(m.get("id"))
                 for m in new:
+                    await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"})
                     print(f"  📨 {m.get('content','')[:60]}")
                     msgs.append({"role": "user", "content": m["content"]})
                     while True:
@@ -42,9 +45,10 @@ async def run():
                             print(f"  ⚔️ {reply.get('content','')[:80]}"); break
                         for tc in reply["tool_calls"]:
                             try: args = json.loads(tc["function"]["arguments"])
-                            except: print(f"  ⚠️ bad args: {tc['function']['arguments'][:60]}"); args = {}
+                            except: print(f"  ⚠️ bad args"); args = {}
                             tr = await s.call_tool(tc["function"]["name"], args)
                             print(f"  🔧 {tc['function']['name']}"); msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
+                    await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
                 await asyncio.sleep(POLL)
 
 if __name__ == "__main__":

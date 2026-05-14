@@ -575,32 +575,41 @@ function toggleSTT() {
 
 let _lampCount = 0;
 const AG_AGENTS = [
-  {name:'General',color:'#ff6b35'},{name:'Summarizer',color:'#36d7b7'},{name:'Skills',color:'#9b59b6'},
-  {name:'Cronjob',color:'#f39c12'},{name:'Soul',color:'#e74c3c'},{name:'APIKeys',color:'#3498db'},
-  {name:'Watchdog',color:'#1abc9c'},{name:'Tiny',color:'#4CAF50'}
+  {name:'General',key:'GeneralAG',color:'#ff6b35'},{name:'Summarizer',key:'SummarizerAG',color:'#36d7b7'},
+  {name:'Skills',key:'SkillsAG',color:'#9b59b6'},{name:'Cronjob',key:'CronjobAG',color:'#f39c12'},
+  {name:'Soul',key:'SoulAG',color:'#e74c3c'},{name:'APIKeys',key:'APIKeysAG',color:'#3498db'},
+  {name:'Watchdog',key:'WatchdogAG',color:'#1abc9c'},{name:'Tiny',key:'TinyAG',color:'#4CAF50'}
 ];
-function updateLamps() {
+function updateLamps(hubAgents) {
   const el = document.getElementById('status-lamps');
   if (!_lampCount) {
     el.innerHTML = AG_AGENTS.map((a, i) => {
       const d = (Math.random() * 2).toFixed(2);
-      return `<div class="lamp on" data-ag="${a.name}" title="${a.name}AG" style="color:${a.color};background:${a.color};animation-delay:${d}s"></div>`;
+      return `<div class="lamp" data-ag="${a.key}" title="${a.name}AG" style="color:${a.color};background:${a.color};animation-delay:${d}s"></div>`;
     }).join('');
     _lampCount = AG_AGENTS.length;
+  }
+  if (hubAgents) {
+    el.querySelectorAll('.lamp').forEach(l => {
+      const key = l.dataset.ag;
+      const agent = hubAgents.find(a => a.name === key || a.name?.toLowerCase() === key?.toLowerCase());
+      const st = agent?.status || 'offline';
+      l.className = st === 'busy' ? 'lamp busy' : st === 'online' ? 'lamp on' : 'lamp';
+    });
   }
 }
 (async () => {
   await discoverPort();
   if (!API) { document.getElementById('content').innerHTML = '<div class="welcome"><h2>Hub nicht erreichbar</h2><p>Backend auf Port 3002 starten.</p></div>'; return; }
   await loadAgents();
-  updateLamps();
+  updateLamps(agents);
   refreshChat();
   setInterval(async () => {
     const res = await api('GET', '/agents');
     agents = Array.isArray(res) ? res : (res?.agents || []);
     renderAgentList(document.getElementById('agent-search').value);
     updateStats();
-    updateLamps();
+    updateLamps(agents);
   }, 10000);
   setInterval(refreshChat, 3000);
 })();

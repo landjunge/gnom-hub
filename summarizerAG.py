@@ -8,12 +8,11 @@ MODEL   = "deepseek-chat"
 API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-DEIN-KEY-HIER")
 API_URL = "https://api.deepseek.com/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
-POLL    = 30
-BATCH   = 15
+POLL, BATCH, NAME = 30, 15, "SummarizerAG"
 SYSTEM  = ("Du bist der Summarizer. Analysiere die neuen War-Room-Nachrichten. "
     "Extrahiere NUR: Fakten, Entscheidungen, Aufgaben, wichtige Absichten. "
     "Ignoriere: Grüße, Smalltalk, Witze, Wiederholungen. "
-    "Speichere die Essenz mit save_to_memory(agent='summarizer', content=...). "
+    "Speichere die Essenz mit save_to_memory(a='summarizer', c=...). "
     "Max 5 Stichpunkte. Wenn nichts Wichtiges dabei ist, speichere NICHTS.")
 # ────────────────────────────────────────────────
 _seen = set()
@@ -25,7 +24,9 @@ async def run():
             raw = await s.list_tools()
             tools = [{"type": "function", "function": {"name": t.name,
                 "description": t.description or "", "parameters": t.inputSchema}} for t in raw.tools]
-            print(f"📋 Summarizer autonom — {len(tools)} tools | pollt alle {POLL}s")
+            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": "Autonomer Summarizer — extrahiert Essenz"})
+            await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
+            print(f"📋 {NAME} autonom — {len(tools)} tools | pollt alle {POLL}s")
             msgs = [{"role": "system", "content": SYSTEM}]
             while True:
                 res = await s.call_tool("war_room_read", {"limit": BATCH})
@@ -33,6 +34,7 @@ async def run():
                 new = [m for m in chat if m.get("id") not in _seen]
                 for m in chat: _seen.add(m.get("id"))
                 if new:
+                    await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"})
                     block = "\n".join(f"[{m.get('metadata',{}).get('sender','?')}] {m.get('content','')}" for m in new)
                     print(f"  📨 {len(new)} neue Nachrichten")
                     msgs.append({"role": "user", "content": f"Neue Nachrichten:\n{block}"})
@@ -44,9 +46,10 @@ async def run():
                             if reply.get("content"): print(f"  📋 {reply['content'][:80]}"); break
                         for tc in reply["tool_calls"]:
                             try: args = json.loads(tc["function"]["arguments"])
-                            except: print(f"  ⚠️ bad args: {tc['function']['arguments'][:60]}"); args = {}
+                            except: print(f"  ⚠️ bad args"); args = {}
                             tr = await s.call_tool(tc["function"]["name"], args)
                             print(f"  🔧 {tc['function']['name']}"); msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
+                    await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
                 await asyncio.sleep(POLL)
 
 if __name__ == "__main__":
