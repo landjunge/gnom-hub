@@ -165,18 +165,17 @@ button:hover {
 /* ── Agent Cards ── */
 .agent-card {
   background: var(--bg-card);
-  border: 1px solid rgba(0, 150, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius); padding: 10px 14px;
   margin-bottom: 6px; cursor: pointer;
   transition: var(--transition);
-  border-left: 2px solid transparent;
+  border-left: 3px solid transparent;
 }
 .agent-card:hover {
   background: rgba(20, 24, 38, 0.9);
-  border-color: rgba(0, 150, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 .agent-card.active {
-  border-left-color: var(--primary) !important;
   background: rgba(61, 220, 132, 0.04);
   border-color: var(--glass-border);
 }
@@ -268,9 +267,11 @@ button:hover {
 
 .chat-msg {
   padding: 10px 14px; border-radius: var(--radius-sm);
-  border: 1px solid rgba(0, 150, 255, 0.2);
+  background: rgba(20, 24, 38, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 3px solid transparent;
   max-width: 85%; font-size: 0.84rem; line-height: 1.5;
-  word-break: break-word; margin-bottom: 2px;
+  word-break: break-word; margin-bottom: 6px;
   animation: msg-in 0.25s ease-out;
 }
 @keyframes msg-in {
@@ -278,12 +279,10 @@ button:hover {
   to { opacity: 1; transform: translateY(0); }
 }
 .chat-msg.user {
-  background: rgba(61, 220, 132, 0.08);
+  background: rgba(61, 220, 132, 0.05);
   align-self: flex-end;
-  border-left-color: var(--primary);
 }
 .chat-msg.agent {
-  background: rgba(255,255,255,0.03);
   align-self: flex-start;
 }
 .chat-meta {
@@ -588,16 +587,32 @@ async function api(method, path, body) {
 }
 
 // ── Colors ──
-const P_COLORS = ['#00E5FF', '#B026FF', '#FF007F', '#39FF14', '#00FFFF', '#FF3366', '#8A2BE2', '#0066FF', '#00FF9D'];
+const P_COLORS = ['#00E5FF', '#B026FF', '#FF007F', '#39FF14', '#FF3366', '#8A2BE2', '#0066FF', '#00FF9D', '#FF9900', '#FFD700', '#FF1493', '#00FA9A', '#1E90FF', '#FF4500', '#00FFFF'];
+const KNOWN_COLORS = {
+  'generalag': '#00FFFF',    // Cyan
+  'summarizerag': '#FF00FF', // Magenta
+  'cronjobag': '#FFA500',    // Orange
+  'backupag': '#00FF00',     // Lime Green
+  'skillsag': '#FFFF00',     // Yellow
+  'soulag': '#FF0000',       // Red
+  'watchdogag': '#FF69B4',   // Hot Pink
+  'tinyag': '#FFFFFF',       // White
+  'testag1': '#0000FF',      // Pure Blue
+  'testag2': '#800080',      // Deep Purple
+  'testag3': '#008080',      // Teal
+  'hermes-agent': '#8B4513'  // Brown
+};
 function agentColor(name) {
   if (!name) return '#00E5FF';
-  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i));
-  return P_COLORS[h % P_COLORS.length];
+  const n = name.toLowerCase();
+  if (KNOWN_COLORS[n]) return KNOWN_COLORS[n];
+  let h = 5381; for (let i = 0; i < name.length; i++) h = ((h << 5) + h) + name.charCodeAt(i);
+  return P_COLORS[Math.abs(h) % P_COLORS.length];
 }
 function groupColor(g) {
   if (!g) return null;
-  let h = 0; for (let i = 0; i < g.length; i++) h = (h * 37 + g.charCodeAt(i));
-  return P_COLORS[h % P_COLORS.length];
+  let h = 5381; for (let i = 0; i < g.length; i++) h = ((h << 5) + h) + g.charCodeAt(i);
+  return P_COLORS[Math.abs(h) % P_COLORS.length];
 }
 
 // ── Agents ──
@@ -614,7 +629,7 @@ function renderAgentList(filter = '') {
   let filtered = f ? agents.filter(a => a.name.toLowerCase().includes(f)) : agents;
   
   // Hide the Hermes gateway from the UI entirely
-  filtered = filtered.filter(a => a.name.toLowerCase() !== 'hermes');
+  filtered = filtered.filter(a => !a.name.toLowerCase().includes('hermes'));
 
   if (!filtered.length) { el.innerHTML = '<div class="empty">Keine Agenten.</div>'; return; }
 
@@ -623,10 +638,11 @@ function renderAgentList(filter = '') {
     const role = a.role && a.role !== 'normal' ? a.role : '';
     const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
     const c = agentColor(a.name);
-    const isExtern = /1|2|3|test/i.test(a.name);
-    const smallClass = isExtern ? 'small' : '';
-    return `<div class="agent-card ${smallClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c}">
-      <h3><span class="dot ${on?'on':'off'}"></span><span style="color:${c}">${a.name}</span>${roleIcon}</h3>
+    const isTestAG = a.name.toLowerCase().startsWith('testag');
+    const nameColor = isTestAG ? '#0066FF' : 'inherit';
+    const smallClass = isTestAG ? 'small' : '';
+    return `<div class="agent-card ${smallClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
+      <h3><span class="dot ${on?'on':'off'}"></span><span style="color:${nameColor}">${a.name}</span>${roleIcon}</h3>
       <div class="desc">${a.description || '–'}</div>
       <div class="meta"><span class="badge">${on?'online':'offline'}</span>${a.port?`<span class="badge port">:${a.port}</span>`:''}${role?`<span class="badge role ${role}">${role}</span>`:''}</div>
     </div>`;
@@ -917,10 +933,11 @@ async function refreshChat() {
     const name = isUser ? 'Du' : (m.metadata?.sender || 'System');
     const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
     const c = isUser ? 'var(--primary)' : agentColor(name);
+    const nameColor = isUser ? 'var(--primary)' : (name.toLowerCase().startsWith('testag') ? '#0066FF' : 'inherit');
     const mid = m.id || Math.random().toString(36).slice(2);
     const safe = esc(m.content).replace(/\n/g, '<br>');
-    return `<div class="chat-msg ${isUser?'user':'agent'}" style="border-left-color:${c}; box-shadow: -3px 0 12px ${c}40;">
-      <div class="chat-meta"><span class="agent-name" style="color:${c}">${esc(name)}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Kopieren">📋</button>${time}</span></div>
+    return `<div class="chat-msg ${isUser?'user':'agent'}" style="border-left-color:${c};">
+      <div class="chat-meta"><span class="agent-name" style="color:${nameColor}">${esc(name)}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Kopieren">📋</button>${time}</span></div>
       <div class="mem-content" id="msg-${mid}">${safe}</div></div>`;
   }).join('');
   
