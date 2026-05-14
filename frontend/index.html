@@ -5,145 +5,519 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gnom-Hub</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0a0f;color:#e0e0e0;min-height:100vh}
-.status-lamps{display:flex;justify-content:center;gap:5px;padding:3px 0;background:#08080c}
-.lamp{width:90px;height:5px;border-radius:2px;transition:all .3s;opacity:.15}
-.lamp.on{opacity:1;animation:glow 2s cubic-bezier(.45,.05,.55,.95) infinite}
-.lamp.busy{opacity:1;animation:pulse .8s cubic-bezier(.45,.05,.55,.95) infinite}
-@keyframes glow{0%,100%{box-shadow:0 0 6px currentColor,0 0 12px currentColor;opacity:.75}50%{box-shadow:0 0 14px currentColor,0 0 28px currentColor,0 0 45px currentColor;opacity:1}}
-@keyframes pulse{0%,100%{box-shadow:0 0 8px currentColor;opacity:.5}50%{box-shadow:0 0 16px currentColor,0 0 35px currentColor,0 0 60px currentColor;opacity:1}}
-.lamp[title]:hover::after{content:attr(title);position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#222;color:#ddd;padding:2px 8px;border-radius:3px;font-size:.7rem;white-space:nowrap;z-index:99}
-.lamp{position:relative}
-header{background:#111118;border-bottom:1px solid #222;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
-header h1{font-size:1.3rem;color:#4CAF50;font-weight:700}
-.header-actions{display:flex;gap:10px;align-items:center}
-.header-stats{display:flex;gap:18px;font-size:.82rem;color:#888;margin-right:20px}
-.header-stats span{color:#4CAF50;font-weight:600}
-button{background:transparent;border:1px solid #333;color:#ccc;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:.82rem;transition:all .15s}
-button:hover{border-color:#4CAF50;color:#fff}
-.btn-green{background:#4CAF50;border-color:#4CAF50;color:#fff}
-.btn-green:hover{background:#45a049}
-.btn-red{color:#ff5252;border-color:#ff5252}
-.btn-red:hover{background:#ff5252;color:#fff}
-.main{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 53px)}
-.sidebar{background:#0e0e14;border-right:1px solid #1a1a22;overflow-y:auto;padding:12px}
-.sidebar input{width:100%;padding:8px 10px;background:#161620;border:1px solid #222;border-radius:4px;color:#ddd;margin-bottom:10px;font-size:.85rem}
-.sidebar input::placeholder{color:#555}
-.agent-card{background:#161620;border:1px solid #1e1e2a;border-radius:6px;padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
-.agent-card:hover,.agent-card.active{border-color:#4CAF50}
-.agent-card h3{font-size:.95rem;margin-bottom:4px;display:flex;align-items:center;gap:8px}
-.agent-card .desc{font-size:.78rem;color:#777;margin-bottom:6px}
-.agent-card .meta{display:flex;gap:10px;font-size:.75rem;color:#666}
-.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
-.dot.on{background:#4CAF50;box-shadow:0 0 8px #4CAF50;animation:pulse 2s infinite}.dot.off{background:#ff5252}
-@keyframes pulse{0%{opacity:1}50%{opacity:.5}100%{opacity:1}}
-@keyframes flash-green{0%{background:#4CAF50}100%{background:transparent}}
-.nudge-active{animation:flash-green .8s ease-out}
-.badge{background:#222;padding:2px 8px;border-radius:10px;font-size:.72rem;color:#aaa}
-.badge.port{background:#1a2a1a;color:#4CAF50}
-.content{overflow-y:auto;padding:20px}
-.panel{background:#12121a;border:1px solid #1e1e2a;border-radius:8px;padding:20px;margin-bottom:16px}
-.panel h2{font-size:1.1rem;margin-bottom:12px;color:#e8e8e8;display:flex;justify-content:space-between;align-items:center}
-.panel h2 .actions{display:flex;gap:8px}
-.welcome{text-align:center;padding:60px 20px;color:#555}
-.welcome h2{font-size:1.4rem;color:#4CAF50;margin-bottom:10px}
-.mem-item{background:#0e0e16;border:1px solid #1a1a24;border-radius:6px;padding:12px;margin-bottom:8px}
-.mem-item .mem-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:.78rem;color:#666}
-.mem-item .mem-content{font-size:.88rem;line-height:1.5;white-space:pre-wrap;word-break:break-word}
-.mem-item textarea{width:100%;background:#0a0a10;border:1px solid #333;color:#ddd;padding:8px;border-radius:4px;font-size:.85rem;resize:vertical;min-height:60px;font-family:inherit}
-.add-mem{display:flex;gap:8px;margin-bottom:16px}
-.add-mem textarea{flex:1;background:#0a0a10;border:1px solid #222;color:#ddd;padding:8px;border-radius:4px;font-size:.85rem;resize:vertical;min-height:50px;font-family:inherit}
-.mem-search{margin-bottom:12px}
-.mem-search input{width:100%;padding:8px 10px;background:#0a0a10;border:1px solid #222;border-radius:4px;color:#ddd;font-size:.85rem}
-.status-row{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-.status-row .label{font-size:.85rem;color:#888}
-.empty{color:#555;font-size:.85rem;padding:20px;text-align:center}
-.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);display:none;justify-content:center;align-items:center;z-index:100}
-.modal-bg.show{display:flex}
-.modal{background:#161620;border:1px solid #2a2a35;border-radius:8px;padding:24px;width:440px;max-width:90vw;max-height:80vh;overflow-y:auto}
-.modal h2{margin-bottom:16px;font-size:1.1rem}
-.modal label{display:block;font-size:.82rem;color:#999;margin:10px 0 4px}
-.modal input,.modal textarea{width:100%;padding:8px;background:#0e0e16;border:1px solid #2a2a35;border-radius:4px;color:#ddd;font-size:.85rem;font-family:inherit}
-.modal .btns{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
-iframe{width:100%;height:calc(100vh - 110px);border:none;border-radius:6px;background:#111}
-.chat-msg{padding:8px 12px;border-radius:6px;max-width:85%;font-size:.85rem;line-height:1.4;word-break:break-word;margin-bottom:2px}
-.chat-msg.user{background:#1e1e2a;align-self:flex-end;border-left:3px solid #4CAF50}
-.chat-msg.agent{background:#161620;align-self:flex-start}
-.chat-meta{font-size:.7rem;color:#555;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
-.copy-btn{background:none;border:none;color:#555;cursor:pointer;font-size:.75rem;padding:2px 4px;opacity:.4;transition:opacity .15s}
-.copy-btn:hover{opacity:1;color:#4CAF50}
-.agent-name{color:#2196F3;font-weight:700}
-.war-room-badge{background:#4CAF50;color:#000;font-weight:700;animation:pulse 2s infinite}
-#mic-btn{background:transparent;border:1px solid #333;border-radius:50%;width:40px;height:40px;cursor:pointer;transition:all .3s;font-size:1.1rem}
-#mic-btn.active{background:#ff5252;border-color:#ff5252;box-shadow:0 0 10px #ff5252;animation:pulse-red 1.5s infinite}
-@keyframes pulse-red{0%{transform:scale(1)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
-.toast-container{position:fixed;top:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px}
-.toast{padding:10px 16px;border-radius:6px;font-size:.82rem;color:#fff;animation:slide-in .3s ease-out;max-width:360px;box-shadow:0 4px 12px rgba(0,0,0,.5)}
-.toast.success{background:#2e7d32;border-left:3px solid #4CAF50}
-.toast.error{background:#c62828;border-left:3px solid #ff5252}
-.toast.info{background:#1565c0;border-left:3px solid #2196F3}
-@keyframes slide-in{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-.badge.role{background:#7b1fa2;color:#e1bee7;font-weight:600}
-.badge.role.general{background:#e65100;color:#ffe0b2}
-.badge.role.summarizer{background:#1565c0;color:#bbdefb}
-.chat-hints{font-size:.68rem;color:#888;padding:4px 8px;display:flex;gap:12px;flex-wrap:wrap}
-.chat-hints span{background:#2a2a3a;color:#7c8aff;padding:1px 5px;border-radius:3px;font-family:monospace;font-size:.68rem}
-.badge.group{font-size:.65rem;border:1px solid;padding:1px 6px;background:transparent}
-.group-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:3px}
-.ac-dropdown{position:absolute;bottom:100%;left:0;background:#1e1e2e;border:1px solid #444;border-radius:6px;max-height:160px;overflow-y:auto;z-index:100;min-width:180px;display:none}
-.ac-dropdown.show{display:block}
-.ac-item{padding:6px 12px;cursor:pointer;font-size:.82rem;color:#ccc}
-.ac-item:hover,.ac-item.active{background:#333;color:#fff}
-.chat-input-wrap{position:relative;flex:1}
-#chat-input{width:100%;min-height:80px;resize:vertical;background:#0a0a10;border:1px solid #222;color:#ddd;padding:10px;border-radius:4px;font-size:.9rem;font-family:inherit;line-height:1.4}
+/* ═══════════════════════════════════════════
+   GNOM-HUB — Premium Glassmorphism UI
+   ═══════════════════════════════════════════ */
+/* Font loaded via <link> in HTML for non-blocking */
+
+:root {
+  --bg-deep: #06080e;
+  --bg-surface: #0c0f18;
+  --bg-card: rgba(14, 18, 30, 0.85);
+  --bg-input: rgba(8, 10, 18, 0.9);
+  --glass-border: rgba(226, 168, 86, 0.12);
+  --glass-border-hover: rgba(226, 168, 86, 0.3);
+  --gold: #e2a856;
+  --gold-light: #f0c97a;
+  --gold-glow: rgba(226, 168, 86, 0.25);
+  --green: #3ddc84;
+  --green-dim: rgba(61, 220, 132, 0.15);
+  --red: #ff5252;
+  --red-dim: rgba(255, 82, 82, 0.12);
+  --blue: #5b9cf6;
+  --blue-dim: rgba(91, 156, 246, 0.12);
+  --text: #eef1f6;
+  --text-dim: #6b7a90;
+  --text-muted: #3d4a5c;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #06080e;
+  background-image:
+    radial-gradient(ellipse at 10% 20%, rgba(226, 168, 86, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(61, 220, 132, 0.02) 0%, transparent 50%);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+  margin: 0; padding: 0;
+}
+
+/* ── Status Lamps ── */
+.status-lamps {
+  display: flex; justify-content: center; gap: 4px;
+  padding: 3px 0; background: rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.lamp {
+  width: 80px; height: 4px; border-radius: 2px;
+  opacity: 0.1; transition: all 0.4s; position: relative;
+}
+.lamp.on {
+  opacity: 1;
+  animation: lamp-breathe 3s ease-in-out infinite;
+}
+.lamp.busy {
+  opacity: 1;
+  animation: lamp-pulse 0.7s ease-in-out infinite;
+}
+@keyframes lamp-breathe {
+  0%, 100% { opacity: 0.5; box-shadow: 0 0 4px currentColor; }
+  50% { opacity: 1; box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+}
+@keyframes lamp-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; box-shadow: 0 0 16px currentColor, 0 0 32px currentColor; }
+}
+
+/* ── Header ── */
+header {
+  background: rgba(12, 15, 24, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 10px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  transition: var(--transition);
+}
+.logo:hover { opacity: 0.85; }
+.logo-mark {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 800; color: var(--bg-deep);
+  box-shadow: 0 0 16px var(--gold-glow);
+}
+.logo-text {
+  font-size: 1.1rem; font-weight: 700; letter-spacing: 1.5px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.header-right { display: flex; align-items: center; gap: 16px; }
+.header-stats {
+  display: flex; gap: 20px; font-size: 0.78rem; color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.header-stats span { color: var(--gold); font-weight: 600; }
+
+/* ── Buttons ── */
+button {
+  font-family: inherit; cursor: pointer;
+  border: 1px solid var(--glass-border); background: transparent;
+  color: var(--text); padding: 7px 16px; border-radius: var(--radius-sm);
+  font-size: 0.8rem; font-weight: 500;
+  transition: var(--transition);
+}
+button:hover {
+  border-color: var(--glass-border-hover);
+  background: rgba(226, 168, 86, 0.06);
+}
+.btn-gold {
+  background: linear-gradient(135deg, rgba(226,168,86,0.9), rgba(226,168,86,0.5));
+  border-color: var(--gold); color: #fff; font-weight: 600;
+  box-shadow: 0 2px 12px var(--gold-glow);
+}
+.btn-gold:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px var(--gold-glow);
+}
+.btn-danger { color: var(--red); border-color: rgba(255,82,82,0.3); }
+.btn-danger:hover { background: var(--red-dim); border-color: var(--red); }
+
+/* ── Layout ── */
+.main {
+  display: grid; grid-template-columns: 300px 1fr;
+  height: calc(100vh - 51px);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  background: rgba(10, 13, 22, 0.95);
+  border-right: 1px solid var(--glass-border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-search {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.sidebar-search input {
+  width: 100%; padding: 9px 12px;
+  background: var(--bg-input); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 0.82rem; font-family: inherit;
+  transition: var(--transition); outline: none;
+}
+.sidebar-search input:focus { border-color: var(--gold); }
+.sidebar-search input::placeholder { color: var(--text-muted); }
+.agent-list { flex: 1; overflow-y: auto; padding: 6px 8px; }
+.agent-list::-webkit-scrollbar { width: 4px; }
+.agent-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+/* ── Agent Cards ── */
+.agent-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius); padding: 12px 14px;
+  margin-bottom: 6px; cursor: pointer;
+  transition: var(--transition);
+  border-left: 3px solid transparent;
+}
+.agent-card:hover {
+  background: rgba(20, 24, 38, 0.9);
+  border-color: rgba(255,255,255,0.08);
+}
+.agent-card.active {
+  border-left-color: var(--gold) !important;
+  background: rgba(226, 168, 86, 0.04);
+  border-color: var(--glass-border);
+}
+.agent-card h3 {
+  font-size: 0.88rem; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 3px;
+}
+.agent-card .desc {
+  font-size: 0.72rem; color: var(--text-dim);
+  margin-bottom: 6px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.agent-card .meta { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Dots & Badges ── */
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+}
+.dot.on {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: dot-pulse 2.5s ease-in-out infinite;
+}
+.dot.off { background: var(--red); }
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+.badge {
+  font-size: 0.65rem; font-weight: 500;
+  padding: 2px 8px; border-radius: 10px;
+  background: rgba(255,255,255,0.06); color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+.badge.port { background: rgba(61,220,132,0.1); color: var(--green); }
+.badge.role { background: rgba(123,31,162,0.2); color: #ce93d8; font-weight: 600; }
+.badge.role.general { background: rgba(230,81,0,0.15); color: #ffab40; }
+.badge.role.summarizer { background: var(--blue-dim); color: var(--blue); }
+.war-room-badge {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light)) !important;
+  color: var(--bg-deep) !important; font-weight: 700 !important;
+  animation: badge-glow 2s ease-in-out infinite;
+}
+@keyframes badge-glow {
+  0%, 100% { box-shadow: 0 0 4px var(--gold-glow); }
+  50% { box-shadow: 0 0 12px var(--gold-glow); }
+}
+
+/* ── Content Area ── */
+.content {
+  overflow-y: auto; padding: 20px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent;
+}
+.content::-webkit-scrollbar { width: 5px; }
+.content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+
+/* ── Panels ── */
+.panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius); padding: 20px;
+  margin-bottom: 16px;
+}
+.panel h2 {
+  font-size: 1rem; font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px; letter-spacing: 0.5px;
+}
+.panel h2 .actions { display: flex; gap: 8px; }
+
+/* ── War Room Chat ── */
+#chat-display {
+  height: 60vh; overflow-y: auto;
+  background: rgba(4, 6, 12, 0.6);
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 12px; border-radius: var(--radius);
+  margin-bottom: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#chat-display::-webkit-scrollbar { width: 4px; }
+#chat-display::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+
+.chat-msg {
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  max-width: 85%; font-size: 0.84rem; line-height: 1.5;
+  word-break: break-word; margin-bottom: 2px;
+  animation: msg-in 0.25s ease-out;
+}
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.chat-msg.user {
+  background: rgba(226, 168, 86, 0.08);
+  align-self: flex-end;
+  border-left: 3px solid var(--gold);
+}
+.chat-msg.agent {
+  background: rgba(255,255,255,0.03);
+  align-self: flex-start;
+}
+.chat-meta {
+  font-size: 0.68rem; color: var(--text-muted);
+  margin-bottom: 4px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.agent-name { font-weight: 700; }
+.copy-btn {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 0.7rem; padding: 1px 3px;
+  opacity: 0.3; transition: var(--transition);
+}
+.copy-btn:hover { opacity: 1; color: var(--gold); }
+
+/* ── Chat Input ── */
+.chat-bar { display: flex; gap: 8px; align-items: flex-end; }
+.chat-input-wrap { position: relative; flex: 1; }
+#chat-input {
+  width: 100%; min-height: 70px; max-height: 200px; resize: vertical;
+  background: var(--bg-input);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--text); padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem; font-family: inherit; line-height: 1.5;
+  outline: none; transition: var(--transition);
+}
+#chat-input:focus { border-color: var(--gold); }
+#chat-input::placeholder { color: var(--text-muted); }
+
+/* ── Autocomplete ── */
+.ac-dropdown {
+  position: absolute; bottom: 100%; left: 0;
+  background: rgba(18, 22, 36, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  max-height: 180px; overflow-y: auto;
+  z-index: 100; min-width: 200px;
+  display: none;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+}
+.ac-dropdown.show { display: block; }
+.ac-item {
+  padding: 8px 14px; cursor: pointer;
+  font-size: 0.82rem; color: var(--text-dim);
+  transition: var(--transition);
+}
+.ac-item:hover, .ac-item.active {
+  background: rgba(226, 168, 86, 0.1); color: var(--text);
+}
+
+/* ── Mic Button ── */
+#mic-btn {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: transparent; border: 1px solid var(--glass-border);
+  font-size: 1.1rem; cursor: pointer;
+  transition: var(--transition); flex-shrink: 0;
+}
+#mic-btn:hover { border-color: var(--gold); }
+#mic-btn.active {
+  background: var(--red); border-color: var(--red);
+  box-shadow: 0 0 16px rgba(255,82,82,0.4);
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* ── Chat Hints ── */
+.chat-hints {
+  font-size: 0.65rem; color: var(--text-muted);
+  padding: 6px 2px; display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 6px;
+}
+.chat-hints span {
+  background: rgba(255,255,255,0.04);
+  color: var(--blue); padding: 2px 6px;
+  border-radius: 4px; font-family: 'SF Mono', monospace;
+  font-size: 0.62rem;
+}
+
+/* ── Memory Items ── */
+.mem-item {
+  background: rgba(8, 10, 18, 0.7);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: var(--radius-sm); padding: 12px;
+  margin-bottom: 6px;
+  transition: var(--transition);
+}
+.mem-item:hover { border-color: rgba(255,255,255,0.08); }
+.mem-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px; font-size: 0.72rem; color: var(--text-muted);
+}
+.mem-content {
+  font-size: 0.84rem; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+}
+.mem-item textarea {
+  width: 100%; background: var(--bg-input);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text); padding: 8px; border-radius: 6px;
+  font-size: 0.84rem; resize: vertical; min-height: 60px;
+  font-family: inherit; outline: none;
+}
+.add-mem { display: flex; gap: 8px; margin-bottom: 14px; }
+.add-mem textarea {
+  flex: 1; background: var(--bg-input);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--text); padding: 9px 12px; border-radius: var(--radius-sm);
+  font-size: 0.84rem; resize: vertical; min-height: 50px;
+  font-family: inherit; outline: none; transition: var(--transition);
+}
+.add-mem textarea:focus { border-color: var(--gold); }
+.mem-search { margin-bottom: 10px; }
+.mem-search input {
+  width: 100%; padding: 9px 12px;
+  background: var(--bg-input); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 0.82rem; font-family: inherit;
+  outline: none; transition: var(--transition);
+}
+.mem-search input:focus { border-color: var(--gold); }
+
+/* ── Agent Detail ── */
+.status-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.status-row .label { font-size: 0.82rem; color: var(--text-dim); }
+.empty { color: var(--text-muted); font-size: 0.84rem; padding: 24px; text-align: center; }
+
+/* ── Modal ── */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+  display: none; justify-content: center; align-items: center;
+  z-index: 100;
+}
+.modal-bg.show { display: flex; }
+.modal {
+  background: rgba(18, 22, 36, 0.98);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius); padding: 24px;
+  width: 420px; max-width: 90vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  animation: modal-in 0.2s ease-out;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal h2 { margin-bottom: 16px; font-size: 1.05rem; font-weight: 600; }
+.modal label {
+  display: block; font-size: 0.78rem; color: var(--text-dim);
+  margin: 12px 0 4px; letter-spacing: 0.3px;
+}
+.modal input {
+  width: 100%; padding: 9px 12px;
+  background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 0.84rem; font-family: inherit; outline: none;
+  transition: var(--transition);
+}
+.modal input:focus { border-color: var(--gold); }
+.modal .btns {
+  display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end;
+}
+
+/* ── iframe ── */
+iframe {
+  width: 100%; height: calc(100vh - 140px);
+  border: none; border-radius: var(--radius-sm);
+  background: rgba(0,0,0,0.3);
+}
+
+/* ── Toasts ── */
+.toast-container {
+  position: fixed; top: 16px; right: 16px;
+  z-index: 200; display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 10px 18px; border-radius: var(--radius-sm);
+  font-size: 0.8rem; color: #fff;
+  animation: toast-in 0.3s ease-out;
+  max-width: 380px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+}
+.toast.success { background: rgba(46,125,50,0.9); border-left: 3px solid var(--green); }
+.toast.error { background: rgba(198,40,40,0.9); border-left: 3px solid var(--red); }
+.toast.info { background: rgba(21,101,192,0.9); border-left: 3px solid var(--blue); }
+@keyframes toast-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ── Flash Animation ── */
+@keyframes flash-gold {
+  0% { background: rgba(226,168,86,0.2); }
+  100% { background: transparent; }
+}
+.nudge-active { animation: flash-gold 0.8s ease-out; }
+
+/* ── Scrollbar global ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+
 </style>
 </head>
 <body>
 <div class="status-lamps" id="status-lamps"></div>
 <header>
-  <h1 onclick="showWarRoom()" style="cursor:pointer">⚙ Gnom-Hub</h1>
-  <div class="header-actions">
+  <div class="logo" onclick="showWarRoom()">
+    <div class="logo-mark">G</div>
+    <div class="logo-text">GNOM-HUB</div>
+  </div>
+  <div class="header-right">
     <div class="header-stats">
       Agents: <span id="s-agents">0</span>
       Memory: <span id="s-memory">0</span>
     </div>
-    <button class="btn-green" onclick="openAddAgent()">+ Agent registrieren</button>
+    <button class="btn-gold" onclick="openAddAgent()">+ Agent</button>
   </div>
 </header>
 
 <div class="main">
   <div class="sidebar">
-    <input type="text" id="agent-search" placeholder="Agenten suchen..." oninput="filterAgents(this.value)">
-    <div id="agent-list"></div>
+    <div class="sidebar-search">
+      <input type="text" id="agent-search" placeholder="Agenten suchen…" oninput="filterAgents(this.value)">
+    </div>
+    <div class="agent-list" id="agent-list"></div>
   </div>
 
   <div class="content" id="content">
-    <div class="panel" id="war-room">
-      <h2>War Room <span class="badge war-room-badge">Live</span></h2>
-      <div id="chat-display" style="height:600px;overflow-y:auto;background:#0a0a10;padding:10px;border-radius:4px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px"></div>
-      <div class="add-mem">
-        <button id="mic-btn" onclick="toggleSTT()" title="Spracheingabe">🎤</button>
-        <div class="chat-input-wrap">
-          <div class="ac-dropdown" id="ac-dropdown"></div>
-          <textarea id="chat-input" placeholder="@bs @recherche @idea ..." oninput="onChatInput(this)" onkeydown="onChatKey(event)"></textarea>
-        </div>
-        <button class="btn-green" onclick="sendChat()">Senden</button>
-        <label style="font-size:.7rem;display:flex;align-items:center;gap:4px"><input type="checkbox" id="tts-enabled" checked> 🔊</label>
-      </div>
-      <div class="chat-hints">
-        <span>@bs</span> Brainstorm
-        <span>@Name</span> Gezielt
-        <span>@general @Name</span> General
-        <span>@summarizer @Name</span> Summarizer
-        <span>@normal @Name</span> Reset
-        <span>@recherche</span> Recherche
-        <span>@job</span> Auftrag → General
-        <span>@idea</span> Idee
-        <span>@status</span> Status
-        <span>@clear</span> Leeren
-      </div>
-    </div>
+    <!-- War Room rendered here by showWarRoom() -->
   </div>
 </div>
 
@@ -155,31 +529,37 @@ iframe{width:100%;height:calc(100vh - 110px);border:none;border-radius:6px;backg
     <input id="add-name" placeholder="z.B. Hermes">
     <label>Port</label>
     <input id="add-port" type="number" placeholder="z.B. 9119">
-    <label>Beschreibung (optional)</label>
+    <label>Beschreibung</label>
     <input id="add-desc" placeholder="z.B. Chat-Agent">
     <div class="btns">
       <button onclick="closeModal('modal-add')">Abbrechen</button>
-      <button class="btn-green" onclick="doRegister()">Registrieren</button>
+      <button class="btn-gold" onclick="doRegister()">Registrieren</button>
     </div>
   </div>
 </div>
 <div class="toast-container" id="toasts"></div>
 
 <script>
+/* ═══════════════════════════════════════════
+   GNOM-HUB — Core Logic
+   ═══════════════════════════════════════════ */
+
+// ── Toast ──
 function toast(msg, type='info') {
   const c = document.getElementById('toasts');
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.textContent = msg;
   c.appendChild(t);
-  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(() => t.remove(), 300); }, 3000);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(() => t.remove(), 300); }, 3500);
 }
+
+// ── API Discovery ──
 let API = '';
 let agents = [];
 let selectedId = null;
 
 async function discoverPort() {
-  // Wenn vom Hub geserved: Origin direkt nutzen
   if (location.protocol !== 'file:') { API = location.origin + '/api'; return; }
   for (const p of [3002, 3001, 3000]) {
     try {
@@ -197,18 +577,18 @@ async function api(method, path, body) {
     if (!r.ok) throw new Error(r.status);
     const text = await r.text();
     return text ? JSON.parse(text) : null;
-  } catch(e) { console.error('API error:', path, e); return null; }
+  } catch(e) { console.error('API:', path, e); return null; }
 }
 
-// ── Agent Color ──
+// ── Colors ──
 function agentColor(name) {
   let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return `hsl(${h}, 55%, 55%)`;
+  return `hsl(${h}, 50%, 58%)`;
 }
 function groupColor(g) {
   if (!g) return null;
   let h = 0; for (let i = 0; i < g.length; i++) h = (h * 37 + g.charCodeAt(i)) % 360;
-  return `hsl(${h}, 70%, 70%)`;
+  return `hsl(${h}, 65%, 68%)`;
 }
 
 // ── Agents ──
@@ -224,25 +604,24 @@ function renderAgentList(filter = '') {
   const f = filter.toLowerCase();
   const filtered = f ? agents.filter(a => a.name.toLowerCase().includes(f)) : agents;
 
-  if (!filtered.length) { el.innerHTML = '<div class="empty">Keine Agenten gefunden.</div>'; return; }
+  if (!filtered.length) { el.innerHTML = '<div class="empty">Keine Agenten.</div>'; return; }
 
   el.innerHTML = filtered.map(a => {
     const on = a.status === 'online';
-    const port = a.port || '';
     const role = a.role && a.role !== 'normal' ? a.role : '';
-    const roleIcon = role === 'general' ? '👑' : role === 'summarizer' ? '📋' : '';
+    const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
     const c = agentColor(a.name);
-    const nc = a.group ? groupColor(a.group) : c;
-    return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left:3px solid ${c}">
-      <h3><span class="dot ${on ? 'on' : 'off'}"></span><span style="color:${nc}">${a.name}</span>${roleIcon ? ' '+roleIcon : ''}</h3>
+    return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c}">
+      <h3><span class="dot ${on?'on':'off'}"></span><span style="color:${c}">${a.name}</span>${roleIcon}</h3>
       <div class="desc">${a.description || '–'}</div>
-      <div class="meta"><span class="badge">${on ? 'online' : 'offline'}</span>${port ? `<span class="badge port">:${port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}</div>
+      <div class="meta"><span class="badge">${on?'online':'offline'}</span>${a.port?`<span class="badge port">:${a.port}</span>`:''}${role?`<span class="badge role ${role}">${role}</span>`:''}</div>
     </div>`;
   }).join('');
 }
 
 function filterAgents(q) { renderAgentList(q); }
 
+// ── Agent Detail ──
 async function selectAgent(id) {
   selectedId = id;
   renderAgentList(document.getElementById('agent-search').value);
@@ -260,7 +639,7 @@ async function selectAgent(id) {
       <h2>${agent.name} <div class="actions">
         ${openUiBtn} ${nudgeBtn}
         <button onclick="toggleStatus('${agent.id}','${agent.status}')">${on ? '⏹ Offline' : '▶ Online'}</button>
-        <button class="btn-red" onclick="deleteAgent('${agent.id}')">Löschen</button>
+        <button class="btn-danger" onclick="deleteAgent('${agent.id}')">Löschen</button>
       </div></h2>
       <div class="status-row">
         <span class="dot ${on?'on':'off'}"></span><span class="label">${on?'Online':'Offline'}</span>
@@ -268,21 +647,18 @@ async function selectAgent(id) {
         <span class="label">Last seen: ${ls}</span>
       </div>
     </div>
-
     <div class="panel">
       <h2>Memory <div class="actions">
-        <button class="btn-red" onclick="clearMemory('${agent.id}')">Alle löschen</button>
+        <button class="btn-danger" onclick="clearMemory('${agent.id}')">Alle löschen</button>
       </div></h2>
       <div class="add-mem">
-        <textarea id="new-mem" placeholder="Neuen Memory-Eintrag schreiben..."></textarea>
-        <button class="btn-green" onclick="addMemory('${agent.id}')" style="align-self:flex-end">Speichern</button>
+        <textarea id="new-mem" placeholder="Neuen Memory-Eintrag…"></textarea>
+        <button class="btn-gold" onclick="addMemory('${agent.id}')" style="align-self:flex-end">Speichern</button>
       </div>
-      <div class="mem-search"><input placeholder="Memories durchsuchen..." oninput="searchAgentMem('${agent.id}',this.value)"></div>
-      <div id="mem-list"><div class="empty">Lade...</div></div>
+      <div class="mem-search"><input placeholder="Memories durchsuchen…" oninput="searchAgentMem('${agent.id}',this.value)"></div>
+      <div id="mem-list"><div class="empty">Lade…</div></div>
     </div>
-
-    <div id="agent-ui-frame"></div>
-  `;
+    <div id="agent-ui-frame"></div>`;
   loadAgentMemory(agent.id);
 }
 
@@ -305,13 +681,10 @@ function renderMemories(el, mems) {
   el.innerHTML = mems.map(m => {
     const d = m.timestamp ? new Date(m.timestamp).toLocaleString() : '';
     return `<div class="mem-item" id="mem-${m.id}">
-      <div class="mem-head">
-        <span>${d}</span>
-        <div>
-          <button onclick="editMem('${m.id}')">✏</button>
-          <button class="btn-red" onclick="deleteMem('${m.id}')">✕</button>
-        </div>
-      </div>
+      <div class="mem-head"><span>${d}</span><div>
+        <button onclick="editMem('${m.id}')">✏</button>
+        <button class="btn-danger" onclick="deleteMem('${m.id}')">✕</button>
+      </div></div>
       <div class="mem-content" id="mc-${m.id}">${m.content||''}</div>
     </div>`;
   }).join('');
@@ -319,11 +692,9 @@ function renderMemories(el, mems) {
 
 async function addMemory(agentId) {
   const ta = document.getElementById('new-mem');
-  const btn = event.target;
   const c = ta.value.trim();
   if (!c) return;
-  const res = await api('POST', '/memory', {agent_id: agentId, content: c});
-  if (res) { btn.classList.add('nudge-active'); setTimeout(() => btn.classList.remove('nudge-active'), 800); }
+  await api('POST', '/memory', {agent_id: agentId, content: c});
   ta.value = '';
   loadAgentMemory(agentId);
   updateStats();
@@ -335,14 +706,12 @@ function editMem(id) {
   el.innerHTML = `<textarea id="ed-${id}">${old}</textarea>
     <div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end">
       <button onclick="selectAgent(selectedId)">Abbrechen</button>
-      <button class="btn-green" onclick="saveMem('${id}')">Speichern</button>
+      <button class="btn-gold" onclick="saveMem('${id}')">Speichern</button>
     </div>`;
 }
 
 async function saveMem(id) {
   const c = document.getElementById('ed-' + id).value;
-  await api('PUT', `/memory/${id}`, null);
-  // PUT expects query param
   await fetch(API + `/memory/${id}?content=${encodeURIComponent(c)}`, {method:'PUT'});
   selectAgent(selectedId);
 }
@@ -354,7 +723,7 @@ async function deleteMem(id) {
 }
 
 async function clearMemory(agentId) {
-  if (!confirm('Alle Memories dieses Agenten löschen?')) return;
+  if (!confirm('Alle Memories löschen?')) return;
   await api('DELETE', `/agents/${agentId}/memory`);
   selectAgent(selectedId);
   updateStats();
@@ -369,10 +738,10 @@ async function toggleStatus(id, current) {
 }
 
 async function deleteAgent(id) {
-  if (!confirm('Agent und alle seine Memories löschen?')) return;
+  if (!confirm('Agent und alle Memories löschen?')) return;
   await api('DELETE', `/agents/${id}`);
   selectedId = null;
-  document.getElementById('content').innerHTML = '<div class="welcome"><h2>Agent gelöscht</h2></div>';
+  showWarRoom();
   await loadAgents();
 }
 
@@ -380,11 +749,11 @@ function openAgentUI(name, port) {
   const frame = document.getElementById('agent-ui-frame');
   if (frame.innerHTML) { frame.innerHTML = ''; return; }
   frame.innerHTML = `<div class="panel"><h2>🖥 ${name} <div class="actions"><button onclick="document.getElementById('agent-ui-frame').innerHTML=''">Schließen</button>
-    <button onclick="window.open('http://127.0.0.1:${port}','_blank')">↗ Neuer Tab</button></div></h2>
+    <button onclick="window.open('http://127.0.0.1:${port}','_blank')">↗ Tab</button></div></h2>
     <iframe src="http://127.0.0.1:${port}"></iframe></div>`;
 }
 
-// ── Register Agent ──
+// ── Register ──
 function openAddAgent() { document.getElementById('modal-add').classList.add('show'); }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 async function doRegister() {
@@ -404,8 +773,7 @@ async function doRegister() {
 async function doNudge(id) {
   const card = document.getElementById('card-' + id);
   if (card) { card.classList.add('nudge-active'); setTimeout(() => card.classList.remove('nudge-active'), 800); }
-  const res = await api('POST', `/agents/${id}/nudge`);
-  console.log('Nudge:', res);
+  await api('POST', `/agents/${id}/nudge`);
 }
 
 // ── Stats ──
@@ -417,20 +785,49 @@ async function updateStats() {
   }
 }
 
-// ── Chat / War Room ──
-function addChatMsg(text, type='system') {
-  const el = document.getElementById('chat-display');
-  if (!el) return;
-  const d = document.createElement('div');
-  d.className = `chat-msg ${type}`;
-  d.innerHTML = `<div class="chat-meta"><span class="agent-name">${type==='user'?'Du':'System'}</span><span>${new Date().toLocaleTimeString()}</span></div><div class="mem-content">${text}</div>`;
-  el.appendChild(d);
-
+// ═══ WAR ROOM (FIX: always renders complete chat with autocomplete) ═══
+function buildWarRoomHTML() {
+  const ttsChecked = document.getElementById('tts-enabled')?.checked ?? true;
+  return `<div class="panel" id="war-room">
+    <h2>War Room <span class="badge war-room-badge">Live</span></h2>
+    <div id="chat-display"></div>
+    <div class="chat-bar">
+      <button id="mic-btn" onclick="toggleSTT()" title="Spracheingabe">🎤</button>
+      <div class="chat-input-wrap">
+        <div class="ac-dropdown" id="ac-dropdown"></div>
+        <textarea id="chat-input" placeholder="@bs @recherche @idea …" oninput="onChatInput(this)" onkeydown="onChatKey(event)"></textarea>
+      </div>
+      <button class="btn-gold" onclick="sendChat()">Senden</button>
+      <label style="font-size:.7rem;display:flex;align-items:center;gap:4px"><input type="checkbox" id="tts-enabled" ${ttsChecked?'checked':''}> 🔊</label>
+    </div>
+    <div class="chat-hints">
+      <span>@bs</span> Brainstorm
+      <span>@Name</span> Gezielt
+      <span>@general</span> General
+      <span>@summarizer</span> Summarizer
+      <span>@recherche</span> Recherche
+      <span>@job</span> Auftrag
+      <span>@idea</span> Idee
+      <span>@status</span> Status
+      <span>@clear</span> Leeren
+    </div>
+  </div>`;
 }
+
+function showWarRoom() {
+  selectedId = null;
+  renderAgentList(document.getElementById('agent-search').value);
+  document.getElementById('content').innerHTML = buildWarRoomHTML();
+  refreshChat();
+}
+
+// ── Autocomplete ──
 const BUILTIN_CMDS = ['bs','general','summarizer','normal','recherche','job','idea','status','clear'];
 let acIdx = -1;
+
 function onChatInput(ta) {
   const dd = document.getElementById('ac-dropdown');
+  if (!dd) return;
   const val = ta.value, m = val.match(/@(\w*)$/);
   if (!m) { dd.classList.remove('show'); return; }
   const q = m[1].toLowerCase();
@@ -438,17 +835,20 @@ function onChatInput(ta) {
   const all = [...BUILTIN_CMDS, ...agentNames].filter(n => n.toLowerCase().startsWith(q));
   if (!all.length || (all.length === 1 && all[0].toLowerCase() === q)) { dd.classList.remove('show'); return; }
   acIdx = -1;
-  dd.innerHTML = all.map((n,i) => `<div class="ac-item" onmousedown="pickAc('${n}')">${BUILTIN_CMDS.includes(n) ? '@'+n : '@ '+n}</div>`).join('');
+  dd.innerHTML = all.map(n => `<div class="ac-item" onmousedown="pickAc('${n}')">${BUILTIN_CMDS.includes(n) ? '@'+n : '@ '+n}</div>`).join('');
   dd.classList.add('show');
 }
+
 function pickAc(name) {
   const ta = document.getElementById('chat-input');
   ta.value = ta.value.replace(/@\w*$/, '@' + name + ' ');
   document.getElementById('ac-dropdown').classList.remove('show');
   ta.focus();
 }
+
 function onChatKey(e) {
   const dd = document.getElementById('ac-dropdown');
+  if (!dd) return;
   const items = dd.querySelectorAll('.ac-item');
   if (dd.classList.contains('show') && items.length) {
     if (e.key === 'ArrowDown') { e.preventDefault(); acIdx = Math.min(acIdx+1, items.length-1); items.forEach((el,i) => el.classList.toggle('active', i===acIdx)); return; }
@@ -458,24 +858,30 @@ function onChatKey(e) {
   }
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
 }
+
+// ── Chat ──
 async function sendChat() {
   const ta = document.getElementById('chat-input');
+  if (!ta) return;
   const msg = ta.value.trim();
   if (!msg) return;
   ta.value = '';
-  document.getElementById('ac-dropdown').classList.remove('show');
+  document.getElementById('ac-dropdown')?.classList.remove('show');
   const res = await api('POST', '/chat', {content: msg});
   if (res) {
-    if (res.status === 'role_set') { toast(`👑 ${res.agent} → ${res.role}`, 'success'); }
-    else if (res.status === 'idea_saved') { toast(`💡 Idee gespeichert`, 'success'); }
-    else if (res.status === 'job_created') { toast(`📋 Job → ${res.general}: ${res.task.substring(0,60)}`, 'success'); }
-    else if (res.msg) { toast(`⚠️ ${res.msg}`, 'error'); }
-    else if (res.status === 'cleared') { toast(`🗑 Chat geleert`, 'success'); }
-    else if (res.status === 'agents') { toast(`📊 ${res.agents.map(a => a.name+'('+a.role+')').join(', ')}`, 'info'); }
-    else { const target = res.target ? `→ ${res.target}` : `→ ${(res.asked||[]).join(', ') || 'niemand'}`; toast(`${res.mode === 'brainstorm' ? '🧠' : res.mode === 'recherche' ? '🔍' : '💬'} ${target}`, 'success'); }
+    if (res.status === 'role_set') toast(`👑 ${res.agent} → ${res.role}`, 'success');
+    else if (res.status === 'idea_saved') toast('💡 Idee gespeichert', 'success');
+    else if (res.status === 'job_created') toast(`📋 Job → ${res.general}: ${res.task?.substring(0,60)}`, 'success');
+    else if (res.msg) toast(`⚠️ ${res.msg}`, 'error');
+    else if (res.status === 'cleared') toast('🗑 Chat geleert', 'success');
+    else if (res.status === 'agents') toast(`📊 ${res.agents.map(a => a.name+'('+a.role+')').join(', ')}`, 'info');
+    else { const target = res.target ? `→ ${res.target}` : `→ ${(res.asked||[]).join(', ') || 'niemand'}`; toast(`${res.mode==='brainstorm'?'🧠':res.mode==='recherche'?'🔍':'💬'} ${target}`, 'success'); }
     refreshChat(); loadAgents();
   } else { toast('Hub nicht erreichbar', 'error'); }
 }
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
 async function refreshChat() {
   const el = document.getElementById('chat-display');
   if (!el) return;
@@ -486,25 +892,23 @@ async function refreshChat() {
     const isUser = m.metadata?.sender === 'user';
     const name = isUser ? 'Du' : (m.metadata?.sender || 'System');
     const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
-    const agentObj = !isUser && agents.find(a => a.name === name);
-    const c = isUser ? '#4CAF50' : agentColor(name);
-    const nc = (!isUser && agentObj?.group) ? groupColor(agentObj.group) : c;
+    const c = isUser ? 'var(--gold)' : agentColor(name);
     const mid = m.id || Math.random().toString(36).slice(2);
-    return `<div class="chat-msg ${isUser ? 'user' : 'agent'}" style="border-left:3px solid ${c}">
-      <div class="chat-meta"><span class="agent-name" style="color:${nc}">${name}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Kopieren">📋</button>${time}</span></div>
-      <div class="mem-content" id="msg-${mid}">${m.content}</div></div>`;
+    const safe = esc(m.content).replace(/\n/g, '<br>');
+    return `<div class="chat-msg ${isUser?'user':'agent'}" style="border-left-color:${c}">
+      <div class="chat-meta"><span class="agent-name" style="color:${c}">${esc(name)}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Kopieren">📋</button>${time}</span></div>
+      <div class="mem-content" id="msg-${mid}">${safe}</div></div>`;
   }).join('');
+  el.scrollTop = el.scrollHeight;
 
-  // TTS: alle ungesprochenen Agent-Nachrichten der Reihe nach
-  if (sorted.length) {
-    if (!window._spokenIds) window._spokenIds = new Set();
-    const unspoken = sorted.filter(m => m.metadata?.sender !== 'user' && !window._spokenIds.has(m.id));
-    unspoken.forEach(m => {
-      window._spokenIds.add(m.id);
-      speak(`${m.metadata?.sender || 'System'} sagt: ${m.content}`);
-    });
-  }
+  // TTS
+  if (!window._spokenIds) window._spokenIds = new Set();
+  sorted.filter(m => m.metadata?.sender !== 'user' && !window._spokenIds.has(m.id)).forEach(m => {
+    window._spokenIds.add(m.id);
+    speak(`${m.metadata?.sender || 'System'} sagt: ${m.content}`);
+  });
 }
+
 function copyMsg(id) {
   const el = document.getElementById('msg-' + id);
   if (!el) return;
@@ -513,24 +917,8 @@ function copyMsg(id) {
     if (btn) { btn.textContent = '✅'; setTimeout(() => btn.textContent = '📋', 1200); }
   });
 }
-function showWarRoom() {
-  selectedId = null;
-  renderAgentList(document.getElementById('agent-search').value);
-  const ttsOn = document.getElementById('tts-enabled')?.checked;
-  document.getElementById('content').innerHTML = `
-    <div class="panel" id="war-room">
-      <h2>War Room <span class="badge war-room-badge">Live</span></h2>
-      <div id="chat-display" style="height:600px;overflow-y:auto;background:#0a0a10;padding:10px;border-radius:4px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px"></div>
-      <div class="add-mem">
-        <button id="mic-btn" onclick="toggleSTT()" title="Spracheingabe">🎤</button>
-        <textarea id="chat-input" placeholder="Befehl oder @bs..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
-        <button class="btn-green" onclick="sendChat()">Senden</button>
-        <label style="font-size:.7rem;display:flex;align-items:center;gap:4px"><input type="checkbox" id="tts-enabled" ${ttsOn?'checked':''}> 🔊</label>
-      </div>
-    </div>`;
-  refreshChat();
-}
-// ── TTS (Queue — eins nach dem anderen) ──
+
+// ── TTS Queue ──
 const _ttsQ = []; let _ttsBusy = false;
 async function speak(text, agentId='') {
   if (!document.getElementById('tts-enabled')?.checked) return;
@@ -552,6 +940,7 @@ async function speak(text, agentId='') {
   }
   _ttsBusy = false;
 }
+
 // ── STT ──
 let recognition;
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -561,10 +950,11 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   recognition.onresult = (e) => {
     let text = '';
     for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript + ' ';
-    document.getElementById('chat-input').value = text.trim();
+    const inp = document.getElementById('chat-input');
+    if (inp) inp.value = text.trim();
   };
-  recognition.onerror = (e) => { document.getElementById('mic-btn')?.classList.remove('active'); toast(`STT-Fehler: ${e.error}`, 'error'); };
-  recognition.onend = () => { document.getElementById('mic-btn')?.classList.remove('active'); };
+  recognition.onerror = () => document.getElementById('mic-btn')?.classList.remove('active');
+  recognition.onend = () => document.getElementById('mic-btn')?.classList.remove('active');
 }
 function toggleSTT() {
   const btn = document.getElementById('mic-btn');
@@ -573,21 +963,22 @@ function toggleSTT() {
   else { recognition.start(); btn.classList.add('active'); }
 }
 
-let _lampCount = 0;
+// ── Status Lamps ──
 const AG_AGENTS = [
   {name:'General',key:'GeneralAG',color:'#ff6b35'},{name:'Summarizer',key:'SummarizerAG',color:'#36d7b7'},
   {name:'Skills',key:'SkillsAG',color:'#9b59b6'},{name:'Cronjob',key:'CronjobAG',color:'#f39c12'},
   {name:'Soul',key:'SoulAG',color:'#e74c3c'},{name:'APIKeys',key:'APIKeysAG',color:'#3498db'},
   {name:'Watchdog',key:'WatchdogAG',color:'#1abc9c'},{name:'Tiny',key:'TinyAG',color:'#4CAF50'}
 ];
+let _lampInit = false;
 function updateLamps(hubAgents) {
   const el = document.getElementById('status-lamps');
-  if (!_lampCount) {
-    el.innerHTML = AG_AGENTS.map((a, i) => {
+  if (!_lampInit) {
+    el.innerHTML = AG_AGENTS.map(a => {
       const d = (Math.random() * 2).toFixed(2);
       return `<div class="lamp" data-ag="${a.key}" title="${a.name}AG" style="color:${a.color};background:${a.color};animation-delay:${d}s"></div>`;
     }).join('');
-    _lampCount = AG_AGENTS.length;
+    _lampInit = true;
   }
   if (hubAgents) {
     el.querySelectorAll('.lamp').forEach(l => {
@@ -598,12 +989,17 @@ function updateLamps(hubAgents) {
     });
   }
 }
+
+// ── Init ──
 (async () => {
   await discoverPort();
-  if (!API) { document.getElementById('content').innerHTML = '<div class="welcome"><h2>Hub nicht erreichbar</h2><p>Backend auf Port 3002 starten.</p></div>'; return; }
+  if (!API) {
+    document.getElementById('content').innerHTML = '<div class="empty" style="padding:80px 20px"><h2 style="color:var(--gold);margin-bottom:10px">Hub nicht erreichbar</h2><p>Backend auf Port 3002 starten.</p></div>';
+    return;
+  }
   await loadAgents();
   updateLamps(agents);
-  refreshChat();
+  showWarRoom();
   setInterval(async () => {
     const res = await api('GET', '/agents');
     agents = Array.isArray(res) ? res : (res?.agents || []);
