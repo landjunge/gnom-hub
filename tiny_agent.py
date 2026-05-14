@@ -3,24 +3,28 @@ import asyncio, json, os, requests
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 
-DS = os.environ.get("DEEPSEEK_API_KEY", "")
-URL = "https://api.deepseek.com/chat/completions"
-HUB = os.environ.get("GNOM_MCP", "http://127.0.0.1:3100/sse")
+# ── Konfiguration ──────────────────────────────
+MODEL   = "deepseek-chat"
+API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-DEIN-KEY-HIER")
+API_URL = "https://api.deepseek.com/chat/completions"
+MCP_URL = "http://127.0.0.1:3100/sse"
+SYSTEM  = "Du bist ein Gnom-Hub Agent. Nutze die verfügbaren Tools."
+# ────────────────────────────────────────────────
 
 async def run():
-    async with sse_client(HUB) as (r, w):
+    async with sse_client(MCP_URL) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
             raw = await s.list_tools()
             tools = [{"type": "function", "function": {"name": t.name,
                 "description": t.description or "", "parameters": t.inputSchema}} for t in raw.tools]
-            print(f"🧠 {len(tools)} tools geladen. Los gehts.")
-            msgs = [{"role": "system", "content": "Du bist ein Gnom-Hub Agent. Nutze die verfügbaren Tools."}]
+            print(f"🧠 {len(tools)} tools | {MODEL} | Los gehts.")
+            msgs = [{"role": "system", "content": SYSTEM}]
             while True:
                 msgs.append({"role": "user", "content": await asyncio.to_thread(input, ">>> ")})
                 while True:
-                    resp = requests.post(URL, headers={"Authorization": f"Bearer {DS}"},
-                        json={"model": "deepseek-chat", "messages": msgs, "tools": tools}, timeout=120)
+                    resp = requests.post(API_URL, headers={"Authorization": f"Bearer {API_KEY}"},
+                        json={"model": MODEL, "messages": msgs, "tools": tools}, timeout=120)
                     reply = resp.json()["choices"][0]["message"]
                     msgs.append(reply)
                     if not reply.get("tool_calls"):
