@@ -1,0 +1,50 @@
+🛠️  Skills-Agent bereit — 22 tools | deepseek-chat
+🛠️  >>>   + Exception Group Traceback (most recent call last):
+  |   File "/Users/landjunge/Documents/AG-Flega/skillsAG.py", line 41, in <module>
+  |     asyncio.run(run())
+  |   File "/usr/local/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 195, in run
+  |     return runner.run(main)
+  |            ^^^^^^^^^^^^^^^^
+  |   File "/usr/local/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/runners.py", line 118, in run
+  |     return self._loop.run_until_complete(task)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/usr/local/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+  |     return future.result()
+  |            ^^^^^^^^^^^^^^^
+  |   File "/Users/landjunge/Documents/AG-Flega/skillsAG.py", line 18, in run
+  |     async with sse_client(MCP_URL) as (r, w):
+  |                ^^^^^^^^^^^^^^^^^^^
+  |   File "/usr/local/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/Users/landjunge/Documents/AG-Flega/.venv/lib/python3.12/site-packages/mcp/client/sse.py", line 62, in sse_client
+  |     async with anyio.create_task_group() as tg:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/landjunge/Documents/AG-Flega/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 799, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Exception Group Traceback (most recent call last):
+    |   File "/Users/landjunge/Documents/AG-Flega/.venv/lib/python3.12/site-packages/mcp/client/sse.py", line 158, in sse_client
+    |     yield read_stream, write_stream
+    |   File "/Users/landjunge/Documents/AG-Flega/skillsAG.py", line 19, in run
+    |     async with ClientSession(r, w) as s:
+    |                ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/landjunge/Documents/AG-Flega/.venv/lib/python3.12/site-packages/mcp/shared/session.py", line 238, in __aexit__
+    |     return await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/landjunge/Documents/AG-Flega/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 799, in __aexit__
+    |     raise BaseExceptionGroup(
+    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+    +-+---------------- 1 ----------------
+      | Traceback (most recent call last):
+      |   File "/Users/landjunge/Documents/AG-Flega/skillsAG.py", line 27, in run
+      |     msgs.append({"role": "user", "content": await asyncio.to_thread(input, "🛠️  >>> ")})
+      |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |   File "/usr/local/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/asyncio/threads.py", line 25, in to_thread
+      |     return await loop.run_in_executor(None, func_call)
+      |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |   File "/usr/local/Cellar/python@3.12/3.12.13/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+      |     result = self.fn(*self.args, **self.kwargs)
+      |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      | EOFError: EOF when reading a line
+      +------------------------------------
