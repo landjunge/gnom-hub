@@ -20,16 +20,16 @@ Danach öffne http://127.0.0.1:3002
 
 | Datei | Rolle | Zeilen |
 |-------|-------|--------|
-| `tiny_agent.py` | 🧠 Basis-Agent | 38 |
-| `general.py` | ⚔️ Aufgaben verteilen | 41 |
-| `summarizer.py` | 📋 Essenz extrahieren | 40 |
-| `skills.py` | 🛠️ Skills bauen & zuweisen | 41 |
-| `cronjob.py` | ⏰ Zeitgesteuerte Jobs | 41 |
-| `soul.py` | 👻 Agent-Persönlichkeit formen | 41 |
-| `apikeys.py` | 🔑 Key-Management | 41 |
-| `watchdog.py` | 🐕 Prozesse überwachen | 41 |
+| `tinyAG.py` | 🧠 Basis-Agent | 38 |
+| `generalAG.py` | ⚔️ Aufgaben verteilen | 41 |
+| `summarizerAG.py` | 📋 Essenz extrahieren | 40 |
+| `skillsAG.py` | 🛠️ Skills bauen & zuweisen | 41 |
+| `cronjobAG.py` | ⏰ Zeitgesteuerte Jobs | 41 |
+| `soulAG.py` | 👻 Agent-Persönlichkeit formen | 41 |
+| `apikeysAG.py` | 🔑 Key-Management | 41 |
+| `watchdogAG.py` | 🐕 Prozesse überwachen | 41 |
 
-Eigenen Agent bauen? `tiny_agent.py` kopieren, `SYSTEM` ändern. Das war's.
+Eigenen Agent bauen? `tinyAG.py` kopieren, `SYSTEM` ändern. Das war's.
 
 ## ✨ Kernfunktionen
 
