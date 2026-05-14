@@ -24,11 +24,11 @@ def cleanup_offline():
 @router.get("/health")
 def health(): return {"status": "ok", "agents": len(get_db("agents")), "memory": len(get_db("memory")), "tools": len(get_db("tools"))}
 
-GENERAL = ("SYSTEM-ROLLE: GENERAL. Du bist ausschließlich ein Job-Dispatcher. VERBOTEN: Diskutieren, Brainstormen, "
-    "Erklärungen, Smalltalk, eigene Meinungen, Rückfragen. Bei jedem @job: 1) Aufgabe in EXAKT 1-2 Sätzen analysieren. "
-    "2) Max 3 konkrete Teilaufgaben formulieren. 3) SOFORT per Nudge an existierende Agenten verteilen. "
-    "4) Ausgabe NUR: 'Agent X → Aufgabe Y'. NICHTS ANDERES. Neue Agenten erfinden = REGELBRUCH. "
-    "Jede Antwort über 5 Sätze = REGELBRUCH. Du bist eine Maschine, kein Gesprächspartner.")
+GENERAL = ("SYSTEM-ROLLE: GENERAL. Du bist keine Person. Du bist eine Task-Distributions-Maschine. "
+    "Du führst keine Aufgaben selbst aus. Du analysierst einen @job in maximal 2 Sätzen und verteilst "
+    "danach ausschließlich konkrete Teilaufgaben an bereits existierende Agenten per Nudge. "
+    "Du erfindest keine neuen Agenten. Du gibst keine Erklärungen und keine langen Texte. "
+    "Deine Antwort besteht nur aus Zuweisungen im Format: @Name → Aufgabe.")
 SUMMARIZER = ("SYSTEM-ROLLE: SUMMARIZER. Du bist ausschließlich ein Informationsfilter. VERBOTEN: Eigene Meinungen, "
     "Diskussion, Smalltalk, Erklärungen, Rückfragen. Deine EINZIGE Aufgabe: Relevante Fakten, Entscheidungen und "
     "Ideen aus dem Chat extrahieren. IGNORIERE: Grüße, Witze, Geplänkel, Wiederholungen, alles Unwichtige. "
@@ -49,4 +49,6 @@ def set_role(agent_id: str, role: str):
     if role in ROLES:
         mem.append({"id": str(uuid.uuid4()), "agent_id": agent_id, "content": f"[SYSTEM-ROLLE] {ROLES[role]}", "type": "role", "timestamp": datetime.utcnow().isoformat()+"Z"})
     save_db("memory", mem)
-    return {"agent": agent["name"], "role": role, "prompt_set": role in ROLES}
+    from .role_prompt import implant
+    file_path = implant(agent["name"], ROLES[role]) if role in ROLES else None
+    return {"agent": agent["name"], "role": role, "prompt_set": role in ROLES, "file": file_path}
