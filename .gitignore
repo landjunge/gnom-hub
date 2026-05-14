@@ -1,16 +1,12 @@
-node_modules/
-.DS_Store
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
 .env
+build/
+dist/
+.venv/
+.DS_Store
 *.log
-
-# IDE & workspace
-*.code-workspace
-.vscode/
-.idea/
-
-# OS
-Thumbs.db
-
-# Debug & temp
-*.bak
-*.tmp
+.pytest_cache/
+node_modules/
