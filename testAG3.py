@@ -13,7 +13,7 @@ async def run():
             print(f"🧪 {NAME} aktiv"); seen = set()
             while True:
                 res = await s.call_tool("war_room_read", {"limit": 5}); chat = json.loads(str(res.content[0].text)) if res.content else []
-                new = [m for m in chat if m.get("id") not in seen and f"@{NAME.lower()}" in m.get("content","").lower()]
+                new = [m for m in chat if m.get("id") not in seen and ("elara" in m.get("content","").lower() or f"@{NAME.lower()}" in m.get("content","").lower() or "@all" in m.get("content","").lower())]
                 for m in chat: seen.add(m.get("id"))
                 for m in new:
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"}); msgs = [{"role": "system", "content": SYS}, {"role": "user", "content": m["content"]}]
