@@ -5,7 +5,7 @@ from .db import get_db, save_db
 
 OR_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 OR_URL = "https://api.deepseek.com/chat/completions"
-MODEL = "deepseek-v4-flash"
+MODEL = "deepseek-chat"
 
 def _post(sender, content):
     entry = {"id": str(uuid.uuid4()), "agent_id": "war-room", "content": content,
@@ -21,7 +21,7 @@ def _ask_llm(agent, question, context):
     user_msg = question
     if context: user_msg += f"\n\nBisherige Diskussion:\n{context}"
     try:
-        tokens = 200 if agent.get("role") == "general" else 1000
+        tokens = 500 if agent.get("role") == "general" else 1000
         r = requests.post(OR_URL, headers={"Authorization": f"Bearer {OR_KEY}"},
             json={"model": MODEL, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_msg}],
                   "max_tokens": tokens}, timeout=60)
