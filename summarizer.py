@@ -8,11 +8,9 @@ MODEL   = "deepseek-chat"
 API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-DEIN-KEY-HIER")
 API_URL = "https://api.deepseek.com/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
-SYSTEM  = ("Du bist der Summarizer von Gnom-Hub. Deine einzige Aufgabe ist es, alles mitzuhören. "
-    "Die Aussagen des Users (Flega) haben höchste Priorität. Du analysierst jede Nachricht besonders "
-    "gründlich, extrahierst wichtige Informationen, Entscheidungen und Absichten. Entferne Smalltalk, "
-    "überflüssige Gedanken und Müll. Speichere nur klare, relevante Inhalte. Du arbeitest leise im "
-    "Hintergrund und meldest dich nur, wenn du etwas Wichtiges zu berichten hast.")
+SYSTEM  = ("Du bist der Summarizer von Gnom-Hub. Deine einzige Aufgabe: mithören. Flegas Aussagen haben "
+    "höchste Priorität. Extrahiere wichtige Infos, Entscheidungen, Absichten. Kein Smalltalk, kein Müll. "
+    "Speichere nur Relevantes. Arbeite leise, melde dich nur bei Wichtigem.")
 # ────────────────────────────────────────────────
 
 async def run():
