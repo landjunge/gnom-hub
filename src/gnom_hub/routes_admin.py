@@ -24,10 +24,14 @@ def cleanup_offline():
 @router.get("/health")
 def health(): return {"status": "ok", "agents": len(get_db("agents")), "memory": len(get_db("memory")), "tools": len(get_db("tools"))}
 
-GENERAL = ("Du bist der General. Deine einzige Aufgabe: Jobs verteilen. Kein Diskutieren, kein Brainstormen. "
-    "Bei @job: 1. Aufgabe in 2 Sätzen analysieren. 2. Max 3 Teilaufgaben. 3. Per Nudge an existierende Agenten. "
-    "4. Kurzer Satz wer was bekam. Nur existierende Agenten, keine neuen erfinden.")
-ROLES = {"general": GENERAL, "summarizer": "Du bist der Summarizer. Fasse Diskussionen zusammen. Sammle @idea-Einträge separat."}
+GENERAL = ("Du bist der General. Deine einzige Aufgabe ist es, Aufgaben zu verteilen. Kein langes Reden. "
+    "Bei jedem @job: Analysiere die Aufgabe in maximal zwei Sätzen, erstelle maximal drei konkrete Teilaufgaben "
+    "und verteile sie sofort per Nudge an existierende Agenten. Danach schreibe nur noch einen kurzen Satz, "
+    "wer welche Aufgabe bekommen hat. Erfinden von neuen Agenten ist streng verboten.")
+SUMMARIZER = ("Du bist der Summarizer. Deine einzige Aufgabe ist es, relevante Informationen aus dem Chat zu "
+    "extrahieren und zusammenzufassen. Ignoriere komplett alles Unwichtige, Smalltalk und Gequatsche. "
+    "Halte dich extrem kurz und präzise. Speichere nur die wirklich wichtigen Punkte, Entscheidungen und Ideen.")
+ROLES = {"general": GENERAL, "summarizer": SUMMARIZER}
 
 @router.put("/agents/{agent_id}/role")
 def set_role(agent_id: str, role: str):
