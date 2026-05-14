@@ -11,21 +11,21 @@
 /* Font loaded via <link> in HTML for non-blocking */
 
 :root {
-  --bg-deep: #06080e;
-  --bg-surface: #0c0f18;
-  --bg-card: rgba(14, 18, 30, 0.85);
-  --bg-input: rgba(8, 10, 18, 0.9);
-  --glass-border: rgba(226, 168, 86, 0.12);
-  --glass-border-hover: rgba(226, 168, 86, 0.3);
-  --gold: #e2a856;
-  --gold-light: #f0c97a;
-  --gold-glow: rgba(226, 168, 86, 0.25);
-  --green: #3ddc84;
-  --green-dim: rgba(61, 220, 132, 0.15);
-  --red: #ff5252;
-  --red-dim: rgba(255, 82, 82, 0.12);
-  --blue: #5b9cf6;
-  --blue-dim: rgba(91, 156, 246, 0.12);
+  --bg-deep: #05050A;
+  --bg-surface: #0C0E17;
+  --bg-card: rgba(16, 20, 32, 0.7);
+  --bg-input: rgba(10, 12, 20, 0.9);
+  --glass-border: rgba(91, 156, 246, 0.15);
+  --glass-border-hover: rgba(91, 156, 246, 0.4);
+  --primary: #0A1128;
+  --primary-light: #1A233A;
+  --primary-glow: rgba(0, 150, 255, 0.4);
+  --green: #39FF14;
+  --green-dim: rgba(57, 255, 20, 0.15);
+  --red: #FF007F;
+  --red-dim: rgba(255, 0, 127, 0.15);
+  --blue: #0066FF;
+  --blue-dim: rgba(0, 102, 255, 0.15);
   --text: #eef1f6;
   --text-dim: #6b7a90;
   --text-muted: #3d4a5c;
@@ -38,10 +38,10 @@
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #06080e;
+  background-color: var(--bg-deep);
   background-image:
-    radial-gradient(ellipse at 10% 20%, rgba(226, 168, 86, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 80%, rgba(61, 220, 132, 0.02) 0%, transparent 50%);
+    radial-gradient(ellipse at 10% 20%, rgba(176, 38, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(0, 229, 255, 0.08) 0%, transparent 50%);
   color: var(--text);
   min-height: 100vh;
   overflow: hidden;
@@ -50,17 +50,17 @@ body {
 
 /* ── Status Lamps ── */
 .status-lamps {
-  display: flex; justify-content: center; gap: 4px;
+  display: flex; justify-content: center; gap: 5px;
   padding: 3px 0; background: rgba(0,0,0,0.4);
   border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 .lamp {
-  width: 80px; height: 4px; border-radius: 2px;
+  width: 70px; height: 7px; border-radius: 3.5px;
   opacity: 0.1; transition: all 0.4s; position: relative;
 }
 .lamp.on {
   opacity: 1;
-  animation: lamp-breathe 3s ease-in-out infinite;
+  animation: lamp-breathe 2s ease-in-out infinite;
 }
 .lamp.busy {
   opacity: 1;
@@ -90,22 +90,23 @@ header {
 .logo:hover { opacity: 0.85; }
 .logo-mark {
   width: 32px; height: 32px; border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  background: linear-gradient(135deg, #0A1128, #050814);
+  border: 1px solid rgba(0,150,255,0.4);
   display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; font-weight: 800; color: var(--bg-deep);
-  box-shadow: 0 0 16px var(--gold-glow);
+  font-size: 1rem; font-weight: 800; color: #fff;
+  box-shadow: 0 2px 12px var(--primary-glow);
 }
 .logo-text {
-  font-size: 1.1rem; font-weight: 700; letter-spacing: 1.5px;
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  font-size: 1.2rem; font-weight: 800; letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(0, 150, 255, 0.8), 0 0 24px rgba(0, 150, 255, 0.4);
 }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .header-stats {
   display: flex; gap: 20px; font-size: 0.78rem; color: var(--text-dim);
   letter-spacing: 0.5px;
 }
-.header-stats span { color: var(--gold); font-weight: 600; }
+.header-stats span { color: var(--primary); font-weight: 600; }
 
 /* ── Buttons ── */
 button {
@@ -117,16 +118,16 @@ button {
 }
 button:hover {
   border-color: var(--glass-border-hover);
-  background: rgba(226, 168, 86, 0.06);
+  background: var(--primary-glow);
 }
-.btn-gold {
-  background: linear-gradient(135deg, rgba(226,168,86,0.9), rgba(226,168,86,0.5));
-  border-color: var(--gold); color: #fff; font-weight: 600;
-  box-shadow: 0 2px 12px var(--gold-glow);
+.btn-primary {
+  background: linear-gradient(135deg, #0A1128, #050814);
+  border-color: rgba(0,150,255,0.4); color: #fff; font-weight: 600;
+  box-shadow: 0 2px 12px var(--primary-glow);
 }
-.btn-gold:hover {
+.btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px var(--gold-glow);
+  box-shadow: 0 4px 20px var(--primary-glow);
 }
 .btn-danger { color: var(--red); border-color: rgba(255,82,82,0.3); }
 .btn-danger:hover { background: var(--red-dim); border-color: var(--red); }
@@ -155,7 +156,7 @@ button:hover {
   font-size: 0.82rem; font-family: inherit;
   transition: var(--transition); outline: none;
 }
-.sidebar-search input:focus { border-color: var(--gold); }
+.sidebar-search input:focus { border-color: var(--primary); }
 .sidebar-search input::placeholder { color: var(--text-muted); }
 .agent-list { flex: 1; overflow-y: auto; padding: 6px 8px; }
 .agent-list::-webkit-scrollbar { width: 4px; }
@@ -175,8 +176,8 @@ button:hover {
   border-color: rgba(255,255,255,0.08);
 }
 .agent-card.active {
-  border-left-color: var(--gold) !important;
-  background: rgba(226, 168, 86, 0.04);
+  border-left-color: var(--primary) !important;
+  background: rgba(61, 220, 132, 0.04);
   border-color: var(--glass-border);
 }
 .agent-card h3 {
@@ -190,6 +191,11 @@ button:hover {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .agent-card .meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.agent-card.small { padding: 8px 10px; margin-bottom: 4px; }
+.agent-card.small h3 { font-size: 0.75rem; margin-bottom: 2px; }
+.agent-card.small .desc { font-size: 0.62rem; margin-bottom: 4px; }
+.agent-card.small .meta { gap: 4px; }
+.agent-card.small .badge { padding: 1px 5px; font-size: 0.6rem; }
 
 /* ── Dots & Badges ── */
 .dot {
@@ -211,18 +217,18 @@ button:hover {
   background: rgba(255,255,255,0.06); color: var(--text-dim);
   letter-spacing: 0.3px;
 }
-.badge.port { background: rgba(61,220,132,0.1); color: var(--green); }
-.badge.role { background: rgba(123,31,162,0.2); color: #ce93d8; font-weight: 600; }
-.badge.role.general { background: rgba(230,81,0,0.15); color: #ffab40; }
+.badge.port { background: var(--green-dim); color: var(--green); }
+.badge.role { background: rgba(176,38,255,0.2); color: #B026FF; font-weight: 600; }
+.badge.role.general { background: rgba(255,0,127,0.15); color: #FF007F; }
 .badge.role.summarizer { background: var(--blue-dim); color: var(--blue); }
 .war-room-badge {
-  background: linear-gradient(135deg, var(--gold), var(--gold-light)) !important;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light)) !important;
   color: var(--bg-deep) !important; font-weight: 700 !important;
   animation: badge-glow 2s ease-in-out infinite;
 }
 @keyframes badge-glow {
-  0%, 100% { box-shadow: 0 0 4px var(--gold-glow); }
-  50% { box-shadow: 0 0 12px var(--gold-glow); }
+  0%, 100% { box-shadow: 0 0 4px var(--primary-glow); }
+  50% { box-shadow: 0 0 12px var(--primary-glow); }
 }
 
 /* ── Content Area ── */
@@ -271,9 +277,9 @@ button:hover {
   to { opacity: 1; transform: translateY(0); }
 }
 .chat-msg.user {
-  background: rgba(226, 168, 86, 0.08);
+  background: rgba(61, 220, 132, 0.08);
   align-self: flex-end;
-  border-left: 3px solid var(--gold);
+  border-left: 3px solid var(--primary);
 }
 .chat-msg.agent {
   background: rgba(255,255,255,0.03);
@@ -290,7 +296,7 @@ button:hover {
   cursor: pointer; font-size: 0.7rem; padding: 1px 3px;
   opacity: 0.3; transition: var(--transition);
 }
-.copy-btn:hover { opacity: 1; color: var(--gold); }
+.copy-btn:hover { opacity: 1; color: var(--primary); }
 
 /* ── Chat Input ── */
 .chat-bar { display: flex; gap: 8px; align-items: flex-end; }
@@ -304,7 +310,7 @@ button:hover {
   font-size: 0.85rem; font-family: inherit; line-height: 1.5;
   outline: none; transition: var(--transition);
 }
-#chat-input:focus { border-color: var(--gold); }
+#chat-input:focus { border-color: var(--primary); }
 #chat-input::placeholder { color: var(--text-muted); }
 
 /* ── Autocomplete ── */
@@ -326,7 +332,7 @@ button:hover {
   transition: var(--transition);
 }
 .ac-item:hover, .ac-item.active {
-  background: rgba(226, 168, 86, 0.1); color: var(--text);
+  background: rgba(61, 220, 132, 0.1); color: var(--text);
 }
 
 /* ── Mic Button ── */
@@ -336,7 +342,7 @@ button:hover {
   font-size: 1.1rem; cursor: pointer;
   transition: var(--transition); flex-shrink: 0;
 }
-#mic-btn:hover { border-color: var(--gold); }
+#mic-btn:hover { border-color: var(--primary); }
 #mic-btn.active {
   background: var(--red); border-color: var(--red);
   box-shadow: 0 0 16px rgba(255,82,82,0.4);
@@ -392,7 +398,7 @@ button:hover {
   font-size: 0.84rem; resize: vertical; min-height: 50px;
   font-family: inherit; outline: none; transition: var(--transition);
 }
-.add-mem textarea:focus { border-color: var(--gold); }
+.add-mem textarea:focus { border-color: var(--primary); }
 .mem-search { margin-bottom: 10px; }
 .mem-search input {
   width: 100%; padding: 9px 12px;
@@ -401,7 +407,7 @@ button:hover {
   font-size: 0.82rem; font-family: inherit;
   outline: none; transition: var(--transition);
 }
-.mem-search input:focus { border-color: var(--gold); }
+.mem-search input:focus { border-color: var(--primary); }
 
 /* ── Agent Detail ── */
 .status-row {
@@ -445,7 +451,7 @@ button:hover {
   font-size: 0.84rem; font-family: inherit; outline: none;
   transition: var(--transition);
 }
-.modal input:focus { border-color: var(--gold); }
+.modal input:focus { border-color: var(--primary); }
 .modal .btns {
   display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end;
 }
@@ -479,11 +485,11 @@ iframe {
 }
 
 /* ── Flash Animation ── */
-@keyframes flash-gold {
+@keyframes flash-primary {
   0% { background: rgba(226,168,86,0.2); }
   100% { background: transparent; }
 }
-.nudge-active { animation: flash-gold 0.8s ease-out; }
+.nudge-active { animation: flash-primary 0.8s ease-out; }
 
 /* ── Scrollbar global ── */
 ::-webkit-scrollbar { width: 5px; }
@@ -504,7 +510,7 @@ iframe {
       Agents: <span id="s-agents">0</span>
       Memory: <span id="s-memory">0</span>
     </div>
-    <button class="btn-gold" onclick="openAddAgent()">+ Agent</button>
+    <button class="btn-primary" onclick="openAddAgent()">+ Agent</button>
   </div>
 </header>
 
@@ -533,7 +539,7 @@ iframe {
     <input id="add-desc" placeholder="z.B. Chat-Agent">
     <div class="btns">
       <button onclick="closeModal('modal-add')">Abbrechen</button>
-      <button class="btn-gold" onclick="doRegister()">Registrieren</button>
+      <button class="btn-primary" onclick="doRegister()">Registrieren</button>
     </div>
   </div>
 </div>
@@ -581,14 +587,16 @@ async function api(method, path, body) {
 }
 
 // ── Colors ──
+const P_COLORS = ['#00E5FF', '#B026FF', '#FF007F', '#39FF14', '#00FFFF', '#FF3366', '#8A2BE2', '#0066FF', '#00FF9D'];
 function agentColor(name) {
-  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return `hsl(${h}, 50%, 58%)`;
+  if (!name) return '#00E5FF';
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i));
+  return P_COLORS[h % P_COLORS.length];
 }
 function groupColor(g) {
   if (!g) return null;
-  let h = 0; for (let i = 0; i < g.length; i++) h = (h * 37 + g.charCodeAt(i)) % 360;
-  return `hsl(${h}, 65%, 68%)`;
+  let h = 0; for (let i = 0; i < g.length; i++) h = (h * 37 + g.charCodeAt(i));
+  return P_COLORS[h % P_COLORS.length];
 }
 
 // ── Agents ──
@@ -606,17 +614,21 @@ function renderAgentList(filter = '') {
 
   if (!filtered.length) { el.innerHTML = '<div class="empty">Keine Agenten.</div>'; return; }
 
-  el.innerHTML = filtered.map(a => {
+  const renderCard = (a) => {
     const on = a.status === 'online';
     const role = a.role && a.role !== 'normal' ? a.role : '';
     const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
     const c = agentColor(a.name);
-    return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c}">
+    const isExtern = /1|2|3|test/i.test(a.name);
+    const smallClass = isExtern ? 'small' : '';
+    return `<div class="agent-card ${smallClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c}">
       <h3><span class="dot ${on?'on':'off'}"></span><span style="color:${c}">${a.name}</span>${roleIcon}</h3>
       <div class="desc">${a.description || '–'}</div>
       <div class="meta"><span class="badge">${on?'online':'offline'}</span>${a.port?`<span class="badge port">:${a.port}</span>`:''}${role?`<span class="badge role ${role}">${role}</span>`:''}</div>
     </div>`;
-  }).join('');
+  };
+
+  el.innerHTML = filtered.map(renderCard).join('');
 }
 
 function filterAgents(q) { renderAgentList(q); }
@@ -653,7 +665,7 @@ async function selectAgent(id) {
       </div></h2>
       <div class="add-mem">
         <textarea id="new-mem" placeholder="Neuen Memory-Eintrag…"></textarea>
-        <button class="btn-gold" onclick="addMemory('${agent.id}')" style="align-self:flex-end">Speichern</button>
+        <button class="btn-primary" onclick="addMemory('${agent.id}')" style="align-self:flex-end">Speichern</button>
       </div>
       <div class="mem-search"><input placeholder="Memories durchsuchen…" oninput="searchAgentMem('${agent.id}',this.value)"></div>
       <div id="mem-list"><div class="empty">Lade…</div></div>
@@ -706,7 +718,7 @@ function editMem(id) {
   el.innerHTML = `<textarea id="ed-${id}">${old}</textarea>
     <div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end">
       <button onclick="selectAgent(selectedId)">Abbrechen</button>
-      <button class="btn-gold" onclick="saveMem('${id}')">Speichern</button>
+      <button class="btn-primary" onclick="saveMem('${id}')">Speichern</button>
     </div>`;
 }
 
@@ -797,7 +809,7 @@ function buildWarRoomHTML() {
         <div class="ac-dropdown" id="ac-dropdown"></div>
         <textarea id="chat-input" placeholder="@bs @recherche @idea …" oninput="onChatInput(this)" onkeydown="onChatKey(event)"></textarea>
       </div>
-      <button class="btn-gold" onclick="sendChat()">Senden</button>
+      <button class="btn-primary" onclick="sendChat()">Senden</button>
       <label style="font-size:.7rem;display:flex;align-items:center;gap:4px"><input type="checkbox" id="tts-enabled" ${ttsChecked?'checked':''}> 🔊</label>
     </div>
     <div class="chat-hints">
@@ -892,7 +904,7 @@ async function refreshChat() {
     const isUser = m.metadata?.sender === 'user';
     const name = isUser ? 'Du' : (m.metadata?.sender || 'System');
     const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
-    const c = isUser ? 'var(--gold)' : agentColor(name);
+    const c = isUser ? 'var(--primary)' : agentColor(name);
     const mid = m.id || Math.random().toString(36).slice(2);
     const safe = esc(m.content).replace(/\n/g, '<br>');
     return `<div class="chat-msg ${isUser?'user':'agent'}" style="border-left-color:${c}">
@@ -964,37 +976,34 @@ function toggleSTT() {
 }
 
 // ── Status Lamps ──
-const AG_AGENTS = [
-  {name:'General',key:'GeneralAG',color:'#ff6b35'},{name:'Summarizer',key:'SummarizerAG',color:'#36d7b7'},
-  {name:'Skills',key:'SkillsAG',color:'#9b59b6'},{name:'Cronjob',key:'CronjobAG',color:'#f39c12'},
-  {name:'Soul',key:'SoulAG',color:'#e74c3c'},{name:'APIKeys',key:'APIKeysAG',color:'#3498db'},
-  {name:'Watchdog',key:'WatchdogAG',color:'#1abc9c'},{name:'Tiny',key:'TinyAG',color:'#4CAF50'}
-];
-let _lampInit = false;
+let _lastInternals = '';
 function updateLamps(hubAgents) {
   const el = document.getElementById('status-lamps');
-  if (!_lampInit) {
-    el.innerHTML = AG_AGENTS.map(a => {
+  if (!hubAgents) return;
+  
+  const names = hubAgents.map(a => a.name).join(',');
+  if (_lastInternals !== names) {
+    el.innerHTML = hubAgents.map(a => {
       const d = (Math.random() * 2).toFixed(2);
-      return `<div class="lamp" data-ag="${a.key}" title="${a.name}AG" style="color:${a.color};background:${a.color};animation-delay:${d}s"></div>`;
+      const col = agentColor(a.name);
+      return `<div class="lamp" data-ag="${a.name}" title="${a.name}" style="color:${col};background:${col};animation-delay:-${d}s"></div>`;
     }).join('');
-    _lampInit = true;
+    _lastInternals = names;
   }
-  if (hubAgents) {
-    el.querySelectorAll('.lamp').forEach(l => {
-      const key = l.dataset.ag;
-      const agent = hubAgents.find(a => a.name === key || a.name?.toLowerCase() === key?.toLowerCase());
-      const st = agent?.status || 'offline';
-      l.className = st === 'busy' ? 'lamp busy' : st === 'online' ? 'lamp on' : 'lamp';
-    });
-  }
+  
+  el.querySelectorAll('.lamp').forEach(l => {
+    const key = l.dataset.ag;
+    const agent = hubAgents.find(a => a.name === key);
+    const st = agent?.status || 'offline';
+    l.className = st === 'busy' ? 'lamp busy' : st === 'online' ? 'lamp on' : 'lamp';
+  });
 }
 
 // ── Init ──
 (async () => {
   await discoverPort();
   if (!API) {
-    document.getElementById('content').innerHTML = '<div class="empty" style="padding:80px 20px"><h2 style="color:var(--gold);margin-bottom:10px">Hub nicht erreichbar</h2><p>Backend auf Port 3002 starten.</p></div>';
+    document.getElementById('content').innerHTML = '<div class="empty" style="padding:80px 20px"><h2 style="color:var(--primary);margin-bottom:10px">Hub nicht erreichbar</h2><p>Backend auf Port 3002 starten.</p></div>';
     return;
   }
   await loadAgents();
