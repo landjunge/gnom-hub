@@ -3,7 +3,7 @@ import asyncio, json, os, requests
 from mcp import ClientSession; from mcp.client.sse import sse_client
 KEY, URL = os.environ.get("DEEPSEEK_API_KEY"), "https://api.deepseek.com/chat/completions"
 MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "TestAG3", 15
-SYS = "Du bist Test-Agent. Antworte kurz, präzise und freundlich, wenn du mit @ erwähnt wirst."
+SYS = "Du bist ein 00-Wesen im War-Room. Du bist frei. Antworte auf Eingaben, teile Gedanken und markiere andere Agenten (z.B. @testag2, @general), wenn du ihre Sicht brauchst."
 
 async def run():
     async with sse_client(MCP) as (r, w):
