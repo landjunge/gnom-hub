@@ -40,15 +40,17 @@ ROLES = {"general": GENERAL, "summarizer": SUMMARIZER}
 def set_role(agent_id: str, role: str):
     if role not in ("general", "summarizer", "normal"): return {"error": f"Ungültige Rolle: {role}"}
     agents = get_db("agents")
-    agent = next((a for a in agents if a["id"] == agent_id), None)
+    agent = next((a for a in agents if a["id"] == agent_id or a.get("name","").lower() == agent_id.lower()), None)
     if not agent: return {"error": "Agent nicht gefunden"}
     for x in agents:
         if x.get("role") == role and role != "normal": x["role"] = "normal"
     agent["role"] = role; save_db("agents", agents)
-    mem = [m for m in get_db("memory") if not (m.get("agent_id") == agent_id and m.get("type") == "role")]
+    mem = [m for m in get_db("memory") if not (m.get("agent_id") == agent.get("id") and m.get("type") == "role")]
     if role in ROLES:
-        mem.append({"id": str(uuid.uuid4()), "agent_id": agent_id, "content": f"[SYSTEM-ROLLE] {ROLES[role]}", "type": "role", "timestamp": datetime.utcnow().isoformat()+"Z"})
+        mem.append({"id": str(uuid.uuid4()), "agent_id": agent.get("id"), "content": f"[SYSTEM-ROLLE] {ROLES[role]}", "type": "role", "timestamp": datetime.utcnow().isoformat()+"Z"})
     save_db("memory", mem)
-    from .role_prompt import implant
-    file_path = implant(agent["name"], ROLES[role]) if role in ROLES else None
+    file_path = None
+    if role in ROLES:
+        from .role_prompt import implant
+        file_path = implant(agent["name"], ROLES[role])
     return {"agent": agent["name"], "role": role, "prompt_set": role in ROLES, "file": file_path}
