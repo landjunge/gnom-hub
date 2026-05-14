@@ -21,9 +21,10 @@ def _ask_llm(agent, question, context):
     user_msg = question
     if context: user_msg += f"\n\nBisherige Diskussion:\n{context}"
     try:
+        tokens = 200 if agent.get("role") == "general" else 1000
         r = requests.post(OR_URL, headers={"Authorization": f"Bearer {OR_KEY}"},
             json={"model": MODEL, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_msg}],
-                  "max_tokens": 1000}, timeout=60)
+                  "max_tokens": tokens}, timeout=60)
         _post(agent["name"], r.json()["choices"][0]["message"]["content"])
     except Exception as e: _post(agent["name"], f"[Fehler: {str(e)[:80]}]")
 
