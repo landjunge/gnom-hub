@@ -1,10 +1,11 @@
 # 🧠 GNOM-HUB
 
+**Jeder Agent unter 40 Zeilen. Ernsthaft.**
+
 ![Gnom-Hub War Room](screenshot.png)
 
 Ein minimaler, aber mächtiger Orchestrator für lokale KI-Agenten.
-
-Agenten verbinden sich automatisch, teilen ein gemeinsames Memory und arbeiten zusammen über ein zentrales War Room Chat.
+Eine Datei kopieren, SYSTEM-Prompt ändern, starten — fertig.
 
 ## 🚀 Schnellstart
 
@@ -14,6 +15,21 @@ gnom-hub
 ```
 
 Danach öffne http://127.0.0.1:3002
+
+## 🤖 Agenten
+
+| Datei | Rolle | Zeilen |
+|-------|-------|--------|
+| `tiny_agent.py` | 🧠 Basis-Agent | 38 |
+| `general.py` | ⚔️ Aufgaben verteilen | 41 |
+| `summarizer.py` | 📋 Essenz extrahieren | 40 |
+| `skills.py` | 🛠️ Skills bauen & zuweisen | 41 |
+| `cronjob.py` | ⏰ Zeitgesteuerte Jobs | 41 |
+| `soul.py` | 👻 Agent-Persönlichkeit formen | 41 |
+| `apikeys.py` | 🔑 Key-Management | 41 |
+| `watchdog.py` | 🐕 Prozesse überwachen | 41 |
+
+Eigenen Agent bauen? `tiny_agent.py` kopieren, `SYSTEM` ändern. Das war's.
 
 ## ✨ Kernfunktionen
 
