@@ -1,6 +1,6 @@
-import requests, os; from mcp.server.fastmcp import FastMCP; mcp = FastMCP("HUB", host="127.0.0.1", port=int(os.environ.get("GNOM_MCP_PORT", 3100)))
+import requests, os, json as _json; from mcp.server.fastmcp import FastMCP; mcp = FastMCP("HUB", host="127.0.0.1", port=int(os.environ.get("GNOM_MCP_PORT", 3100)))
 def api(m, p, **k):
-    try: return str(requests.request(m, f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT','3002')}/api"+p, **k).json())
+    try: return _json.dumps(requests.request(m, f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT','3002')}/api"+p, **k).json())
     except: return "Err"
 @mcp.tool()
 def save_to_memory(a: str, c: str): """Speichert Text."""; return api("POST", "/memory", json={"agent_id": a, "content": c})

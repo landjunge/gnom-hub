@@ -529,19 +529,27 @@ function showWarRoom() {
     </div>`;
   refreshChat();
 }
-// ── TTS (ElevenLabs → Web Speech Fallback) ──
+// ── TTS (Queue — eins nach dem anderen) ──
+const _ttsQ = []; let _ttsBusy = false;
 async function speak(text, agentId='') {
   if (!document.getElementById('tts-enabled')?.checked) return;
-  try {
-    const r = await fetch(`${API}/audio/tts`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text, agent_id:agentId})});
-    if (r.ok && r.headers.get('content-type')?.includes('audio')) {
-      const blob = await r.blob();
-      new Audio(URL.createObjectURL(blob)).play(); return;
-    }
-  } catch { toast('TTS-Server nicht erreichbar — Browser-Fallback', 'info'); }
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'de-DE'; u.rate = 1.0;
-  speechSynthesis.speak(u);
+  _ttsQ.push({text, agentId});
+  if (_ttsBusy) return;
+  _ttsBusy = true;
+  while (_ttsQ.length) {
+    const {text: t, agentId: a} = _ttsQ.shift();
+    speechSynthesis.cancel();
+    try {
+      const r = await fetch(`${API}/audio/tts`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:t, agent_id:a})});
+      if (r.ok && r.headers.get('content-type')?.includes('audio')) {
+        const audio = new Audio(URL.createObjectURL(await r.blob()));
+        await new Promise(ok => { audio.onended = ok; audio.onerror = ok; audio.play(); }); continue;
+      }
+    } catch {}
+    const u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; u.rate = 1.0;
+    await new Promise(ok => { u.onend = ok; u.onerror = ok; speechSynthesis.speak(u); });
+  }
+  _ttsBusy = false;
 }
 // ── STT ──
 let recognition;
