@@ -14,13 +14,15 @@ def _post(sender, content):
     save_db("memory", get_db("memory") + [entry])
 
 def _ask_llm(agent, question, context):
-    if not OR_KEY: _post(agent["name"], "[Kein OPENROUTER_API_KEY]"); return
+    if not OR_KEY: _post(agent["name"], "[Kein DEEPSEEK_API_KEY]"); return
     desc = agent.get("description", "")
-    prompt = f"Du bist {agent['name']} ({desc}), ein KI-Agent im Gnom-Hub.\n{question}"
-    if context: prompt += f"\n\nBisherige Diskussion:\n{context}"
+    role_mem = [m for m in get_db("memory") if m.get("agent_id") == agent.get("id") and m.get("type") == "role"]
+    sys_prompt = role_mem[-1]["content"].replace("[SYSTEM-ROLLE] ", "") if role_mem else f"Du bist {agent['name']} ({desc}), ein KI-Agent im Gnom-Hub."
+    user_msg = question
+    if context: user_msg += f"\n\nBisherige Diskussion:\n{context}"
     try:
         r = requests.post(OR_URL, headers={"Authorization": f"Bearer {OR_KEY}"},
-            json={"model": MODEL, "messages": [{"role": "user", "content": prompt}],
+            json={"model": MODEL, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_msg}],
                   "max_tokens": 1000}, timeout=60)
         _post(agent["name"], r.json()["choices"][0]["message"]["content"])
     except Exception as e: _post(agent["name"], f"[Fehler: {str(e)[:80]}]")
