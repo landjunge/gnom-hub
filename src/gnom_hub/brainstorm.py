@@ -3,9 +3,9 @@ import threading, uuid, os, re, requests
 from datetime import datetime
 from .db import get_db, save_db
 
-OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OR_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "deepseek/deepseek-chat-v3-0324"
+OR_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+OR_URL = "https://api.deepseek.com/chat/completions"
+MODEL = "deepseek-v4-flash"
 
 def _post(sender, content):
     entry = {"id": str(uuid.uuid4()), "agent_id": "war-room", "content": content,
