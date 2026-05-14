@@ -584,7 +584,7 @@ function updateLamps() {
   if (!_lampCount) {
     el.innerHTML = AG_AGENTS.map((a, i) => {
       const d = (Math.random() * 2).toFixed(2);
-      return `<div class="lamp" data-ag="${a.name}" title="${a.name}AG" style="color:${a.color};background:${a.color};animation-delay:${d}s"></div>`;
+      return `<div class="lamp on" data-ag="${a.name}" title="${a.name}AG" style="color:${a.color};background:${a.color};animation-delay:${d}s"></div>`;
     }).join('');
     _lampCount = AG_AGENTS.length;
   }

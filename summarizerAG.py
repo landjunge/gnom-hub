@@ -43,7 +43,9 @@ async def run():
                         if not reply.get("tool_calls"):
                             if reply.get("content"): print(f"  📋 {reply['content'][:80]}"); break
                         for tc in reply["tool_calls"]:
-                            tr = await s.call_tool(tc["function"]["name"], json.loads(tc["function"]["arguments"]))
+                            try: args = json.loads(tc["function"]["arguments"])
+                            except: print(f"  ⚠️ bad args: {tc['function']['arguments'][:60]}"); args = {}
+                            tr = await s.call_tool(tc["function"]["name"], args)
                             print(f"  🔧 {tc['function']['name']}"); msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
                 await asyncio.sleep(POLL)
 
