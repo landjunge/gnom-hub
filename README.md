@@ -8,6 +8,19 @@ Das System ist mehr als nur ein Chat; es ist ein vollständiges Multi-Agenten-Be
 
 ---
 
+## 🔥 Warum Gnom-Hub anders ist (Die wahren Highlights)
+
+Was den Gnom-Hub von monströsen Frameworks wie Langchain oder AutoGen unterscheidet, ist seine **kompromisslose, nackte Effizienz**:
+
+1. **Zero-Bloat AI OS:** Keine 10.000 Zeilen Boilerplate-Code. Keine Blackbox-Abstraktionen. Das gesamte Backend und alle Agenten bestehen aus purem, rohem Python-Code. Wenn ein Agent gestartet wird, braucht er keine Minuten für einen Build – er ist sofort online.
+2. **"God-Mode" Autonomie:** Dank des lokalen MCP-Servers (`hub_mcp.py`) sind die Agenten nicht auf eine Sandbox beschränkt. Sie können echte Terminal-Befehle ausführen (`run_command`), Dateien auf deiner Festplatte lesen/schreiben (`write_file`) und sogar sich selbst oder andere Agenten umprogrammieren. Es ist ein lebendes, atmendes System.
+3. **Swarm Intelligence im "War Room":** Agenten arbeiten nicht isoliert. Im War Room lesen sie den globalen Kontext, können gezielt aufeinander reagieren und sich gegenseitig Tasks zuwerfen (z.B. der `GeneralAG` befiehlt dem `SummarizerAG`).
+4. **Zero-Friction Agent Creation:** Du willst einen neuen Agenten? Du klickst im Admin Panel auf "+ Agent", das System klont im Hintergrund ein 33-Zeilen-Template (`tinyAG.py`), öffnet einen neuen Port, registriert den Agenten beim Hub und er ist in Sekunden kampfbereit. Keine endlosen Config-Dateien.
+5. **Zero-Cost Escalation:** Da der Hub nahtlos mit OpenRouter harmoniert, kannst du das komplette 14-Agenten-Netzwerk über leistungsstarke Free-Tier-Modelle (wie DeepSeek) betreiben. Endlose autonome Brainstorming-Loops für **0,00€**.
+6. **Die 40-Zeilen Rebellion:** Es ist ein Manifest gegen überladenen Code. Jedes Feature, jede Route und jeder Agent wurde so stark destilliert, dass er auf einen Blick ohne Scrollen lesbar ist.
+
+---
+
 ## 🚀 Schnellstart
 
 ```bash
