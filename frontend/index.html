@@ -56,23 +56,26 @@ body {
 }
 .lamp {
   width: 70px; height: 7px; border-radius: 3.5px;
-  opacity: 0.1; transition: all 0.4s; position: relative;
+  opacity: 0.1; transition: all 0.4s ease-in-out; position: relative;
+  flex-shrink: 0;
 }
-.lamp.on {
-  opacity: 1;
-  animation: lamp-breathe 2s ease-in-out infinite;
+.lamp.on { 
+  opacity: 0.8; 
+  box-shadow: 0 0 8px currentColor; 
+  animation: lamp-breathe 3s infinite ease-in-out alternate;
 }
-.lamp.busy {
-  opacity: 1;
-  animation: lamp-pulse 0.7s ease-in-out infinite;
+.lamp.busy { 
+  opacity: 1; 
+  box-shadow: 0 0 15px currentColor; 
+  animation: lamp-pulse 1s infinite ease-in-out alternate; 
 }
 @keyframes lamp-breathe {
-  0%, 100% { opacity: 0.5; box-shadow: 0 0 4px currentColor; }
-  50% { opacity: 1; box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+  0% { opacity: 0.4; box-shadow: 0 0 4px currentColor; }
+  100% { opacity: 0.8; box-shadow: 0 0 12px currentColor; }
 }
 @keyframes lamp-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; box-shadow: 0 0 16px currentColor, 0 0 32px currentColor; }
+  0% { transform: scaleX(0.9); filter: brightness(1); }
+  100% { transform: scaleX(1.1); filter: brightness(1.5); }
 }
 
 /* ── Header ── */
@@ -103,10 +106,13 @@ header {
 }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .header-stats {
-  display: flex; gap: 20px; font-size: 0.78rem; color: var(--text-dim);
-  letter-spacing: 0.5px;
+  display: flex; gap: 20px; font-size: 0.95rem; color: #fff;
+  letter-spacing: 0.5px; align-items: center;
 }
-.header-stats span { color: var(--primary); font-weight: 600; }
+.header-stats span { 
+  color: #fff; font-weight: 600; font-size: 1.05rem;
+  text-shadow: none;
+}
 
 /* ── Buttons ── */
 button {
@@ -124,11 +130,45 @@ button:hover {
   background: linear-gradient(135deg, #0A1128, #050814);
   border-color: rgba(0,150,255,0.4); color: #fff; font-weight: 600;
   box-shadow: 0 2px 12px var(--primary-glow);
+  padding: 8px 20px; font-size: 0.85rem; z-index: 10;
+  position: relative;
 }
 .btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px var(--primary-glow);
+  background: linear-gradient(135deg, #0A1128, #050814); /* Keep dark */
+  border-color: rgba(0,150,255,0.8);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 24px rgba(0, 150, 255, 0.7);
 }
+.btn-mic, .btn-speaker {
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 14px; font-size: 1.1rem;
+  background: linear-gradient(135deg, #0A1128, #050814);
+  color: #fff; border-radius: var(--radius-sm);
+  position: relative; z-index: 10; cursor: pointer;
+  transition: var(--transition);
+}
+.btn-mic {
+  border: 1px solid rgba(255, 51, 102, 0.4);
+  box-shadow: 0 2px 12px rgba(255, 51, 102, 0.2);
+}
+.btn-mic:hover, .btn-mic.active {
+  background: linear-gradient(135deg, #1A0A0F, #0A0508);
+  border-color: rgba(255, 51, 102, 0.9);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 24px rgba(255, 51, 102, 0.8);
+}
+.btn-speaker {
+  border: 1px solid rgba(0,150,255,0.4);
+  box-shadow: 0 2px 12px var(--primary-glow);
+  font-size: 0.9rem;
+}
+.btn-speaker:hover {
+  background: linear-gradient(135deg, #0A1128, #050814);
+  border-color: rgba(0,150,255,0.8);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 24px rgba(0, 150, 255, 0.7);
+}
+.btn-speaker input { margin-right: 6px; cursor: pointer; }
 .btn-danger { color: var(--red); border-color: rgba(255,82,82,0.3); }
 .btn-danger:hover { background: var(--red-dim); border-color: var(--red); }
 
@@ -156,37 +196,170 @@ button:hover {
   font-size: 0.82rem; font-family: inherit;
   transition: var(--transition); outline: none;
 }
+#agent-search:focus { outline: none; border-color: var(--primary); background: var(--bg-surface); }
+@keyframes floatCoffee {
+  0% { transform: translateY(0px) rotate(0deg); filter: drop-shadow(0 0 10px var(--primary)); }
+  50% { transform: translateY(-20px) rotate(10deg); filter: drop-shadow(0 0 40px var(--primary)); }
+  100% { transform: translateY(0px) rotate(0deg); filter: drop-shadow(0 0 10px var(--primary)); }
+}
+@keyframes ufoFlyV2 {
+  0% { transform: translate(-20vw, -10vh) scale(1) rotate(0deg); }
+  25% { transform: translate(30vw, 5vh) scale(1.1) rotate(5deg); }
+  50% { transform: translate(-5vw, 20vh) scale(0.9) rotate(-8deg); }
+  75% { transform: translate(20vw, -10vh) scale(1) rotate(3deg); }
+  100% { transform: translate(-20vw, -10vh) scale(1) rotate(0deg); }
+}
+@keyframes laserFlicker {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.8; box-shadow: 0 0 10px var(--primary); }
+}
+@keyframes sparkPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.2) rotate(45deg); opacity: 0.8; }
+  100% { transform: scale(0.1); opacity: 0; }
+}
+@keyframes blinkSpotColor {
+  0%, 100% { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  33% { background: var(--red); box-shadow: 0 0 5px var(--red); }
+  66% { background: var(--primary); box-shadow: 0 0 5px var(--primary); }
+}
+@keyframes ufoCrashAnim {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; filter: drop-shadow(0 0 10px var(--red)); }
+  100% { transform: translateY(100vh) rotate(720deg) scale(0); opacity: 0; filter: drop-shadow(0 0 50px var(--red)); }
+}
+.ufo-v2 {
+  position: absolute;
+  width: 36px; height: 12px;
+  animation: ufoFlyV2 90s ease-in-out infinite;
+  z-index: 10001; pointer-events: auto; cursor: crosshair;
+}
+.ufo-crashed {
+  animation: ufoCrashAnim 1.5s cubic-bezier(0.5, 0, 1, 0.5) forwards !important;
+  pointer-events: none;
+}
+.ufo-body {
+  position: relative; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, #777, #333);
+  border-radius: 50% 50% 20% 20% / 60% 60% 40% 40%;
+  box-shadow: 0 3px 10px var(--primary), inset 0 -1px 3px rgba(255,255,255,0.4);
+}
+.ufo-dome {
+  position: absolute; top: -6px; left: 8px; width: 20px; height: 10px;
+  background: radial-gradient(ellipse at top, rgba(255,255,255,0.8), var(--primary));
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  box-shadow: inset 0 1px 3px rgba(255,255,255,0.6);
+}
+.ufo-spots {
+  position: absolute; bottom: 2px; left: 6px; right: 6px;
+  display: flex; justify-content: space-between;
+}
+.ufo-spot {
+  width: 3px; height: 3px; border-radius: 50%;
+  background: var(--primary); animation: blinkSpotColor 1.2s infinite;
+}
+.ufo-spot:nth-child(2) { animation-delay: 0.3s; }
+.ufo-spot:nth-child(3) { animation-delay: 0.6s; }
+.ufo-spot:nth-child(4) { animation-delay: 0.9s; }
+.ufo-laser {
+  position: absolute; top: 10px; left: 17px; width: 2px; height: 250px;
+  background: linear-gradient(to bottom, var(--primary), transparent);
+  animation: laserFlicker 0.2s infinite; transform-origin: top;
+}
+.ufo-spark {
+  position: absolute; bottom: 0; left: -5px; width: 12px; height: 12px;
+  background: radial-gradient(circle, #fff, var(--primary), transparent 60%);
+  animation: sparkPop 0.2s infinite;
+}
+.ufo-bg-glow {
+  position: absolute; top: 0; left: 18px; width: 160px; height: 160px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--primary) 0%, transparent 60%);
+  opacity: 0.15;
+  pointer-events: none;
+}
+@keyframes ghostFade {
+  0% { opacity: 0; transform: scale(0.5) translateY(10vh); filter: blur(20px); }
+  50% { opacity: 0.15; transform: scale(1.2) translateY(-5vh); filter: blur(10px); }
+  100% { opacity: 0; transform: scale(1.8) translateY(-20vh); filter: blur(20px); }
+}
 .sidebar-search input:focus { border-color: var(--primary); }
 .sidebar-search input::placeholder { color: var(--text-muted); }
-.agent-list { flex: 1; overflow-y: auto; padding: 6px 8px; }
+.agent-list { flex: 0 1 45vh; overflow-y: auto; padding: 6px 8px; }
 .agent-list::-webkit-scrollbar { width: 4px; }
 .agent-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+.sidebar-square {
+  width: calc(100% - 16px);
+  margin: 8px 8px 30px 8px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: rgba(10, 12, 20, 0.5);
+  flex-shrink: 0;
+  box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.05);
+  display: flex; flex-direction: column; padding: 12px; gap: 10px;
+}
+.provider-select {
+  width: 100%; background: rgba(0,0,0,0.3); color: var(--text);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;
+  padding: 4px 6px; font-size: 0.75rem; outline: none; cursor: pointer;
+  margin-bottom: 4px;
+}
+.active-provider-logo {
+  width: 85%;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+.active-provider-logo svg {
+  width: 50%; height: 50%;
+  filter: drop-shadow(0 0 10px var(--primary)) drop-shadow(0 0 25px var(--primary));
+  color: var(--primary);
+  opacity: 0.9;
+}
+.active-provider-logo img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  mix-blend-mode: multiply;
+}
+.token-tracker {
+  font-size: 0.7rem; color: var(--text-dim); text-align: center;
+  padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.1);
+  display: flex; justify-content: space-between; width: 100%;
+}
 
 /* ── Agent Cards ── */
 .agent-card {
   background: var(--bg-card);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius); padding: 10px 14px;
-  margin-bottom: 6px; cursor: pointer;
+  border-radius: var(--radius); padding: 5px 8px;
+  margin-bottom: 3px; cursor: pointer;
   transition: var(--transition);
   border-left: 3px solid transparent;
 }
 .agent-card:hover {
-  background: rgba(20, 24, 38, 0.9);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 255, 255, 0.05);
 }
 .agent-card.active {
   background: rgba(61, 220, 132, 0.04);
   border-color: var(--glass-border);
 }
 .agent-card h3 {
-  font-size: 0.88rem; font-weight: 600;
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 3px;
+  font-size: 0.78rem; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 1px;
 }
 .agent-card .desc {
-  font-size: 0.72rem; color: var(--text-dim);
-  margin-bottom: 6px;
+  font-size: 0.65rem; color: var(--text-dim);
+  margin-bottom: 3px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .agent-card .meta { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -220,15 +393,6 @@ button:hover {
 .badge.role { background: rgba(176,38,255,0.2); color: #B026FF; font-weight: 600; }
 .badge.role.general { background: rgba(255,0,127,0.15); color: #FF007F; }
 .badge.role.summarizer { background: var(--blue-dim); color: var(--blue); }
-.war-room-badge {
-  background: linear-gradient(135deg, var(--primary), var(--primary-light)) !important;
-  color: var(--bg-deep) !important; font-weight: 700 !important;
-  animation: badge-glow 2s ease-in-out infinite;
-}
-@keyframes badge-glow {
-  0%, 100% { box-shadow: 0 0 4px var(--primary-glow); }
-  50% { box-shadow: 0 0 12px var(--primary-glow); }
-}
 
 /* ── Content Area ── */
 .content {
@@ -297,20 +461,25 @@ button:hover {
   opacity: 0.3; transition: var(--transition);
 }
 .copy-btn:hover { opacity: 1; color: var(--primary); }
+.del-btn:hover { color: var(--red); }
 
 /* ── Chat Input ── */
 .chat-bar { display: flex; gap: 8px; align-items: flex-end; }
 .chat-input-wrap { position: relative; flex: 1; }
 #chat-input {
-  width: 100%; min-height: 70px; max-height: 200px; resize: vertical;
+  width: 100%; height: 90px; resize: none;
   background: var(--bg-input);
-  border: 1px solid rgba(0, 150, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--text); padding: 10px 14px;
   border-radius: var(--radius-sm);
   font-size: 0.85rem; font-family: inherit; line-height: 1.5;
   outline: none; transition: var(--transition);
+  box-sizing: border-box;
 }
-#chat-input:focus { border-color: var(--primary); }
+#chat-input:focus { 
+  border-color: var(--primary); 
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.15); 
+}
 #chat-input::placeholder { color: var(--text-muted); }
 
 /* ── Autocomplete ── */
@@ -320,10 +489,10 @@ button:hover {
   backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
-  max-height: 180px; overflow-y: auto;
-  z-index: 100; min-width: 200px;
+  max-height: 320px; overflow-y: auto;
+  z-index: 100; min-width: 260px;
   display: none;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
 }
 .ac-dropdown.show { display: block; }
 .ac-item {
@@ -335,24 +504,6 @@ button:hover {
   background: rgba(61, 220, 132, 0.1); color: var(--text);
 }
 
-/* ── Mic Button ── */
-#mic-btn {
-  width: 42px; height: 42px; border-radius: 50%;
-  background: transparent; border: 1px solid var(--glass-border);
-  font-size: 1.1rem; cursor: pointer;
-  transition: var(--transition); flex-shrink: 0;
-}
-#mic-btn:hover { border-color: var(--primary); }
-#mic-btn.active {
-  background: var(--red); border-color: var(--red);
-  box-shadow: 0 0 16px rgba(255,82,82,0.4);
-  animation: mic-pulse 1.2s ease-in-out infinite;
-}
-@keyframes mic-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-}
-
 /* ── Chat Hints ── */
 .chat-hints {
   font-size: 0.65rem; color: var(--text-muted);
@@ -360,11 +511,28 @@ button:hover {
   margin-top: 6px;
 }
 .chat-hints span {
-  background: rgba(255,255,255,0.04);
-  color: var(--blue); padding: 2px 6px;
-  border-radius: 4px; font-family: 'SF Mono', monospace;
-  font-size: 0.62rem;
+  color: #fff; font-weight: 500;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 8px; border-radius: 4px;
+  font-size: 0.75rem; cursor: help; position: relative;
+  transition: var(--transition);
 }
+.chat-hints span:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+.chat-hints span::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+  background: rgba(10, 12, 20, 0.95); color: #fff; padding: 4px 8px;
+  border-radius: 4px; font-size: 0.65rem; white-space: nowrap;
+  border: 1px solid rgba(0, 150, 255, 0.4);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+.chat-hints span:hover::after { opacity: 1; }
 
 /* ── Memory Items ── */
 .mem-item {
@@ -515,11 +683,69 @@ iframe {
 </header>
 
 <div class="main">
+<div id="coffee-overlay" style="display:none; position:fixed; bottom:30px; right:30px; width:340px; background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius); box-shadow:0 10px 40px rgba(0,0,0,0.8); z-index:9999; padding:20px; text-align:center; animation: toast-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+  <div style="font-size:3.5rem; animation: floatCoffee 3s ease-in-out infinite;">☕</div>
+  <h3 style="color:var(--primary); margin-top:10px; font-size:1.4rem;">Take a break!</h3>
+  <p style="color:var(--text-dim); margin-top:5px; font-size:0.9rem;">Enjoy a quick coffee to recharge.</p>
+  <div style="position:relative; margin-top:15px;">
+    <!-- Troll 50px Hover Zone -->
+    <div style="position:absolute; top:-50px; left:-50px; right:-50px; bottom:-50px; z-index:10;" onmouseenter="fleeCoffee()"></div>
+    <button class="btn-primary" style="width:100%; position:relative; z-index:5;" onclick="document.getElementById('coffee-overlay').style.display='none'">Got it</button>
+  </div>
+</div>
+
+<div id="ufo-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10000; justify-content:center; align-items:center; background: transparent; pointer-events: none; overflow:hidden;">
+  <div class="ufo-v2" onclick="this.classList.add('ufo-crashed'); setTimeout(() => { document.getElementById('ufo-overlay').style.display='none'; this.classList.remove('ufo-crashed'); }, 1500)">
+    <div class="ufo-bg-glow"></div>
+    <div class="ufo-laser">
+      <div class="ufo-spark"></div>
+    </div>
+    <div class="ufo-dome"></div>
+    <div class="ufo-body">
+      <div class="ufo-spots">
+        <div class="ufo-spot"></div>
+        <div class="ufo-spot"></div>
+        <div class="ufo-spot"></div>
+        <div class="ufo-spot"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="ghost-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9998; justify-content:center; align-items:center; pointer-events:none; overflow:hidden;">
+  <div style="font-size:120vh; animation: ghostFade 120s ease-in-out forwards; opacity:0; pointer-events:none;">👻</div>
+</div>
+
   <div class="sidebar">
     <div class="sidebar-search">
       <input type="text" id="agent-search" placeholder="Agenten suchen…" oninput="filterAgents(this.value)">
     </div>
     <div class="agent-list" id="agent-list"></div>
+    <div class="sidebar-square" id="sidebar-square">
+      <select class="provider-select">
+        <option>Grok 1.5</option>
+        <option>GPT-4o (OpenAI)</option>
+        <option>Claude 3.5 Sonnet</option>
+        <option>Gemini 1.5 Pro</option>
+      </select>
+      <div class="active-provider-logo" id="logo-grok">
+        <img src="assets/grok.png" alt="Grok">
+      </div>
+      
+      <!-- OpenAI Copy (Safe Backup) -->
+      <div class="active-provider-logo" id="logo-openai" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22.28 9.82a8.82 8.82 0 00-2.31-7.27 8.78 8.78 0 00-7.25-2.33 8.84 8.84 0 00-6.15 4.3 8.8 8.8 0 00-5.32 5.08 8.84 8.84 0 002.34 7.28 8.84 8.84 0 007.25 2.33 8.84 8.84 0 006.14-4.3 8.8 8.8 0 005.3-5.09zM12 21.43a6.45 6.45 0 01-3.66-1.12l8-4.63V7.2l1.6 1a6.45 6.45 0 011.66 8.7 6.45 6.45 0 01-7.6 1.53zM5.53 18.2a6.45 6.45 0 01-1.63-8.68l1.6-1V17a2.12 2.12 0 001.07 1.84l7.46 4.31a6.44 6.44 0 01-8.5-4.95zM4 9.4A6.45 6.45 0 019 3.65V12.9L2 8.86A6.45 6.45 0 014 9.4zm14.56 1.4L11 6.17a2.1 2.1 0 00-2.14 0l-7.46 4.3A6.44 6.44 0 019 4.3a6.44 6.44 0 018.56 6.5zm-3.23 7.5L7.3 13.67V5.05l-1.6-1a6.45 6.45 0 018.8 10.25zM15 14.6l-2-1.15V11.1l2 1.15v2.35zM12 9.4l-2 1.15V8.2l2-1.15v2.35z"/></svg>
+      </div>
+
+      <!-- Anthropic Copy (Safe Backup) -->
+      <div class="active-provider-logo" id="logo-anthropic" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21H3L12 4l9 17z M12 10l-4.5 7.5h9L12 10z"/></svg>
+      </div>
+      <div class="token-tracker">
+        <span>Tokens</span>
+        <span style="color:var(--primary); font-weight:700;">0 / 100k</span>
+      </div>
+    </div>
   </div>
 
   <div class="content" id="content">
@@ -653,17 +879,7 @@ function renderAgentList(filter = '') {
     el.innerHTML = coreAgents.map(renderCard).join('');
   }
 
-  // Render Internal Agents as Status Lamps
-  if (lampsEl) {
-    const renderLamp = (a) => {
-      const on = a.status === 'online';
-      const busy = a.status === 'busy';
-      const c = agentColor(a.name);
-      const lampClass = busy ? 'lamp busy' : (on ? 'lamp on' : 'lamp');
-      return `<div class="${lampClass}" style="background-color: ${c}; color: ${c};" title="${a.name} (${a.status})"></div>`;
-    };
-    lampsEl.innerHTML = internalAgents.map(renderLamp).join('');
-  }
+
 }
 
 function filterAgents(q) { renderAgentList(q); }
@@ -807,7 +1023,7 @@ async function doRegister() {
   const n = document.getElementById('add-name').value.trim();
   const p = parseInt(document.getElementById('add-port').value) || 0;
   const d = document.getElementById('add-desc').value.trim();
-  if (!n || !p) { alert('Name und Port sind Pflicht.'); return; }
+  if (!n || !p) { alert('Name and Port are required.'); return; }
   await api('POST', '/agents/register', {name: n, port: p, description: d});
   document.getElementById('add-name').value = '';
   document.getElementById('add-port').value = '';
@@ -834,29 +1050,34 @@ async function updateStats() {
 
 // ═══ WAR ROOM (FIX: always renders complete chat with autocomplete) ═══
 function buildWarRoomHTML() {
-  const ttsChecked = document.getElementById('tts-enabled')?.checked ?? true;
+  const ttsChecked = document.getElementById('tts-enabled')?.checked ?? false;
   return `<div class="panel" id="war-room">
-    <h2>Chill Room <span class="badge war-room-badge">Live</span></h2>
+    <h2>Chill Room</h2>
     <div id="chat-display"></div>
     <div class="chat-bar">
-      <button id="mic-btn" onclick="toggleSTT()" title="Spracheingabe">🎤</button>
       <div class="chat-input-wrap">
         <div class="ac-dropdown" id="ac-dropdown"></div>
-        <textarea id="chat-input" placeholder="@bs @recherche @idea …" oninput="onChatInput(this)" onkeydown="onChatKey(event)"></textarea>
+        <textarea id="chat-input" placeholder="@bs @research @idea …" oninput="onChatInput(this)" onkeydown="onChatKey(event)"></textarea>
       </div>
-      <button class="btn-primary" onclick="sendChat()">Senden</button>
-      <label style="font-size:.7rem;display:flex;align-items:center;gap:4px"><input type="checkbox" id="tts-enabled" ${ttsChecked?'checked':''}> 🔊</label>
+      <div style="display:flex; flex-direction:column; gap:8px; height: 92px; min-width: 85px;">
+        <input type="checkbox" id="tts-enabled" style="display:none;" ${ttsChecked?'checked':''}>
+        <button id="mic-btn" class="btn-mic" style="flex:1; width:100%; padding:0;" onclick="toggleSTT()" title="Voice Input">Rec</button>
+        <button class="btn-primary" style="flex:1; width:100%; padding:0;" onclick="sendChat()">Send</button>
+      </div>
     </div>
     <div class="chat-hints">
-      <span>@bs</span> Brainstorm
-      <span>@Name</span> Gezielt
-      <span>@general</span> General
-      <span>@summarizer</span> Summarizer
-      <span>@recherche</span> Recherche
-      <span>@job</span> Auftrag
-      <span>@idea</span> Idee
-      <span>@status</span> Status
-      <span>@clear</span> Leeren
+      <span data-tooltip="Brainstorm: Trigger a multi-agent ideation session.">@bs</span>
+      <span data-tooltip="Direct Message: Send a private command to a specific agent.">@Name</span>
+      <span data-tooltip="General: Assign a generic task to the primary agent.">@general</span>
+      <span data-tooltip="Summarize: Generate a concise summary of the chat history.">@summarizer</span>
+      <span data-tooltip="Research: Initiate a deep-dive research task.">@research</span>
+      <span data-tooltip="Job Task: Create and dispatch a background worker task.">@job</span>
+      <span data-tooltip="Idea: Save this thought as an idea note to system memory.">@idea</span>
+      <span data-tooltip="Status: Request a system status report from all agents.">@status</span>
+      <span data-tooltip="Clear Chat: Wipes the display. Memory remains intact.">@clear</span>
+      <span data-tooltip="Coffee Break: Trigger the coffee cup animation.">/coffee</span>
+      <span data-tooltip="UFO Event: Call a 60s alien invasion animation.">/ufo</span>
+      <span data-tooltip="Ghost: Summon a subtle 2-minute ghost apparition.">/ghost</span>
     </div>
   </div>`;
 }
@@ -869,7 +1090,7 @@ function showWarRoom() {
 }
 
 // ── Autocomplete ──
-const BUILTIN_CMDS = ['bs','general','summarizer','normal','recherche','job','idea','status','clear'];
+const BUILTIN_CMDS = ['bs','general','summarizer','normal','research','job','idea','status','clear'];
 let acIdx = -1;
 
 function onChatInput(ta) {
@@ -900,7 +1121,8 @@ function onChatKey(e) {
   if (dd.classList.contains('show') && items.length) {
     if (e.key === 'ArrowDown') { e.preventDefault(); acIdx = Math.min(acIdx+1, items.length-1); items.forEach((el,i) => el.classList.toggle('active', i===acIdx)); return; }
     if (e.key === 'ArrowUp') { e.preventDefault(); acIdx = Math.max(acIdx-1, 0); items.forEach((el,i) => el.classList.toggle('active', i===acIdx)); return; }
-    if (e.key === 'Tab' || (e.key === 'Enter' && acIdx >= 0)) { e.preventDefault(); pickAc(items[acIdx]?.textContent.replace(/^@\s?/,'') || ''); return; }
+    if (e.key === 'Tab') { e.preventDefault(); pickAc(items[acIdx >= 0 ? acIdx : 0]?.textContent.replace(/^@\s?/,'') || ''); return; }
+    if (e.key === 'Enter' && acIdx >= 0) { e.preventDefault(); pickAc(items[acIdx]?.textContent.replace(/^@\s?/,'') || ''); return; }
     if (e.key === 'Escape') { dd.classList.remove('show'); return; }
   }
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
@@ -913,18 +1135,25 @@ async function sendChat() {
   const msg = ta.value.trim();
   if (!msg) return;
   ta.value = '';
+  
+  // Easter Egg Cheat Codes
+  const m = msg.toLowerCase();
+  if (m === '/ufo') { if(window.showUfoAttack) window.showUfoAttack(); return; }
+  if (m === '/ghost') { if(window.showGhost) window.showGhost(); return; }
+  if (m === '/coffee') { if(window.showCoffeeBreak) window.showCoffeeBreak(); return; }
+
   document.getElementById('ac-dropdown')?.classList.remove('show');
   const res = await api('POST', '/chat', {content: msg});
   if (res) {
     if (res.status === 'role_set') toast(`👑 ${res.agent} → ${res.role}`, 'success');
-    else if (res.status === 'idea_saved') toast('💡 Idee gespeichert', 'success');
+    else if (res.status === 'idea_saved') toast('💡 Idea saved', 'success');
     else if (res.status === 'job_created') toast(`📋 Job → ${res.general}: ${res.task?.substring(0,60)}`, 'success');
     else if (res.msg) toast(`⚠️ ${res.msg}`, 'error');
-    else if (res.status === 'cleared') toast('🗑 Chat geleert', 'success');
+    else if (res.status === 'cleared') toast('🗑 Chat cleared', 'success');
     else if (res.status === 'agents') toast(`📊 ${res.agents.map(a => a.name+'('+a.role+')').join(', ')}`, 'info');
-    else { const target = res.target ? `→ ${res.target}` : `→ ${(res.asked||[]).join(', ') || 'niemand'}`; toast(`${res.mode==='brainstorm'?'🧠':res.mode==='recherche'?'🔍':'💬'} ${target}`, 'success'); }
+    else { const target = res.target ? `→ ${res.target}` : `→ ${(res.asked||[]).join(', ') || 'nobody'}`; toast(`${res.mode==='brainstorm'?'🧠':res.mode==='research'?'🔍':'💬'} ${target}`, 'success'); }
     refreshChat(); loadAgents();
-  } else { toast('Hub nicht erreichbar', 'error'); }
+  } else { toast('Hub unreachable', 'error'); }
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -939,26 +1168,31 @@ async function refreshChat() {
   if (window._lastChatData === dataStr) return;
   window._lastChatData = dataStr;
 
+  const st = el.scrollTop;
   const wasAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
 
-  if (!msgs || !msgs.length) { el.innerHTML = '<div class="empty">Noch keine Nachrichten.</div>'; return; }
+  if (!msgs || !msgs.length) { el.innerHTML = '<div class="empty">No messages yet.</div>'; return; }
   const sorted = msgs.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
   el.innerHTML = sorted.map(m => {
     const isUser = m.metadata?.sender === 'user';
-    const name = isUser ? 'Du' : (m.metadata?.sender || 'System');
+    const name = isUser ? 'You' : (m.metadata?.sender || 'System');
     const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
     const c = isUser ? 'var(--primary)' : agentColor(name);
     const nameColor = isUser ? 'var(--primary)' : (name.toLowerCase().startsWith('testag') ? '#0066FF' : 'inherit');
     const mid = m.id || Math.random().toString(36).slice(2);
-    const safe = esc(m.content).replace(/\n/g, '<br>');
+    let safe = esc(m.content);
+    safe = safe.replace(/\[SOUL:\s*([\s\S]*?)\]/g, '<div style="font-size:0.6rem; color:var(--bg-surface); opacity:0.5; margin-top:4px;">[SOUL: $1]</div>');
+    safe = safe.replace(/\n/g, '<br>');
     return `<div class="chat-msg ${isUser?'user':'agent'}" style="border-left-color:${c};">
-      <div class="chat-meta"><span class="agent-name" style="color:${nameColor}">${esc(name)}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Kopieren">📋</button>${time}</span></div>
+      <div class="chat-meta"><span class="agent-name" style="color:${nameColor}">${esc(name)}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Copy">📋</button><button class="copy-btn del-btn" onclick="deleteChatMsg('${mid}')" title="Delete">🗑</button>${time}</span></div>
       <div class="mem-content" id="msg-${mid}">${safe}</div></div>`;
   }).join('');
   
   if (wasAtBottom || !window._chatInitialized) {
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     window._chatInitialized = true;
+  } else {
+    el.scrollTop = st;
   }
 
   // TTS
@@ -980,11 +1214,29 @@ function copyMsg(id) {
 
 // ── TTS Queue ──
 const _ttsQ = []; let _ttsBusy = false;
+function stopTTS() {
+  speechSynthesis.cancel();
+  _ttsQ.length = 0;
+  _ttsBusy = false;
+  const btn = document.getElementById('stop-tts-btn');
+  if(btn) btn.style.display = 'none';
+}
+
+async function deleteChatMsg(id) {
+  await api('DELETE', `/memory/${id}`);
+  stopTTS();
+  window._lastChatData = null; // force re-render
+  refreshChat();
+}
+
 async function speak(text, agentId='') {
   if (!document.getElementById('tts-enabled')?.checked) return;
   _ttsQ.push({text, agentId});
   if (_ttsBusy) return;
   _ttsBusy = true;
+  const stopBtn = document.getElementById('stop-tts-btn');
+  if(stopBtn) stopBtn.style.display = 'block';
+
   while (_ttsQ.length) {
     const {text: t, agentId: a} = _ttsQ.shift();
     speechSynthesis.cancel();
@@ -999,6 +1251,7 @@ async function speak(text, agentId='') {
     await new Promise(ok => { u.onend = ok; u.onerror = ok; speechSynthesis.speak(u); });
   }
   _ttsBusy = false;
+  if(stopBtn) stopBtn.style.display = 'none';
 }
 
 // ── STT ──
@@ -1013,14 +1266,21 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const inp = document.getElementById('chat-input');
     if (inp) inp.value = text.trim();
   };
-  recognition.onerror = () => document.getElementById('mic-btn')?.classList.remove('active');
-  recognition.onend = () => document.getElementById('mic-btn')?.classList.remove('active');
+  recognition.onerror = () => { const b = document.getElementById('mic-btn'); if(b) { b.classList.remove('active'); b.innerText = 'Rec'; } };
+  recognition.onend = () => { const b = document.getElementById('mic-btn'); if(b) { b.classList.remove('active'); b.innerText = 'Rec'; } };
 }
 function toggleSTT() {
   const btn = document.getElementById('mic-btn');
-  if (!recognition) { toast('Browser unterstützt keine Spracheingabe', 'error'); return; }
-  if (btn.classList.contains('active')) { recognition.stop(); btn.classList.remove('active'); }
-  else { recognition.start(); btn.classList.add('active'); }
+  if (!recognition) { toast('Browser does not support voice input', 'error'); return; }
+  if (btn.classList.contains('active')) {
+    recognition.stop();
+    btn.classList.remove('active');
+    btn.innerText = 'Rec';
+  } else {
+    recognition.start();
+    btn.classList.add('active');
+    btn.innerText = 'Stop';
+  }
 }
 
 // ── Status Lamps ──
@@ -1029,29 +1289,126 @@ function updateLamps(hubAgents) {
   const el = document.getElementById('status-lamps');
   if (!hubAgents) return;
   
-  const names = hubAgents.map(a => a.name).join(',');
+  // Filter out Hermes for the lamps
+  const displayAgents = hubAgents.filter(a => !a.name.toLowerCase().includes('hermes'));
+  const names = displayAgents.map(a => a.name).join(',');
+  
   if (_lastInternals !== names) {
-    el.innerHTML = hubAgents.map(a => {
-      const d = (Math.random() * 2).toFixed(2);
+    el.innerHTML = displayAgents.map((a, i) => {
+      const delay = (i * 0.2).toFixed(2);
       const col = agentColor(a.name);
-      return `<div class="lamp" data-ag="${a.name}" title="${a.name}" style="color:${col};background:${col};animation-delay:-${d}s"></div>`;
+      return `<div class="lamp" data-ag="${a.name}" title="${a.name}" style="color:${col};background:${col};animation-delay:-${delay}s"></div>`;
     }).join('');
     _lastInternals = names;
   }
   
   el.querySelectorAll('.lamp').forEach(l => {
     const key = l.dataset.ag;
-    const agent = hubAgents.find(a => a.name === key);
+    const agent = displayAgents.find(a => a.name === key);
     const st = agent?.status || 'offline';
     l.className = st === 'busy' ? 'lamp busy' : st === 'online' ? 'lamp on' : 'lamp';
   });
 }
 
+// ── Coffee & UFO Reminders ──
+function checkTimers() {
+  const now = Date.now();
+  
+  // Coffee (3 hours)
+  const lastCoffee = localStorage.getItem('last_coffee_time');
+  if (!lastCoffee) {
+    localStorage.setItem('last_coffee_time', now);
+  } else if (now - parseInt(lastCoffee) > 3 * 60 * 60 * 1000) {
+    localStorage.setItem('last_coffee_time', now);
+    const overlay = document.getElementById('coffee-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    speak("Take it easy. Drink coffee. It's time to take a break.");
+  }
+
+  // UFO (10 hours)
+  const lastUfo = localStorage.getItem('last_ufo_time');
+  if (!lastUfo) {
+    localStorage.setItem('last_ufo_time', now);
+  } else if (now - parseInt(lastUfo) > 10 * 60 * 60 * 1000) {
+    localStorage.setItem('last_ufo_time', now);
+    const ufoOverlay = document.getElementById('ufo-overlay');
+    if (ufoOverlay) {
+        ufoOverlay.style.display = 'flex';
+        setTimeout(() => { ufoOverlay.style.display = 'none'; }, 60000);
+    }
+    speak("Warning. Ten hours uptime reached. Alien invasion initiated.");
+  }
+
+  // Ghost (6 hours and 6 minutes)
+  const lastGhost = localStorage.getItem('last_ghost_time');
+  if (!lastGhost) {
+    localStorage.setItem('last_ghost_time', now);
+  } else if (now - parseInt(lastGhost) > ((6 * 60 * 60) + (6 * 60)) * 1000) {
+    localStorage.setItem('last_ghost_time', now);
+    const ghostOverlay = document.getElementById('ghost-overlay');
+    if (ghostOverlay) {
+        // Clone and re-append to restart the CSS animation
+        const newGhost = ghostOverlay.cloneNode(true);
+        ghostOverlay.parentNode.replaceChild(newGhost, ghostOverlay);
+        newGhost.style.display = 'flex';
+        setTimeout(() => { newGhost.style.display = 'none'; }, 120000); // 120s animation
+    }
+  }
+}
+setInterval(checkTimers, 60000); // Check every minute
+window.coffeeTimer = null;
+window.coffeeFleeCount = 0;
+window.showCoffeeBreak = () => { 
+  const el = document.getElementById('coffee-overlay');
+  el.style.transition = 'none';
+  el.style.bottom = '30px';
+  el.style.right = '30px';
+  el.style.top = 'auto';
+  el.style.left = 'auto';
+  el.style.display = 'block'; 
+  window.coffeeFleeCount = 0;
+  speak("Take it easy. Drink coffee.");
+  clearTimeout(window.coffeeTimer);
+  window.coffeeTimer = setTimeout(() => { el.style.display = 'none'; }, 20000);
+};
+
+window.fleeCoffee = () => {
+  window.coffeeFleeCount++;
+  const el = document.getElementById('coffee-overlay');
+  if (window.coffeeFleeCount >= 3) {
+    el.style.display = 'none';
+    clearTimeout(window.coffeeTimer);
+    return;
+  }
+  el.style.transition = 'all 0.15s cubic-bezier(0.25, 1, 0.5, 1)';
+  const maxX = Math.max(10, window.innerWidth - el.offsetWidth - 20);
+  const maxY = Math.max(10, window.innerHeight - el.offsetHeight - 20);
+  const rx = Math.max(10, Math.floor(Math.random() * maxX));
+  const ry = Math.max(10, Math.floor(Math.random() * maxY));
+  el.style.bottom = 'auto';
+  el.style.right = 'auto';
+  el.style.left = rx + 'px';
+  el.style.top = ry + 'px';
+};
+window.showUfoAttack = () => { 
+    const o = document.getElementById('ufo-overlay'); 
+    o.style.display='flex'; 
+    setTimeout(() => { o.style.display = 'none'; }, 600000);
+};
+window.showGhost = () => {
+    const o = document.getElementById('ghost-overlay');
+    const newGhost = o.cloneNode(true);
+    o.parentNode.replaceChild(newGhost, o);
+    newGhost.style.display='flex';
+    setTimeout(() => { newGhost.style.display = 'none'; }, 120000);
+};
+
 // ── Init ──
 (async () => {
+  checkTimers();
   await discoverPort();
   if (!API) {
-    document.getElementById('content').innerHTML = '<div class="empty" style="padding:80px 20px"><h2 style="color:var(--primary);margin-bottom:10px">Hub nicht erreichbar</h2><p>Backend auf Port 3002 starten.</p></div>';
+    document.getElementById('content').innerHTML = '<div class="empty" style="padding:80px 20px"><h2 style="color:var(--primary);margin-bottom:10px">Hub unreachable</h2><p>Start backend on port 3002.</p></div>';
     return;
   }
   await loadAgents();
