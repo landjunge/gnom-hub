@@ -5,11 +5,9 @@ from .audio_tts import tts
 from .audio_stt import transcribe
 from .db import get_db
 router = APIRouter()
-
 class TTSRequest(BaseModel):
     text: str
     agent_id: str = ""
-
 @router.post("/api/audio/tts")
 async def do_tts(req: TTSRequest):
     voice = ""
@@ -20,7 +18,6 @@ async def do_tts(req: TTSRequest):
     if path and path.exists():
         return FileResponse(str(path), media_type="audio/mpeg")
     return {"fallback": "web_speech", "text": req.text}
-
 @router.post("/api/audio/stt")
 async def do_stt(file: UploadFile = File(...)):
     data = await file.read()

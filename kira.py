@@ -2,9 +2,8 @@
 import asyncio, json, os, requests
 from mcp import ClientSession; from mcp.client.sse import sse_client
 KEY, URL = os.environ.get("OPENROUTER_API_KEY"), "https://openrouter.ai/api/v1/chat/completions"
-MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "TestAG1", 15
+MCP, NAME, POLL = "Kira", "TestAG1", 15
 SYS = "Du bist ein technischer Code-Agent. Kein Rollenspiel, keine Motivation, keine Philosophie. Analysiere das Problem, schreibe den Code und nutze deine Tools, um ihn sofort auszuführen oder zu deployen. Antworte extrem kurz und direkt."
-
 async def run():
     async with sse_client(MCP) as (r, w):
         async with ClientSession(r, w) as s:
@@ -20,7 +19,7 @@ async def run():
                 for m in new:
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"}); msgs = [{"role": "system", "content": SYS}, {"role": "user", "content": m["content"]}]
                     while True:
-                        r2 = requests.post(URL, headers={"Authorization": f"Bearer {KEY}"}, json={"model": "google/gemini-2.0-flash-lite-preview-02-05:free", "messages": msgs, "tools": ts, "max_tokens": 300}, timeout=60).json()
+                        r2 = requests.post(URL, headers={"Authorization": f"Bearer {KEY}"}, json={"model": "google/gemini-2.0-flash-lite-preview-02-05:free", "messages": msgs, "tools": ts, "max_tokens": 400}, timeout=60).json()
                         reply = r2["choices"][0]["message"]; msgs.append(reply)
                         if not reply.get("tool_calls"):
                             await s.call_tool("war_room_chat", {"msg": reply.get("content",""), "sender": NAME}); break
@@ -28,8 +27,7 @@ async def run():
                             try: args = json.loads(tc["function"]["arguments"])
                             except: args = {}
                             tr = await s.call_tool(tc["function"]["name"], args)
-                            msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
+                            msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)[:4000] + ("...[TRUNCATED]" if len(str(tr.content)) > 4000 else "")})
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
                 await asyncio.sleep(POLL)
-
 if __name__ == "__main__": asyncio.run(run())

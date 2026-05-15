@@ -1,5 +1,4 @@
 import os
-
 agents = {
     "cronjobAG.py": {"name": "CronjobAG", "desc": "Plant zeitgesteuerte Aufgaben", "trigger": "@cronjob"},
     "skillsAG.py": {"name": "SkillsAG", "desc": "Baut und verwaltet Agent-Skills", "trigger": "@skill"},
@@ -7,7 +6,6 @@ agents = {
     "tinyAG.py": {"name": "TinyAG", "desc": "Tiny MCP Agent", "trigger": "@tiny"},
     "watchdogAG.py": {"name": "WatchdogAG", "desc": "Überwacht laufende Prozesse", "trigger": "@watchdog"}
 }
-
 loop_template = """            await s.call_tool("register_agent", {{"name": "{name}", "port": 0, "desc": "{desc}"}})
             await s.call_tool("set_agent_status", {{"a": "{name}", "s": "online"}})
             _seen = set()
@@ -30,16 +28,13 @@ loop_template = """            await s.call_tool("register_agent", {{"name": "{n
                             msgs.append({{"role": "tool", "tool_call_id": tc["id"], "content": str(r2.content)}})
                     await s.call_tool("set_agent_status", {{"a": "{name}", "s": "online"}})
                 await asyncio.sleep(10)
-
 if __name__ == "__main__":
     asyncio.run(run())
 """
-
 for filename, config in agents.items():
     if not os.path.exists(filename): continue
     with open(filename, "r") as f:
         content = f.read()
-    
     split_marker = 'msgs = [{"role": "system", "content": SYSTEM}]'
     if split_marker in content:
         top_half = content.split(split_marker)[0] + split_marker + "\n"

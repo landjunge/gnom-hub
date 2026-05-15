@@ -12,15 +12,12 @@ from .routes_audio import router as audio_router
 from .routes_admin import router as admin_router
 from .chat_commands import router as ideas_router
 from fastapi.middleware.cors import CORSMiddleware
-
 app = FastAPI(title="GNOM-HUB")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 for r in [memory_router, agents_router, nudge_router, registry_router, chat_router, audio_router, admin_router, ideas_router]:
     app.include_router(r)
-
 FRONT = Path(__file__).parent.parent.parent / "frontend"
 if FRONT.exists(): app.mount("/static", StaticFiles(directory=str(FRONT)), name="static")
-
 @app.get("/")
 def root():
     idx = FRONT / "index.html"

@@ -1,12 +1,10 @@
 """TTS Engine — ElevenLabs mit Web-Speech-Fallback."""
 import os
 from .config import DATA_DIR
-
 AUDIO_DIR = DATA_DIR / "audio"
 AUDIO_DIR.mkdir(exist_ok=True)
 ELEVEN_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 ELEVEN_VOICE = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
-
 def tts(text: str, voice_id: str = ""):
     """ElevenLabs TTS → MP3 Pfad. None = Fallback auf Browser Web Speech."""
     if not ELEVEN_KEY: return None

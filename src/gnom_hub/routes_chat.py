@@ -12,7 +12,7 @@ def _parse(t):
     m = re.match(r"@(\w+)\s*(.*)", t, re.DOTALL)
     if not m: return t, None, None
     tag, r = m.group(1).lower(), m.group(2).strip()
-    if tag in ("bs","idea","clear","status","recherche","job","summary"): return r or t, None, tag
+    if tag in ("bs","idea","clear","status","research","job","summary"): return r or t, None, tag
     if tag in ("summarizer","general","normal"):
         m2 = re.match(r"@?(\w+)", r)
         return (t, m2.group(1), tag) if m2 else (t, None, None)
@@ -27,13 +27,16 @@ CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content)
+    if tgt and msg.sender == "user":
+        a = next((x for x in get_db("agents") if x.get("name","").lower() == tgt.lower()), None)
+        if a and a.get("description"): msg.content += f"\n[SOUL: {a['description']}]"
     save_db("memory", get_db("memory") + [{"id": str(uuid.uuid4()), "agent_id": "war-room", "content": msg.content,
         "metadata": {"type": cmd or "chat", "sender": msg.sender}, "timestamp": datetime.utcnow().isoformat()+"Z"}])
     if msg.sender != "user": return {"status": "saved"}
     if cmd in CMDS: return CMDS[cmd](q)
-    if cmd == "recherche":
+    if cmd == "research":
         skip = ("general","summarizer"); targets = [a["name"] for a in get_db("agents") if a.get("status")=="online" and a.get("role") not in skip]
-        return {"status": "dispatched", "asked": [n for n in targets if dispatch(q, target=n)], "target": None, "mode": "recherche"}
+        return {"status": "dispatched", "asked": [n for n in targets if dispatch(q, target=n)], "target": None, "mode": "research"}
     if cmd in ("general","summarizer","normal") and tgt:
         n = _role(tgt, cmd); return {"status": "role_set", "agent": n, "role": cmd} if n else {"status": "error"}
     return {"status": "dispatched", "asked": dispatch(q, target=tgt), "target": tgt, "mode": "brainstorm" if cmd=="bs" else "chat"}

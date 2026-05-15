@@ -1,23 +1,19 @@
 """Role Prompt Implanter — schreibt System-Prompt in Agent-Dateien."""
 import os
 from pathlib import Path
-
 HOME = Path.home()
 TARGETS = ["soul.md", "SOUL.md", "system.md", "core.md"]
 SEP = "\n\n---\n\n"
-
 def _find_agent_dir(name):
     """Sucht ~/.{name_lower}/ als Agent-Verzeichnis."""
     d = HOME / f".{name.lower()}"
     return d if d.is_dir() else None
-
 def _find_target(agent_dir):
     """Sucht soul.md → system.md → core.md in agent_dir."""
     for t in TARGETS:
         p = agent_dir / t
         if p.exists(): return p
     return None
-
 def implant(agent_name, prompt):
     """Implantiert System-Prompt in Agent-Datei. Returns Pfad oder None."""
     d = _find_agent_dir(agent_name)

@@ -1,7 +1,6 @@
 """STT Engine — Whisper lokal, OpenAI API Fallback."""
 import os, io, tempfile
 from typing import Optional
-
 def stt_local(audio_bytes: bytes) -> Optional[str]:
     """Lokales faster-whisper STT."""
     try:
@@ -13,7 +12,6 @@ def stt_local(audio_bytes: bytes) -> Optional[str]:
         os.unlink(tmp.name)
         return " ".join(s.text for s in segs).strip()
     except: return None
-
 def stt_cloud(audio_bytes: bytes) -> Optional[str]:
     """OpenAI Whisper API Fallback."""
     key = os.environ.get("OPENAI_API_KEY", "")
@@ -26,7 +24,6 @@ def stt_cloud(audio_bytes: bytes) -> Optional[str]:
             data={"model": "whisper-1", "language": "de"}, timeout=30)
         return r.json().get("text") if r.status_code == 200 else None
     except: return None
-
 def transcribe(audio_bytes: bytes) -> str:
     """Versucht lokal, dann Cloud. Gibt '' bei totalem Fehler zurück."""
     return stt_local(audio_bytes) or stt_cloud(audio_bytes) or ""

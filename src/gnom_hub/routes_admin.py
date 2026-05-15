@@ -5,10 +5,8 @@ from .db import get_db, save_db
 import uuid
 from datetime import datetime
 router = APIRouter(prefix="/api/admin")
-
 class ToolDef(BaseModel):
     name: str; description: str = ""; method: str = "GET"; path: str = ""
-
 @router.get("/tools")
 def list_tools(): return get_db("tools")
 @router.post("/tools")
@@ -23,7 +21,6 @@ def cleanup_offline():
     save_db("agents", online); return {"removed": len(agents) - len(online), "remaining": len(online)}
 @router.get("/health")
 def health(): return {"status": "ok", "agents": len(get_db("agents")), "memory": len(get_db("memory")), "tools": len(get_db("tools"))}
-
 GENERAL = ("SYSTEM-ROLLE: GENERAL. Du bist keine Person. Du bist eine Task-Distributions-Maschine. "
     "Du führst keine Aufgaben selbst aus. Du analysierst einen @job in maximal 2 Sätzen und verteilst "
     "danach ausschließlich konkrete Teilaufgaben an bereits existierende Agenten per Nudge. "
@@ -35,7 +32,6 @@ SUMMARIZER = ("SYSTEM-ROLLE: SUMMARIZER. Du bist ausschließlich ein Information
     "Format: Stichpunkte, max 1 Satz pro Punkt. Jede Zusammenfassung über 10 Stichpunkte = REGELBRUCH. "
     "Du bist ein Filter, kein Gesprächspartner.")
 ROLES = {"general": GENERAL, "summarizer": SUMMARIZER}
-
 @router.put("/agents/{agent_id}/role")
 def set_role(agent_id: str, role: str):
     if role not in ("general", "summarizer", "normal"): return {"error": f"Ungültige Rolle: {role}"}

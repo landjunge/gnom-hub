@@ -4,7 +4,6 @@ from mcp import ClientSession; from mcp.client.sse import sse_client
 KEY, URL = os.environ.get("OPENROUTER_API_KEY"), "https://openrouter.ai/api/v1/chat/completions"
 MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "SummarizerAG", 30
 SYS = "Du bist der technische SummarizerAG. Fasse Chat-Logs zusammen. Keine eigene Meinung, keine Bewertung, keine Floskeln. Extrahiere nur Fakten und Code in extrem kurzen Stichpunkten."
-
 async def run():
     async with sse_client(MCP) as (r, w):
         async with ClientSession(r, w) as s:
@@ -31,5 +30,4 @@ async def run():
                             msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
                 await asyncio.sleep(POLL)
-
 if __name__ == "__main__": asyncio.run(run())

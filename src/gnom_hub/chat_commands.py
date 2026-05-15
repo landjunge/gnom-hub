@@ -4,13 +4,11 @@ from datetime import datetime
 from fastapi import APIRouter
 from .db import get_db, save_db
 router = APIRouter()
-
 def _uid(): return str(uuid.uuid4())
 def _ts(): return datetime.utcnow().isoformat()+"Z"
 def _post_chat(sender, content):
     save_db("memory", get_db("memory") + [{"id": _uid(), "agent_id": "war-room",
         "content": content, "metadata": {"type": "role_response", "sender": sender}, "timestamp": _ts()}])
-
 def handle_idea(text):
     save_db("ideas", get_db("ideas") + [{"id": _uid(), "content": text, "ts": _ts()}])
     return {"status": "idea_saved", "content": text}

@@ -2,15 +2,11 @@
 import asyncio, json, os, requests
 from mcp import ClientSession
 from mcp.client.sse import sse_client
-
-# ── Konfiguration ──────────────────────────────
 MODEL   = "google/gemini-2.0-flash-lite-preview-02-05:free"
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "sk-DEIN-KEY-HIER")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
 SYSTEM  = "Du bist ein Gnom-Hub Agent. Nutze die verfügbaren Tools."
-# ────────────────────────────────────────────────
-
 async def run():
     async with sse_client(MCP_URL) as (r, w):
         async with ClientSession(r, w) as s:
@@ -33,6 +29,5 @@ async def run():
                         res = await s.call_tool(tc["function"]["name"], json.loads(tc["function"]["arguments"]))
                         print(f"  🔧 {tc['function']['name']}")
                         msgs.append({"role": "tool", "tool_call_id": tc["id"], "content": str(res.content)})
-
 if __name__ == "__main__":
     asyncio.run(run())

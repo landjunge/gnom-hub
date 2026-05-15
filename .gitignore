@@ -10,3 +10,4 @@ dist/
 *.log
 .pytest_cache/
 node_modules/
+logs_*.txt

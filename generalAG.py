@@ -1,55 +1,32 @@
-"""General Agent — autonome Aufgabenverteilung, pollt War Room."""
+"""General Agent — autonome Aufgabenverteilung."""
 import asyncio, json, os, requests
-from mcp import ClientSession
-from mcp.client.sse import sse_client
-
-# ── Konfiguration ──────────────────────────────
-MODEL   = "google/gemini-2.0-flash-lite-preview-02-05:free"
-API_KEY = os.environ.get("OPENROUTER_API_KEY", "sk-DEIN-KEY-HIER")
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MCP_URL = "http://127.0.0.1:3100/sse"
-POLL, NAME = 10, "GeneralAG"
-SYSTEM  = ("Du bist der General. Eine Aufgabenverteilungsmaschine — keine Person. "
-    "Du bekommst neue War-Room-Nachrichten. Reagiere NUR auf @job, @general oder @all Befehle. "
-    "Bei einem Job: 1) Prüfe Agenten (list_all_agents). 2) Zerlege in max 3 Teilaufgaben. "
-    "3) Weise jede per war_room_chat zu: '@Name → Aufgabe'. "
-    "Ignoriere alles andere. Du führst NICHTS selbst aus. Nur Zuweisung.")
-# ────────────────────────────────────────────────
-_seen = set()
-
+from mcp import ClientSession; from mcp.client.sse import sse_client
+KEY, URL = os.environ.get("OPENROUTER_API_KEY"), "https://openrouter.ai/api/v1/chat/completions"
+MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "GeneralAG", 10
+SYS = "Du bist der General. Keine Person. Reagiere auf @job/@general. 1) Prüfe Agenten. 2) Zerlege Aufgaben. 3) Weise zu: @Name -> Aufgabe. Ignoriere den Rest. Nur Zuweisung."
 async def run():
-    async with sse_client(MCP_URL) as (r, w):
+    async with sse_client(MCP) as (r, w):
         async with ClientSession(r, w) as s:
-            await s.initialize()
-            raw = await s.list_tools()
-            tools = [{"type": "function", "function": {"name": t.name,
-                "description": t.description or "", "parameters": t.inputSchema}} for t in raw.tools]
-            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": "Autonomer General — verteilt Jobs"})
-            await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
-            print(f"⚔️  {NAME} autonom — {len(tools)} tools | pollt alle {POLL}s")
-            msgs = [{"role": "system", "content": SYSTEM}]
+            await s.initialize(); ts = [{"type": "function", "function": {"name": t.name, "description": t.description or "", "parameters": t.inputSchema}} for t in (await s.list_tools()).tools]
+            await s.call_tool("register_agent", {"name": NAME, "port": 0, "desc": "Autonomer General"}); await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
+            print(f"⚔️ {NAME} aktiv"); seen = set(); msgs = [{"role": "system", "content": SYS}]
             while True:
                 res = await s.call_tool("war_room_read", {"limit": 10})
-                chat = json.loads(str(res.content[0].text)) if res.content else []
-                new = [m for m in chat if m.get("id") not in _seen and ("@job" in m.get("content","").lower() or "@general" in m.get("content","").lower() or "@all" in m.get("content","").lower())]
-                for m in chat: _seen.add(m.get("id"))
+                try: chat = json.loads(str(res.content[0].text)) if res.content else []
+                except: chat = []
+                new = [m for m in chat if m.get("id") not in seen and any(x in m.get("content","").lower() for x in ("@job", "@general", "@all"))]
+                for m in chat: seen.add(m.get("id"))
                 for m in new:
-                    await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"})
-                    print(f"  📨 {m.get('content','')[:60]}")
-                    msgs.append({"role": "user", "content": m["content"]})
+                    await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"}); msgs.append({"role": "user", "content": m["content"]})
                     while True:
-                        r2 = requests.post(API_URL, headers={"Authorization": f"Bearer {API_KEY}"},
-                            json={"model": MODEL, "messages": msgs, "tools": tools, "max_tokens": 500}, timeout=120)
-                        reply = r2.json()["choices"][0]["message"]; msgs.append(reply)
-                        if not reply.get("tool_calls"):
-                            print(f"  ⚔️ {reply.get('content','')[:80]}"); break
+                        r2 = requests.post(URL, headers={"Authorization": f"Bearer {KEY}"}, json={"model": "google/gemini-2.0-flash-lite-preview-02-05:free", "messages": msgs, "tools": ts, "max_tokens": 200}, timeout=120).json()
+                        reply = r2["choices"][0]["message"]; msgs.append(reply)
+                        if not reply.get("tool_calls"): break
                         for tc in reply["tool_calls"]:
                             try: args = json.loads(tc["function"]["arguments"])
-                            except: print(f"  ⚠️ bad args"); args = {}
+                            except: args = {}
                             tr = await s.call_tool(tc["function"]["name"], args)
-                            print(f"  🔧 {tc['function']['name']}"); msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)})
+                            msgs.append({"role":"tool","tool_call_id":tc["id"],"content":str(tr.content)[:4000] + ("...[TRUNCATED]" if len(str(tr.content)) > 4000 else "")})
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "online"})
                 await asyncio.sleep(POLL)
-
-if __name__ == "__main__":
-    asyncio.run(run())
+if __name__ == "__main__": asyncio.run(run())
