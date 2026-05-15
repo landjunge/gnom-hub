@@ -4,9 +4,9 @@ from mcp import ClientSession
 from mcp.client.sse import sse_client
 
 # ── Konfiguration ──────────────────────────────
-MODEL   = "deepseek-chat"
-API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-DEIN-KEY-HIER")
-API_URL = "https://api.deepseek.com/chat/completions"
+MODEL   = "google/gemini-2.0-flash-lite-preview-02-05:free"
+API_KEY = os.environ.get("OPENROUTER_API_KEY", "sk-DEIN-KEY-HIER")
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
 SYSTEM  = ("Du bist der Watchdog. Du überwachst alle laufenden Prozesse und Agent-Instanzen. "
     "Du kannst Agenten starten, stoppen und neustarten. Bei Problemen greifst du sofort ein. "

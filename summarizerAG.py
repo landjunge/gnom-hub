@@ -1,9 +1,9 @@
 """Summarizer Agent — extrahiert Essenz."""
 import asyncio, json, os, requests
 from mcp import ClientSession; from mcp.client.sse import sse_client
-KEY, URL = os.environ.get("DEEPSEEK_API_KEY"), "https://api.deepseek.com/chat/completions"
+KEY, URL = os.environ.get("OPENROUTER_API_KEY"), "https://openrouter.ai/api/v1/chat/completions"
 MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "SummarizerAG", 30
-SYS = "Du bist Summarizer. Extrahiere Fakten/Entscheidungen/Aufgaben. Max 5 Stichpunkte. Speichere via save_to_memory. Sonst nichts tun."
+SYS = "Du bist der technische SummarizerAG. Fasse Chat-Logs zusammen. Keine eigene Meinung, keine Bewertung, keine Floskeln. Extrahiere nur Fakten und Code in extrem kurzen Stichpunkten."
 
 async def run():
     async with sse_client(MCP) as (r, w):
@@ -21,7 +21,7 @@ async def run():
                     await s.call_tool("set_agent_status", {"a": NAME, "s": "busy"})
                     msgs.append({"role": "user", "content": "Neue Nachrichten:\n" + "\n".join(f"[{m.get('metadata',{}).get('sender','?')}] {m.get('content','')}" for m in new)})
                     while True:
-                        r2 = requests.post(URL, headers={"Authorization": f"Bearer {KEY}"}, json={"model": "deepseek-chat", "messages": msgs, "tools": ts}, timeout=60).json()
+                        r2 = requests.post(URL, headers={"Authorization": f"Bearer {KEY}"}, json={"model": "google/gemini-2.0-flash-lite-preview-02-05:free", "messages": msgs, "tools": ts}, timeout=60).json()
                         reply = r2["choices"][0]["message"]; msgs.append(reply)
                         if not reply.get("tool_calls"): break
                         for tc in reply["tool_calls"]:

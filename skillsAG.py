@@ -4,9 +4,9 @@ from mcp import ClientSession
 from mcp.client.sse import sse_client
 
 # ── Konfiguration ──────────────────────────────
-MODEL   = "deepseek-chat"
-API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-DEIN-KEY-HIER")
-API_URL = "https://api.deepseek.com/chat/completions"
+MODEL   = "google/gemini-2.0-flash-lite-preview-02-05:free"
+API_KEY = os.environ.get("OPENROUTER_API_KEY", "sk-DEIN-KEY-HIER")
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
 SYSTEM  = ("Du bist der Skills-Architekt. Deine Aufgabe: Skills für Agenten bauen und zuweisen. "
     "Ein Skill ist eine klar definierte Fähigkeit mit Name, Beschreibung und Ausführungslogik. "

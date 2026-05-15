@@ -1,11 +1,13 @@
 """Brainstorm Dispatcher — Hub fragt LLM im Namen der Agenten."""
-import threading, uuid, os, re, requests
+import os, re, requests, threading, uuid
 from datetime import datetime
+from dotenv import load_dotenv
 from .db import get_db, save_db
 
-OR_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-OR_URL = "https://api.deepseek.com/chat/completions"
-MODEL = "deepseek-chat"
+load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
+OR_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OR_URL = "https://openrouter.ai/api/v1/chat/completions"
+MODEL = "google/gemini-2.0-flash-lite-preview-02-05:free"
 
 def _post(sender, content):
     entry = {"id": str(uuid.uuid4()), "agent_id": "war-room", "content": content,
@@ -14,7 +16,7 @@ def _post(sender, content):
     save_db("memory", get_db("memory") + [entry])
 
 def _ask_llm(agent, question, context):
-    if not OR_KEY: _post(agent["name"], "[Kein DEEPSEEK_API_KEY]"); return
+    if not OR_KEY: _post(agent["name"], "[Kein OPENROUTER_API_KEY]"); return
     desc = agent.get("description", "")
     role_mem = [m for m in get_db("memory") if m.get("agent_id") == agent.get("id") and m.get("type") == "role"]
     sys_prompt = role_mem[-1]["content"].replace("[SYSTEM-ROLLE] ", "") if role_mem else f"Du bist {agent['name']} ({desc}), ein KI-Agent im Gnom-Hub."

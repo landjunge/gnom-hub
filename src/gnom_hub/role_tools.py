@@ -1,15 +1,17 @@
 """Role Tools — distribute_job (General) und summarize_chat (Summarizer)."""
 import os, requests
-from .db import get_db
+from dotenv import load_dotenv
+from .db import get_db, save_db
 
-DS_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-DS_URL = "https://api.deepseek.com/chat/completions"
+load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
+DS_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+DS_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 def _llm(system, user, tokens=500):
-    if not DS_KEY: return "[Kein DEEPSEEK_API_KEY]"
+    if not DS_KEY: return "[Kein OPENROUTER_API_KEY]"
     try:
         r = requests.post(DS_URL, headers={"Authorization": f"Bearer {DS_KEY}"},
-            json={"model": "deepseek-chat", "messages": [{"role": "system", "content": system},
+            json={"model": "google/gemini-2.0-flash-lite-preview-02-05:free", "messages": [{"role": "system", "content": system},
                   {"role": "user", "content": user}], "max_tokens": tokens}, timeout=60)
         return r.json()["choices"][0]["message"]["content"]
     except Exception as e: return f"[Fehler: {str(e)[:80]}]"

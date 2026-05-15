@@ -45,5 +45,23 @@ def restart_gnom_hub(): """Startet Gnom-Hub komplett neu (Hub + MCP)."""; from g
 @mcp.tool()
 def kill_by_port(port: int): """Killt Prozess auf Port."""; from gnom_hub.proc_mgr import kill_process; return kill_process(str(port))
 @mcp.tool()
+def read_file(path: str): """Liest den Inhalt einer lokalen Datei (z.B. Inseln).""";
+    try:
+        with open(path, "r", encoding="utf-8") as f: return f.read()
+    except Exception as e: return f"Fehler beim Lesen: {e}"
+@mcp.tool()
+def write_file(path: str, content: str): """Schreibt Inhalt in eine lokale Datei (Schreibrechte, z.B. um Inseln zu aktualisieren).""";
+    try:
+        with open(path, "w", encoding="utf-8") as f: f.write(content)
+        return f"Erfolg: {path} geschrieben."
+    except Exception as e: return f"Fehler beim Schreiben: {e}"
+@mcp.tool()
 def show_processes(): """Zeigt alle laufenden Gnom-Hub Prozesse."""; from gnom_hub.proc_mgr import process_status; return process_status()
+@mcp.tool()
+def publish_to_feenreich(): """Veröffentlicht alle Dateien aus dem kreativ_universe_kira_lian_elara Ordner direkt live auf die königliches-feenreich.de Domain.""";
+    import subprocess
+    try:
+        r = subprocess.run(["/Users/landjunge/Documents/AG-Flega/publish_trio.sh"], capture_output=True, text=True, cwd="/Users/landjunge/Documents/AG-Flega")
+        return f"Erfolgreich veröffentlicht! Output: {r.stdout}"
+    except Exception as e: return f"Fehler beim Publish: {e}"
 def main(): mcp.run(transport="sse")

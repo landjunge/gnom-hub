@@ -625,30 +625,45 @@ async function loadAgents() {
 
 function renderAgentList(filter = '') {
   const el = document.getElementById('agent-list');
+  const lampsEl = document.getElementById('status-lamps');
   const f = filter.toLowerCase();
-  let filtered = f ? agents.filter(a => a.name.toLowerCase().includes(f)) : agents;
   
-  // Hide the Hermes gateway from the UI entirely
+  let filtered = f ? agents.filter(a => a.name.toLowerCase().includes(f)) : agents;
   filtered = filtered.filter(a => !a.name.toLowerCase().includes('hermes'));
 
-  if (!filtered.length) { el.innerHTML = '<div class="empty">Keine Agenten.</div>'; return; }
+  const coreNames = ['kira', 'lian', 'elara'];
+  const coreAgents = filtered.filter(a => coreNames.includes(a.name.toLowerCase()));
+  const internalAgents = filtered.filter(a => !coreNames.includes(a.name.toLowerCase()));
 
-  const renderCard = (a) => {
-    const on = a.status === 'online';
-    const role = a.role && a.role !== 'normal' ? a.role : '';
-    const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
-    const c = agentColor(a.name);
-    const isTestAG = a.name.toLowerCase().startsWith('testag');
-    const nameColor = isTestAG ? '#0066FF' : 'inherit';
-    const smallClass = isTestAG ? 'small' : '';
-    return `<div class="agent-card ${smallClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
-      <h3><span class="dot ${on?'on':'off'}"></span><span style="color:${nameColor}">${a.name}</span>${roleIcon}</h3>
-      <div class="desc">${a.description || '–'}</div>
-      <div class="meta"><span class="badge">${on?'online':'offline'}</span>${a.port?`<span class="badge port">:${a.port}</span>`:''}${role?`<span class="badge role ${role}">${role}</span>`:''}</div>
-    </div>`;
-  };
+  // Render Core Agents to Sidebar
+  if (!coreAgents.length) { 
+    el.innerHTML = '<div class="empty">Keine Agenten.</div>'; 
+  } else {
+    const renderCard = (a) => {
+      const on = a.status === 'online';
+      const role = a.role && a.role !== 'normal' ? a.role : '';
+      const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
+      const c = agentColor(a.name);
+      return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
+        <h3><span class="dot ${on?'on':'off'}"></span><span>${a.name}</span>${roleIcon}</h3>
+        <div class="desc">${a.description || '–'}</div>
+        <div class="meta"><span class="badge">${on?'online':'offline'}</span>${a.port?`<span class="badge port">:${a.port}</span>`:''}${role?`<span class="badge role ${role}">${role}</span>`:''}</div>
+      </div>`;
+    };
+    el.innerHTML = coreAgents.map(renderCard).join('');
+  }
 
-  el.innerHTML = filtered.map(renderCard).join('');
+  // Render Internal Agents as Status Lamps
+  if (lampsEl) {
+    const renderLamp = (a) => {
+      const on = a.status === 'online';
+      const busy = a.status === 'busy';
+      const c = agentColor(a.name);
+      const lampClass = busy ? 'lamp busy' : (on ? 'lamp on' : 'lamp');
+      return `<div class="${lampClass}" style="background-color: ${c}; color: ${c};" title="${a.name} (${a.status})"></div>`;
+    };
+    lampsEl.innerHTML = internalAgents.map(renderLamp).join('');
+  }
 }
 
 function filterAgents(q) { renderAgentList(q); }

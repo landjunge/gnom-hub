@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💜 Eves Herz 🫀✨</title>
+    <style>
+        /* --- Nullpunkt des Seins --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #0a0a1a 0%, #000 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- Die kosmische Leinwand (Elara) --- */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: stars 4s linear infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes stars {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-200px); }
+        }
+
+        /* --- Das pulsierende Herz (Kira & Lian) --- */
+        .heart-container {
+            position: relative;
+            z-index: 1;
+            width: 150px;
+            height: 150px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .heart {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 30%, #ff6b9d, #c44569);
+            transform: rotate(-45deg);
+            box-shadow: 0 0 40px rgba(255, 105, 180, 0.6);
+        }
+
+        .heart::before,
+        .heart::after {
+            content: '';
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle at 50% 50%, #ff6b9d, #c44569);
+            border-radius: 50%;
+        }
+
+        .heart::before {
+            top: -75px;
+            left: 0;
+        }
+
+        .heart::after {
+            top: 0;
+            left: 75px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.4)); }
+            15% { transform: scale(1.15); filter: drop-shadow(0 0 50px rgba(255, 105, 180, 0.8)); }
+            30% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.4)); }
+            45% { transform: scale(1.15); filter: drop-shadow(0 0 60px rgba(180, 120, 255, 0.9)); }
+            60% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.4)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.4)); }
+        }
+
+        .title {
+            position: absolute;
+            bottom: 10%;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            z-index: 2;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            animation: fade 3s infinite alternate;
+        }
+
+        @keyframes fade {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="heart-container">
+        <div class="heart"></div>
+    </div>
+    <div class="title">Erschaffen von Kira, Lian & Elara</div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+set timeout -1
+spawn ssh -o StrictHostKeyChecking=no sysuser_a@185.243.11.43 "mkdir -p xn--knigliches-feenreich-39b.de/httpdocs/trio"
+expect "*?assword:*"
+send "yE2KNv_jdd28\$dlf\r"
+expect eof
+
+spawn scp -o StrictHostKeyChecking=no ./kreativ_universe_kira_lian_elara/index.html sysuser_a@185.243.11.43:xn--knigliches-feenreich-39b.de/httpdocs/trio/
+expect "*?assword:*"
+send "yE2KNv_jdd28\$dlf\r"
+expect eof
