@@ -19,9 +19,10 @@ CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content)
-    if tgt and msg.sender == "user":
-        a = next((x for x in get_db("agents") if x.get("name","").lower() == tgt.lower()), None)
-        if a and a.get("description"): msg.content += f"\n[SOUL: {a['description']}]"
+    s_name = msg.sender if msg.sender != "user" else tgt
+    a = next((x for x in get_db("agents") if x.get("name","").lower() == (s_name or "").lower()), None)
+    if a and a.get("description"):
+        msg.content += f' <span style="display:none" data-soul="{a["name"]}">[SOUL: {a["description"]}]</span>'
     save_db("memory", get_db("memory") + [{"id": str(uuid.uuid4()), "agent_id": "war-room", "content": msg.content, "metadata": {"type": cmd or "chat", "sender": msg.sender}, "timestamp": datetime.utcnow().isoformat()+"Z"}])
     if msg.sender != "user": return {"status": "saved"}
     if cmd in CMDS: return CMDS[cmd](q)

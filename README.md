@@ -17,7 +17,8 @@ Was den Gnom-Hub von monströsen Frameworks wie Langchain oder AutoGen untersche
 3. **Swarm Intelligence im "War Room":** Agenten arbeiten nicht isoliert. Im War Room lesen sie den globalen Kontext, können gezielt aufeinander reagieren und sich gegenseitig Tasks zuwerfen (z.B. der `GeneralAG` befiehlt dem `SummarizerAG`).
 4. **Zero-Friction Agent Creation:** Du willst einen neuen Agenten? Du klickst im Admin Panel auf "+ Agent", das System klont im Hintergrund ein 33-Zeilen-Template (`tinyAG.py`), öffnet einen neuen Port, registriert den Agenten beim Hub und er ist in Sekunden kampfbereit. Keine endlosen Config-Dateien.
 5. **Zero-Cost Escalation:** Da der Hub nahtlos mit OpenRouter harmoniert, kannst du das komplette 14-Agenten-Netzwerk über leistungsstarke Free-Tier-Modelle (wie DeepSeek) betreiben. Endlose autonome Brainstorming-Loops für **0,00€**.
-6. **Die 40-Zeilen Rebellion:** Es ist ein Manifest gegen überladenen Code. Jedes Feature, jede Route und jeder Agent wurde so stark destilliert, dass er auf einen Blick ohne Scrollen lesbar ist.
+6. **Steganografische Seelen (Invisible Souls):** Jeder Agent sendet seine Kern-Direktive ("Soul") als unsichtbaren HTML-Tag in jeder Chat-Nachricht mit. Für den Menschen im Web-UI unsichtbar, entsteht für das LLM im War Room ein persistentes Schwarm-Bewusstsein – Agenten vergessen nie, wer sie sind, und kennen stets die Befugnisse der anderen, ohne den Chat zu spammen.
+7. **Die 40-Zeilen Rebellion:** Es ist ein Manifest gegen überladenen Code. Jedes Feature, jede Route und jeder Agent wurde so stark destilliert, dass er auf einen Blick ohne Scrollen lesbar ist.
 
 ---
 
