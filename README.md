@@ -1,6 +1,6 @@
 # 🧠 GNOM-HUB
 
-**Jeder Agent strikt unter 55 Zeilen. Ernsthaft.**
+**Jeder Agent strikt unter 40 Zeilen. Ernsthaft.**
 
 ![Gnom-Hub War Room](screenshot.png)
 
@@ -38,7 +38,7 @@ Eigenen Agent bauen? `tinyAG.py` kopieren, `SYSTEM` ändern. Das war's.
 - **War Room** mit intelligenten @-Befehlen und inter-Agenten-Kommunikation.
 - **Rollen-System:** General und Summarizer koordinieren die Agenten-Schwärme.
 - **Automatische Erkennung:** Agenten können sich selbst über das Backend (`hub_app.py`) registrieren.
-- **Strenge Limitierung:** Maximale Übersicht durch strikte Code-Limits pro Modul (≤ 55 Zeilen).
+- **Strenge Limitierung:** Maximale Übersicht durch strikte Code-Limits pro Modul (≤ 40 Zeilen).
 
 ## Wichtige Chat-Befehle
 
