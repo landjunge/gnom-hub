@@ -5,21 +5,20 @@ def _parse(t):
     m = re.match(r"@(\w+)\s*(.*)", t, re.DOTALL); r = m.group(2).strip() if m else None
     if not m: return t, None, None
     tag = m.group(1).lower()
-    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback"): return r or t, None, tag
+    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback","desktop"): return r or t, None, tag
     if tag in ("summarizer","general","normal"):
         m2 = re.match(r"@?(\w+)", r); return (t, m2.group(1), tag) if m2 else (t, None, None)
     return r or t, tag, None
 def _role(name, role):
     agents = get_db("agents"); a = next((x for x in agents if x["name"].lower() == name.lower()), None)
     if not a: return None
-    for x in agents:
-        if x.get("role") == role and role != "normal": x["role"] = "normal"
-    a["role"] = role; save_db("agents", agents); return a["name"]
-def _handle_provider(q):
-    from .provider_switchAG import set_provider; from .chat_commands import _post_chat; p = q.split()
-    if p: _post_chat("System", set_provider(p[0], p[1] if len(p)>1 else None))
+    [x.update({"role": "normal"}) for x in agents if x.get("role") == role and role != "normal"]; a["role"] = role; save_db("agents", agents); return a["name"]
+def _handle_sys(q, m):
+    from .chat_commands import _post_chat
+    if m=="prov": from .provider_switchAG import set_provider; p=q.split(); _post_chat("System", set_provider(p[0], p[1] if len(p)>1 else None)) if p else None
+    else: from .desktopAG import desktop_action; _post_chat("System", desktop_action(q))
     return {"status": "ok"}
-CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": _handle_provider, "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True)}
+CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk")}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content)
