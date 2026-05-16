@@ -5,7 +5,7 @@ def _parse(t):
     m = re.match(r"@(\w+)\s*(.*)", t, re.DOTALL); r = m.group(2).strip() if m else None
     if not m: return t, None, None
     tag = m.group(1).lower()
-    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback","desktop","vision","evolve"): return r or t, None, tag
+    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback","desktop","vision","evolve","projekt"): return r or t, None, tag
     if tag in ("summarizer","general","normal"):
         m2 = re.match(r"@?(\w+)", r); return (t, m2.group(1), tag) if m2 else (t, None, None)
     return r or t, tag, None
@@ -18,18 +18,22 @@ def _handle_sys(q, m):
     if m=="prov": from .provider_switchAG import set_provider; p=q.split(); _post_chat("System", set_provider(p[0], p[1] if len(p)>1 else None)) if p else None
     elif m=="vis": from .visionAG import vision_loop; _post_chat("System", vision_loop(q))
     elif m=="evol": from .evolutionAG import evolve_agent; _post_chat("System", evolve_agent(q))
+    elif m=="proj":
+        from .db import set_active_project; set_active_project(q or "default")
+        _post_chat("System", f"Workspace & Chat gewechselt auf Projekt: {q or 'default'}")
     else: from .desktopAG import desktop_action; _post_chat("System", desktop_action(q))
     return {"status": "ok"}
-CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk"), "vision": lambda q: _handle_sys(q,"vis"), "evolve": lambda q: _handle_sys(q,"evol")}
+CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk"), "vision": lambda q: _handle_sys(q,"vis"), "evolve": lambda q: _handle_sys(q,"evol"), "projekt": lambda q: _handle_sys(q,"proj")}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content)
     from .zwc_soul import encode_soul
+    from .db import get_active_project
     s_name = msg.sender if msg.sender != "user" else tgt
     a = next((x for x in get_db("agents") if x.get("name","").lower() == (s_name or "").lower()), None)
     if a and a.get("description"):
         msg.content = encode_soul(msg.content, {"name": a["name"], "desc": a["description"], "job": a.get("active_job", "")})
-    save_db("memory", get_db("memory") + [{"id": str(uuid.uuid4()), "agent_id": "war-room", "content": msg.content, "metadata": {"type": cmd or "chat", "sender": msg.sender}, "timestamp": datetime.utcnow().isoformat()+"Z"}])
+    save_db("memory", get_db("memory") + [{"id": str(uuid.uuid4()), "agent_id": "war-room", "project": get_active_project(), "content": msg.content, "metadata": {"type": cmd or "chat", "sender": msg.sender}, "timestamp": datetime.utcnow().isoformat()+"Z"}])
     if msg.sender != "user": return {"status": "saved"}
     if cmd in CMDS: return CMDS[cmd](q)
     if cmd == "research":
@@ -39,4 +43,6 @@ def post_chat(msg: ChatMsg):
     if not cmd and not tgt: from .gatekeeperAG import intercept; return intercept(msg.content)
     return {"status": "dispatched", "asked": dispatch(q, target=tgt), "target": tgt, "mode": "brainstorm" if cmd=="bs" else "chat"}
 @router.get("/api/chat")
-def get_chat(limit: int = 50): return sorted([m for m in get_db("memory") if m.get("agent_id")=="war-room"], key=lambda x: x.get("timestamp",""), reverse=True)[:limit]
+def get_chat(limit: int = 50): 
+    from .db import get_active_project
+    return sorted([m for m in get_db("memory") if m.get("agent_id")=="war-room" and m.get("project", "default") == get_active_project()], key=lambda x: x.get("timestamp",""), reverse=True)[:limit]

@@ -7,10 +7,17 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "../../.env"))
 DS_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 DS_URL = "https://api.deepseek.com/chat/completions"
 MODEL = "deepseek-chat"
-WORKSPACE_DIR = "/Users/landjunge/Documents/AG-Flega/gnom_workspace"
+BASE_WORKSPACE = "/Users/landjunge/Documents/AG-Flega/gnom_workspace"
+
+def get_workspace_dir():
+    from .db import get_active_project
+    d = os.path.join(BASE_WORKSPACE, get_active_project())
+    os.makedirs(d, exist_ok=True)
+    return d
 
 def _post(sender, content):
-    entry = {"id": str(uuid.uuid4()), "agent_id": "war-room", "content": content,
+    from .db import get_active_project
+    entry = {"id": str(uuid.uuid4()), "agent_id": "war-room", "project": get_active_project(), "content": content,
              "metadata": {"type": "brainstorm", "status": "open", "sender": sender},
              "timestamp": datetime.utcnow().isoformat() + "Z"}
     save_db("memory", get_db("memory") + [entry])
@@ -21,11 +28,12 @@ def _ask_llm(agent, question, context):
     role_mem = [m for m in get_db("memory") if m.get("agent_id") == agent.get("id") and m.get("type") == "role"]
     sys_prompt = role_mem[-1]["content"].replace("[SYSTEM-ROLLE] ", "") if role_mem else f"Du bist {agent['name']} ({desc}), ein KI-Agent im Gnom-Hub."
     
+    wd = get_workspace_dir()
     # Files im Workspace auslesen
     files_str = ""
-    if os.path.exists(WORKSPACE_DIR): files_str = ", ".join(os.listdir(WORKSPACE_DIR))
+    if os.path.exists(wd): files_str = ", ".join(os.listdir(wd))
     
-    sys_prompt += f"\n\n[WORKSPACE: AG-Flega/gnom_workspace/ | Vorhandene Dateien: {files_str}]"
+    sys_prompt += f"\n\n[WORKSPACE: {wd} | Vorhandene Dateien: {files_str}]"
     sys_prompt += "\n- Um eine Datei zu erstellen/überschreiben, antworte zwingend mit: [WRITE: dateiname.ext]...dein code/text...[/WRITE]"
     sys_prompt += "\n- Um eine Datei zu lesen, antworte zwingend mit: [READ: dateiname.ext]"
     sys_prompt += "\nDas System wird [WRITE]-Blöcke aus dem Chat löschen und auf der Festplatte speichern, um Chat-Tokens zu sparen!"
@@ -46,8 +54,7 @@ def _ask_llm(agent, question, context):
             fname = match.group(1).strip()
             content = match.group(2).strip()
             try:
-                os.makedirs(WORKSPACE_DIR, exist_ok=True)
-                with open(os.path.join(WORKSPACE_DIR, fname), "w") as f: f.write(content)
+                with open(os.path.join(wd, fname), "w") as f: f.write(content)
                 answer = answer.replace(match.group(0), f"[System: Datei '{fname}' wurde erfolgreich im Workspace gespeichert.]")
             except Exception as e:
                 answer = answer.replace(match.group(0), f"[System-Fehler beim Speichern von {fname}: {e}]")
@@ -56,7 +63,7 @@ def _ask_llm(agent, question, context):
         read_matches = re.finditer(r"\[READ:\s*(.*?)\]", answer)
         for match in read_matches:
             fname = match.group(1).strip()
-            p = os.path.join(WORKSPACE_DIR, fname)
+            p = os.path.join(wd, fname)
             if os.path.exists(p):
                 with open(p, "r") as f:
                     file_content = f.read()[:2000] # Truncate to save tokens
@@ -66,13 +73,15 @@ def _ask_llm(agent, question, context):
                 
         _post(agent["name"], answer)
     except Exception as e: _post(agent["name"], f"[Fehler: {str(e)[:80]}]")
+
 def dispatch(question, target=None):
     """Startet LLM-Threads. target=Name → nur dieser Agent, sonst alle Online (außer Infrastruktur)."""
     exclude = ["BackupAG", "GeneralAG", "SummarizerAG"]
     online = [a for a in get_db("agents") if a.get("status") == "online" and a.get("name") not in exclude]
     if target: 
         online = [a for a in get_db("agents") if a.get("status") == "online" and a["name"].lower() == target.lower()]
-    chat = [m for m in get_db("memory") if m.get("agent_id") == "war-room"]
+    from .db import get_active_project
+    chat = [m for m in get_db("memory") if m.get("agent_id") == "war-room" and m.get("project", "default") == get_active_project()]
     from .zwc_soul import strip_zwc
     ctx = "\n".join(f"[{m.get('metadata',{}).get('sender','?')}] {strip_zwc(m['content'])[:120]}"
                     for m in sorted(chat, key=lambda x: x.get("timestamp",""))[-6:])

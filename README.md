@@ -79,16 +79,22 @@ Agenten liegen isoliert im Root-Verzeichnis. Jeder ist auf seinen System-Prompt 
 
 Das System reagiert auf Befehle wie eine Konsole:
 
-- **`@vision loop [Befehl]`** → Iterativer, selbstheilender 5-Step-Prozess, um komplexe visuelle Tasks auf dem Bildschirm zu lösen.
-- **`@evolve [Agent]`** → Zwingt einen Agenten dazu, basierend auf seinen Sandbox-Fehler-Logs seinen eigenen Code zu verbessern und neu zu committen.
+- **`@projekt [Name]`** → Erstellt oder wechselt in einen isolierten Projekt-Workspace (z.B. `@projekt SEO_Kampagne`). Der Datei-Browser und das Agenten-Gedächtnis passen sich nahtlos an das aktive Projekt an. Zurücksetzen mit `@projekt default`.
+- **`@bs [Thema]`** → (Brainstorm) Startet eine dynamische Kaskade über alle Agenten, um gemeinsam Ideen zu entwickeln.
+- **`@vision loop [Befehl]`** → Iterativer, selbstheilender 5-Step-Prozess, um komplexe visuelle Tasks auf dem Desktop zu lösen.
 - **`@desktop [Befehl]`** → Führt physische Maus/Tastatur-Eingaben aus.
-- **`@general [Aufgabe]`** → Übergibt eine Task zur autonomen Schwarm-Verteilung.
-- **`@bs [Thema]`** → Startet eine Brainstorming-Kaskade über alle Agenten.
+- **`@evolve [Agent]`** → Zwingt einen Agenten dazu, basierend auf Fehler-Logs seinen eigenen Code zu verbessern und neu zu committen.
 - **`@git [cmd]`** → Führt einen beliebigen Git-Befehl im Projekt aus.
-- **`@rollback HEAD~X`** → Automatischer Git-Reset inkl. Wiederherstellung der KI-Erinnerungen.
+- **`@rollback HEAD~X`** → Automatischer Git-Reset inkl. synchroner Wiederherstellung der KI-Erinnerungen.
 - **`@provider [ollama/openrouter]`** → Wechselt die LLM-Infrastruktur on-the-fly.
-- **`@skill @Name`** → LLM-gestützte Extraktion einer neuen Kernkompetenz.
-- **`/clear`** → Leert den Screen (Daten bleiben erhalten).
+- **`@research [Thema]`** → Schickt einen Recherche-Auftrag gezielt an alle aktiven Fach-Agenten.
+- **`@job [Agent] [Job]`** → Gibt einem Agenten einen permanenten Hintergrund-Job/Fokus, der bei jedem Prompt mitgeschickt wird.
+- **`@general [Aufgabe]`** → Übergibt eine Task zur autonomen Schwarm-Verteilung an den GeneralAG.
+- **`@sandbox [Code]`** → Testet Code in der blockierten Quarantäne-Umgebung.
+- **`@checkpoint`** → Speichert einen harten Snapshot des gesamten Schwarm-Gedächtnisses.
+- **`@summary`** → Zwingt den SummarizerAG, die bisherige Diskussion sofort auf den Punkt zu bringen.
+- **`@status`** → Gibt einen schnellen System-Ping über alle Agenten und deren Jobs aus.
+- **`@clear`** → Leert das Terminal (die Datenbank bleibt unberührt).
 
 ---
 

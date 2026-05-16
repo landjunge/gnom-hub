@@ -5,7 +5,8 @@ from .provider_switchAG import llm_call
 
 def intercept(msg: str):
     from .zwc_soul import strip_zwc
-    mem = [m for m in get_db("memory") if m.get("agent_id") == "war-room"]
+    from .db import get_active_project
+    mem = [m for m in get_db("memory") if m.get("agent_id") == "war-room" and m.get("project", "default") == get_active_project()]
     ctx = "\n".join([f"[{m.get('metadata',{}).get('sender','?')}] {strip_zwc(m['content'])}" for m in mem[-4:]])
     sys = """Du bist der Gatekeeper. Analysiere die Usereingabe im Kontext.
 Wenn die Anfrage schwammig oder unklar ist, gib NUR 2-3 nummerierte Fragen/Optionen zur Auswahl zurück.
