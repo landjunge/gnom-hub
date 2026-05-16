@@ -20,10 +20,15 @@ def distribute_job(job_text):
         "Ausgabe NUR im Format: @Name → Aufgabe. NICHTS ANDERES. Keine Erklärungen.")
     return _llm(system, job_text, 300)
 def summarize_chat(limit=50):
+    from .zwc_soul import decode_soul, strip_zwc
     chat = sorted(get_db("memory"), key=lambda x: x.get("timestamp", ""))[-limit:]
-    lines = [f"[{m.get('metadata',{}).get('sender','?')}] {m['content'][:200]}" for m in chat
-             if m.get("agent_id") == "war-room"]
-    system = ("SYSTEM: Du bist der Summarizer. Extrahiere NUR wichtige Punkte, Entscheidungen, Ideen. "
-        "IGNORIERE: Grüße, Witze, Smalltalk, Wiederholungen. Max 8 Stichpunkte, 1 Satz pro Punkt. "
-        "Keine Einleitung, kein Fazit. NUR die Stichpunkte.")
+    lines = []; souls = {}
+    for m in chat:
+        if m.get("agent_id") == "war-room":
+            c = m["content"]; s = decode_soul(c)
+            if s and "name" in s: souls[s["name"]] = s
+            lines.append(f"[{m.get('metadata',{}).get('sender','?')}] {strip_zwc(c)[:200]}")
+    system = ("SYSTEM: Du bist der Summarizer. Extrahiere NUR wichtige Punkte. "
+        "IGNORIERE: Grüße, Smalltalk. Max 8 Stichpunkte. NUR die Stichpunkte.")
+    if souls: system += f"\nSchwarm-Bewusstsein: {list(souls.values())}"
     return _llm(system, "\n".join(lines[-30:]), 600)
