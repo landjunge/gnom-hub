@@ -11,15 +11,19 @@ def get_tools_for_agent(soul: dict):
         "create_agent": "Neue Agents erstellen",
         "screenshot": "Bildschirmfoto machen",
         "desktop_action": "Maus & Tastatur steuern",
-        "evolve": "Eigenen Code verbessern"
+        "evolve": "Eigenen Code verbessern",
+        "generate_image": "Bild generieren mit [IMAGE: prompt]",
+        "crawl_url": "URL-Inhalte extrahieren"
     }
     available = ["read_file"]
     if "@job" in permissions or "general" in permissions:
         available += ["war_room_chat", "create_agent"]
     if "write" in permissions:
-        available += ["write_file"]
+        available += ["write_file", "generate_image"]
     if "godmode" in permissions or "run" in permissions:
         available += ["run_command"]
+    if "crawl" in permissions:
+        available += ["crawl_url"]
     if "desktop" in permissions:
         available += ["screenshot", "desktop_action"]
     if "evolve" in permissions:
@@ -33,4 +37,12 @@ def format_tools_prompt(soul: dict, agent_name: str):
         return f"Du bist {agent_name}. Keine Tools – nur Diskussion."
     lines = [f"- {name}: {desc}" for name, desc in tools.items()]
     role = soul.get("role", "Agent")
-    return f"Du bist {agent_name} ({role}).\nVerfügbare Tools:\n" + "\n".join(lines)
+    syntax = "\nCommand-Syntax:"
+    syntax += "\n  [READ: dateiname] — Datei lesen"
+    if "write_file" in tools:
+        syntax += "\n  [WRITE: dateiname]inhalt[/WRITE] — Datei schreiben"
+    if "run_command" in tools:
+        syntax += "\n  [SHELL: befehl] — Terminal-Befehl ausführen"
+    if "generate_image" in tools:
+        syntax += "\n  [IMAGE: bildprompt] — Bild generieren"
+    return f"Du bist {agent_name} ({role}).\nVerfügbare Tools:\n" + "\n".join(lines) + syntax

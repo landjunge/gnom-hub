@@ -98,6 +98,31 @@ def _ask_llm(agent, question, context, bs_mode=False):
             except Exception as e:
                 answer = answer.replace(match.group(0), f"[Shell-Fehler: {str(e)[:80]}]")
                 
+        # --- IMAGE LOGIC (Permission: "write", nur writerAG) ---
+        img_matches = re.finditer(r"\[IMAGE:\s*(.*?)\]", answer)
+        for match in img_matches:
+            prompt = match.group(1).strip()
+            if bs_mode:
+                answer = answer.replace(match.group(0), f"[System: IMAGE blockiert im Brainstorm-Modus.]")
+                continue
+            if "write" not in perms:
+                answer = answer.replace(match.group(0), f"[System: {agent['name']} hat keine IMAGE-Berechtigung.]")
+                continue
+            try:
+                img_key = os.getenv("OPENROUTER_KEY_FREE_1")
+                img_res = requests.post("https://openrouter.ai/api/v1/images/generations",
+                    headers={"Authorization": f"Bearer {img_key}", "Content-Type": "application/json"},
+                    json={"model": "stabilityai/stable-diffusion-xl", "prompt": prompt, "n": 1, "size": "1024x1024"},
+                    timeout=60
+                )
+                if img_res.status_code == 200:
+                    img_url = img_res.json().get("data", [{}])[0].get("url", "")
+                    answer = answer.replace(match.group(0), f"[Bild generiert: {img_url}]")
+                else:
+                    answer = answer.replace(match.group(0), f"[System: Bildgenerierung fehlgeschlagen ({img_res.status_code})]")
+            except Exception as e:
+                answer = answer.replace(match.group(0), f"[System: IMAGE-Fehler: {str(e)[:80]}]")
+                
         _post(agent["name"], answer)
     except Exception as e: _post(agent["name"], f"[Fehler: {str(e)[:80]}]")
 
