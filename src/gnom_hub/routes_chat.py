@@ -5,7 +5,7 @@ def _parse(t):
     m = re.match(r"@(\w+)\s*(.*)", t, re.DOTALL); r = m.group(2).strip() if m else None
     if not m: return t, None, None
     tag = m.group(1).lower()
-    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback","desktop","vision"): return r or t, None, tag
+    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback","desktop","vision","evolve"): return r or t, None, tag
     if tag in ("summarizer","general","normal"):
         m2 = re.match(r"@?(\w+)", r); return (t, m2.group(1), tag) if m2 else (t, None, None)
     return r or t, tag, None
@@ -17,9 +17,10 @@ def _handle_sys(q, m):
     from .chat_commands import _post_chat
     if m=="prov": from .provider_switchAG import set_provider; p=q.split(); _post_chat("System", set_provider(p[0], p[1] if len(p)>1 else None)) if p else None
     elif m=="vis": from .visionAG import vision_loop; _post_chat("System", vision_loop(q))
+    elif m=="evol": from .evolutionAG import evolve_agent; _post_chat("System", evolve_agent(q))
     else: from .desktopAG import desktop_action; _post_chat("System", desktop_action(q))
     return {"status": "ok"}
-CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk"), "vision": lambda q: _handle_sys(q,"vis")}
+CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk"), "vision": lambda q: _handle_sys(q,"vis"), "evolve": lambda q: _handle_sys(q,"evol")}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content)

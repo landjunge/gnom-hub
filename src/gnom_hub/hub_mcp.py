@@ -41,4 +41,6 @@ def summarize_chat(): from gnom_hub.role_tools import summarize_chat as sc; retu
 def desktop_control(c: str): from gnom_hub.desktopAG import desktop_action as d; return d(c)
 @mcp.tool()
 def vision_loop(c: str): from gnom_hub.visionAG import vision_loop as v; return v(c)
+@mcp.tool()
+def evolve_agent(a: str): from gnom_hub.evolutionAG import evolve_agent as e; return e(a)
 def main(): from gnom_hub.gitAG import setup_git_hooks as G; G(); from gnom_hub.swarm_checkpoint import load_latest_checkpoint as L; from gnom_hub.db import save_db as S; c = L(); (S("agents", c["souls"]), S("memory", c["war_room_state"])) if c else None; mcp.run(transport="sse")
