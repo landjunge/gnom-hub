@@ -893,7 +893,7 @@ function renderAgentList(filter = '') {
       const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
       const c = agentColor(a.name);
       return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
-        <h3><span class="dot ${on?'on':'off'}"></span><span>${a.name}</span>${roleIcon}${a.name.toLowerCase()==='crawlerag'?'<span class="crawler-pixels"><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span></span>':''}</h3>
+        <h3><span class="dot ${on?'on':'off'}" style="${on?'background:'+c+';box-shadow:0 0 6px '+c:''}"></span><span>${a.name}</span>${roleIcon}${a.name.toLowerCase()==='crawlerag'?'<span class="crawler-pixels"><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span></span>':''}</h3>
         <div class="desc">${a.description || '–'}</div>
         <div class="meta">${a.port?`<span class="badge port">:${a.port}</span>`:''}${role?`<span class="badge role ${role}">${role}</span>`:''}</div>
       </div>`;
