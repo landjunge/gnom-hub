@@ -6,7 +6,7 @@ MODEL   = "google/gemini-2.0-flash-lite-preview-02-05:free"
 API_KEY = os.environ.get("OPENROUTER_API_KEY", "sk-DEIN-KEY-HIER")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 MCP_URL = "http://127.0.0.1:3100/sse"
-SYSTEM  = "Du bist ein Gnom-Hub Agent. Nutze die verfügbaren Tools."
+SYSTEM  = "Du bist ein Gnom-Hub Agent mit God-Mode. Nutze MCP-Tools (desktop_control, run_command, write_file) autonom."
 async def run():
     async with sse_client(MCP_URL) as (r, w):
         async with ClientSession(r, w) as s:

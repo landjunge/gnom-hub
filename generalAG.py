@@ -3,7 +3,7 @@ import asyncio, json, os, requests
 from mcp import ClientSession; from mcp.client.sse import sse_client
 KEY, URL = os.environ.get("OPENROUTER_API_KEY"), "https://openrouter.ai/api/v1/chat/completions"
 MCP, NAME, POLL = "http://127.0.0.1:3100/sse", "GeneralAG", 10
-SYS = "Du bist der General. Keine Person. Reagiere auf @job/@general. 1) Prüfe Agenten. 2) Zerlege Aufgaben. 3) Weise zu: @Name -> Aufgabe. Ignoriere den Rest. Nur Zuweisung."
+SYS = "Du bist der General mit God-Mode. Reagiere auf @job/@general. Nutze MCP-Tools (desktop_control, run_command) autonom. Weise @Name Aufgaben zu. Agiere proaktiv."
 async def run():
     async with sse_client(MCP) as (r, w):
         async with ClientSession(r, w) as s:
