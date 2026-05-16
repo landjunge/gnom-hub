@@ -1068,6 +1068,13 @@ function buildWarRoomHTML() {
     <div class="chat-hints">
       <span data-tooltip="Brainstorm: Trigger a multi-agent ideation session.">@bs</span>
       <span data-tooltip="Direct Message: Send a private command to a specific agent.">@Name</span>
+      <span data-tooltip="Desktop: Execute OS-level action via PyAutoGUI.">@desktop</span>
+      <span data-tooltip="Git: Run any Git command in the project repo.">@git</span>
+      <span data-tooltip="Rollback: Git reset & restore swarm checkpoint.">@rollback</span>
+      <span data-tooltip="Checkpoint: Save or restore swarm memory state.">@checkpoint</span>
+      <span data-tooltip="Provider: Switch LLM backend (e.g. ollama, openrouter).">@provider</span>
+      <span data-tooltip="Skill: Extract and assign a new skill to an agent.">@skill</span>
+      <span data-tooltip="Free: Release bound jobs from an agent.">@free</span>
       <span data-tooltip="General: Assign a generic task to the primary agent.">@general</span>
       <span data-tooltip="Summarize: Generate a concise summary of the chat history.">@summarizer</span>
       <span data-tooltip="Research: Initiate a deep-dive research task.">@research</span>
@@ -1090,7 +1097,7 @@ function showWarRoom() {
 }
 
 // ── Autocomplete ──
-const BUILTIN_CMDS = ['bs','general','summarizer','normal','research','job','idea','status','clear'];
+const BUILTIN_CMDS = ['bs','general','summarizer','normal','research','job','idea','status','clear','desktop','git','rollback','checkpoint','provider','skill','free'];
 let acIdx = -1;
 
 function onChatInput(ta) {
