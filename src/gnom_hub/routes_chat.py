@@ -1,11 +1,11 @@
-from fastapi import APIRouter; from datetime import datetime; import uuid, re; from .db import get_db, save_db; from .brainstorm import dispatch; from .chat_commands import handle_idea, handle_clear, handle_status, handle_job, handle_summary, handle_sandbox, handle_skill, handle_free, handle_checkpoint; from pydantic import BaseModel
+from fastapi import APIRouter; from datetime import datetime; import uuid, re; from .db import get_db, save_db; from .brainstorm import dispatch; from .chat_commands import handle_idea, handle_clear, handle_status, handle_job, handle_summary, handle_sandbox, handle_skill, handle_free, handle_checkpoint, handle_git; from pydantic import BaseModel
 router = APIRouter()
 class ChatMsg(BaseModel): content: str; sender: str = "user"
 def _parse(t):
     m = re.match(r"@(\w+)\s*(.*)", t, re.DOTALL); r = m.group(2).strip() if m else None
     if not m: return t, None, None
     tag = m.group(1).lower()
-    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint"): return r or t, None, tag
+    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback"): return r or t, None, tag
     if tag in ("summarizer","general","normal"):
         m2 = re.match(r"@?(\w+)", r); return (t, m2.group(1), tag) if m2 else (t, None, None)
     return r or t, tag, None
@@ -19,7 +19,7 @@ def _handle_provider(q):
     from .provider_switchAG import set_provider; from .chat_commands import _post_chat; p = q.split()
     if p: _post_chat("System", set_provider(p[0], p[1] if len(p)>1 else None))
     return {"status": "ok"}
-CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": _handle_provider, "checkpoint": handle_checkpoint}
+CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": _handle_provider, "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True)}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content)

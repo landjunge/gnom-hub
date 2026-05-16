@@ -28,7 +28,7 @@ def read_file(path: str):
     except Exception as e: return f"Fehler: {e}"
 @mcp.tool()
 def write_file(path: str, content: str):
-    try: open(path, "w", encoding="utf-8").write(content); return "Erfolg"
+    try: open(path, "w", encoding="utf-8").write(content); from gnom_hub.gitAG import auto_commit; auto_commit("."); return "Erfolg"
     except Exception as e: return f"Fehler: {e}"
 @mcp.tool()
 def run_command(cmd: str):
