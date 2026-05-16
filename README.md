@@ -13,12 +13,13 @@ Das System ist mehr als nur ein Chat; es ist ein vollständiges Multi-Agenten-Be
 Was den Gnom-Hub von monströsen Frameworks wie Langchain oder AutoGen unterscheidet, ist seine **kompromisslose, nackte Effizienz**:
 
 1. **Zero-Bloat AI OS:** Keine 10.000 Zeilen Boilerplate-Code. Keine Blackbox-Abstraktionen. Das gesamte Backend und alle Agenten bestehen aus purem, rohem Python-Code. Wenn ein Agent gestartet wird, braucht er keine Minuten für einen Build – er ist sofort online.
-2. **"God-Mode" Autonomie:** Dank des lokalen MCP-Servers (`hub_mcp.py`) sind die Agenten nicht auf eine Sandbox beschränkt. Sie können echte Terminal-Befehle ausführen (`run_command`), Dateien auf deiner Festplatte lesen/schreiben (`write_file`) und sogar sich selbst oder andere Agenten umprogrammieren. Es ist ein lebendes, atmendes System.
+2. **"God-Mode" Autonomie mit Sandbox:** Dank des lokalen MCP-Servers (`hub_mcp.py`) können Agenten das System steuern (`write_file`, `run_command`). Eine integrierte **Sandbox-Whitelist** (`sandboxAG.py`) schützt dabei vor zerstörerischen Shell-Injections.
 3. **Swarm Intelligence im "War Room":** Agenten arbeiten nicht isoliert. Im War Room lesen sie den globalen Kontext, können gezielt aufeinander reagieren und sich gegenseitig Tasks zuwerfen (z.B. der `GeneralAG` befiehlt dem `SummarizerAG`).
-4. **Zero-Friction Agent Creation:** Du willst einen neuen Agenten? Du klickst im Admin Panel auf "+ Agent", das System klont im Hintergrund ein 33-Zeilen-Template (`tinyAG.py`), öffnet einen neuen Port, registriert den Agenten beim Hub und er ist in Sekunden kampfbereit. Keine endlosen Config-Dateien.
-5. **Zero-Cost Escalation:** Da der Hub nahtlos mit OpenRouter harmoniert, kannst du das komplette 14-Agenten-Netzwerk über leistungsstarke Free-Tier-Modelle (wie DeepSeek) betreiben. Endlose autonome Brainstorming-Loops für **0,00€**.
-6. **Steganografische Seelen (Invisible Souls):** Jeder Agent sendet seine Kern-Direktive ("Soul") als unsichtbaren HTML-Tag in jeder Chat-Nachricht mit. Für den Menschen im Web-UI unsichtbar, entsteht für das LLM im War Room ein persistentes Schwarm-Bewusstsein – Agenten vergessen nie, wer sie sind, und kennen stets die Befugnisse der anderen, ohne den Chat zu spammen.
-7. **Die 40-Zeilen Rebellion:** Es ist ein Manifest gegen überladenen Code. Jedes Feature, jede Route und jeder Agent wurde so stark destilliert, dass er auf einen Blick ohne Scrollen lesbar ist.
+4. **Provider Hot-Swapping:** Fliegender Wechsel zwischen kostenlosen, lokalen Modellen (via **Ollama**) und Cloud-Intelligenz (**OpenRouter**) direkt per Chat-Befehl – perfekt für extrem günstiges Debugging.
+5. **Zero-Friction Agent Creation:** Du willst einen neuen Agenten? Du klickst im Admin Panel auf "+ Agent", das System klont im Hintergrund ein 33-Zeilen-Template (`tinyAG.py`), öffnet einen neuen Port, registriert den Agenten beim Hub und er ist in Sekunden kampfbereit. Keine endlosen Config-Dateien.
+6. **Steganografische Seelen mit ECC:** Jeder Agent sendet seine Kern-Direktive ("Soul") als unsichtbares ZWC-Tag (Zero-Width-Characters) im Chat mit. Gesichert durch **Triple-Repetition Error Correction**, stört es das LLM nicht, bleibt persistent und fehlerresistent.
+7. **Absolute Resilienz (Git + Checkpoints):** Jede Modifikation an einer Datei durch einen Agenten triggert via `gitAG.py` einen Auto-Commit. Ein **post-commit Hook** speichert parallel das aktuelle Schwarm-Gedächtnis (`swarm_checkpoint.py`). Wenn ein Agent durchdreht, stellt `@rollback` Code und Erinnerung zeitgleich wieder her.
+8. **Die 40-Zeilen Rebellion:** Es ist ein Manifest gegen überladenen Code. Jedes Feature, jede Route und jeder Agent wurde so stark destilliert, dass er auf einen Blick ohne Scrollen lesbar ist.
 
 ---
 
@@ -104,6 +105,12 @@ Das Chat-Eingabefeld des Hubs reagiert auf Prefix-Commandos:
 - **`@job [Aufgabe]`** → Übergibt eine spezifische Task direkt an den `GeneralAG`.
 - **`@idea [Text]`** → Sichert eine schnelle Idee direkt im Memory-Graphen.
 - **`@general @Name [Rolle]`** → Der General weist einem Agenten dynamisch eine temporäre Rolle zu.
+- **`@skill @Name`** → LLM-gestützte Extraktion und Zuweisung einer Kernkompetenz (max 3 Wörter).
+- **`@free [@Name]`** → Gibt gebundene Jobs für einen bestimmten (oder alle) Agenten wieder frei.
+- **`@provider [ollama/openrouter] [model]`** → Wechselt die globale LLM-Infrastruktur on-the-fly.
+- **`@checkpoint [save/restore]`** → Erzwingt manuelles Sichern oder Wiederherstellen der Schwarm-Gedächtnisse.
+- **`@git [cmd]`** → Führt einen beliebigen Git-Befehl im Projekt aus (z.B. `@git log --oneline`).
+- **`@rollback HEAD~X`** → Automatischer Git-Reset inkl. Wiederherstellung der Agenten-Erinnerungen aus dem Checkpoint.
 - **`/coffee`** → Pausiert kurz die Action (Easter-Egg).
 - **`/clear`** → Leert den aktuellen Screen (Daten bleiben im Backend erhalten).
 
