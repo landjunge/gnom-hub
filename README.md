@@ -115,3 +115,8 @@ Dieses Projekt ist eine Rebellion gegen bloated Boilerplate-Code.
 Wenn ein Feature mehr als 40 Zeilen braucht, ist es falsch konzipiert. Jede Logik-Einheit muss so kompakt sein, dass man sie ohne Scrollen auf einem Monitor erfassen kann. 
 
 **Lizenz:** MIT
+
+---
+
+> **A Note from the Creator:**  
+> Dieses Projekt wurde nicht von einem klassischen Programmierer oder studierten Software-Entwickler geschrieben. Es ist das reine Resultat von Neugier, unkonventionellen "Hirngespinsten" und der intensiven, kreativen Zusammenarbeit mit KI-Assistenten. Es beweist: Man muss kein Code-Experte sein, um funktionierende, komplexe und architektonisch radikale KI-Systeme zu erschaffen – man muss nur die richtigen Fragen stellen.
