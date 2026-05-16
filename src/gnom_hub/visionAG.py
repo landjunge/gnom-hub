@@ -11,6 +11,12 @@ from .sandboxAG import safe_run_command
 VISION_DIR = Path(".visions")
 VISION_DIR.mkdir(parents=True, exist_ok=True)
 
+VISION_SCHEMA = {
+    "description": str,
+    "action": ["click", "type", "scroll", "move", "done"],
+    "params": (str, int, list, type(None))  # flexibel
+}
+
 def take_screenshot() -> str:
     try:
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -20,39 +26,47 @@ def take_screenshot() -> str:
     except:
         return "ERROR: Screenshot failed"
 
-def robust_json_repair(text: str):
-    """Tiefgehende Repair: Fences, Trailing Commas, Single Quotes, Truncation, Prose."""
-    # 1. Markdown Fences entfernen
-    text = re.sub(r'```(?:json)?\s*|\s*```', '', text, flags=re.DOTALL)
-    # 2. Trailing Commas killen
-    text = re.sub(r',\s*([}\]])', r'\1', text)
-    # 3. Single Quotes → Double + unquoted Keys fixen (einfache Heuristik)
-    text = re.sub(r"'", '"', text)
-    text = re.sub(r'(\W)(\w+):', r'\1"\2":', text)
-    # 4. Nur den ersten validen JSON-Block extrahieren
-    match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
-    if match:
-        text = match.group(1)
-    try:
-        return json.loads(text)
-    except:
-        return None
+def validate_vision_schema(data):
+    """Pydantic-Style Validierung – pure Python, keine Libs."""
+    if not isinstance(data, dict):
+        return False
+    for key, expected in VISION_SCHEMA.items():
+        if key not in data:
+            return False
+        val = data[key]
+        if expected == str and not isinstance(val, str):
+            return False
+        if isinstance(expected, list) and val not in expected:
+            return False
+        if isinstance(expected, tuple) and not any(isinstance(val, t) for t in expected):
+            return False
+    return True
 
 def vision_loop(command: str, max_steps: int = 5) -> str:
-    """@vision loop – jetzt mit Repair + LLM-Retry bei Parsing-Fehlern."""
+    """@vision loop – jetzt mit echter Schema-Validierung + Retry."""
     for step in range(max_steps):
         screenshot = take_screenshot()
         if "ERROR" in screenshot:
             return "❌ Vision-Loop abgebrochen: Screenshot-Probleme"
         
-        prompt = f"Screenshot: {screenshot}\nTask: {command}\nSchritt {step+1}/{max_steps}\nAntworte NUR mit valide JSON: {{\"description\": \"...\", \"action\": \"click|type|scroll|move|done\", \"params\": \"...\"}}"
+        prompt = f"Screenshot: {screenshot}\nTask: {command}\nSchritt {step+1}/{max_steps}\nAntworte NUR mit valide JSON: {{\"description\": \"...\", \"action\": \"click|type|scroll|move|done\", \"params\": ...}}"
         try:
-            resp = llm_call(prompt, system="Vision-Loop-Agent: immer exakt valide JSON, keine Erklärung, keine Fences.")
-            result = robust_json_repair(resp)
+            resp = llm_call(prompt, system="Vision-Loop-Agent: immer exakt valide JSON, keine Erklärung.")
+            # robust repair + schema check
+            result = None
+            try:
+                result = json.loads(re.sub(r'```(?:json)?\s*|\s*```', '', resp, flags=re.DOTALL))
+            except:
+                pass
+            if not result or not validate_vision_schema(result):
+                # Schema-Fehler → direkter Retry mit Feedback
+                retry_prompt = f"{prompt}\n\nFEHLER: JSON entspricht nicht dem Schema! Korrigiere und gib exakt valide JSON."
+                resp = llm_call(retry_prompt, system="Korrigiere JSON exakt nach Schema.")
+                result = json.loads(re.sub(r'```(?:json)?\s*|\s*```', '', resp, flags=re.DOTALL)) if resp else None
             
-            if not result or result.get("action") == "done":
+            if not result or result.get("action") == "done" or not validate_vision_schema(result):
                 auto_commit(".", message="Vision Loop Done")
-                return f"✅ Vision-Loop fertig: {result.get('description', 'Task erledigt') if result else 'Task abgeschlossen'}"
+                return f"✅ Vision-Loop fertig: {result.get('description', 'Task erledigt') if result else 'Schema-Validierung abgeschlossen'}"
             
             # Aktion ausführen
             if result.get("action") == "click": pyautogui.click()
@@ -64,14 +78,7 @@ def vision_loop(command: str, max_steps: int = 5) -> str:
             auto_commit(".", message=f"Vision Step {step}")
             
         except Exception as e:
-            error_msg = str(e)
-            safe_run_command(f"echo 'Vision JSON Error Step {step}: {error_msg}' >> .backups/sandbox.log", "visionAG")
-            # Retry mit Fehler-Feedback an LLM
-            retry_prompt = f"{prompt}\n\nFEHLER: {error_msg}\nKorrigiere und gib NUR valide JSON!"
-            resp = llm_call(retry_prompt, system="Korrigiere den JSON-Fehler und gib exakt valide JSON.")
-            result = robust_json_repair(resp)
-            if result:
-                continue  # Retry hat geklappt (nächster Vision-Schritt)
-            # sonst nächster Schritt
+            safe_run_command(f"echo 'Vision Schema Error Step {step}: {str(e)}' >> .backups/sandbox.log", "visionAG")
+            continue
     
-    return "⏹️ Vision-Loop: Max-Schritte oder zu viele Fehler – Task pausiert"
+    return "⏹️ Vision-Loop: Max-Schritte oder Schema-Fehler – Task pausiert"
