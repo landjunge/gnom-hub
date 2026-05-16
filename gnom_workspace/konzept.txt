@@ -1,0 +1,4 @@
+Konzept: Einfache To-Do-Listen-Konsolenanwendung
+Zweck: Aufgabenverwaltung ohne Ablenkung.
+Kernfunktionen: Add (Aufgabe hinzufügen), List (alle anzeigen), Done (als erledigt markieren und entfernen), Quit (Beenden).
+Zielgruppe: Personen, die schnelle Notizen direkt im Terminal wünschen.

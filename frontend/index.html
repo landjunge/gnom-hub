@@ -686,7 +686,7 @@ iframe {
 <div class="main">
 <div id="coffee-overlay" style="display:none; position:fixed; bottom:30px; right:30px; width:340px; background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius); box-shadow:0 10px 40px rgba(0,0,0,0.8); z-index:9999; padding:20px; text-align:center; animation: toast-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
   <div style="font-size:3.5rem; animation: floatCoffee 3s ease-in-out infinite;">☕</div>
-  <h3 style="color:var(--primary); margin-top:10px; font-size:1.4rem;">Take a break!</h3>
+  <h3 style="color:var(--text); margin-top:10px; font-size:1.4rem;">Take a break!</h3>
   <p style="color:var(--text-dim); margin-top:5px; font-size:0.9rem;">Enjoy a quick coffee to recharge.</p>
   <div style="position:relative; margin-top:15px;">
     <!-- Troll 50px Hover Zone -->
@@ -744,7 +744,7 @@ iframe {
       </div>
       <div class="token-tracker">
         <span>Tokens</span>
-        <span id="s-tokens" style="color:var(--primary); font-weight:700;">0 / 100k</span>
+        <span id="s-tokens" style="color:#0096ff; font-weight:700;">0 / 100k</span>
       </div>
     </div>
   </div>
@@ -1122,7 +1122,7 @@ async function loadWorkspace() {
   let html = '';
   files.forEach(f => {
       html += `<div class="mem-item" style="cursor:pointer;" onclick="readWorkspaceFile('${f.name}')">
-          <strong style="color:var(--primary)">${f.name}</strong> 
+          <strong style="color:#0096ff">${f.name}</strong> 
           <span style="font-size:0.8em;color:var(--text-dim);margin-left:10px;">${f.size} Bytes</span>
       </div>`;
   });
@@ -1476,7 +1476,7 @@ window.showGhost = () => {
   checkTimers();
   await discoverPort();
   if (!API) {
-    document.getElementById('content').innerHTML = '<div class="empty" style="padding:80px 20px"><h2 style="color:var(--primary);margin-bottom:10px">Hub unreachable</h2><p>Start backend on port 3002.</p></div>';
+    document.getElementById('content').innerHTML = '<div class="empty" style="padding:80px 20px"><h2 style="color:var(--text);margin-bottom:10px">Hub unreachable</h2><p>Start backend on port 3002.</p></div>';
     return;
   }
   await loadAgents();
