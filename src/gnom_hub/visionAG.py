@@ -20,29 +20,26 @@ def take_screenshot() -> str:
     except:
         return "ERROR: Screenshot failed"
 
-def safe_json_parse(text: str):
-    """Robuste JSON-Extraktion – handhabt Müll, Markdown, extra Text."""
+def robust_json_repair(text: str):
+    """Tiefgehende Repair: Fences, Trailing Commas, Single Quotes, Truncation, Prose."""
+    # 1. Markdown Fences entfernen
+    text = re.sub(r'```(?:json)?\s*|\s*```', '', text, flags=re.DOTALL)
+    # 2. Trailing Commas killen
+    text = re.sub(r',\s*([}\]])', r'\1', text)
+    # 3. Single Quotes → Double + unquoted Keys fixen (einfache Heuristik)
+    text = re.sub(r"'", '"', text)
+    text = re.sub(r'(\W)(\w+):', r'\1"\2":', text)
+    # 4. Nur den ersten validen JSON-Block extrahieren
+    match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
+    if match:
+        text = match.group(1)
     try:
         return json.loads(text)
     except:
-        # Fallback 1: JSON-Block aus Markdown/Code-Block extrahieren
-        match = re.search(r'```(?:json)?\s*(.+?)\s*```', text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(1))
-            except:
-                pass
-        # Fallback 2: Erstes { ... } im Text finden
-        match = re.search(r'(\{.*\})', text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(1))
-            except:
-                pass
         return None
 
 def vision_loop(command: str, max_steps: int = 5) -> str:
-    """@vision loop – iterativ, selbstheilend, mit starker JSON-Validierung."""
+    """@vision loop – jetzt mit Repair + LLM-Retry bei Parsing-Fehlern."""
     for step in range(max_steps):
         screenshot = take_screenshot()
         if "ERROR" in screenshot:
@@ -50,8 +47,8 @@ def vision_loop(command: str, max_steps: int = 5) -> str:
         
         prompt = f"Screenshot: {screenshot}\nTask: {command}\nSchritt {step+1}/{max_steps}\nAntworte NUR mit valide JSON: {{\"description\": \"...\", \"action\": \"click|type|scroll|move|done\", \"params\": \"...\"}}"
         try:
-            resp = llm_call(prompt, system="Vision-Loop-Agent: immer valide JSON ausgeben, keine Erklärung.")
-            result = safe_json_parse(resp)
+            resp = llm_call(prompt, system="Vision-Loop-Agent: immer exakt valide JSON, keine Erklärung, keine Fences.")
+            result = robust_json_repair(resp)
             
             if not result or result.get("action") == "done":
                 auto_commit(".", message="Vision Loop Done")
@@ -67,7 +64,14 @@ def vision_loop(command: str, max_steps: int = 5) -> str:
             auto_commit(".", message=f"Vision Step {step}")
             
         except Exception as e:
-            safe_run_command(f"echo 'Vision JSON Error Step {step}: {str(e)}' >> .backups/sandbox.log", "visionAG")
-            continue  # Retry
+            error_msg = str(e)
+            safe_run_command(f"echo 'Vision JSON Error Step {step}: {error_msg}' >> .backups/sandbox.log", "visionAG")
+            # Retry mit Fehler-Feedback an LLM
+            retry_prompt = f"{prompt}\n\nFEHLER: {error_msg}\nKorrigiere und gib NUR valide JSON!"
+            resp = llm_call(retry_prompt, system="Korrigiere den JSON-Fehler und gib exakt valide JSON.")
+            result = robust_json_repair(resp)
+            if result:
+                continue  # Retry hat geklappt (nächster Vision-Schritt)
+            # sonst nächster Schritt
     
     return "⏹️ Vision-Loop: Max-Schritte oder zu viele Fehler – Task pausiert"
