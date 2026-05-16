@@ -17,7 +17,7 @@ def distribute_job(job_text):
     ags = get_db("agents")
     gen = next((a for a in ags if a.get("role") == "general"), {})
     gen_desc = gen.get("description", "Du bist der elitäre General.")
-    mmap = ", ".join(f"{a['name']}:{a.get('role','Agent')}" for a in ags if a.get('name') != gen.get('name'))
+    mmap = ", ".join(f"{a['name']}:{a.get('skill', a.get('role','Agent'))}" for a in ags if a.get('name') != gen.get('name'))
     system = (f"SYSTEM: {gen_desc} Deine Truppe: [{mmap}]. "
         "Analysiere den Job in 1 Satz. Erstelle max 3 Teilaufgaben. "
         "Ausgabe NUR im Format: @Name → Aufgabe. Keine Erklärungen.")
