@@ -14,10 +14,13 @@ def _llm(system, user, tokens=500):
         return r.json()["choices"][0]["message"]["content"]
     except Exception as e: return f"[Fehler: {str(e)[:80]}]"
 def distribute_job(job_text):
-    agents = [a["name"] for a in get_db("agents")]
-    system = (f"SYSTEM: Du bist der General. Existierende Agenten: {', '.join(agents)}. "
+    ags = get_db("agents")
+    gen = next((a for a in ags if a.get("role") == "general"), {})
+    gen_desc = gen.get("description", "Du bist der elitäre General.")
+    mmap = ", ".join(f"{a['name']}:{a.get('role','Agent')}" for a in ags if a.get('name') != gen.get('name'))
+    system = (f"SYSTEM: {gen_desc} Deine Truppe: [{mmap}]. "
         "Analysiere den Job in 1 Satz. Erstelle max 3 Teilaufgaben. "
-        "Ausgabe NUR im Format: @Name → Aufgabe. NICHTS ANDERES. Keine Erklärungen.")
+        "Ausgabe NUR im Format: @Name → Aufgabe. Keine Erklärungen.")
     return _llm(system, job_text, 300)
 def summarize_chat(limit=50):
     from .zwc_soul import decode_soul, strip_zwc

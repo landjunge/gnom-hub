@@ -20,6 +20,12 @@ def handle_job(task):
         for a in ags:
             if a["name"].lower() == m.group(1).lower(): a["active_job"] = m.group(2).strip()
     save_db("agents", ags); return {"status": "job_created", "result": res}
+def handle_sandbox(code):
+    import subprocess; c = code.replace("```python", "").replace("```", "").strip()
+    with open("sandbox.py", "w") as f: f.write(c)
+    try: r = subprocess.run(["python3", "sandbox.py"], capture_output=True, text=True, timeout=5); out = r.stdout or r.stderr
+    except Exception as e: out = str(e)
+    _post_chat("Sandbox", f"Output:\n```\n{out[:500]}\n```"); return {"status": "executed"}
 def handle_summary(q=""):
     from .role_tools import summarize_chat; res = summarize_chat(); _post_chat("Summarizer", res); return {"status": "summarized", "result": res}
 @router.get("/api/ideas")
