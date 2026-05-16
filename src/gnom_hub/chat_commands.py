@@ -17,6 +17,7 @@ def handle_job(task):
     if not gen: return {"error": "Kein General — erst @general @Name zuweisen"}
     save_db("jobs", get_db("jobs") + [{"id": _uid(), "task": task, "general": gen["name"], "status": "open", "ts": _ts()}])
     res = distribute_job(task); _post_chat(gen["name"], res)
+    for a in ags: a["active_job"] = ""
     for m in re.finditer(r'@(\w+)[\s-→>:]+(.+)', res):
         for a in ags:
             if a["name"].lower() == m.group(1).lower(): a["active_job"] = m.group(2).strip()
