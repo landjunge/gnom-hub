@@ -1069,6 +1069,7 @@ function buildWarRoomHTML() {
       <span data-tooltip="Brainstorm: Trigger a multi-agent ideation session.">@bs</span>
       <span data-tooltip="Direct Message: Send a private command to a specific agent.">@Name</span>
       <span data-tooltip="Desktop: Execute OS-level action via PyAutoGUI.">@desktop</span>
+      <span data-tooltip="Vision: Analyze screen and execute actions visually.">@vision</span>
       <span data-tooltip="Git: Run any Git command in the project repo.">@git</span>
       <span data-tooltip="Rollback: Git reset & restore swarm checkpoint.">@rollback</span>
       <span data-tooltip="Checkpoint: Save or restore swarm memory state.">@checkpoint</span>
@@ -1097,7 +1098,7 @@ function showWarRoom() {
 }
 
 // ── Autocomplete ──
-const BUILTIN_CMDS = ['bs','general','summarizer','normal','research','job','idea','status','clear','desktop','git','rollback','checkpoint','provider','skill','free'];
+const BUILTIN_CMDS = ['bs','general','summarizer','normal','research','job','idea','status','clear','desktop','vision','git','rollback','checkpoint','provider','skill','free'];
 let acIdx = -1;
 
 function onChatInput(ta) {
