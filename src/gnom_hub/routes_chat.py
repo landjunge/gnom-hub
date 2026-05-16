@@ -16,7 +16,7 @@ def _role(name, role):
 def _handle_sys(q, m):
     from .chat_commands import _post_chat
     if m=="prov": from .provider_switchAG import set_provider; p=q.split(); _post_chat("System", set_provider(p[0], p[1] if len(p)>1 else None)) if p else None
-    elif m=="vis": from .visionAG import vision_analyze; _post_chat("System", vision_analyze(q))
+    elif m=="vis": from .visionAG import vision_loop; _post_chat("System", vision_loop(q))
     else: from .desktopAG import desktop_action; _post_chat("System", desktop_action(q))
     return {"status": "ok"}
 CMDS = {"idea": handle_idea, "clear": lambda q: handle_clear(), "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk"), "vision": lambda q: _handle_sys(q,"vis")}
