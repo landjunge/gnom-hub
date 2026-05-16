@@ -37,4 +37,4 @@ def run_command(cmd: str):
 def distribute_job(job: str): from gnom_hub.role_tools import distribute_job as dj; return dj(job)
 @mcp.tool()
 def summarize_chat(): from gnom_hub.role_tools import summarize_chat as sc; return sc()
-def main(): mcp.run(transport="sse")
+def main(): from gnom_hub.swarm_checkpoint import load_latest_checkpoint as L; from gnom_hub.db import save_db as S; c = L(); (S("agents", c["souls"]), S("memory", c["war_room_state"])) if c else None; mcp.run(transport="sse")
