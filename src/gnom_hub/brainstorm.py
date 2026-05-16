@@ -41,7 +41,7 @@ def _ask_llm(agent, question, context, bs_mode=False):
     user_msg = question
     if context: user_msg += f"\n\nBisherige Diskussion:\n{context}"
     try:
-        answer = ask_router(user_msg, sys_prompt)
+        answer = ask_router(user_msg, sys_prompt, agent_name=agent.get("name", ""))
         
         perms = soul.get("permissions", [])
         

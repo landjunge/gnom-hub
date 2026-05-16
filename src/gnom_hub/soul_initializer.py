@@ -17,6 +17,9 @@ def get_base_soul(agent_name: str):
     elif "coder" in name:
         soul["permissions"] += ["write", "run"]
         soul["directive"] = "Programmiere, schreibe Code, setze technisch um."
+    elif "crawler" in name:
+        soul["permissions"] += ["read", "crawl"]
+        soul["directive"] = "Crawle URLs, extrahiere Inhalte, liefere Rohdaten an den Schwarm."
     elif "researcher" in name:
         soul["directive"] = "Recherchiere, sammle Informationen, fasse zusammen."
     elif "editor" in name:

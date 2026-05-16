@@ -14,3 +14,4 @@ logs_*.txt
 gnom_workspace/
 .env.netzwerkpunkt
 collected_keys.txt
+.gnom-hub-tokens.json

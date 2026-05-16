@@ -367,6 +367,24 @@ button:hover {
 .agent-card.small .meta { gap: 3px; }
 .agent-card.small .badge { padding: 1px 3px; font-size: 0.42rem; }
 
+/* ── Crawler Pixel-Shimmer ── */
+.crawler-pixels {
+  display: inline-flex; gap: 1px; margin-left: 4px; vertical-align: middle;
+}
+.crawler-pixels .px {
+  width: 3px; height: 3px; border-radius: 1px;
+  animation: px-pulse 1.8s ease-in-out infinite;
+}
+.crawler-pixels .px:nth-child(1) { background: #00FF00; animation-delay: 0s; }
+.crawler-pixels .px:nth-child(2) { background: #FF0000; animation-delay: 0.3s; }
+.crawler-pixels .px:nth-child(3) { background: #FFFF00; animation-delay: 0.6s; }
+.crawler-pixels .px:nth-child(4) { background: #0088FF; animation-delay: 0.9s; }
+.crawler-pixels .px:nth-child(5) { background: #FF8800; animation-delay: 1.2s; }
+@keyframes px-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
 /* ── Dots & Badges ── */
 .dot {
   width: 7px; height: 7px; border-radius: 50%;
@@ -829,7 +847,8 @@ const KNOWN_COLORS = {
   'writerag': '#00FF00',     // Grün
   'coderag': '#FF0000',      // Rot
   'researcherag': '#FFFF00', // Gelb
-  'editorag': '#0088FF'      // Blau
+  'editorag': '#0088FF',      // Blau
+  'crawlerag': '#FF8800'      // Orange
 };
 function agentColor(name) {
   if (!name) return '#00E5FF';
@@ -860,7 +879,7 @@ function renderAgentList(filter = '') {
   let filtered = f ? agents.filter(a => a.name.toLowerCase().includes(f)) : agents;
   filtered = filtered.filter(a => !a.name.toLowerCase().includes('hermes'));
 
-  const coreNames = ['writerag', 'coderag', 'researcherag', 'editorag'];
+  const coreNames = ['writerag', 'coderag', 'researcherag', 'editorag', 'crawlerag'];
   const coreAgents = filtered.filter(a => coreNames.includes(a.name.toLowerCase()) && a.status !== 'sleeping');
   const internalAgents = filtered.filter(a => !coreNames.includes(a.name.toLowerCase()));
 
@@ -874,7 +893,7 @@ function renderAgentList(filter = '') {
       const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
       const c = agentColor(a.name);
       return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
-        <h3><span class="dot ${on?'on':'off'}"></span><span>${a.name}</span>${roleIcon}</h3>
+        <h3><span class="dot ${on?'on':'off'}"></span><span>${a.name}</span>${roleIcon}${a.name.toLowerCase()==='crawlerag'?'<span class="crawler-pixels"><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span></span>':''}</h3>
         <div class="desc">${a.description || '–'}</div>
         <div class="meta">${a.port?`<span class="badge port">:${a.port}</span>`:''}${role?`<span class="badge role ${role}">${role}</span>`:''}</div>
       </div>`;
