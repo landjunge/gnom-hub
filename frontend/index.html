@@ -678,6 +678,7 @@ iframe {
       Agents: <span id="s-agents">0</span>
       Memory: <span id="s-memory">0</span>
     </div>
+    <button class="btn-primary" onclick="showWorkspace()">Workspace</button>
     <button class="btn-primary" onclick="openAddAgent()">+ Agent</button>
   </div>
 </header>
@@ -743,7 +744,7 @@ iframe {
       </div>
       <div class="token-tracker">
         <span>Tokens</span>
-        <span style="color:var(--primary); font-weight:700;">0 / 100k</span>
+        <span id="s-tokens" style="color:var(--primary); font-weight:700;">0 / 100k</span>
       </div>
     </div>
   </div>
@@ -783,7 +784,7 @@ function toast(msg, type='info') {
   t.className = `toast ${type}`;
   t.textContent = msg;
   c.appendChild(t);
-  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(() => t.remove(), 300); }, 3500);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(() => t.remove(), 300); }, 10500);
 }
 
 // ── API Discovery ──
@@ -1045,6 +1046,9 @@ async function updateStats() {
   if (s) {
     document.getElementById('s-agents').textContent = s.agents ?? agents.length;
     document.getElementById('s-memory').textContent = s.memory ?? 0;
+    if (document.getElementById('s-tokens')) {
+      document.getElementById('s-tokens').textContent = (s.tokens ?? 0) + ' / 100k';
+    }
   }
 }
 
@@ -1086,8 +1090,61 @@ function buildWarRoomHTML() {
       <span data-tooltip="Coffee Break: Trigger the coffee cup animation.">/coffee</span>
       <span data-tooltip="UFO Event: Call a 60s alien invasion animation.">/ufo</span>
       <span data-tooltip="Ghost: Summon a subtle 2-minute ghost apparition.">/ghost</span>
+      <span data-tooltip="TTS: Toggle Text-to-Speech (@tts on / @tts off).">@tts</span>
     </div>
   </div>`;
+}
+
+// ── Workspace ──
+async function showWorkspace() {
+  selectedId = null;
+  document.getElementById('content').innerHTML = `
+    <div class="panel" id="workspace-panel">
+      <h2>Workspace <div class="actions"><button onclick="loadWorkspace()">Refresh</button></div></h2>
+      <div id="workspace-list"><div class="empty">Lade Dateien...</div></div>
+    </div>
+  `;
+  await loadWorkspace();
+}
+
+async function loadWorkspace() {
+  const list = document.getElementById('workspace-list');
+  if(!list) return;
+  const files = await api('GET', '/workspace');
+  if(!files || files.error) {
+      list.innerHTML = '<div class="empty">Fehler beim Laden des Workspaces.</div>';
+      return;
+  }
+  if(files.length === 0) {
+      list.innerHTML = '<div class="empty">Workspace ist leer.</div>';
+      return;
+  }
+  let html = '';
+  files.forEach(f => {
+      html += `<div class="mem-item" style="cursor:pointer;" onclick="readWorkspaceFile('${f.name}')">
+          <strong style="color:var(--primary)">${f.name}</strong> 
+          <span style="font-size:0.8em;color:var(--text-dim);margin-left:10px;">${f.size} Bytes</span>
+      </div>`;
+  });
+  list.innerHTML = html;
+}
+
+async function readWorkspaceFile(name) {
+   const res = await api('GET', `/workspace/${name}`);
+   if(res && res.content !== undefined) {
+       // Zeige in einem modalen Overlay
+       const modal = document.createElement('div');
+       modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;";
+       modal.innerHTML = `
+         <div class="panel" style="width:80%; height:80%; display:flex; flex-direction:column;">
+           <h2>${name} <button onclick="this.parentElement.parentElement.parentElement.remove()" style="float:right">X</button></h2>
+           <textarea readonly style="flex-grow:1; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:var(--radius); padding:10px; font-family:monospace; resize:none;">${res.content}</textarea>
+         </div>
+       `;
+       document.body.appendChild(modal);
+   } else {
+       toast("Fehler beim Lesen der Datei", "error");
+   }
 }
 
 function showWarRoom() {
@@ -1098,7 +1155,7 @@ function showWarRoom() {
 }
 
 // ── Autocomplete ──
-const BUILTIN_CMDS = ['bs','general','summarizer','normal','research','job','idea','status','clear','desktop','vision','git','rollback','checkpoint','provider','skill','free'];
+const BUILTIN_CMDS = ['bs','general','summarizer','normal','research','job','idea','status','clear','desktop','vision','git','rollback','checkpoint','provider','skill','free','tts'];
 let acIdx = -1;
 
 function onChatInput(ta) {
@@ -1144,8 +1201,11 @@ async function sendChat() {
   if (!msg) return;
   ta.value = '';
   
-  // Easter Egg Cheat Codes
+  // Easter Egg Cheat Codes & UI Commands
   const m = msg.toLowerCase();
+  if (m === '@tts on') { const cb = document.getElementById('tts-enabled'); if(cb) cb.checked = true; ta.value = ''; toast('🗣️ TTS Aktiviert', 'success'); return; }
+  if (m === '@tts off') { const cb = document.getElementById('tts-enabled'); if(cb) cb.checked = false; stopTTS(); ta.value = ''; toast('🔇 TTS Deaktiviert', 'info'); return; }
+  if (m === '@tts') { const cb = document.getElementById('tts-enabled'); if(cb) { cb.checked = !cb.checked; if(!cb.checked) stopTTS(); toast(cb.checked ? '🗣️ TTS Aktiviert' : '🔇 TTS Deaktiviert', cb.checked ? 'success' : 'info'); } ta.value = ''; return; }
   if (m === '/ufo') { if(window.showUfoAttack) window.showUfoAttack(); return; }
   if (m === '/ghost') { if(window.showGhost) window.showGhost(); return; }
   if (m === '/coffee') { if(window.showCoffeeBreak) window.showCoffeeBreak(); return; }

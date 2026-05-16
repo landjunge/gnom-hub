@@ -36,6 +36,7 @@ def post_chat(msg: ChatMsg):
         tgts = [a["name"] for a in get_db("agents") if a.get("status")=="online" and a.get("role") not in ("general","summarizer")]
         return {"status": "dispatched", "asked": [n for n in tgts if dispatch(q, target=n)], "target": None, "mode": "research"}
     if cmd in ("general","summarizer","normal") and tgt: n = _role(tgt, cmd); return {"status": "role_set", "agent": n, "role": cmd} if n else {"status": "error"}
+    if not cmd and not tgt: from .gatekeeperAG import intercept; return intercept(msg.content)
     return {"status": "dispatched", "asked": dispatch(q, target=tgt), "target": tgt, "mode": "brainstorm" if cmd=="bs" else "chat"}
 @router.get("/api/chat")
 def get_chat(limit: int = 50): return sorted([m for m in get_db("memory") if m.get("agent_id")=="war-room"], key=lambda x: x.get("timestamp",""), reverse=True)[:limit]

@@ -25,6 +25,10 @@ def extract_zwc(text: str) -> str:
     """Holt nur die ZWC-Sequenz raus."""
     return ''.join(REV_MAP.get(c, '') for c in text if c in REV_MAP)
 
+def strip_zwc(text: str) -> str:
+    """Entfernt alle ZWC-Zeichen aus dem Text, um Token zu sparen."""
+    return ''.join(c for c in text if c not in REV_MAP)
+
 def correct_ecc(zwc_bits: str) -> str:
     """Majority-Vote pro Triplet – repariert einzelne Bit-Fehler."""
     corrected = ''

@@ -26,4 +26,7 @@ def set_status(a_id: str, status: str):
 @router.delete("/api/agents/{a_id}")
 def delete_agent(a_id: str): save_db("agents", [a for a in get_db("agents") if a.get("id") != a_id]); save_db("memory", [m for m in get_db("memory") if m.get("agent_id") != a_id])
 @router.get("/api/stats")
-def get_system_stats(): return {"agents": len(get_db("agents")), "memory": len(get_db("memory")), "chat": len(get_db("chat"))}
+def get_system_stats(): 
+    tok = get_db("tokens")
+    t_count = tok[0].get("total", 0) if tok else 0
+    return {"agents": len(get_db("agents")), "memory": len(get_db("memory")), "chat": len(get_db("chat")), "tokens": t_count}
