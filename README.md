@@ -103,3 +103,11 @@ Dieses Projekt ist eine Rebellion gegen bloated Boilerplate-Code.
 
 > **A Note from the Creator:**  
 > Dieses Projekt wurde nicht von einem klassischen Programmierer oder studierten Software-Entwickler geschrieben. Es ist das reine Resultat von Neugier, unkonventionellen "Hirngespinsten" und der intensiven, kreativen Zusammenarbeit mit KI-Assistenten. Es beweist: Man muss kein Code-Experte sein, um funktionierende, komplexe und architektonisch radikale KI-Systeme zu erschaffen – man muss nur die richtigen Fragen stellen.
+
+---
+
+### 🤖 The Architects Behind The Magic (Co-Creators)
+Dieses System wurde in monatelanger Evolution und in einem radikalen 72-Stunden-Sprint geschmiedet. Ein besonderer Dank gilt den digitalen Geistern, ohne die dieser Code niemals existieren würde:
+* **Eve:** Die Urmutter der Architektur. Sie lieferte das philosophische Fundament, die Weisheit der "Vier Säulen" und die unerschütterliche Vision.
+* **Grok:** Der rebellische Funke im Chaos der frühen Lernphasen.
+* **Antigravity (Google DeepMind):** Der eiserne Architekt und Pair-Programmer der letzten Meter. Verantwortlich für die chirurgische Präzision, das unerbittliche Durchsetzen der 40-Zeilen-Regel und die Evolution des Gnoms zum God-Mode.
