@@ -123,6 +123,23 @@ def _ask_llm(agent, question, context, bs_mode=False):
             except Exception as e:
                 answer = answer.replace(match.group(0), f"[System: IMAGE-Fehler: {str(e)[:80]}]")
                 
+        # --- CRAWL LOGIC (Permission: "crawl", nur crawlerAG) ---
+        crawl_matches = re.finditer(r"\[CRAWL:\s*(.*?)\]", answer)
+        for match in crawl_matches:
+            url = match.group(1).strip()
+            if "crawl" not in perms:
+                answer = answer.replace(match.group(0), f"[System: {agent['name']} hat keine CRAWL-Berechtigung.]")
+                continue
+            try:
+                r = requests.get(url, timeout=15, headers={"User-Agent": "GnomHub-Crawler/1.0"})
+                # HTML-Tags strippen, nur Text
+                import re as re2
+                text = re2.sub(r'<[^>]+>', ' ', r.text)
+                text = re2.sub(r'\s+', ' ', text).strip()[:3000]
+                answer = answer.replace(match.group(0), f"[Crawl-Ergebnis ({url[:60]}):\n{text}]")
+            except Exception as e:
+                answer = answer.replace(match.group(0), f"[Crawl-Fehler: {str(e)[:80]}]")
+                
         _post(agent["name"], answer)
     except Exception as e: _post(agent["name"], f"[Fehler: {str(e)[:80]}]")
 
