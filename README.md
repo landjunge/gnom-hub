@@ -30,10 +30,11 @@ Danach öffne **http://127.0.0.1:3002** in deinem Browser. Willkommen im War-Roo
 
 Was den Gnom-Hub von monströsen Frameworks wie Langchain oder AutoGen unterscheidet, ist seine **kompromisslose, nackte Effizienz**:
 
-1. **"God-Mode" Autonomie:** Die KI steuert deinen Rechner. Durch `desktopAG` und `visionAG` sehen die Agenten deinen Bildschirm, klicken Buttons, bedienen Apps und führen Shell-Befehle aus. Eine integrierte **Sandbox-Whitelist** (`sandboxAG.py`) schützt dich dabei vor zerstörerischen Aktionen.
-2. **Zero-Bloat AI OS:** Keine 10.000 Zeilen Boilerplate. Das gesamte Backend und alle Agenten bestehen aus purem Python. Ein Agenten-Start dauert Millisekunden.
-3. **Absolute Resilienz (Auto-Git & Checkpoints):** Jede Aktion, jeder Code-Edit und jede Desktop-Aktion triggert via `gitAG.py` einen Auto-Commit. Ein **post-commit Hook** speichert parallel das aktuelle Schwarm-Gedächtnis. Geht was schief? Ein `@rollback` dreht Code und Erinnerung der KI synchron zurück.
-4. **Swarm Intelligence im "War Room":** Agenten arbeiten nicht isoliert. Im War Room lesen sie den globalen Kontext, reagieren aufeinander und werfen sich gegenseitig Tasks zu (z.B. der `GeneralAG` befiehlt dem `SummarizerAG`).
+1. **"God-Mode" Desktop & Vision:** Die KI steuert deinen Rechner. Die Agenten sehen deinen Bildschirm und agieren über einen robusten, selbstheilenden 5-Step Vision-Loop mit integrierter **Pydantic-Style Schema-Validierung (in pure Python)**. Eine lokale **Sandbox-Whitelist** (`sandboxAG.py`) schützt dabei vor zerstörerischen Aktionen.
+2. **Selbst-Evolution & Auto-Heilung:** Crash-Logs (`.backups/sandbox.log`) werden nicht ignoriert. Agenten (wie `evolutionAG.py`) lesen ihre eigenen Fehler, schreiben ihren eigenen Code um und committen die Verbesserungen via Git. Der Schwarm evolviert von selbst.
+3. **Zero-Bloat AI OS:** Keine 10.000 Zeilen Boilerplate. Das gesamte Backend und alle Agenten bestehen aus purem Python. Ein Agenten-Start dauert Millisekunden.
+4. **Absolute Resilienz (Auto-Git & Checkpoints):** Jede Aktion, jeder Code-Edit und jede Desktop-Aktion triggert via `gitAG.py` einen Auto-Commit. Ein **post-commit Hook** speichert parallel das aktuelle Schwarm-Gedächtnis. Geht was schief? Ein `@rollback` dreht Code und Erinnerung der KI synchron zurück.
+5. **Swarm Intelligence im "War Room":** Agenten arbeiten nicht isoliert. Im War Room lesen sie den globalen Kontext, reagieren aufeinander und werfen sich gegenseitig Tasks zu (z.B. der `GeneralAG` befiehlt dem `SummarizerAG`).
 5. **Provider Hot-Swapping:** Fliegender Wechsel zwischen kostenlosen, lokalen Modellen (**Ollama**) und High-End Cloud-Intelligenz (**OpenRouter**) direkt per Chat-Befehl `@provider`.
 6. **Zero-Friction Agent Creation:** Du klickst im Admin Panel auf "+ Agent", das System klont ein 33-Zeilen-Template, registriert den Agenten und er ist sofort online. Keine Config-Dateien.
 
@@ -63,7 +64,8 @@ Agenten liegen isoliert im Root-Verzeichnis. Jeder ist auf seinen System-Prompt 
 |-------|-----------------------|
 | `generalAG.py` | Führt Truppen, weist Aufgaben an andere Agenten zu. |
 | `desktopAG.py` | **(God-Mode)** Steuert Maus, Tastatur und führt OS-Aktionen aus. |
-| `visionAG.py` | **(God-Mode)** Sieht deinen Bildschirm und analysiert GUIs. |
+| `visionAG.py` | **(God-Mode)** Sieht deinen Screen. Kugelsicherer, selbstheilender 5-Step-Loop mit Schema-Validierung. |
+| `evolutionAG.py` | **(Skynet)** Liest Sandbox-Logs & Git, schreibt Agenten-Code eigenständig um und committet die Evolution. |
 | `gitAG.py` | Auto-versioniert Code-Änderungen und setzt Rollbacks. |
 | `sandboxAG.py` | Der Türsteher. Blockiert zerstörerische Eingriffe der KI. |
 | `tinyAG.py` | Das leere Template. Basis für jede Neuerschaffung. |
@@ -77,7 +79,8 @@ Agenten liegen isoliert im Root-Verzeichnis. Jeder ist auf seinen System-Prompt 
 
 Das System reagiert auf Befehle wie eine Konsole:
 
-- **`@vision [Befehl]`** → Die KI analysiert den Screen und führt die Aktion aus.
+- **`@vision loop [Befehl]`** → Iterativer, selbstheilender 5-Step-Prozess, um komplexe visuelle Tasks auf dem Bildschirm zu lösen.
+- **`@evolve [Agent]`** → Zwingt einen Agenten dazu, basierend auf seinen Sandbox-Fehler-Logs seinen eigenen Code zu verbessern und neu zu committen.
 - **`@desktop [Befehl]`** → Führt physische Maus/Tastatur-Eingaben aus.
 - **`@general [Aufgabe]`** → Übergibt eine Task zur autonomen Schwarm-Verteilung.
 - **`@bs [Thema]`** → Startet eine Brainstorming-Kaskade über alle Agenten.
