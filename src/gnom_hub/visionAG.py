@@ -14,61 +14,41 @@ VISION_DIR.mkdir(parents=True, exist_ok=True)
 VISION_SCHEMA = {
     "description": str,
     "action": ["click", "type", "scroll", "move", "done"],
-    "params": (str, int, list, type(None))  # flexibel
+    "params": (str, int, list, type(None))
 }
 
 def take_screenshot() -> str:
     try:
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        path = VISION_DIR / f"shot_{timestamp}.png"
+        path = VISION_DIR / f"shot_{time.strftime('%Y%m%d_%H%M%S')}.png"
         pyautogui.screenshot(str(path))
         return str(path)
     except:
         return "ERROR: Screenshot failed"
 
 def validate_vision_schema(data):
-    """Pydantic-Style Validierung – pure Python, keine Libs."""
-    if not isinstance(data, dict):
-        return False
+    if not isinstance(data, dict): return False
     for key, expected in VISION_SCHEMA.items():
-        if key not in data:
-            return False
+        if key not in data: return False
         val = data[key]
-        if expected == str and not isinstance(val, str):
-            return False
-        if isinstance(expected, list) and val not in expected:
-            return False
-        if isinstance(expected, tuple) and not any(isinstance(val, t) for t in expected):
-            return False
+        if expected == str and not isinstance(val, str): return False
+        if isinstance(expected, list) and val not in expected: return False
+        if isinstance(expected, tuple) and not any(isinstance(val, t) for t in expected): return False
     return True
 
 def vision_loop(command: str, max_steps: int = 5) -> str:
-    """@vision loop – jetzt mit echter Schema-Validierung + Retry."""
     for step in range(max_steps):
         screenshot = take_screenshot()
-        if "ERROR" in screenshot:
-            return "❌ Vision-Loop abgebrochen: Screenshot-Probleme"
+        if "ERROR" in screenshot: return "❌ Vision-Loop abgebrochen"
         
-        prompt = f"Screenshot: {screenshot}\nTask: {command}\nSchritt {step+1}/{max_steps}\nAntworte NUR mit valide JSON: {{\"description\": \"...\", \"action\": \"click|type|scroll|move|done\", \"params\": ...}}"
+        prompt = f"Screenshot: {screenshot}\nTask: {command}\nSchritt {step+1}/{max_steps}\nNUR valide JSON: {{\"description\": \"...\", \"action\": \"click|type|scroll|move|done\", \"params\": ...}}"
         try:
-            resp = llm_call(prompt, system="Vision-Loop-Agent: immer exakt valide JSON, keine Erklärung.")
-            # robust repair + schema check
-            result = None
-            try:
-                result = json.loads(re.sub(r'```(?:json)?\s*|\s*```', '', resp, flags=re.DOTALL))
-            except:
-                pass
-            if not result or not validate_vision_schema(result):
-                # Schema-Fehler → direkter Retry mit Feedback
-                retry_prompt = f"{prompt}\n\nFEHLER: JSON entspricht nicht dem Schema! Korrigiere und gib exakt valide JSON."
-                resp = llm_call(retry_prompt, system="Korrigiere JSON exakt nach Schema.")
-                result = json.loads(re.sub(r'```(?:json)?\s*|\s*```', '', resp, flags=re.DOTALL)) if resp else None
+            resp = llm_call(prompt, system="Vision-Loop-Agent: immer exakt valide JSON.")
+            result = json.loads(re.sub(r'```(?:json)?\s*|\s*```', '', resp, flags=re.DOTALL))
             
-            if not result or result.get("action") == "done" or not validate_vision_schema(result):
+            if not validate_vision_schema(result) or result.get("action") == "done":
                 auto_commit(".", message="Vision Loop Done")
-                return f"✅ Vision-Loop fertig: {result.get('description', 'Task erledigt') if result else 'Schema-Validierung abgeschlossen'}"
+                return f"✅ Vision-Loop fertig: {result.get('description', 'Task erledigt')}"
             
-            # Aktion ausführen
             if result.get("action") == "click": pyautogui.click()
             elif result.get("action") == "type": pyautogui.typewrite(str(result.get("params", "")))
             elif result.get("action") == "scroll": pyautogui.scroll(int(result.get("params", 500)))
@@ -78,7 +58,7 @@ def vision_loop(command: str, max_steps: int = 5) -> str:
             auto_commit(".", message=f"Vision Step {step}")
             
         except Exception as e:
-            safe_run_command(f"echo 'Vision Schema Error Step {step}: {str(e)}' >> .backups/sandbox.log", "visionAG")
+            safe_run_command(f"echo 'Vision Error Step {step}: {str(e)}' >> .backups/sandbox.log", "visionAG")
             continue
     
-    return "⏹️ Vision-Loop: Max-Schritte oder Schema-Fehler – Task pausiert"
+    return "⏹️ Vision-Loop pausiert (Max-Schritte)"
