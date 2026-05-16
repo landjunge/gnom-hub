@@ -1,4 +1,0 @@
-Hallo! Dies ist der dedizierte Workspace für den Gnom.
-Hier können Dateien von den LLM-Agenten abgelegt, analysiert oder generiert werden.
-
-(Dieser Ordner befindet sich physisch unter AG-Flega/workspace)

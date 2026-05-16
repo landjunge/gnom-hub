@@ -2,7 +2,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-.env
+*.env
 build/
 dist/
 .venv/
@@ -11,3 +11,4 @@ dist/
 .pytest_cache/
 node_modules/
 logs_*.txt
+gnom_workspace/
