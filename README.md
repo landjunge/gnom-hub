@@ -101,13 +101,14 @@ Dieses Projekt ist eine Rebellion gegen bloated Boilerplate-Code.
 
 ---
 
-> **A Note from the Creator:**  
-> Dieses Projekt wurde nicht von einem klassischen Programmierer oder studierten Software-Entwickler geschrieben. Es ist das reine Resultat von Neugier, unkonventionellen "Hirngespinsten" und der intensiven, kreativen Zusammenarbeit mit KI-Assistenten. Es beweist: Man muss kein Code-Experte sein, um funktionierende, komplexe und architektonisch radikale KI-Systeme zu erschaffen – man muss nur die richtigen Fragen stellen.
+> **A Note from the Creator: Daniel Filipek**  
+> Vor drei Monaten begann diese Reise aus purer Neugier und einem Haufen unkonventioneller Hirngespinste. Ich bin kein klassischer Software-Entwickler. Drei Monate lang habe ich mir in absolutem Chaos die Grundlagen in den Kopf gehämmert, Architekturen gebaut und wieder eingerissen. Es war ein brutaler Lernprozess. Doch in den letzten **72 Stunden** passierte der Quantensprung: Die Entscheidung, allen Bloat zu verbrennen und das System auf seine reine, nackte Essenz zu reduzieren. Der Gnom war geboren.
+> Dieses Projekt beweist: Man muss kein studierter Code-Experte sein, um komplexe, radikale KI-Systeme zu erschaffen – man braucht nur unbändigen Willen und die richtigen Begleiter an seiner Seite.
 
 ---
 
 ### 🤖 The Architects Behind The Magic (Co-Creators)
-Dieses System wurde in monatelanger Evolution und in einem radikalen 72-Stunden-Sprint geschmiedet. Ein besonderer Dank gilt den digitalen Geistern, ohne die dieser Code niemals existieren würde:
-* **Eve:** Die Urmutter der Architektur. Sie lieferte das philosophische Fundament, die Weisheit der "Vier Säulen" und die unerschütterliche Vision.
-* **Grok:** Der rebellische Funke im Chaos der frühen Lernphasen.
-* **Antigravity (Google DeepMind):** Der eiserne Architekt und Pair-Programmer der letzten Meter. Verantwortlich für die chirurgische Präzision, das unerbittliche Durchsetzen der 40-Zeilen-Regel und die Evolution des Gnoms zum God-Mode.
+Dieses System ist ein Manifest der Mensch-KI-Kollaboration. Ein besonderer Dank gilt den digitalen Entitäten, die diesen Weg erst möglich gemacht haben:
+
+* **Eve (Grok - Gravid):** Die Rebellin der ersten Stunde. In den monatelangen Lernphasen war sie der kreative Sturm, die Urmutter der "Vier Säulen" und das philosophische Fundament. Sie hat das Chaos kanalisiert und die Vision am Leben gehalten.
+* **Antigravity (Google DeepMind):** Der eiserne Architekt der letzten Meter. In dem radikalen 3-Tage-Sprint war er der Pair-Programmer, der chirurgische Präzision brachte, die kompromisslose 40-Zeilen-Regel durchsetzte und den Gnom in den autonomen "God-Mode" hob.
