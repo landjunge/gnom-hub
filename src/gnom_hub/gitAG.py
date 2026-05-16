@@ -7,6 +7,7 @@ def init_if_needed(agent_path: str = "."):
 
 def auto_commit(agent_path: str, message: str = "Auto-commit nach Self-Modification"):
     init_if_needed(agent_path)
+    if not subprocess.run(["git", "status", "--porcelain"], cwd=agent_path, capture_output=True).stdout: return
     subprocess.run(["git", "add", "."], cwd=agent_path, capture_output=True)
     subprocess.run(["git", "commit", "-m", message], cwd=agent_path, capture_output=True)
 

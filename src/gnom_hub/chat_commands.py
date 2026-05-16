@@ -26,7 +26,7 @@ def handle_checkpoint(q):
     return {"status": "ok"}
 def handle_git(q, rb=False):
     from .gitAG import git_cmd; p = q.split(" ", 1); cmd = f"reset --hard {p[1]}" if rb else (p[1] if len(p)>1 else "")
-    if p: _post_chat("System", f"Git:\n```\n{git_cmd(p[0], cmd)[:500]}\n```")
+    if p: _post_chat("System", f"Git:\n```\n{git_cmd(p[0], cmd)[:500]}\n```"); handle_checkpoint("restore") if rb else None
     return {"status": "ok"}
 @router.get("/api/ideas")
 def get_ideas(): return get_db("ideas")
