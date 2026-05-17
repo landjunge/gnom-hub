@@ -19,7 +19,7 @@ def start_pulse(interval=30):
     def loop():
         while True:
             try: pulse_janitor()
-            except: pass
+            except Exception as e: print(f"[PULSE] Fehler: {e}")
             time.sleep(interval)
     t = threading.Thread(target=loop, daemon=True)
     t.start(); return t

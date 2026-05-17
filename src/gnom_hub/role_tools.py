@@ -3,7 +3,8 @@ from .db import get_db, save_db
 from .provider_switchAG import llm_call as _llm
 def distribute_job(job_text):
     ags = get_db("agents")
-    gen = next((a for a in ags if a.get("role") == "general"), {})
+    gen = next((a for a in ags if a.get("role") == "general"), None)
+    if not gen: gen = next((a for a in ags if a.get("name","").lower() == "generalag"), None)
     gen_desc = gen.get("description", "Du bist der elitäre General.")
     mmap = ", ".join(f"{a['name']}:{a.get('skill', a.get('role','Agent'))}" for a in ags if a.get('name') != gen.get('name'))
     system = (f"SYSTEM: {gen_desc} Deine Truppe: [{mmap}]. "

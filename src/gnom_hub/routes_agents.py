@@ -25,6 +25,7 @@ def set_status(a_id: str, status: str):
         if a.get("id") == a_id: a["status"] = status; save_db("agents", d); return a
 @router.delete("/api/agents/{a_id}")
 def delete_agent(a_id: str): save_db("agents", [a for a in get_db("agents") if a.get("id") != a_id]); save_db("memory", [m for m in get_db("memory") if m.get("agent_id") != a_id])
+SYS_NAMES = {'watchdogag', 'skillsag', 'backupag', 'cronjobag', 'soulag', 'summarizerag', 'generalag', 'securityag'}
 @router.get("/api/stats")
 def get_system_stats(): 
     tok = get_db("tokens")
@@ -39,5 +40,9 @@ def get_system_stats():
             t_free = d.get("total_free", 0)
             t_pay = d.get("total_pay", 0)
             t_count = d.get("total", t_count)
-        except: pass
-    return {"agents": len(get_db("agents")), "memory": len(get_db("memory")), "chat": len(get_db("chat")), "tokens": t_count, "tokens_free": t_free, "tokens_pay": t_pay}
+        except Exception as e: print(f"[STATS] Token-Datei Fehler: {e}")
+    agents = get_db("agents")
+    sys_a = sum(1 for a in agents if (a.get("name","").lower()) in SYS_NAMES)
+    return {"agents": len(agents), "sys_agents": sys_a, "work_agents": len(agents) - sys_a, "memory": len(get_db("memory")), "chat": len(get_db("chat")), "tokens": t_count, "tokens_free": t_free, "tokens_pay": t_pay}
+@router.get("/api/health")
+def health(): return {"status": "ok", "agents": len(get_db("agents")), "uptime": "alive"}

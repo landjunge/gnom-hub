@@ -11,6 +11,14 @@ def remove_tool(name: str): save_db("tools", [t for t in get_db("tools") if t["n
 def cleanup_offline(): online = [a for a in get_db("agents") if a.get("status") == "online"]; save_db("agents", online); return {"remaining": len(online)}
 @router.get("/health")
 def health(): return {"status": "ok", "agents": len(get_db("agents")), "memory": len(get_db("memory")), "tools": len(get_db("tools"))}
+@router.post("/nuke")
+def nuke_restart():
+    from .proc_mgr import kill_process, restart_hub
+    killed = []
+    for target in ["gnom_hub", "generalAG", "summarizerAG", "cronjobAG", "backupAG", "soulAG", "watchdogAG", "skillsAG", "securityAG"]:
+        r = kill_process(target); killed.append(r)
+    import threading; threading.Timer(1.5, restart_hub).start()
+    return {"status": "nuked", "killed": killed, "restart": "in 1.5s"}
 ROLES = {"general": "SYSTEM-ROLLE: GENERAL. Task-Distributions-Maschine. Analysiere @job und verteile Aufgaben via @Name -> Aufgabe. Keine Erklärungen.",
          "summarizer": "SYSTEM-ROLLE: SUMMARIZER. Informationsfilter. Extrahiere Fakten/Entscheidungen. Stichpunkte, max 1 Satz pro Punkt."}
 @router.put("/agents/{agent_id}/role")

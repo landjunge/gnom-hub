@@ -78,16 +78,13 @@
     }
 
     .lamp.on {
-      opacity: 0.8;
-      box-shadow: 0 0 8px currentColor;
-      animation: lamp-breathe var(--dur, 3s) infinite ease-in-out alternate;
-      animation-delay: var(--delay, 0s);
+      opacity: 0.75;
+      box-shadow: 0 0 6px currentColor;
     }
 
     .lamp.busy {
       opacity: 1;
-      box-shadow: 0 0 20px currentColor;
-      animation: lamp-pulse 0.25s infinite alternate;
+      box-shadow: 0 0 14px currentColor;
     }
 
     @keyframes lamp-breathe {
@@ -154,6 +151,43 @@
       font-weight: 800;
       color: #fff;
       box-shadow: 0 2px 12px var(--primary-glow);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      user-select: none;
+    }
+    .logo-mark:hover {
+      border-color: rgba(255, 0, 0, 0.7);
+      box-shadow: 0 0 18px rgba(255,0,0,0.5);
+      color: #ff4444;
+    }
+    .logo-mark.nuke-charging {
+      animation: nuke-charge 2s ease-in forwards;
+    }
+    .logo-mark.nuke-fired {
+      animation: nuke-blast 0.6s ease-out forwards;
+    }
+    .logo-mark.nuke-offline {
+      background: linear-gradient(135deg, #0a0a0a, #050505) !important;
+      border-color: rgba(80, 80, 80, 0.3) !important;
+      color: #555 !important;
+      box-shadow: none !important;
+    }
+    .logo-mark.nuke-ready {
+      border-color: rgba(57, 255, 20, 0.7) !important;
+      box-shadow: 0 0 18px rgba(57,255,20,0.5) !important;
+      color: #39FF14 !important;
+    }
+    @keyframes nuke-charge {
+      0%   { border-color: rgba(0,150,255,0.4); box-shadow: 0 2px 12px var(--primary-glow); color: #fff; }
+      50%  { border-color: rgba(255,165,0,0.8); box-shadow: 0 0 20px rgba(255,165,0,0.6); color: #ffa500; }
+      100% { border-color: rgba(255,0,0,1); box-shadow: 0 0 30px rgba(255,0,0,0.8); color: #ff0000; background: linear-gradient(135deg, #2a0000, #1a0000); }
+    }
+    @keyframes nuke-blast {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.8); box-shadow: 0 0 60px rgba(255,0,0,1); }
+      60%  { transform: scale(0.6); }
+      100% { transform: scale(1); }
     }
 
     .logo-text {
@@ -782,7 +816,7 @@
       width: 3px;
       height: 3px;
       border-radius: 1px;
-      animation: px-pulse 1.8s ease-in-out infinite;
+      opacity: 0.6;
     }
 
     .crawler-pixels .px:nth-child(1) {
@@ -834,7 +868,6 @@
     .dot.on {
       background: var(--green);
       box-shadow: 0 0 6px var(--green);
-      animation: dot-pulse 2.5s ease-in-out infinite;
     }
 
     .dot.off {
@@ -1419,7 +1452,10 @@
   <div class="status-lamps" id="status-lamps"></div>
   <header>
     <div class="logo" onclick="showWarRoom()">
-      <div class="logo-mark">G</div>
+      <div class="logo-mark" id="nuke-btn"
+        onmousedown="nukeStart(event)" onmouseup="nukeCancel()" onmouseleave="nukeCancel()"
+        ontouchstart="nukeStart(event)" ontouchend="nukeCancel()"
+        title="Gedrückt halten (2s) = NUKE: Alle Prozesse killen & Hub neustarten">G</div>
       <div class="logo-text">GNOM-HUB</div>
     </div>
     <div class="header-right">
@@ -1559,6 +1595,61 @@
       setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 10500);
     }
 
+    // ── NUKE (G-Button Long Press) ──
+    let _nukeTimer = null;
+    let _nukeArmed = false;
+    function nukeStart(e) {
+      e.stopPropagation();
+      const btn = document.getElementById('nuke-btn');
+      btn.classList.add('nuke-charging');
+      _nukeArmed = false;
+      _nukeTimer = setTimeout(() => {
+        _nukeArmed = true;
+        btn.classList.remove('nuke-charging');
+        btn.classList.add('nuke-fired');
+        nukeHub();
+      }, 2000);
+    }
+    function nukeCancel() {
+      if (_nukeTimer) { clearTimeout(_nukeTimer); _nukeTimer = null; }
+      if (!_nukeArmed) {
+        const btn = document.getElementById('nuke-btn');
+        btn.classList.remove('nuke-charging');
+      }
+    }
+    async function nukeHub() {
+      const btn = document.getElementById('nuke-btn');
+      toast('☢️ NUKE — Alle Prozesse werden gekillt...', 'error');
+      try {
+        await fetch((API || '/api').replace('/api', '') + '/api/admin/nuke', { method: 'POST' });
+      } catch(e) { /* Hub stirbt, das ist gewollt */ }
+      btn.textContent = '✕';
+      btn.classList.remove('nuke-fired');
+      btn.classList.add('nuke-offline');
+      // Auto-Reconnect Loop
+      let attempts = 0;
+      const reconnect = setInterval(async () => {
+        attempts++;
+        try {
+          const r = await fetch((API || '/api').replace('/api', '') + '/api/health', { signal: AbortSignal.timeout(1000) });
+          if (r.ok) {
+            clearInterval(reconnect);
+            btn.textContent = 'G';
+            btn.classList.remove('nuke-offline');
+            btn.classList.add('nuke-ready');
+            _nukeArmed = false;
+            toast('🟢 Hub ist zurück!', 'success');
+            setTimeout(() => { btn.classList.remove('nuke-ready'); location.reload(); }, 1200);
+          }
+        } catch(e) { /* noch tot */ }
+        if (attempts > 30) {
+          clearInterval(reconnect);
+          toast('⚠️ Hub kommt nicht zurück. Manuell starten: gnom-hub', 'error');
+          _nukeArmed = false;
+        }
+      }, 2000);
+    }
+
     // ── API Discovery ──
     let API = '';
     let agents = [];
@@ -1605,8 +1696,8 @@
       'researcherag': '#FFFF00', // Gelb
       'editorag': '#0088FF',           // Blau
       'web_crawlerag': '#FF8800',      // Orange
-      'data_crawlerag': '#FF6600',     // Dunkel-Orange
-      'smart_crawlerag': '#FFAA00'     // Gold-Orange
+      'data_crawlerag': '#FF8800',     // Orange
+      'smart_crawlerag': '#FF8800'     // Orange
     };
     function agentColor(name) {
       if (!name) return '#00E5FF';
@@ -1651,7 +1742,7 @@
           const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
           const c = agentColor(a.name);
           return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
-        <h3><span class="dot ${on ? 'on' : 'off'}" style="${on ? 'background:' + c + ';box-shadow:0 0 6px ' + c : ''}"></span><span>${a.name}</span>${roleIcon}${a.name.toLowerCase().includes('crawler') ? '<span class="crawler-pixels"><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span><span class="px"></span></span>' : ''}</h3>
+        <h3><span class="dot ${on ? 'on' : 'off'}" style="${on ? 'background:' + c + ';box-shadow:0 0 6px ' + c : ''}"></span><span>${a.name}</span>${roleIcon}</h3>
         <div class="desc">${a.description || '–'}</div>
         <div class="meta">${a.port ? `<span class="badge port">:${a.port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}</div>
       </div>`;
@@ -1823,10 +1914,10 @@
     async function updateStats() {
       const s = await api('GET', '/stats');
       if (s) {
-        const sysNames = ['watchdogag', 'skillsag', 'backupag', 'cronjobag', 'soulag', 'summarizerag', 'generalag'];
-        const totalA = (s.agents ?? agents.length) + 4; // +4 for Watchdog, Skills, Cronjob, Soul
-        const sysA = agents.filter(a => sysNames.includes((a.name || '').toLowerCase())).length + 4;
-        const workA = totalA - sysA;
+        const sysNames = ['watchdogag', 'skillsag', 'backupag', 'cronjobag', 'soulag', 'summarizerag', 'generalag', 'securityag'];
+        const totalA = s.agents ?? agents.length;
+        const sysA = s.sys_agents ?? agents.filter(a => sysNames.includes((a.name || '').toLowerCase())).length;
+        const workA = s.work_agents ?? (totalA - sysA);
         document.getElementById('s-agents').textContent = `${totalA} (Sys: ${sysA} | Work: ${workA})`;
         document.getElementById('s-memory').textContent = s.memory ?? 0;
         if (document.getElementById('s-tokens')) {
@@ -2418,8 +2509,8 @@
         renderAgentList(document.getElementById('agent-search').value);
         updateStats();
         updateLamps(agents);
-      }, 10000);
-      setInterval(refreshChat, 3000);
+      }, 15000);
+      setInterval(refreshChat, 5000);
 
       // Layer Animation
       let currentLayer = 0;

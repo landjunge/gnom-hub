@@ -47,9 +47,10 @@ def handle_skill(q):
     return {"status": "ok"}
 def handle_job(task):
     from .role_tools import distribute_job; ags = get_db("agents"); gen = next((a for a in ags if a.get("role") == "general"), None)
+    if not gen: gen = next((a for a in ags if a.get("name","").lower() == "generalag"), None)
     if not gen: return {"error": "Kein General"}
     save_db("jobs", get_db("jobs") + [{"id": str(uuid.uuid4()), "task": task, "general": gen["name"], "status": "open", "ts": datetime.utcnow().isoformat()+"Z"}]); res = distribute_job(task); _post_chat(gen["name"], res)
-    [a.update({"active_job": next((m.group(2).strip() for m in re.finditer(r'@(\w+)[\s-→>:]+(.+)', res) if m.group(1).lower()==a["name"].lower()), "")}) for a in ags]; save_db("agents", ags); return {"status": "job_created"}
+    [a.update({"active_job": next((m.group(2).strip() for m in re.finditer(r'@(\w+)[\s→>:\-]+(.+)', res) if m.group(1).lower()==a["name"].lower()), "")}) for a in ags]; save_db("agents", ags); return {"status": "job_created"}
 def handle_sandbox(c):
     open("sandbox.py", "w").write(c.replace("```python", "").replace("```", "").strip())
     try: out = subprocess.run(["python3", "sandbox.py"], capture_output=True, text=True, timeout=5).stdout

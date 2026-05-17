@@ -29,7 +29,8 @@ class BaseAgent:
             chat = self.get("/api/chat?limit=10")
             if not isinstance(chat, list): chat = []
             
-            new = [m for m in chat if m.get("id") not in self.seen and m.get("metadata",{}).get("sender","") != self.n and (self.n.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
+            sender = lambda m: m.get("metadata",{}).get("sender","")
+            new = [m for m in chat if m.get("id") not in self.seen and sender(m) == "user" and (self.n.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
             for m in chat: self.seen.add(m.get("id"))
             
             for m in new:
