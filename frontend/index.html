@@ -1979,7 +1979,7 @@
       selectedId = null;
       document.getElementById('content').innerHTML = `
     <div class="panel" id="workspace-panel">
-      <h2>Workspace <div class="actions"><button onclick="loadWorkspace()">Refresh</button></div></h2>
+      <h2>Workspace <div class="actions"><button class="btn-primary" onclick="loadWorkspace()">Refresh</button></div></h2>
       <div id="workspace-list"><div class="empty">Lade Dateien...</div></div>
     </div>
   `;
@@ -1995,7 +1995,7 @@
 
       const panelTitle = document.querySelector('#workspace-panel h2');
       if (panelTitle) {
-        panelTitle.innerHTML = `📁 gnom_workspace / <span style="color:var(--green)">${projName}</span> <div class="actions"><button onclick="loadWorkspace()">Refresh</button></div>`;
+        panelTitle.innerHTML = `📁 gnom_workspace / <span style="color:var(--green)">${projName}</span> <div class="actions"><button class="btn-primary" onclick="loadWorkspace()">Refresh</button></div>`;
       }
 
       if (!files || files.error) {
@@ -2014,9 +2014,9 @@
         const isPy = ext === 'py';
         let actionBtn = '';
         if (isWeb) {
-          actionBtn = `<button onclick="event.stopPropagation(); openWorkspaceFile('${f.name}')" title="Im Browser öffnen" style="background:var(--green);color:#000;border:none;border-radius:var(--radius);padding:4px 10px;cursor:pointer;font-size:0.85em;">🌐 Open</button>`;
+          actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); openWorkspaceFile('${f.name}')" title="Im Browser öffnen">🌐 Open</button>`;
         } else if (isPy) {
-          actionBtn = `<button onclick="event.stopPropagation(); runWorkspaceFile('${f.name}')" title="Python ausführen" style="background:#f0c040;color:#000;border:none;border-radius:var(--radius);padding:4px 10px;cursor:pointer;font-size:0.85em;">▶ Run</button>`;
+          actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); runWorkspaceFile('${f.name}')" title="Python ausführen">▶ Run</button>`;
         }
         html += `<div class="mem-item" style="display:flex; justify-content:space-between; align-items:center;">
           <div style="cursor:pointer; flex:1;" onclick="readWorkspaceFile('${f.name}')">

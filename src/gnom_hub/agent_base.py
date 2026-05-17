@@ -1,8 +1,8 @@
 import asyncio, json, os, requests
 from .soul_initializer import get_soul
+from .router import ask_router
 
 HUB_URL = "http://127.0.0.1:3002"
-KEY = os.environ.get("DEEPSEEK_API_KEY")
 
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
@@ -34,12 +34,12 @@ class BaseAgent:
             for m in chat: self.seen.add(m.get("id"))
             
             for m in new:
-                msgs = [{"role": "system", "content": self.sys}, {"role": "user", "content": m["content"]}]
                 try:
-                    r2 = requests.post("https://api.deepseek.com/chat/completions", headers={"Authorization": f"Bearer {KEY}"}, json={"model": self.model, "messages": msgs}).json()
-                    reply = r2["choices"][0]["message"]["content"]
-                    self.post("/api/chat", {"content": reply, "sender": self.n})
+                    reply = ask_router(m["content"], self.sys, agent_name=self.n)
+                    if reply and not reply.startswith("[ROUTER-FEHLER]"):
+                        self.post("/api/chat", {"content": reply, "sender": self.n})
+                    else:
+                        print(f"[{self.n}] Keine Antwort vom LLM")
                 except Exception as e:
                     print(f"[{self.n}] Error: {e}")
-                pass
             await asyncio.sleep(self.p)
