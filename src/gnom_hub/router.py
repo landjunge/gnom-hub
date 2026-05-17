@@ -59,16 +59,37 @@ def _get_key_for(agent_name):
     return OR_KEYS.get(n, OR_KEYS["default"])
 
 def ask_router(prompt, sys_prompt="Du bist ein hilfreicher Assistent.", agent_name=None):
-    """Feuert auf das bevorzugte Modell des Agenten. Fallback-Kette wenn nötig."""
+    """DeepSeek zuerst, OpenRouter-Free als Fallback."""
     n = (agent_name or "").lower()
+
+    # 1. DeepSeek (primär, zuverlässig)
+    if DS_KEY:
+        try:
+            print(f"\n[ROUTER] {agent_name or '?'} → DeepSeek...")
+            res = requests.post("https://api.deepseek.com/chat/completions",
+                headers={"Authorization": f"Bearer {DS_KEY}", "Content-Type": "application/json"},
+                json={"model": "deepseek-chat", "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]},
+                timeout=120
+            )
+            if res.status_code == 200:
+                data = res.json()
+                choices = data.get("choices", [])
+                if choices and choices[0].get("message", {}).get("content"):
+                    usage = data.get("usage", {})
+                    if usage: _track_tokens(agent_name or "?", "deepseek-chat", usage)
+                    print(f"[ROUTER] Erfolg: {agent_name} auf DeepSeek")
+                    return choices[0]["message"]["content"]
+            print(f"[ROUTER] DeepSeek: {res.status_code}. Fallback auf OpenRouter...")
+        except Exception as e:
+            print(f"[ROUTER] DeepSeek Fehler: {e}. Fallback...")
+
+    # 2. OpenRouter Free (Fallback)
     models = AGENT_MODELS.get(n, DEFAULT_MODELS)
     key = _get_key_for(agent_name)
-
-    # Erst bevorzugte Modelle mit eigenem Key
     for model in models:
         if not key: continue
         try:
-            print(f"\n[ROUTER] {agent_name or '?'} → {model}...")
+            print(f"[ROUTER] {agent_name or '?'} → {model}...")
             res = requests.post("https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json={"model": model, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]},
@@ -82,30 +103,12 @@ def ask_router(prompt, sys_prompt="Du bist ein hilfreicher Assistent.", agent_na
                     if usage: _track_tokens(agent_name or "?", model, usage)
                     print(f"[ROUTER] Erfolg: {agent_name} auf {model}")
                     return choices[0]["message"]["content"]
-                print(f"[ROUTER] {model}: 200 aber leere Antwort. Nächstes...")
+                print(f"[ROUTER] {model}: leere Antwort. Nächstes...")
             elif res.status_code == 429:
                 import time; print(f"[ROUTER] {model}: Rate-Limit. Warte 2s..."); time.sleep(2)
             else:
                 print(f"[ROUTER] {model} gescheitert ({res.status_code}). Nächstes...")
         except Exception as e:
             print(f"[ROUTER] Absturz auf {model}: {e}")
-
-    # Letzte Rettung: DeepSeek bezahlt
-    if DS_KEY:
-        try:
-            print(f"\n[ROUTER] Fallback → DeepSeek (bezahlt)...")
-            res = requests.post("https://api.deepseek.com/chat/completions",
-                headers={"Authorization": f"Bearer {DS_KEY}", "Content-Type": "application/json"},
-                json={"model": "deepseek-chat", "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]}
-            )
-            if res.status_code == 200:
-                data = res.json()
-                choices = data.get("choices", [])
-                if choices and choices[0].get("message", {}).get("content"):
-                    usage = data.get("usage", {})
-                    if usage: _track_tokens(agent_name or "?", "deepseek-chat", usage)
-                    return choices[0]["message"]["content"]
-        except Exception as e:
-            print(f"[ROUTER] DeepSeek Absturz: {e}")
 
     return "[ROUTER-FEHLER] Alle Gleise offline."
