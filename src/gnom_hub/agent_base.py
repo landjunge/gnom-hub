@@ -2,10 +2,10 @@ import asyncio, json, os, requests
 from .soul_initializer import get_soul
 
 HUB_URL = "http://127.0.0.1:3002"
-KEY = os.environ.get("OPENROUTER_KEY_FREE_1") or os.environ.get("OPENROUTER_API_KEY")
+KEY = os.environ.get("DEEPSEEK_API_KEY")
 
 class BaseAgent:
-    def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek/deepseek-v4-flash:free"):
+    def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
         self.n, self.d, self.t, self.sys, self.p, self.model = name, desc, trigger, sys_prompt, poll, model
         self.seen = set()
         soul = get_soul(name)
@@ -36,7 +36,7 @@ class BaseAgent:
                 self.post(f"/api/agents/{self.n}/status", {"status": "busy"})
                 msgs = [{"role": "system", "content": self.sys}, {"role": "user", "content": m["content"]}]
                 try:
-                    r2 = requests.post("https://openrouter.ai/api/v1/chat/completions", headers={"Authorization": f"Bearer {KEY}"}, json={"model": self.model, "messages": msgs}).json()
+                    r2 = requests.post("https://api.deepseek.com/chat/completions", headers={"Authorization": f"Bearer {KEY}"}, json={"model": self.model, "messages": msgs}).json()
                     reply = r2["choices"][0]["message"]["content"]
                     self.post("/api/chat", {"content": reply, "sender": self.n})
                 except Exception as e:
