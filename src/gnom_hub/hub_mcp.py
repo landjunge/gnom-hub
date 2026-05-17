@@ -42,6 +42,10 @@ def desktop_control(c: str): from gnom_hub.desktopAG import desktop_action as d;
 @mcp.tool()
 def vision_loop(c: str): from gnom_hub.visionAG import vision_loop as v; return v(c)
 @mcp.tool()
+def smart_crawl(command: str):
+    """Intelligenter Anti-Block-Crawl via smart_crawlerAG."""
+    from gnom_hub.smart_crawlerAG import smart_crawl as sc; return sc(command)
+@mcp.tool()
 def evolve_agent(a: str): from gnom_hub.evolutionAG import evolve_agent as e; return e(a)
 @mcp.tool()
 def get_agent_soul(agent_name: str):
