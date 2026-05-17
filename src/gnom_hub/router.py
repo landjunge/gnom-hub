@@ -71,15 +71,22 @@ def ask_router(prompt, sys_prompt="Du bist ein hilfreicher Assistent.", agent_na
             print(f"\n[ROUTER] {agent_name or '?'} → {model}...")
             res = requests.post("https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": model, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]}
+                json={"model": model, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]},
+                timeout=120
             )
             if res.status_code == 200:
                 data = res.json()
-                usage = data.get("usage", {})
-                if usage: _track_tokens(agent_name or "?", model, usage)
-                print(f"[ROUTER] Erfolg: {agent_name} auf {model}")
-                return data['choices'][0]['message']['content']
-            print(f"[ROUTER] {model} gescheitert ({res.status_code}). Nächstes...")
+                choices = data.get("choices", [])
+                if choices and choices[0].get("message", {}).get("content"):
+                    usage = data.get("usage", {})
+                    if usage: _track_tokens(agent_name or "?", model, usage)
+                    print(f"[ROUTER] Erfolg: {agent_name} auf {model}")
+                    return choices[0]["message"]["content"]
+                print(f"[ROUTER] {model}: 200 aber leere Antwort. Nächstes...")
+            elif res.status_code == 429:
+                import time; print(f"[ROUTER] {model}: Rate-Limit. Warte 2s..."); time.sleep(2)
+            else:
+                print(f"[ROUTER] {model} gescheitert ({res.status_code}). Nächstes...")
         except Exception as e:
             print(f"[ROUTER] Absturz auf {model}: {e}")
 
@@ -93,9 +100,11 @@ def ask_router(prompt, sys_prompt="Du bist ein hilfreicher Assistent.", agent_na
             )
             if res.status_code == 200:
                 data = res.json()
-                usage = data.get("usage", {})
-                if usage: _track_tokens(agent_name or "?", "deepseek-chat", usage)
-                return data['choices'][0]['message']['content']
+                choices = data.get("choices", [])
+                if choices and choices[0].get("message", {}).get("content"):
+                    usage = data.get("usage", {})
+                    if usage: _track_tokens(agent_name or "?", "deepseek-chat", usage)
+                    return choices[0]["message"]["content"]
         except Exception as e:
             print(f"[ROUTER] DeepSeek Absturz: {e}")
 
