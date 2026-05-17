@@ -43,7 +43,9 @@ def _ask_llm(agent, question, context, bs_mode=False):
     if context: user_msg += f"\n\nBisherige Diskussion:\n{context}"
     try:
         answer = ask_router(user_msg, sys_prompt, agent_name=agent.get("name", ""))
-        
+        if not answer or not isinstance(answer, str):
+            _post(agent["name"], f"[Fehler: Keine Antwort vom LLM für {agent['name']}]")
+            return
         perms = soul.get("permissions", [])
         
         # --- WRITE LOGIC (Permission: "write") ---
@@ -124,23 +126,25 @@ def _ask_llm(agent, question, context, bs_mode=False):
             except Exception as e:
                 answer = answer.replace(match.group(0), f"[System: IMAGE-Fehler: {str(e)[:80]}]")
                 
-        # --- CRAWL LOGIC (Permission: "crawl" oder "@job") ---
+        # --- CRAWL LOGIC (Permission: "@job") ---
         crawl_matches = re.finditer(r"\[CRAWL:\s*(.*?)\]", answer)
         for match in crawl_matches:
             url = match.group(1).strip()
-            if "crawl" not in perms and "@job" not in perms:
+            if "@job" not in perms:
                 answer = answer.replace(match.group(0), f"[System: {agent['name']} hat keine CRAWL-Berechtigung.]")
                 continue
             try:
-                from .crawler_engine import crawl_smart, crawl_data, crawl_simple
+                from .smart_crawlerAG import smart_request
+                from .web_crawlerAG import web_crawl as _wc
+                from .data_crawlerAG import data_crawl as _dc
                 aname = agent["name"].lower()
                 if "smart_crawler" in aname:
-                    text = crawl_smart(url)
+                    text = smart_request(url)
                 elif "data_crawler" in aname:
-                    text = crawl_data(url)
+                    text = _dc(url)
                 else:
-                    text = crawl_simple(url)
-                answer = answer.replace(match.group(0), f"[Crawl-Ergebnis ({url[:60]}):\n{text}]")
+                    text = smart_request(url)
+                answer = answer.replace(match.group(0), f"[Crawl-Ergebnis ({url[:60]}):\n{text[:3000]}]")
             except Exception as e:
                 answer = answer.replace(match.group(0), f"[Crawl-Fehler: {str(e)[:80]}]")
                 
