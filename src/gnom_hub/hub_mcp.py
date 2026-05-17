@@ -1,76 +1,46 @@
-import requests, os, json as _json; from mcp.server.fastmcp import FastMCP
-mcp = FastMCP("HUB", host="127.0.0.1", port=int(os.environ.get("GNOM_MCP_PORT", 3100)))
+# hub_mcp.py — Tool-Registry für Gnom-Hub (Python 3.8 kompatibel)
+import requests, os, json as _json, subprocess
+
+PORT = os.environ.get("GNOM_HUB_PORT", "3002")
+
 def api(m, p, **k):
-    try: return _json.dumps(requests.request(m, f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT','3002')}/api"+p, **k).json())
+    try: return _json.dumps(requests.request(m, f"http://127.0.0.1:{PORT}/api" + p, **k).json())
     except: return "Err"
-T = ["save_to_memory|a:str,c:str|api('POST','/memory',json={'agent_id':a,'content':c})",
-     "get_memory|a:str|api('GET',f'/agents/{a}/memory')",
-     "search_memory|q:str|api('GET','/memory/search',params={'q':q})",
-     "delete_memory|m:str|api('DELETE',f'/memory/{m}')",
-     "update_memory|m:str,c:str|api('PUT',f'/memory/{m}',params={'content':c})",
-     "set_agent_status|a:str,s:str|api('PUT',f'/agents/{a}/status',params={'status':s})",
-     "list_all_agents||api('GET','/agents')",
-     "get_agent|a:str|api('GET',f'/agents/{a}')",
-     "clear_agent_memory|a:str|api('DELETE',f'/agents/{a}/memory')",
-     "create_agent|n:str,d:str=''|api('POST','/agents',json={'name':n,'description':d,'status':'offline'})",
-     "delete_agent|a:str|api('DELETE',f'/agents/{a}')",
-     "get_system_stats||api('GET','/stats')",
-     "register_agent|n:str,p:int,d:str=''|api('POST','/agents/register',json={'name':n,'port':p,'description':d})",
-     "nudge_agent|a:str,r:str='manual'|api('POST',f'/agents/{a}/nudge',params={'reason':r})",
-     "war_room_chat|m:str,s:str='mcp'|api('POST','/chat',json={'content':m,'sender':s})",
-     "war_room_read|limit:int=20|api('GET',f'/chat?limit={limit}')",
-     "set_agent_role|a:str,role:str|api('PUT',f'/admin/agents/{a}/role',params={'role':role})"]
-for t in T:
-    n, a, b = t.split("|"); exec(f"@mcp.tool()\ndef {n}({a}): return {b}")
-@mcp.tool()
-def read_file(path: str):
-    try: return open(path, "r", encoding="utf-8").read()
-    except Exception as e: return f"Fehler: {e}"
-@mcp.tool()
-def write_file(path: str, content: str):
-    try: open(path, "w", encoding="utf-8").write(content); from gnom_hub.gitAG import auto_commit; auto_commit("."); return "Erfolg"
-    except Exception as e: return f"Fehler: {e}"
-@mcp.tool()
-def run_command(cmd: str):
-    import subprocess; return subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout
-@mcp.tool()
-def distribute_job(job: str): from gnom_hub.role_tools import distribute_job as dj; return dj(job)
-@mcp.tool()
-def summarize_chat(): from gnom_hub.role_tools import summarize_chat as sc; return sc()
-@mcp.tool()
-def desktop_control(c: str): from gnom_hub.desktopAG import desktop_action as d; return d(c)
-@mcp.tool()
-def vision_loop(c: str): from gnom_hub.visionAG import vision_loop as v; return v(c)
-@mcp.tool()
-def smart_crawl(command: str):
-    """Intelligenter Anti-Block-Crawl via smart_crawlerAG."""
-    from gnom_hub.smart_crawlerAG import smart_crawl as sc; return sc(command)
-@mcp.tool()
-def data_crawl(command: str):
-    """Strukturierte Daten extrahieren via data_crawlerAG."""
-    from gnom_hub.data_crawlerAG import data_crawl as dc; return dc(command)
-@mcp.tool()
-def web_crawl(command: str):
-    """Webseiten-Rohtext holen via web_crawlerAG."""
-    from gnom_hub.web_crawlerAG import web_crawl as wc; return wc(command)
-@mcp.tool()
-def evolve_agent(a: str): from gnom_hub.evolutionAG import evolve_agent as e; return e(a)
-@mcp.tool()
-def get_agent_soul(agent_name: str):
-    """Gibt die Soul (role, permissions, directive) eines Agenten zurück."""
-    from gnom_hub.soul_initializer import get_soul
-    return _json.dumps(get_soul(agent_name))
-@mcp.tool()
-def create_agent_with_soul(name: str, description: str = ""):
-    """Erstellt einen neuen Agenten und hängt automatisch die passende Soul an."""
-    from gnom_hub.soul_initializer import get_soul
-    soul = get_soul(name)
-    desc = description or soul.get("directive", "")
-    result = api("POST", "/agents", json={"name": name, "description": desc, "status": "online"})
-    # Soul als role-Memory speichern
-    agents = _json.loads(api("GET", "/agents"))
-    agent = next((a for a in agents if a["name"] == name), None)
-    if agent:
-        api("POST", "/memory", json={"agent_id": agent["id"], "content": _json.dumps(soul), "type": "role"})
-    return _json.dumps({"agent": _json.loads(result), "soul": soul})
-def main(): from gnom_hub.gitAG import setup_git_hooks as G; G(); from gnom_hub.swarm_checkpoint import load_latest_checkpoint as L; from gnom_hub.db import save_db as S; c = L(); (S("agents", c["souls"]), S("war_room_state", c["war_room_state"])) if c else None; mcp.run(transport="sse")
+
+# --- Tool-Registry (kein MCP-Paket nötig) ---
+TOOLS = {}
+
+def tool(fn):
+    TOOLS[fn.__name__] = fn; return fn
+
+@tool
+def save_to_memory(a, c): return api("POST", "/memory", json={"agent_id": a, "content": c})
+@tool
+def get_memory(a): return api("GET", f"/agents/{a}/memory")
+@tool
+def list_all_agents(): return api("GET", "/agents")
+@tool
+def get_agent(a): return api("GET", f"/agents/{a}")
+@tool
+def war_room_chat(m, s="mcp"): return api("POST", "/chat", json={"content": m, "sender": s})
+@tool
+def war_room_read(limit=20): return api("GET", f"/chat?limit={limit}")
+@tool
+def get_system_stats(): return api("GET", "/stats")
+@tool
+def smart_crawl(command):
+    from .smart_crawlerAG import smart_crawl as sc; return sc(command)
+@tool
+def data_crawl(command):
+    from .data_crawlerAG import data_crawl as dc; return dc(command)
+@tool
+def web_crawl(command):
+    from .web_crawlerAG import web_crawl as wc; return wc(command)
+@tool
+def get_agent_soul(agent_name):
+    from .soul_initializer import get_soul; return _json.dumps(get_soul(agent_name))
+@tool
+def run_tool(name, **kwargs):
+    """Führt ein registriertes Tool aus."""
+    if name in TOOLS: return TOOLS[name](**kwargs)
+    return f"Tool '{name}' nicht gefunden. Verfügbar: {list(TOOLS.keys())}"
