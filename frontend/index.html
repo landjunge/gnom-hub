@@ -2654,10 +2654,10 @@
 
       if (agentsRes && Array.isArray(agentsRes)) {
         agentsRes.forEach(a => {
-           let conf = llmAgentsRes[a.name.toLowerCase()] || {};
+           let safeAgentsRes = llmAgentsRes || {};
+           let conf = safeAgentsRes[(a.name || '').toLowerCase()] || {};
            let pSel = conf.provider || 'deepseek';
            let mSel = conf.model || 'deepseek-chat';
-           let kSel = conf.key_id || '';
            
            html += `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:0.9rem;">
              <div style="width:120px; font-weight:bold; overflow:hidden; text-overflow:ellipsis;">${a.name}</div>
