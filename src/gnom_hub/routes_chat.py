@@ -1,10 +1,10 @@
-from fastapi import APIRouter; from datetime import datetime; import uuid, re; from .db import get_db, save_db, get_active_project; from .brainstorm import dispatch; from .chat_commands import handle_idea, handle_clear, handle_status, handle_job, handle_summary, handle_sandbox, handle_skill, handle_free, handle_checkpoint, handle_git; from pydantic import BaseModel
+from fastapi import APIRouter; from datetime import datetime; import uuid, re; from .db import get_db, save_db, get_active_project; from .brainstorm import dispatch; from .chat_commands import handle_idea, handle_clear, handle_status, handle_job, handle_summary, handle_sandbox, handle_skill, handle_free, handle_checkpoint, handle_git, handle_publish; from pydantic import BaseModel
 router = APIRouter()
 class ChatMsg(BaseModel): content: str; sender: str = "user"
 def _parse(t):
     m = re.match(r"@{1,2}(\w+)\s*(.*)", t, re.DOTALL); r, tag = m.group(2).strip() if m else None, m.group(1).lower() if m else None
     if not m: return t, None, None
-    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback","desktop","vision","evolve","projekt"): return r or t, None, tag
+    if tag in ("bs","idea","clear","status","research","job","summary","sandbox","skill","free","provider","checkpoint","git","rollback","desktop","vision","evolve","projekt","publish","browser"): return r or t, None, tag
     if tag in ("summarizer","general","normal"): m2 = re.match(r"@?(\w+)", r); return (t, m2.group(1), tag) if m2 else (t, None, None)
     return r or t, tag, None
 def _role(n, r):
@@ -17,9 +17,10 @@ def _handle_sys(q, m):
     elif m=="vis": from .visionAG import vision_loop; _post_chat("System", vision_loop(q))
     elif m=="evol": from .evolutionAG import evolve_agent; _post_chat("System", evolve_agent(q))
     elif m=="proj": from .db import set_active_project; set_active_project(q or "default"); _post_chat("System", f"Projekt: {q or 'default'}")
+    elif m=="brow": from .browserAG import browser_cmd; _post_chat("System", browser_cmd(q))
     else: from .desktopAG import desktop_action; _post_chat("System", desktop_action(q))
     return {"status": "ok"}
-CMDS = {"idea": handle_idea, "clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk"), "vision": lambda q: _handle_sys(q,"vis"), "evolve": lambda q: _handle_sys(q,"evol"), "projekt": lambda q: _handle_sys(q,"proj")}
+CMDS = {"idea": handle_idea, "clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "summary": handle_summary, "sandbox": handle_sandbox, "skill": handle_skill, "free": handle_free, "provider": lambda q: _handle_sys(q,"prov"), "checkpoint": handle_checkpoint, "git": handle_git, "rollback": lambda q: handle_git(q, rb=True), "desktop": lambda q: _handle_sys(q,"desk"), "vision": lambda q: _handle_sys(q,"vis"), "evolve": lambda q: _handle_sys(q,"evol"), "projekt": lambda q: _handle_sys(q,"proj"), "publish": lambda q: handle_publish(q), "browser": lambda q: _handle_sys(q,"brow")}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt; from .securityAG import seal_content

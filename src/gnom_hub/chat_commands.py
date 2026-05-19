@@ -10,31 +10,30 @@ def handle_skill(q):
     if a: a["skill"] = _llm("SYSTEM: Max 3 Wörter.", a.get("description",""), 50).strip(); save_db("agents", ags); _post_chat("Skill", f"@{a['name']}: {a['skill']}")
     return {"status": "ok"}
 def handle_job(task):
-    from .role_tools import distribute_job; ags = get_db("agents"); gen = next((a for a in ags if a.get("role") == "general"), None)
-    if not gen: gen = next((a for a in ags if a.get("name","").lower() == "generalag"), None)
+    from .role_tools import distribute_job; ags = get_db("agents"); gen = next((a for a in ags if a.get("role") == "general" or a.get("name","").lower() == "generalag"), None)
     if not gen: return {"error": "Kein General"}
     save_db("jobs", get_db("jobs") + [{"id": str(uuid.uuid4()), "task": task, "general": gen["name"], "status": "open", "ts": datetime.utcnow().isoformat()+"Z"}]); res = distribute_job(task); _post_chat(gen["name"], res)
     [a.update({"active_job": next((m.group(2).strip() for m in re.finditer(r'@(\w+)[\s→>:\-]+(.+)', res) if m.group(1).lower()==a["name"].lower()), "")}) for a in ags]; save_db("agents", ags); return {"status": "job_created"}
 def handle_sandbox(c):
     open("sandbox.py", "w").write(c.replace("```python", "").replace("```", "").strip())
-    try: out = subprocess.run(["python3", "sandbox.py"], capture_output=True, text=True, timeout=5).stdout
+    try: out = subprocess.run(["python3", "sandbox.py"], capture_output=True, text=True, timeout=5).stdout[:500]
     except Exception as e: out = str(e)
-    _post_chat("Sandbox", f"Output:\n```\n{out[:500]}\n```"); return {"status": "executed"}
+    _post_chat("Sandbox", f"Output:\n```\n{out}\n```"); return {"status": "executed"}
 def handle_summary(q=""): from .role_tools import summarize_chat; _post_chat("Summarizer", summarize_chat()); return {"status": "summarized"}
 def handle_checkpoint(q):
     from .swarm_checkpoint import save_swarm_checkpoint as S, load_latest_checkpoint as L; c=L()
-    _post_chat("System", S(get_db("agents"), get_db("memory"))) if "save" in q else (save_db("agents", c["souls"]), save_db("memory", c["war_room_state"]), _post_chat("System", "Restored")) if "restore" in q and c else None
+    if "save" in q: _post_chat("System", S(get_db("agents"), get_db("memory")))
+    elif "restore" in q and c: save_db("agents", c["souls"]); save_db("memory", c["war_room_state"]); _post_chat("System", "Restored")
     return {"status": "ok"}
 def handle_git(q, rb=False):
     from .gitAG import git_cmd; p = q.split(" ", 1); cmd = f"reset --hard {p[1]}" if rb else (p[1] if len(p)>1 else "")
     if p: _post_chat("System", f"Git:\n```\n{git_cmd(p[0], cmd)[:500]}\n```"); handle_checkpoint("restore") if rb else None
     return {"status": "ok"}
+def handle_publish(q=""):
+    import subprocess as sp; r = sp.run(["bash", "publish_gnom_hub.sh"], capture_output=True, text=True, timeout=60, cwd="/Users/landjunge/Documents/AG-Flega"); _post_chat("System", f"🚀 Deploy:\n{r.stdout.strip()[:500]}"); return {"status": "published"}
 @router.get("/api/ideas")
 def get_ideas(): return get_db("ideas")
 @router.get("/api/jobs")
 def get_jobs(): return sorted(get_db("jobs"), key=lambda j: j.get("ts",""), reverse=True)[:20]
 @router.put("/api/agents/{agent_id}/group")
-def set_group(aid: str, grp: str = ""):
-    ags=get_db("agents"); a=next((x for x in ags if x["id"]==aid), None)
-    if a: a["group"]=grp; save_db("agents", ags)
-    return {"agent": a["name"]} if a else {"error": "Not found"}
+def set_group(aid: str, grp: str = ""): ags=get_db("agents"); a=next((x for x in ags if x["id"]==aid), None); a and (a.update({"group": grp}), save_db("agents", ags)); return {"agent": a["name"]} if a else {"error": "Not found"}

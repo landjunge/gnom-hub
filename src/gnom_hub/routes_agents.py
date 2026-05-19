@@ -28,7 +28,7 @@ async def set_status(a_id: str, request: Request, status: str = None):
         if a.get("id") == a_id or a.get("name") == a_id: a["status"] = status; save_db("agents", d); return a
 @router.delete("/api/agents/{a_id}")
 def delete_agent(a_id: str): save_db("agents", [a for a in get_db("agents") if a.get("id") != a_id]); save_db("memory", [m for m in get_db("memory") if m.get("agent_id") != a_id])
-SYS = {'watchdogag', 'skillsag', 'backupag', 'cronjobag', 'soulag', 'summarizerag', 'generalag', 'securityag'}
+from .soul_initializer import SOULS; SYS = {k for k, v in SOULS.items() if v.get("role") not in ("writer","coder","researcher","editor","web_crawler","data_crawler","smart_crawler")}
 @router.get("/api/stats")
 def get_system_stats(): 
     tf = os.path.join(os.path.dirname(__file__), "../../.gnom-hub-tokens.json"); d = json.load(open(tf)) if os.path.exists(tf) else {}

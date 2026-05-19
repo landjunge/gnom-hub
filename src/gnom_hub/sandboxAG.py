@@ -2,7 +2,7 @@ import subprocess
 import time
 from pathlib import Path
 
-ALLOWED_CMDS = {"ls", "cat", "echo", "python", "pip", "git", "grep", "find"}  # erweiterbar
+ALLOWED_CMDS = {"ls", "cat", "echo", "python", "python3", "pip", "pip3", "git", "grep", "find", "brew", "npm", "node", "curl", "wget", "open", "defaults", "which", "env", "printenv", "mkdir", "cp", "mv", "touch", "head", "tail", "wc", "sort", "uniq"}
 ALLOWED_DIRS = {Path("."), Path("/tmp/gnom_sandbox")}
 TIMEOUT_SEC = 30
 

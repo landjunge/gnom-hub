@@ -6,16 +6,25 @@ load_dotenv()
 OR_KEY = os.getenv("OPENROUTER_KEY_FREE_1")
 DS_KEY = os.getenv("DEEPSEEK_API_KEY")
 
+# === FREIE MODELLE — Zuordnung nach Eve (Mai 2026) ===
 AGENT_MODELS = {
-    "coderag":          ["deepseek/deepseek-v4-flash:free", "openai/gpt-oss-120b:free"],
-    "writerag":         ["minimax/minimax-m2.5:free", "deepseek/deepseek-v4-flash:free"],
-    "researcherag":     ["deepseek/deepseek-v4-flash:free", "minimax/minimax-m2.5:free"],
-    "editorag":         ["openai/gpt-oss-120b:free", "minimax/minimax-m2.5:free"],
-    "web_crawlerag":    ["openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free"],
-    "data_crawlerag":   ["openai/gpt-oss-20b:free", "deepseek/deepseek-v4-flash:free"],
-    "smart_crawlerag":  ["nvidia/nemotron-nano-9b-v2:free", "openai/gpt-oss-20b:free"],
-    "summarizerag":     ["openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free"],
-    "generalag":        ["deepseek/deepseek-v4-flash:free", "openai/gpt-oss-120b:free"],
+    # ── Kommando & Analyse (brauchen starkes Reasoning) ──
+    "generalag":        ["deepseek/deepseek-v4-flash:free"],
+    "watchdogag":       ["openai/gpt-oss-120b:free"],
+    "securityag":       ["openai/gpt-oss-120b:free"],
+    # ── Code (braucht Code-Spezialist) ──
+    "coderag":          ["qwen/qwen3-coder:free"],
+    # ── Recherche (braucht Thinking) ──
+    "researcherag":     ["arcee-ai/trinity-large-thinking:free"],
+    # ── Text (braucht guten Schreibstil) ──
+    "writerag":         ["minimax/minimax-m2.5:free"],
+    "editorag":         ["minimax/minimax-m2.5:free"],
+    # ── Zusammenfassung (schnell, kein Overhead) ──
+    "summarizerag":     ["qwen/qwen3-next-80b-a3b-instruct:free"],
+    # ── Crawler (leicht, schnell) ──
+    "web_crawlerag":    ["nvidia/nemotron-nano-9b-v2:free"],
+    "data_crawlerag":   ["nvidia/nemotron-nano-9b-v2:free"],
+    "smart_crawlerag":  ["nvidia/nemotron-nano-9b-v2:free"],
 }
 DEFAULT_MODELS = ["deepseek/deepseek-v4-flash:free", "openai/gpt-oss-120b:free", "minimax/minimax-m2.5:free"]
 

@@ -6,7 +6,7 @@ class BaseAgent:
         soul = get_soul(name)
         if not self.sys:
             from .tool_registry import format_tools_prompt
-            self.sys = format_tools_prompt(soul, name) + (f"\nRolle: {soul['role']}" if "role" in soul else "")
+            self.sys = format_tools_prompt(soul, name)
     def post(self, p, j=None):
         try: return requests.post(f"{HUB_URL}{p}", json=j).json()
         except: return {}

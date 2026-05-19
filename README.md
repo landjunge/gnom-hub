@@ -117,6 +117,8 @@ Das System reagiert auf Befehle wie eine Konsole:
 - **`@summary`** → Zwingt den SummarizerAG, die bisherige Diskussion sofort auf den Punkt zu bringen.
 - **`@status`** → Gibt einen schnellen System-Ping über alle Agenten und deren Jobs aus.
 - **`@clear`** → Leert das Terminal (die Datenbank bleibt unberührt).
+- **`@browser [Befehl]`** → Steuert einen echten Chromium-Browser via Playwright (z.B. `@browser öffne google.com und suche nach KI`).
+- **`@publish`** → Deployt das Frontend auf netzwerkpunkt.de via FTP.
 - **`Nuke (G-Button)`** → Logo 2s gedrückt halten: Killt alle Prozesse, Ports freigeben, Hub-Neustart. Visuelles Feedback: Hover=Rot, Fired=Dunkel, Ready=Grün.
 
 ---
@@ -138,11 +140,93 @@ Der Hub nutzt einen zweistufigen Router mit automatischem Fallback:
 - **Rate-Limit Handling:** 429-Fehler → 2s Pause, dann Fallback.
 - **Token-Tracking:** Jeder API-Call wird gezählt (Free vs. Paid), sichtbar im Header.
 
-### 🛠️ Installation & Deinstallation
+### 🛠️ Vollständige Installation — Volles Potential
+
+Gnom-Hub kann **alles** — aber nur wenn die Abhängigkeiten installiert sind.  
+Hier steht, was du brauchst, damit der Gnom sein volles Potential entfalten kann.
+
+#### Basis-Installation (1 Befehl)
 
 ```bash
-bash install.sh      # Installiert alles + startet den Hub
+bash install.sh      # Installiert Core + startet den Hub
 bash uninstall.sh    # Interaktiv: Daten behalten oder löschen
+```
+
+#### 📦 Was installiert werden muss
+
+##### 1. Python Core (PFLICHT)
+```bash
+pip install fastapi uvicorn pydantic requests python-dotenv
+```
+> Das ist das Rückgrat. Ohne das startet nichts.
+
+##### 2. Browser-Automation (Playwright) — `@browser`
+```bash
+pip install playwright
+playwright install chromium
+```
+> Damit kann der Gnom **echte Browser steuern**: Seiten öffnen, klicken, Formulare ausfüllen, Daten extrahieren, Screenshots machen. Kein Fake-Crawling — ein echter Chromium-Browser.
+
+##### 3. Desktop-Steuerung (PyAutoGUI) — `@desktop` / `@vision`
+```bash
+pip install pyautogui Pillow
+```
+> Gibt dem Gnom **Zugriff auf deinen Bildschirm**: Maus bewegen, klicken, tippen, Screenshots analysieren. Der Vision-Loop nutzt das für autonome 5-Step Desktop-Automatisierung.
+
+##### 4. Sprache (optional) — TTS & Whisper
+```bash
+pip install faster-whisper pyttsx3
+```
+> Spracherkennung (Whisper) und Text-to-Speech. Damit kann der Gnom zuhören und sprechen.
+
+##### 5. LLM-Provider — Mindestens einer!
+
+| Provider | Was brauchst du | Kosten |
+|----------|----------------|--------|
+| **DeepSeek** | `DEEPSEEK_API_KEY=sk-...` in `.env` | ~$0.14/1M Tokens |
+| **OpenRouter** | `OPENROUTER_KEY_FREE_1=sk-or-...` in `.env` | Kostenlose Modelle verfügbar |
+| **Ollama (lokal)** | `brew install ollama && ollama pull deepseek-r1` | Kostenlos, braucht GPU |
+
+> Trag die Keys in die `.env` Datei ein. Der Router wechselt automatisch zwischen den Providern wenn einer ausfällt.
+
+##### 6. System-Tools (für volles God-Mode)
+```bash
+# Git (Pflicht — Auto-Commits, Rollbacks, Evolution)
+brew install git
+
+# Node.js (optional — für npm-basierte Tools)
+brew install node
+
+# Selenium (Alternative zu Playwright)
+pip install selenium
+```
+
+#### 🔓 Was der Gnom damit kann
+
+| Fähigkeit | Benötigt | Command |
+|-----------|----------|---------|
+| 🌐 **Echte Browser-Steuerung** | Playwright + Chromium | `@browser öffne google.com` |
+| 🖥️ **Bildschirm sehen & steuern** | PyAutoGUI + Pillow | `@desktop klick auf Login` |
+| 👁️ **Vision-Loop (autonom)** | PyAutoGUI + Pillow | `@vision öffne Safari und suche X` |
+| 📁 **Dateien überall lesen/schreiben** | godmode-Permission | `[READ: /etc/hosts]` |
+| 💻 **Programme installieren** | godmode-Permission | `[SHELL: pip install pandas]` |
+| ⚙️ **Systemeinstellungen ändern** | godmode-Permission | `[SHELL: defaults write ...]` |
+| 🧬 **Selbst-Evolution** | Git | `@evolve CoderAG` |
+| 🚀 **Deployment** | FTP-Zugangsdaten in `.env` | `@publish` |
+
+#### ⚡ Alles auf einmal (Copy & Paste)
+
+```bash
+# Alles installieren was der Gnom braucht
+pip install fastapi uvicorn pydantic requests python-dotenv \
+            playwright pyautogui Pillow \
+            faster-whisper pyttsx3 selenium
+
+# Playwright Browser installieren
+playwright install chromium
+
+# Fertig. Starten:
+bash install.sh
 ```
 
 **Lizenz:** MIT

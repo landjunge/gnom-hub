@@ -1,9 +1,11 @@
-import json, subprocess
+import json, subprocess, re as _re
+SHELL_BLOCK = _re.compile(r"rm\s+-rf\s+/|curl.*\|\s*sh|wget.*\|\s*sh|dd\s+if=|mkfs|>\s*/etc/|:(){ :|:& };:", _re.I)
 def handle_shell(ans, ms, ag, perms, bs, wd):
     for m in ms:
         c, o = m.group(1).strip(), m.group(0)
         if bs: ans = ans.replace(o, "[System: SHELL blockiert im Brainstorm-Modus.]")
         elif "run" not in perms and "godmode" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
+        elif "godmode" not in perms and SHELL_BLOCK.search(c): ans = ans.replace(o, f"[System: BLOCKIERT — gefährlicher Befehl: {c[:60]}]")
         else:
             try: r = subprocess.run(c, shell=True, capture_output=True, text=True, timeout=30, cwd=wd); ans = ans.replace(o, f"[Shell ({c}):\n{(r.stdout+r.stderr)[:1500]}]")
             except Exception as e: ans = ans.replace(o, f"[Shell-Fehler: {str(e)[:80]}]")
@@ -20,8 +22,9 @@ def handle_crawl(ans, ms, ag, perms):
     return ans
 def _sanitize_json(raw):
     """Escape unescaped newlines/tabs in JSON strings from LLM output."""
+    import re
     try: return json.loads(raw)
-    except json.JSONDecodeError: return json.loads(raw.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n").replace("\t", "\\t"))
+    except json.JSONDecodeError: return json.loads(re.sub(r'(?<=": ")(.*?)(?="[,}])', lambda m: m.group().replace("\n", "\\n").replace("\t", "\\t"), raw, flags=re.DOTALL))
 def handle_showbox(ans, ms):
     from .securityAG import generate_signature
     for m in ms:

@@ -32,4 +32,7 @@ async def test_agent(req: Request):
         return {"valid": bool(ans), "info": "OK" if ans else "Keine Antwort"}
     except Exception as e: return {"valid": False, "info": str(e)}
 @router.post("/api/restart")
-def restart_server(): import sys, subprocess; subprocess.Popen([sys.executable] + sys.argv); os._exit(0)
+def restart_server(request: Request):
+    from .securityAG import _get_or_create_secret
+    if request.headers.get("X-Hub-Secret") != _get_or_create_secret().hex(): return {"error": "Unauthorized"}
+    import sys, subprocess; subprocess.Popen([sys.executable] + sys.argv); os._exit(0)

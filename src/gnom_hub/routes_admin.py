@@ -1,4 +1,4 @@
-from fastapi import APIRouter; from pydantic import BaseModel; from .db import get_db, save_db; import uuid; from datetime import datetime
+from fastapi import APIRouter, Request; from pydantic import BaseModel; from .db import get_db, save_db; import uuid; from datetime import datetime
 router = APIRouter(prefix="/api/admin")
 class ToolDef(BaseModel): name: str; description: str = ""; method: str = "GET"; path: str = ""
 @router.get("/tools")
@@ -12,11 +12,10 @@ def cleanup_offline(): online = [a for a in get_db("agents") if a.get("status") 
 @router.get("/health")
 def health(): return {"status": "ok", "agents": len(get_db("agents")), "memory": len(get_db("memory")), "tools": len(get_db("tools"))}
 @router.post("/nuke")
-def nuke_restart():
-    from .proc_mgr import kill_process, restart_hub
-    killed = []
-    for target in ["generalAG", "summarizerAG", "cronjobAG", "backupAG", "soulAG", "watchdogAG", "skillsAG", "securityAG"]:
-        r = kill_process(target); killed.append(r)
+def nuke_restart(request: Request):
+    from .securityAG import _get_or_create_secret; from .proc_mgr import kill_process, restart_hub
+    if request.headers.get("X-Hub-Secret") != _get_or_create_secret().hex(): return {"error": "Unauthorized"}
+    killed = [kill_process(t) for t in ["generalAG", "summarizerAG", "cronjobAG", "backupAG", "soulAG", "watchdogAG", "skillsAG", "securityAG"]]
     import threading; threading.Timer(1.5, restart_hub).start()
     return {"status": "nuked", "killed": killed, "restart": "in 1.5s"}
 ROLES = {"general": "SYSTEM-ROLLE: GENERAL. Task-Distributions-Maschine. Analysiere @job und verteile Aufgaben via @Name -> Aufgabe. Keine Erklärungen.",
