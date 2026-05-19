@@ -20,3 +20,18 @@ startup_log.txt
 test*.js
 test*.py
 .gnom-hub/
+# Deprecated root agents
+*AG.py
+elara.py
+kira.py
+lian.py
+org.py
+# Personal or irrelevant folders/files
+inseln/
+kreativ_universe_kira_lian_elara/
+clipboard_monitor.sh
+publish_trio.sh
+upload.exp
+instructions.md
+docs/status-report*
+docs/*screenshot*
