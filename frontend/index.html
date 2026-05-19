@@ -1465,7 +1465,7 @@
         Memory: <span id="s-memory">0</span>
       </div>
       <button class="btn-primary" onclick="showWorkspace()">Workspace</button>
-      <button class="btn-primary" onclick="showLLMConfig()" style="background:#5522aa;">LLM</button>
+      <button class="btn-primary" onclick="showLLMConfig()">LLM</button>
       <button class="btn-primary" onclick="openAddAgent()">+ Agent</button>
     </div>
   </header>
@@ -2609,12 +2609,12 @@
         <div class="panel" id="llm-panel">
           <h2>LLM Konfiguration</h2>
           <div style="display:flex; gap: 20px; flex-wrap: wrap;">
-            <div style="flex:1; min-width: 300px; background:var(--bg-card); padding:20px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
-              <h3>API Keys hinterlegen</h3>
-              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">Ein Key pro Zeile</p>
-              <textarea id="llm-keys-input" rows="5" style="width:100%; margin-bottom:10px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:4px;" placeholder="sk-12345..."></textarea>
-              <button class="btn-primary" onclick="saveAndTestKeys()">Keys Speichern & Testen</button>
-              <div id="llm-keys-status" style="margin-top:10px; font-size:0.9rem;"></div>
+            <div style="flex:1; min-width: 250px; background:var(--bg-card); padding:15px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
+              <h3 style="margin-bottom:5px;">API Keys</h3>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Ein Key pro Zeile</p>
+              <textarea id="llm-keys-input" rows="3" style="width:100%; margin-bottom:10px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:8px; border-radius:4px; font-size:0.85rem;" placeholder="sk-..."></textarea>
+              <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.85rem; padding:6px;">Speichern & Testen</button>
+              <div id="llm-keys-status" style="margin-top:10px; font-size:0.85rem; max-height:100px; overflow-y:auto;"></div>
             </div>
             <div style="flex:2; min-width: 400px; background:var(--bg-card); padding:20px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
               <h3>Agenten Zuweisung</h3>
@@ -2645,11 +2645,11 @@
       const llmAgentsRes = await api('GET', '/llm/agents');
       
       let html = '';
-      const providers = ['deepseek', 'openrouter', 'ollama'];
+      const providers = ['deepseek', 'openrouter', 'lokal'];
       const models = {
         'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
         'openrouter': ['deepseek/deepseek-v4-flash:free', 'openai/gpt-oss-120b:free', 'minimax/minimax-m2.5:free', 'nvidia/nemotron-nano-9b-v2:free', 'openai/gpt-oss-20b:free', 'anthropic/claude-3-opus', 'anthropic/claude-3.5-sonnet'],
-        'ollama': ['llama3', 'mistral', 'qwen2']
+        'lokal': ['llama3', 'mistral', 'qwen2']
       };
 
       if (agentsRes && Array.isArray(agentsRes)) {
@@ -2659,21 +2659,16 @@
            let mSel = conf.model || 'deepseek-chat';
            let kSel = conf.key_id || '';
            
-           html += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
-             <div style="flex:1; font-weight:bold;">${a.name}</div>
-             <select id="prov-${a.name}" onchange="updateModels('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px;">
+           html += `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:0.9rem;">
+             <div style="width:120px; font-weight:bold; overflow:hidden; text-overflow:ellipsis;">${a.name}</div>
+             <select id="prov-${a.name}" onchange="updateModels('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; width:120px;">
                ${providers.map(p => `<option value="${p}" ${p === pSel ? 'selected':''}>${p}</option>`).join('')}
              </select>
-             <select id="mod-${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px; max-width:150px;">
+             <select id="mod-${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; flex:1; min-width:150px;">
                ${(models[pSel]||[]).map(m => `<option value="${m}" ${m === mSel ? 'selected':''}>${m}</option>`).join('')}
              </select>
-             <select id="key-${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px; max-width:150px;">
-               <option value="">Kein Key (Env)</option>
-               ${globalKeys.map(k => {
-                 let isV = k.valid ? '🟢' : '🔴';
-                 return `<option value="${k.id}" ${k.id === kSel ? 'selected':''} style="color:${k.valid?'#39ff14':'#ff3333'}">${isV} ${k.key.substring(0,8)}...</option>`
-               }).join('')}
-             </select>
+             <button class="btn-primary" onclick="testAgentLLM('${a.name}')" style="padding:4px 10px; font-size:0.8rem;">Test</button>
+             <div id="lamp-${a.name}" style="width:12px; height:12px; border-radius:50%; background:gray; box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>
            </div>`;
         });
       }
@@ -2722,9 +2717,9 @@
 
     function renderKeyStatus(keys) {
       let h = '';
-      keys.forEach(k => {
+      keys.forEach((k, idx) => {
         let c = k.valid ? 'var(--green)' : '#ff3333';
-        h += `<div style="color:${c}; margin-bottom:5px;">${k.valid ? '✅' : '❌'} ${k.provider}: ${k.key.substring(0,12)}... ${k.info !== 'OK' ? '('+k.info.substring(0,20)+')' : ''}</div>`;
+        h += `<div style="color:${c}; margin-bottom:5px;">${k.valid ? '✅' : '❌'} Key ${idx+1} (${k.provider}) ${k.info !== 'OK' ? '('+k.info.substring(0,20)+')' : ''}</div>`;
       });
       document.getElementById('llm-keys-status').innerHTML = h;
     }
@@ -2736,18 +2731,35 @@
         agentsRes.forEach(a => {
           let p = document.getElementById(`prov-${a.name}`);
           let m = document.getElementById(`mod-${a.name}`);
-          let k = document.getElementById(`key-${a.name}`);
-          if(p && m && k) {
+          if(p && m) {
             config[a.name.toLowerCase()] = {
               provider: p.value,
-              model: m.value,
-              key_id: k.value
+              model: m.value
             };
           }
         });
       }
       await api('POST', '/llm/agents', config);
       alert('Agenten-Settings gespeichert!');
+    }
+
+    async function testAgentLLM(aName) {
+      const p = document.getElementById(`prov-${aName}`).value;
+      const m = document.getElementById(`mod-${aName}`).value;
+      const lamp = document.getElementById(`lamp-${aName}`);
+      
+      lamp.style.background = 'yellow';
+      lamp.style.boxShadow = '0 0 8px yellow';
+      
+      let res = await api('POST', '/llm/test_agent', { agent: aName, provider: p, model: m });
+      if (res && res.valid) {
+        lamp.style.background = '#39ff14';
+        lamp.style.boxShadow = '0 0 10px #39ff14';
+      } else {
+        lamp.style.background = '#ff3333';
+        lamp.style.boxShadow = '0 0 10px #ff3333';
+        if (res && res.info) alert(`Fehler bei ${aName}: ` + res.info);
+      }
     }
   </script>
 </body>
