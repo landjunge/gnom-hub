@@ -2387,14 +2387,15 @@
       const el = document.getElementById('status-lamps');
       if (!hubAgents) return;
 
-      // Nur die 7 System-Agenten als Lämpchen anzeigen
-      const sysNames = ['watchdogag', 'skillsag', 'backupag', 'cronjobag', 'soulag', 'summarizerag', 'generalag'];
+      // Alle 8 System-Agenten als Lämpchen anzeigen
+      const sysNames = ['watchdogag', 'skillsag', 'backupag', 'cronjobag', 'soulag', 'summarizerag', 'generalag', 'securityag'];
       const hiddenSys = [
         { name: 'WatchdogAG', status: 'online' },
         { name: 'SkillsAG', status: 'online' },
         { name: 'BackupAG', status: 'online' },
         { name: 'CronjobAG', status: 'online' },
-        { name: 'SoulAG', status: 'online' }
+        { name: 'SoulAG', status: 'online' },
+        { name: 'SecurityAG', status: 'online' }
       ];
 
       // Kombiniere die DB-System-Agenten und die unsichtbaren System-Agenten
