@@ -36,4 +36,8 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
         if not OR_KEY: continue
         ans = _try("openrouter", m, OR_KEY, msgs, agent_name)
         if ans: return ans
+    # ── Absoluter Fallback auf lokale Modelle ──
+    for lm in ["llama3", "llama3:latest", "qwen2:7b", "phi3", "phi3:latest", "llama3.2", "mistral"]:
+        ans = _try("lokal", lm, "", msgs, agent_name)
+        if ans: return ans
     return "[ROUTER-FEHLER] Alle Gleise offline."
