@@ -2636,7 +2636,7 @@
       if (keysRes) {
         globalKeys = Object.keys(keysRes).length > 0 ? Object.values(keysRes) : [];
         if (globalKeys.length > 0 && globalKeys[0].key) {
-           document.getElementById('llm-keys-input').value = globalKeys.map(k => k.key).join('\\n');
+           document.getElementById('llm-keys-input').value = globalKeys.map(k => k.key).join('\n');
            renderKeyStatus(globalKeys);
         }
       }
@@ -2659,22 +2659,22 @@
            let mSel = conf.model || 'deepseek-chat';
            let kSel = conf.key_id || '';
            
-           html += \`<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
-             <div style="flex:1; font-weight:bold;">\${a.name}</div>
-             <select id="prov-\${a.name}" onchange="updateModels('\${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px;">
-               \${providers.map(p => \`<option value="\${p}" \${p === pSel ? 'selected':''}>\${p}</option>\`).join('')}
+           html += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
+             <div style="flex:1; font-weight:bold;">${a.name}</div>
+             <select id="prov-${a.name}" onchange="updateModels('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px;">
+               ${providers.map(p => `<option value="${p}" ${p === pSel ? 'selected':''}>${p}</option>`).join('')}
              </select>
-             <select id="mod-\${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px; max-width:150px;">
-               \${(models[pSel]||[]).map(m => \`<option value="\${m}" \${m === mSel ? 'selected':''}>\${m}</option>\`).join('')}
+             <select id="mod-${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px; max-width:150px;">
+               ${(models[pSel]||[]).map(m => `<option value="${m}" ${m === mSel ? 'selected':''}>${m}</option>`).join('')}
              </select>
-             <select id="key-\${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px; max-width:150px;">
+             <select id="key-${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:5px; border-radius:4px; max-width:150px;">
                <option value="">Kein Key (Env)</option>
-               \${globalKeys.map(k => {
+               ${globalKeys.map(k => {
                  let isV = k.valid ? '🟢' : '🔴';
-                 return \`<option value="\${k.id}" \${k.id === kSel ? 'selected':''} style="color:\${k.valid?'#39ff14':'#ff3333'}">\${isV} \${k.key.substring(0,8)}...</option>\`
+                 return `<option value="${k.id}" ${k.id === kSel ? 'selected':''} style="color:${k.valid?'#39ff14':'#ff3333'}">${isV} ${k.key.substring(0,8)}...</option>`
                }).join('')}
              </select>
-           </div>\`;
+           </div>`;
         });
       }
       document.getElementById('llm-agents-list').innerHTML = html;
@@ -2682,15 +2682,15 @@
     }
 
     window.updateModels = function(aName) {
-      const p = document.getElementById(\`prov-\${aName}\`).value;
-      const modSelect = document.getElementById(\`mod-\${aName}\`);
+      const p = document.getElementById(`prov-${aName}`).value;
+      const modSelect = document.getElementById(`mod-${aName}`);
       const mods = window.llmModelsMap[p] || [];
-      modSelect.innerHTML = mods.map(m => \`<option value="\${m}">\${m}</option>\`).join('');
+      modSelect.innerHTML = mods.map(m => `<option value="${m}">${m}</option>`).join('');
     };
 
     async function saveAndTestKeys() {
       const input = document.getElementById('llm-keys-input').value;
-      const rawKeys = input.split('\\n').map(k => k.trim()).filter(k => k);
+      const rawKeys = input.split('\n').map(k => k.trim()).filter(k => k);
       
       document.getElementById('llm-keys-status').innerHTML = 'Teste Keys...';
       
@@ -2724,7 +2724,7 @@
       let h = '';
       keys.forEach(k => {
         let c = k.valid ? 'var(--green)' : '#ff3333';
-        h += \`<div style="color:\${c}; margin-bottom:5px;">\${k.valid ? '✅' : '❌'} \${k.provider}: \${k.key.substring(0,12)}... \${k.info !== 'OK' ? '('+k.info.substring(0,20)+')' : ''}</div>\`;
+        h += `<div style="color:${c}; margin-bottom:5px;">${k.valid ? '✅' : '❌'} ${k.provider}: ${k.key.substring(0,12)}... ${k.info !== 'OK' ? '('+k.info.substring(0,20)+')' : ''}</div>`;
       });
       document.getElementById('llm-keys-status').innerHTML = h;
     }
@@ -2734,9 +2734,9 @@
       let config = {};
       if (agentsRes && Array.isArray(agentsRes)) {
         agentsRes.forEach(a => {
-          let p = document.getElementById(\`prov-\${a.name}\`);
-          let m = document.getElementById(\`mod-\${a.name}\`);
-          let k = document.getElementById(\`key-\${a.name}\`);
+          let p = document.getElementById(`prov-${a.name}`);
+          let m = document.getElementById(`mod-${a.name}`);
+          let k = document.getElementById(`key-${a.name}`);
           if(p && m && k) {
             config[a.name.toLowerCase()] = {
               provider: p.value,
