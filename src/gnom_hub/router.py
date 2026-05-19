@@ -1,114 +1,52 @@
-import os, json, requests
-from dotenv import load_dotenv
+import requests
+from .router_config import DS_KEY, OR_KEY, AGENT_MODELS, DEFAULT_MODELS, get_key_for
+from .router_tokens import track_tokens
 
-load_dotenv()
-
-# === KEYS ===
-OR_KEY = os.getenv("OPENROUTER_KEY_FREE_1")
-OR_KEYS = {
-    "writer":     OR_KEY,
-    "coder":      OR_KEY,
-    "researcher": OR_KEY,
-    "editor":     OR_KEY,
-    "crawler":    OR_KEY,
-    "default":    OR_KEY,
-}
-DS_KEY = os.getenv("DEEPSEEK_API_KEY")
-
-AGENT_MODELS = {
-    "coderag":          ["deepseek/deepseek-v4-flash:free", "openai/gpt-oss-120b:free"],
-    "writerag":         ["minimax/minimax-m2.5:free", "deepseek/deepseek-v4-flash:free"],
-    "researcherag":     ["deepseek/deepseek-v4-flash:free", "minimax/minimax-m2.5:free"],
-    "editorag":         ["openai/gpt-oss-120b:free", "minimax/minimax-m2.5:free"],
-    "web_crawlerag":    ["openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free"],
-    "data_crawlerag":   ["openai/gpt-oss-20b:free", "deepseek/deepseek-v4-flash:free"],
-    "smart_crawlerag":  ["nvidia/nemotron-nano-9b-v2:free", "openai/gpt-oss-20b:free"],
-    "summarizerag":     ["openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free"],
-    "generalag":        ["deepseek/deepseek-v4-flash:free", "openai/gpt-oss-120b:free"],
-}
-DEFAULT_MODELS = ["deepseek/deepseek-v4-flash:free", "openai/gpt-oss-120b:free", "minimax/minimax-m2.5:free"]
-
-LLM_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "../../.gnom-hub-tokens.json")
-
-def _track_tokens(key_name, model, usage):
-    """Zählt Tokens pro Call und akkumuliert sie."""
-    try:
-        data = json.load(open(LLM_TOKENS_FILE)) if os.path.exists(LLM_TOKENS_FILE) else {"total": 0, "calls": 0, "history": []}
-        prompt_t = usage.get("prompt_tokens", 0)
-        comp_t = usage.get("completion_tokens", 0)
-        total_t = usage.get("total_tokens", prompt_t + comp_t)
-        data["total"] = data.get("total", 0) + total_t
-        if ":free" in model:
-            data["total_free"] = data.get("total_free", 0) + total_t
-        else:
-            data["total_pay"] = data.get("total_pay", 0) + total_t
-        data["calls"] = data.get("calls", 0) + 1
-        data["history"].append({"key": key_name, "model": model, "prompt": prompt_t, "completion": comp_t, "total": total_t})
-        if len(data["history"]) > 200: data["history"] = data["history"][-200:]
-        json.dump(data, open(LLM_TOKENS_FILE, "w"), indent=2)
-        print(f"[TOKENS] +{total_t} (Gesamt: {data['total']}, Calls: {data['calls']})")
-    except Exception as e:
-        print(f"[TOKENS] Tracking-Fehler: {e}")
-
-def _get_key_for(agent_name):
-    """Holt den richtigen Key für den Agenten."""
-    n = (agent_name or "").lower()
-    if "web_crawler" in n:   return OR_KEYS["crawler"]
-    if "data_crawler" in n:  return OR_KEYS["crawler"]
-    if "smart_crawler" in n: return OR_KEYS["crawler"]
-    n = n.replace("ag", "")
-    return OR_KEYS.get(n, OR_KEYS["default"])
+def _extract(data, agent_name, model):
+    """Prüft ob LLM-Antwort gültig ist und trackt Tokens."""
+    choices = data.get("choices", [])
+    if choices and choices[0].get("message", {}).get("content"):
+        usage = data.get("usage", {})
+        if usage: track_tokens(agent_name or "?", model, usage)
+        print(f"[ROUTER] Erfolg: {agent_name} auf {model}")
+        return choices[0]["message"]["content"]
+    return None
 
 def ask_router(prompt, sys_prompt="Du bist ein hilfreicher Assistent.", agent_name=None):
     """DeepSeek zuerst, OpenRouter-Free als Fallback."""
     n = (agent_name or "").lower()
+    msgs = [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]
 
-    # 1. DeepSeek (primär, zuverlässig)
+    # 1. DeepSeek (primär)
     if DS_KEY:
         try:
             print(f"\n[ROUTER] {agent_name or '?'} → DeepSeek...")
             res = requests.post("https://api.deepseek.com/chat/completions",
                 headers={"Authorization": f"Bearer {DS_KEY}", "Content-Type": "application/json"},
-                json={"model": "deepseek-chat", "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]},
-                timeout=120
-            )
+                json={"model": "deepseek-chat", "messages": msgs}, timeout=120)
             if res.status_code == 200:
-                data = res.json()
-                choices = data.get("choices", [])
-                if choices and choices[0].get("message", {}).get("content"):
-                    usage = data.get("usage", {})
-                    if usage: _track_tokens(agent_name or "?", "deepseek-chat", usage)
-                    print(f"[ROUTER] Erfolg: {agent_name} auf DeepSeek")
-                    return choices[0]["message"]["content"]
-            print(f"[ROUTER] DeepSeek: {res.status_code}. Fallback auf OpenRouter...")
+                r = _extract(res.json(), agent_name, "deepseek-chat")
+                if r: return r
+            print(f"[ROUTER] DeepSeek: {res.status_code}. Fallback...")
         except Exception as e:
             print(f"[ROUTER] DeepSeek Fehler: {e}. Fallback...")
 
     # 2. OpenRouter Free (Fallback)
-    models = AGENT_MODELS.get(n, DEFAULT_MODELS)
-    key = _get_key_for(agent_name)
-    for model in models:
-        if not key: continue
+    for model in AGENT_MODELS.get(n, DEFAULT_MODELS):
+        if not OR_KEY: continue
         try:
             print(f"[ROUTER] {agent_name or '?'} → {model}...")
             res = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": model, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt}]},
-                timeout=120
-            )
+                headers={"Authorization": f"Bearer {OR_KEY}", "Content-Type": "application/json"},
+                json={"model": model, "messages": msgs}, timeout=120)
             if res.status_code == 200:
-                data = res.json()
-                choices = data.get("choices", [])
-                if choices and choices[0].get("message", {}).get("content"):
-                    usage = data.get("usage", {})
-                    if usage: _track_tokens(agent_name or "?", model, usage)
-                    print(f"[ROUTER] Erfolg: {agent_name} auf {model}")
-                    return choices[0]["message"]["content"]
+                r = _extract(res.json(), agent_name, model)
+                if r: return r
                 print(f"[ROUTER] {model}: leere Antwort. Nächstes...")
             elif res.status_code == 429:
                 import time; print(f"[ROUTER] {model}: Rate-Limit. Warte 2s..."); time.sleep(2)
             else:
-                print(f"[ROUTER] {model} gescheitert ({res.status_code}). Nächstes...")
+                print(f"[ROUTER] {model} gescheitert ({res.status_code}).")
         except Exception as e:
             print(f"[ROUTER] Absturz auf {model}: {e}")
 
