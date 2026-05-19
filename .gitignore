@@ -16,3 +16,7 @@ gnom_workspace/
 collected_keys.txt
 .gnom-hub-tokens.json
 .backups/
+startup_log.txt
+test*.js
+test*.py
+.gnom-hub/
