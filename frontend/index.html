@@ -682,14 +682,14 @@
       box-shadow: 0 0 20px var(--c, rgba(0, 255, 255, 0.5)), inset 0 0 10px var(--c, rgba(0, 255, 255, 0.5));
     }
     
-    #tutorial-text {
+    #showbox-text {
       transition: opacity 0.3s ease;
       cursor: pointer;
     }
-    #tutorial-text img, 
-    #tutorial-text video, 
-    #tutorial-text iframe, 
-    #tutorial-text audio {
+    #showbox-text img, 
+    #showbox-text video, 
+    #showbox-text iframe, 
+    #showbox-text audio {
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
@@ -1544,16 +1544,16 @@
             </svg>
           </div>
           <div class="layer" id="layer-9"><div class="layer-content">AG-Flega<br>v2.0</div></div>
-          <div class="layer" id="layer-tutorial" onclick="closeTheme()" style="background: rgba(10,12,20,0.9); z-index:10; cursor:pointer; padding: 3px; box-sizing: border-box; display: flex; justify-content: center; align-items: center;"><div class="layer-content" id="tutorial-text" style="color:var(--text); font-weight:bold; width: 100%; text-align: center; word-break: break-word; line-height: 1.2;"></div></div>
+          <div class="layer" id="layer-showbox" onclick="closeShowbox()" style="background: rgba(10,12,20,0.9); z-index:10; cursor:pointer; padding: 3px; box-sizing: border-box; display: flex; justify-content: center; align-items: center;"><div class="layer-content" id="showbox-text" style="color:var(--text); font-weight:bold; width: 100%; text-align: center; word-break: break-word; line-height: 1.2;"></div></div>
         </div>
         <div class="info-lamps-container">
-          <div class="info-lamp" style="--c: #FF69B4;" onclick="triggerTheme(0)" title="Thema 1"></div>
-          <div class="info-lamp" style="--c: #FFFF00;" onclick="triggerTheme(1)" title="Thema 2"></div>
-          <div class="info-lamp" style="--c: #00FF00;" onclick="triggerTheme(2)" title="Thema 3"></div>
-          <div class="info-lamp" style="--c: #FFA500;" onclick="triggerTheme(3)" title="Thema 4"></div>
-          <div class="info-lamp" style="--c: #FF0000;" onclick="triggerTheme(4)" title="Thema 5"></div>
-          <div class="info-lamp" style="--c: #FF00FF;" onclick="triggerTheme(5)" title="Thema 6"></div>
-          <div class="info-lamp" style="--c: #00FFFF;" onclick="triggerTheme(6)" title="Thema 7"></div>
+          <div class="info-lamp" style="--c: #FF69B4;" onclick="triggerShowbox(0)" title="Showbox 1"></div>
+          <div class="info-lamp" style="--c: #FFFF00;" onclick="triggerShowbox(1)" title="Showbox 2"></div>
+          <div class="info-lamp" style="--c: #00FF00;" onclick="triggerShowbox(2)" title="Showbox 3"></div>
+          <div class="info-lamp" style="--c: #FFA500;" onclick="triggerShowbox(3)" title="Showbox 4"></div>
+          <div class="info-lamp" style="--c: #FF0000;" onclick="triggerShowbox(4)" title="Showbox 5"></div>
+          <div class="info-lamp" style="--c: #FF00FF;" onclick="triggerShowbox(5)" title="Showbox 6"></div>
+          <div class="info-lamp" style="--c: #00FFFF;" onclick="triggerShowbox(6)" title="Showbox 7"></div>
         </div>
       </div>
     </div>
@@ -1985,8 +1985,7 @@
       <span data-tooltip="Rollback: Mache Änderungen rückgängig (Swarm-Checkpoint)">@@rollback</span>
       <span data-tooltip="Checkpoint: Aktuellen Memory-Status erzwingen">@@checkpoint</span>
       <span data-tooltip="Summarize: Generiere eine kurze Zusammenfassung">@@summary</span>
-      <span data-tooltip="Desktop: Kontrolliere das OS via PyAutoGUI.">@@desktop</span>
-      <span data-tooltip="Vision: Bildschirm analysieren.">@@vision</span>
+      <span data-tooltip="Evolve: Agent-Code automatisch verbessern">@@evolve</span>
       <span data-tooltip="Kaffeepause: (Animation)">/coffee</span>
       <span data-tooltip="UFO Event: (Animation)">/ufo</span>
       <span data-tooltip="Ghost: (Animation)">/ghost</span>
@@ -2127,7 +2126,7 @@
     }
 
     // ── Autocomplete ──
-    const BUILTIN_CMDS = ['bs', 'general', 'summarizer', 'normal', 'research', 'job', 'idea', 'status', 'clear', 'desktop', 'vision', 'git', 'rollback', 'checkpoint', 'provider', 'skill', 'free', 'tts'];
+    const BUILTIN_CMDS = ['bs', 'research', 'job', 'idea', 'summary', 'status', 'clear', 'skill', 'free', 'provider', 'git', 'rollback', 'checkpoint', 'projekt', 'evolve', 'tts'];
     let acIdx = -1;
 
     function onChatInput(ta) {
@@ -2181,16 +2180,16 @@
       if (m === '/ufo') { if (window.showUfoAttack) window.showUfoAttack(); return; }
       if (m === '/ghost') { if (window.showGhost) window.showGhost(); return; }
       if (m === '/coffee') { if (window.showCoffeeBreak) window.showCoffeeBreak(); return; }
-      if (m.startsWith('@show speed ')) {
-        const speedVal = parseFloat(m.substring(12).trim());
+      if (m.startsWith('@showbox speed ')) {
+        const speedVal = parseFloat(m.substring(15).trim());
         if (!isNaN(speedVal) && speedVal > 0) {
-          window.themeSpeed = speedVal * 1000;
-          if (window.activeThemeIndex >= 0 && window.tutorialActive) {
-            const idx = window.activeThemeIndex;
-            window.closeTheme();
-            setTimeout(() => window.triggerTheme(idx), 100);
+          window.showboxSpeed = speedVal * 1000;
+          if (window.activeShowboxIndex >= 0 && window.showboxActive) {
+            const idx = window.activeShowboxIndex;
+            window.closeShowbox();
+            setTimeout(() => window.triggerShowbox(idx), 100);
           }
-          toast(`Show Speed: ${speedVal}s`, 'success');
+          toast(`Showbox Speed: ${speedVal}s`, 'success');
         } else {
           toast('Ungültiger Speed-Wert!', 'error');
         }
@@ -2198,23 +2197,23 @@
         return;
       }
 
-      if (m.startsWith('@show ')) {
-        const showName = m.substring(6).trim();
-        if (window.activeThemeIndex >= 0) {
+      if (m.startsWith('@showbox ')) {
+        const showName = m.substring(9).trim();
+        if (window.activeShowboxIndex >= 0) {
           const s = document.createElement('script');
           s.src = showName + '.js';
           s.onload = () => {
-            if (window.loadedShow) {
-              const idx = window.activeThemeIndex;
-              window.themes[idx] = window.loadedShow;
-              window.closeTheme();
-              setTimeout(() => window.triggerTheme(idx), 100);
+            if (window.loadedShowbox) {
+              const idx = window.activeShowboxIndex;
+              window.showboxes[idx] = window.loadedShowbox;
+              window.closeShowbox();
+              setTimeout(() => window.triggerShowbox(idx), 100);
             }
           };
           document.head.appendChild(s);
-          toast(`Lade neue Show: ${showName}`, 'success');
+          toast(`Lade Showbox: ${showName}`, 'success');
         } else {
-          toast('Bitte zuerst einen Button/eine Show aktivieren!', 'error');
+          toast('Bitte zuerst eine Showbox aktivieren!', 'error');
         }
         ta.value = '';
         return;
@@ -2282,22 +2281,22 @@
         }
         
         let safe = esc(rawContent);
-        if (showBoxFound) {
-           const targetText = (showData && showData._targetIdx !== undefined) ? ` Button ${showData._targetIdx + 1}` : '';
-           safe += `<div style="color:var(--cyan);font-size:0.8em;margin-top:8px;">[ 🎬 Showbox Triggered${targetText} ]</div>`;
-        }
-        
-        if (showData && Array.isArray(showData) && showData.length > 0) {
-           setTimeout(() => {
-               let targetIdx = window.activeThemeIndex >= 0 ? window.activeThemeIndex : 0;
-               if (showData._targetIdx !== undefined && showData._targetIdx >= 0 && showData._targetIdx < window.themes.length) {
-                   targetIdx = showData._targetIdx;
-               }
-               window.themes[targetIdx] = showData;
-               if (window.closeTheme) window.closeTheme();
-               setTimeout(() => { if (window.triggerTheme) window.triggerTheme(targetIdx); }, 100);
-           }, 300);
-        }
+         if (showBoxFound) {
+            const targetText = (showData && showData._targetIdx !== undefined) ? ` Button ${showData._targetIdx + 1}` : '';
+            safe += `<div style="color:var(--cyan);font-size:0.8em;margin-top:8px;">[ 🎬 Showbox Triggered${targetText} ]</div>`;
+         }
+         
+         if (showData && Array.isArray(showData) && showData.length > 0) {
+            setTimeout(() => {
+                let targetIdx = window.activeShowboxIndex >= 0 ? window.activeShowboxIndex : 0;
+                if (showData._targetIdx !== undefined && showData._targetIdx >= 0 && showData._targetIdx < window.showboxes.length) {
+                    targetIdx = showData._targetIdx;
+                }
+                window.showboxes[targetIdx] = showData;
+                if (window.closeShowbox) window.closeShowbox();
+                setTimeout(() => { if (window.triggerShowbox) window.triggerShowbox(targetIdx); }, 100);
+            }, 300);
+         }
 
         safe = safe.replace(/\[SOUL:\s*([\s\S]*?)\]/g, '<div style="font-size:0.6rem; color:var(--bg-surface); opacity:0.5; margin-top:4px;">[SOUL: $1]</div>');
         safe = safe.replace(/\n/g, '<br>');
@@ -2541,27 +2540,27 @@
       // Layer Animation
       let currentLayer = 0;
       const totalLayers = 10;
-      window.tutorialActive = false;
-      let themeInterval = null;
-      let themeTimeout = null;
-      window.activeThemeIndex = -1;
-      window.themeSpeed = window.themeSpeed || 3000;
+      window.showboxActive = false;
+      let showboxInterval = null;
+      let showboxTimeout = null;
+      window.activeShowboxIndex = -1;
+      window.showboxSpeed = window.showboxSpeed || 3000;
 
-      // Die Themen werden jetzt über die externe Datei "themes.js" geladen.
+      // Showbox-Daten werden über die externe Datei "themes.js" geladen.
 
-      window.triggerTheme = (themeIndex) => {
-        if (window.tutorialActive && window.activeThemeIndex === themeIndex) {
-          window.closeTheme();
+      window.triggerShowbox = (showboxIndex) => {
+        if (window.showboxActive && window.activeShowboxIndex === showboxIndex) {
+          window.closeShowbox();
           return;
         }
-        if(themeInterval) clearInterval(themeInterval);
-        if(themeTimeout) clearTimeout(themeTimeout);
+        if(showboxInterval) clearInterval(showboxInterval);
+        if(showboxTimeout) clearTimeout(showboxTimeout);
         
-        window.activeThemeIndex = themeIndex;
-        if (!window.themes) window.themes = [["<span style='color:red;'>Keine themes.js gefunden!</span>"]];
-        const themeSteps = window.themes[themeIndex] || window.themes[0];
+        window.activeShowboxIndex = showboxIndex;
+        if (!window.showboxes) window.showboxes = [["<span style='color:red;'>Keine themes.js gefunden!</span>"]];
+        const showboxSteps = window.showboxes[showboxIndex] || window.showboxes[0];
         
-        window.tutorialActive = true;
+        window.showboxActive = true;
         let step = 0;
         
         for(let i=0; i<totalLayers; i++) {
@@ -2569,55 +2568,54 @@
           if(l) l.classList.remove('active');
         }
         
-        const tutLayer = document.getElementById('layer-tutorial');
-        const tutText = document.getElementById('tutorial-text');
+        const sbLayer = document.getElementById('layer-showbox');
+        const sbText = document.getElementById('showbox-text');
         
         const updateText = () => {
-          tutText.innerHTML = themeSteps[step];
-          let size = 80; // Start large
-          tutText.style.fontSize = size + 'px';
-          // Auto-scale to fit perfectly within the parent (accounting for 3px padding on edges)
-          while((tutText.scrollHeight > tutLayer.clientHeight - 6 || tutText.scrollWidth > tutLayer.clientWidth - 6) && size > 8) {
+          sbText.innerHTML = showboxSteps[step];
+          let size = 80;
+          sbText.style.fontSize = size + 'px';
+          while((sbText.scrollHeight > sbLayer.clientHeight - 6 || sbText.scrollWidth > sbLayer.clientWidth - 6) && size > 8) {
             size--;
-            tutText.style.fontSize = size + 'px';
+            sbText.style.fontSize = size + 'px';
           }
-          tutText.style.opacity = 1;
+          sbText.style.opacity = 1;
         };
 
-        tutText.style.opacity = 0;
-        themeTimeout = setTimeout(updateText, 100);
-        tutLayer.classList.add('active');
+        sbText.style.opacity = 0;
+        showboxTimeout = setTimeout(updateText, 100);
+        sbLayer.classList.add('active');
 
-        themeInterval = setInterval(() => {
+        showboxInterval = setInterval(() => {
           step++;
-          if (step >= themeSteps.length) {
-            window.closeTheme();
+          if (step >= showboxSteps.length) {
+            window.closeShowbox();
             return;
           }
-          tutText.style.opacity = 0;
-          themeTimeout = setTimeout(updateText, 300);
-        }, window.themeSpeed); // Zeigt jedes Bild/Info für X Sekunden
+          sbText.style.opacity = 0;
+          showboxTimeout = setTimeout(updateText, 300);
+        }, window.showboxSpeed);
       };
 
-      window.closeTheme = () => {
-        if(themeInterval) {
-          clearInterval(themeInterval);
-          themeInterval = null;
+      window.closeShowbox = () => {
+        if(showboxInterval) {
+          clearInterval(showboxInterval);
+          showboxInterval = null;
         }
-        if(themeTimeout) {
-          clearTimeout(themeTimeout);
-          themeTimeout = null;
+        if(showboxTimeout) {
+          clearTimeout(showboxTimeout);
+          showboxTimeout = null;
         }
-        window.activeThemeIndex = -1;
-        window.tutorialActive = false;
-        const tutLayer = document.getElementById('layer-tutorial');
-        if(tutLayer) tutLayer.classList.remove('active');
+        window.activeShowboxIndex = -1;
+        window.showboxActive = false;
+        const sbLayer = document.getElementById('layer-showbox');
+        if(sbLayer) sbLayer.classList.remove('active');
         const curr = document.getElementById(`layer-${currentLayer}`);
         if(curr) curr.classList.add('active');
       };
 
       setInterval(() => {
-        if (window.tutorialActive) return;
+        if (window.showboxActive) return;
         const oldL = document.getElementById(`layer-${currentLayer}`);
         if(oldL) oldL.classList.remove('active');
         currentLayer = (currentLayer + 1) % totalLayers;

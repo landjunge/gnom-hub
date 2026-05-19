@@ -17,4 +17,8 @@ def format_tools_prompt(soul: dict, name: str):
     if "run_command" in t: syn += "\n  [SHELL: befehl] — Terminal ausführen"
     if "generate_image" in t: syn += "\n  [IMAGE: prompt] — Bild generieren"
     syn += "\n  [SHOWBOX: {\"title\": \"Titel\", \"content\": \"HTML\"}] — Showbox anzeigen"
-    return f"Du bist {name} ({soul.get('role', 'Agent')}).\nVerfügbare Tools:\n" + "\n".join(lines) + syn
+    char = f" – {soul['character']}" if soul.get("character") else ""
+    intro = f"Du bist {name} ({soul.get('role', 'Agent')}{char})."
+    if soul.get("directive"):
+        intro += f"\n[PERSÖNLICHKEIT] {soul['directive']}"
+    return intro + "\nVerfügbare Tools:\n" + "\n".join(lines) + syn

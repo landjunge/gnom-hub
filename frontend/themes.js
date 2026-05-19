@@ -1,8 +1,8 @@
 // Hier ist die offizielle Gnom-Hub Präsentation (Der "Goldstaub"-Pitch).
-// Jedes Array ist an einen Button/eine Lampe gekoppelt.
-// Mit "@show speed 4" wechseln die Slides automatisch!
+// Jedes Array ist an einen Showbox-Button gekoppelt.
+// Mit "@showbox speed 4" wechseln die Slides automatisch!
 
-window.themes = [
+window.showboxes = [
   [ // Lampe 1: Das Intro & Die Vision
     "<span style='color:#fff; text-shadow:0 0 20px rgba(0, 150, 255, 0.8);'>GNOM-HUB</span><br><span style='font-size:0.3em;color:var(--cyan);letter-spacing:4px;text-transform:uppercase;'>The Next-Gen AI Orchestrator</span>",
     "AUTONOM.<br><span style='font-size:0.35em;color:#aaa;font-weight:400;'>Lokal vernetzte Multi-Agenten</span>",

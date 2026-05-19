@@ -10,10 +10,6 @@ pkill -f "python3.*AG.py"
 sleep 1
 
 # Start in background
-# Work-Agenten schlafen
-# python3 kira.py > logs_kira.txt 2>&1 &
-# python3 lian.py > logs_lian.txt 2>&1 &
-# python3 elara.py > logs_elara.txt 2>&1 &
 python3 backupAG.py > logs_backup.txt 2>&1 &
 python3 generalAG.py > logs_general.txt 2>&1 &
 python3 skillsAG.py > logs_skills.txt 2>&1 &

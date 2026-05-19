@@ -10,6 +10,9 @@ class BaseAgent:
     def post(self, p, j=None):
         try: return requests.post(f"{HUB_URL}{p}", json=j).json()
         except: return {}
+    def put(self, p, j=None):
+        try: return requests.put(f"{HUB_URL}{p}", json=j).json()
+        except: return {}
     def get(self, p):
         try: return requests.get(f"{HUB_URL}{p}").json()
         except: return []
@@ -18,7 +21,9 @@ class BaseAgent:
         while True:
             c = self.get("/api/chat?limit=10")
             if not isinstance(c, list): c = []
-            new = [m for m in c if m.get("id") not in self.seen and m.get("metadata",{}).get("sender","") == "user" and (self.n.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
+            # Only react to user messages with our @trigger (e.g. @watchdog, @backup)
+            # NOT our agent name — the Hub's internal dispatch() handles @AgentName routing
+            new = [m for m in c if m.get("id") not in self.seen and m.get("metadata",{}).get("sender","") == "user" and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
             for m in c: self.seen.add(m.get("id"))
             for m in new:
                 try:

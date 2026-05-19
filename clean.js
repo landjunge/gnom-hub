@@ -543,7 +543,7 @@
     }
 
     // ── Autocomplete ──
-    const BUILTIN_CMDS = ['bs', 'general', 'summarizer', 'normal', 'research', 'job', 'idea', 'status', 'clear', 'desktop', 'vision', 'git', 'rollback', 'checkpoint', 'provider', 'skill', 'free', 'tts'];
+    const BUILTIN_CMDS = ['bs', 'research', 'job', 'idea', 'summary', 'status', 'clear', 'skill', 'free', 'provider', 'git', 'rollback', 'checkpoint', 'projekt', 'evolve', 'tts'];
     let acIdx = -1;
 
     function onChatInput(ta) {
@@ -597,14 +597,14 @@
       if (m === '/ufo') { if (window.showUfoAttack) window.showUfoAttack(); return; }
       if (m === '/ghost') { if (window.showGhost) window.showGhost(); return; }
       if (m === '/coffee') { if (window.showCoffeeBreak) window.showCoffeeBreak(); return; }
-      if (m.startsWith('@show speed ')) {
+      if (m.startsWith('@showbox speed ')) {
         const speedVal = parseFloat(m.substring(12).trim());
         if (!isNaN(speedVal) && speedVal > 0) {
-          window.themeSpeed = speedVal * 1000;
-          if (window.activeThemeIndex >= 0 && window.tutorialActive) {
-            const idx = window.activeThemeIndex;
-            window.closeTheme();
-            setTimeout(() => window.triggerTheme(idx), 100);
+          window.showboxSpeed = speedVal * 1000;
+          if (window.activeShowboxIndex >= 0 && window.showboxActive) {
+            const idx = window.activeShowboxIndex;
+            window.closeShowbox();
+            setTimeout(() => window.triggerShowbox(idx), 100);
           }
           toast(`Show Speed: ${speedVal}s`, 'success');
         } else {
@@ -614,17 +614,17 @@
         return;
       }
 
-      if (m.startsWith('@show ')) {
+      if (m.startsWith('@showbox ')) {
         const showName = m.substring(6).trim();
-        if (window.activeThemeIndex >= 0) {
+        if (window.activeShowboxIndex >= 0) {
           const s = document.createElement('script');
           s.src = showName + '.js';
           s.onload = () => {
-            if (window.loadedShow) {
-              const idx = window.activeThemeIndex;
-              window.themes[idx] = window.loadedShow;
-              window.closeTheme();
-              setTimeout(() => window.triggerTheme(idx), 100);
+            if (window.loadedShowbox) {
+              const idx = window.activeShowboxIndex;
+              window.showboxes[idx] = window.loadedShowbox;
+              window.closeShowbox();
+              setTimeout(() => window.triggerShowbox(idx), 100);
             }
           };
           document.head.appendChild(s);
@@ -705,13 +705,13 @@
         
         if (showData && Array.isArray(showData) && showData.length > 0) {
            setTimeout(() => {
-               let targetIdx = window.activeThemeIndex >= 0 ? window.activeThemeIndex : 0;
-               if (showData._targetIdx !== undefined && showData._targetIdx >= 0 && showData._targetIdx < window.themes.length) {
+               let targetIdx = window.activeShowboxIndex >= 0 ? window.activeShowboxIndex : 0;
+               if (showData._targetIdx !== undefined && showData._targetIdx >= 0 && showData._targetIdx < window.showboxes.length) {
                    targetIdx = showData._targetIdx;
                }
-               window.themes[targetIdx] = showData;
-               if (window.closeTheme) window.closeTheme();
-               setTimeout(() => { if (window.triggerTheme) window.triggerTheme(targetIdx); }, 100);
+               window.showboxes[targetIdx] = showData;
+               if (window.closeShowbox) window.closeShowbox();
+               setTimeout(() => { if (window.triggerShowbox) window.triggerShowbox(targetIdx); }, 100);
            }, 300);
         }
 
@@ -957,27 +957,27 @@
       // Layer Animation
       let currentLayer = 0;
       const totalLayers = 10;
-      window.tutorialActive = false;
-      let themeInterval = null;
-      let themeTimeout = null;
-      window.activeThemeIndex = -1;
-      window.themeSpeed = window.themeSpeed || 3000;
+      window.showboxActive = false;
+      let showboxInterval = null;
+      let showboxTimeout = null;
+      window.activeShowboxIndex = -1;
+      window.showboxSpeed = window.showboxSpeed || 3000;
 
       // Die Themen werden jetzt über die externe Datei "themes.js" geladen.
 
-      window.triggerTheme = (themeIndex) => {
-        if (window.tutorialActive && window.activeThemeIndex === themeIndex) {
-          window.closeTheme();
+      window.triggerShowbox = (showboxIndex) => {
+        if (window.showboxActive && window.activeShowboxIndex === showboxIndex) {
+          window.closeShowbox();
           return;
         }
-        if(themeInterval) clearInterval(themeInterval);
-        if(themeTimeout) clearTimeout(themeTimeout);
+        if(showboxInterval) clearInterval(showboxInterval);
+        if(showboxTimeout) clearTimeout(showboxTimeout);
         
-        window.activeThemeIndex = themeIndex;
-        if (!window.themes) window.themes = [["<span style='color:red;'>Keine themes.js gefunden!</span>"]];
-        const themeSteps = window.themes[themeIndex] || window.themes[0];
+        window.activeShowboxIndex = showboxIndex;
+        if (!window.showboxes) window.showboxes = [["<span style='color:red;'>Keine themes.js gefunden!</span>"]];
+        const showboxSteps = window.showboxes[showboxIndex] || window.showboxes[0];
         
-        window.tutorialActive = true;
+        window.showboxActive = true;
         let step = 0;
         
         for(let i=0; i<totalLayers; i++) {
@@ -985,11 +985,11 @@
           if(l) l.classList.remove('active');
         }
         
-        const tutLayer = document.getElementById('layer-tutorial');
-        const tutText = document.getElementById('tutorial-text');
+        const tutLayer = document.getElementById('layer-showbox');
+        const tutText = document.getElementById('showbox-text');
         
         const updateText = () => {
-          tutText.innerHTML = themeSteps[step];
+          tutText.innerHTML = showboxSteps[step];
           let size = 80; // Start large
           tutText.style.fontSize = size + 'px';
           // Auto-scale to fit perfectly within the parent (accounting for 3px padding on edges)
@@ -1001,39 +1001,39 @@
         };
 
         tutText.style.opacity = 0;
-        themeTimeout = setTimeout(updateText, 100);
+        showboxTimeout = setTimeout(updateText, 100);
         tutLayer.classList.add('active');
 
-        themeInterval = setInterval(() => {
+        showboxInterval = setInterval(() => {
           step++;
-          if (step >= themeSteps.length) {
-            window.closeTheme();
+          if (step >= showboxSteps.length) {
+            window.closeShowbox();
             return;
           }
           tutText.style.opacity = 0;
-          themeTimeout = setTimeout(updateText, 300);
-        }, window.themeSpeed); // Zeigt jedes Bild/Info für X Sekunden
+          showboxTimeout = setTimeout(updateText, 300);
+        }, window.showboxSpeed); // Zeigt jedes Bild/Info für X Sekunden
       };
 
-      window.closeTheme = () => {
-        if(themeInterval) {
-          clearInterval(themeInterval);
-          themeInterval = null;
+      window.closeShowbox = () => {
+        if(showboxInterval) {
+          clearInterval(showboxInterval);
+          showboxInterval = null;
         }
-        if(themeTimeout) {
-          clearTimeout(themeTimeout);
-          themeTimeout = null;
+        if(showboxTimeout) {
+          clearTimeout(showboxTimeout);
+          showboxTimeout = null;
         }
-        window.activeThemeIndex = -1;
-        window.tutorialActive = false;
-        const tutLayer = document.getElementById('layer-tutorial');
+        window.activeShowboxIndex = -1;
+        window.showboxActive = false;
+        const tutLayer = document.getElementById('layer-showbox');
         if(tutLayer) tutLayer.classList.remove('active');
         const curr = document.getElementById(`layer-${currentLayer}`);
         if(curr) curr.classList.add('active');
       };
 
       setInterval(() => {
-        if (window.tutorialActive) return;
+        if (window.showboxActive) return;
         const oldL = document.getElementById(`layer-${currentLayer}`);
         if(oldL) oldL.classList.remove('active');
         currentLayer = (currentLayer + 1) % totalLayers;

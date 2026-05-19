@@ -4,10 +4,10 @@ def _run_phase(ags, q, ctx, bs=False):
     for a in ags:
         t = threading.Thread(target=ask_llm, args=(a, q, ctx, bs), daemon=True); t.start(); ts.append(t)
     for t in ts: t.join(timeout=200)
-def dispatch(q, tgt=None):
+def dispatch(q, target=None):
     ao = [a for a in get_db("agents") if a.get("status") == "online" and a.get("name") != "BackupAG"]
-    if tgt:
-        s = [a for a in ao if a["name"].lower() == tgt.lower()]
+    if target:
+        s = [a for a in ao if a["name"].lower() == target.lower()]
         for a in s: threading.Thread(target=ask_llm, args=(a, q, get_ctx(), False), daemon=True).start()
         return [a["name"] for a in s]
     w = [a for a in ao if a["name"] not in ("SummarizerAG", "GeneralAG")]
