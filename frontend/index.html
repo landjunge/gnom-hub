@@ -60,33 +60,33 @@
     /* ── Status Lamps ── */
     .status-lamps {
       display: flex;
-      justify-content: center;
-      gap: 5px;
-      padding: 3px 0;
-      background: rgba(0, 0, 0, 0.4);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      border: none;
     }
 
     .lamp {
-      width: 70px;
-      height: 7px;
-      border-radius: 3.5px;
-      opacity: 0.1;
-      transition: all 0.4s ease-in-out;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      opacity: 0.15;
+      transition: all 0.3s ease-in-out;
       position: relative;
       flex-shrink: 0;
+      cursor: help;
     }
 
     .lamp.on {
-      opacity: 0.75;
-      box-shadow: 0 0 6px currentColor;
+      opacity: 0.85;
+      box-shadow: 0 0 8px currentColor;
       animation: lamp-breathe var(--dur, 3.5s) ease-in-out infinite alternate;
       animation-delay: var(--delay, 0s);
     }
 
     .lamp.busy {
       opacity: 1;
-      box-shadow: 0 0 14px currentColor;
+      box-shadow: 0 0 12px currentColor, 0 0 2px #fff;
       animation: lamp-pulse 0.5s ease-in-out infinite alternate;
     }
 
@@ -209,18 +209,33 @@
 
     .header-stats {
       display: flex;
-      gap: 20px;
-      font-size: 0.8rem;
-      color: #fff;
-      letter-spacing: 0.5px;
+      gap: 8px;
       align-items: center;
     }
 
-    .header-stats span {
+    .stat-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      transition: all 0.3s ease;
+    }
+
+    .stat-badge:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .stat-badge span {
       color: #fff;
       font-weight: 600;
-      font-size: 0.9rem;
-      text-shadow: none;
+      font-size: 0.68rem;
     }
 
     /* ── Buttons ── */
@@ -232,7 +247,7 @@
       color: var(--text);
       padding: 7px 16px;
       border-radius: var(--radius-sm);
-      font-size: 0.72rem;
+      font-size: 0.62rem;
       font-weight: 500;
       transition: var(--transition);
     }
@@ -249,7 +264,7 @@
       font-weight: 600;
       box-shadow: 0 2px 12px var(--primary-glow);
       padding: 8px 20px;
-      font-size: 0.77rem;
+      font-size: 0.67rem;
       z-index: 10;
       position: relative;
     }
@@ -268,7 +283,7 @@
       align-items: center;
       justify-content: center;
       padding: 8px 14px;
-      font-size: 1.1rem;
+      font-size: 0.9rem;
       background: linear-gradient(135deg, #0A1128, #050814);
       color: #fff;
       border-radius: var(--radius-sm);
@@ -294,7 +309,7 @@
     .btn-speaker {
       border: 1px solid rgba(0, 150, 255, 0.4);
       box-shadow: 0 2px 12px var(--primary-glow);
-      font-size: 0.9rem;
+      font-size: 0.75rem;
     }
 
     .btn-speaker:hover {
@@ -1458,7 +1473,6 @@
 </head>
 
 <body>
-  <div class="status-lamps" id="status-lamps"></div>
   <header>
     <div class="logo" onclick="showWarRoom()">
       <div class="logo-mark" id="nuke-btn"
@@ -1467,11 +1481,12 @@
         title="Gedrückt halten (2s) = NUKE: Alle Prozesse killen & Hub neustarten">G</div>
       <div class="logo-text">GNOM-HUB</div>
     </div>
+    <div class="status-lamps" id="status-lamps"></div>
     <div class="header-right">
       <div class="header-stats">
-        Tokens: <span id="s-tokens">0</span>
-        Agents: <span id="s-agents">0</span>
-        Memory: <span id="s-memory">0</span>
+        <div class="stat-badge">Tokens: <span id="s-tokens">0</span></div>
+        <div class="stat-badge">Agents: <span id="s-agents">0</span></div>
+        <div class="stat-badge">Memory: <span id="s-memory">0</span></div>
       </div>
       <button class="btn-primary" onclick="showWorkspace()">Workspace</button>
       <button class="btn-primary" onclick="showShowboxPanel()">Showbox</button>
@@ -1628,26 +1643,26 @@
         btn.classList.remove('nuke-charging');
       }
     }
-    async function nukeHub() {
-      const btn = document.getElementById('nuke-btn');
-      
+    function createNukeOverlay() {
       const overlay = document.createElement('div');
       overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:radial-gradient(circle, rgba(40,0,0,0.95) 0%, rgba(10,0,0,1) 100%);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#ff3333;font-family:monospace;text-align:center;text-transform:uppercase;";
       overlay.innerHTML = `<h1 style="font-size:4rem;text-shadow:0 0 20px #ff0000;margin:0;">☢️ SYSTEM PURGE</h1><h2 style="font-size:2rem;margin-top:10px;color:#ffaaaa;" id="nuke-status">Server wird beendet...</h2>`;
       document.body.appendChild(overlay);
-
+      return document.getElementById('nuke-status');
+    }
+    async function nukeHub() {
+      const btn = document.getElementById('nuke-btn');
+      const statusEl = createNukeOverlay();
       try {
         await fetch((API || '/api').replace('/api', '') + '/api/admin/nuke', { method: 'POST' });
       } catch(e) { /* Hub stirbt, das ist gewollt */ }
-      
       btn.textContent = '✕';
       btn.classList.remove('nuke-fired');
       btn.classList.add('nuke-offline');
-      
+      startNukeReconnectLoop(btn, statusEl);
+    }
+    function startNukeReconnectLoop(btn, statusEl) {
       let sec = 0;
-      const statusEl = document.getElementById('nuke-status');
-      
-      // Auto-Reconnect Loop
       const reconnect = setInterval(async () => {
         sec += 2;
         if (statusEl) statusEl.textContent = `Warte auf Neustart... ${sec}s`;
@@ -1962,6 +1977,33 @@
     }
 
     // ═══ WAR ROOM (FIX: always renders complete chat with autocomplete) ═══
+    function buildChatHintsHTML() {
+      return `
+      <div style="font-size:0.68rem; color:var(--text-dim); margin-top:8px; display:flex; gap:16px; align-items:center; padding: 2px 4px;">
+        <span><strong>@</strong> Direct agent task (e.g. @bs, @research, @coderag)</span>
+        <span><strong>@@</strong> System-level command (e.g. @@project, @@status, @@git)</span>
+      </div>
+      <div class="chat-hints">
+        <span data-tooltip="Brainstorm: Activate the swarm for complex ideas.">@bs</span>
+        <span data-tooltip="Research: Start an autonomous research job.">@research</span>
+        <span data-tooltip="Job Task: Distribute background tasks to agents.">@job</span>
+        <span data-tooltip="Idea: Write down a thought in system memory.">@idea</span>
+        <span data-tooltip="Skill: Inject a new skill into an agent.">@skill</span>
+        <span data-tooltip="Free: Clear active jobs from an agent.">@free</span>
+        <span data-tooltip="Switch project: (e.g. @@project netzwerkpunkt)">@@project</span>
+        <span data-tooltip="Clear: (@@clear chat, @@clear @project, @@clear all agents)">@@clear</span>
+        <span data-tooltip="Status: Get system and agent status.">@@status</span>
+        <span data-tooltip="Switch provider: (e.g. @@provider ollama llama3)">@@provider</span>
+        <span data-tooltip="Git: Run git commands (e.g. @@git status)">@@git</span>
+        <span data-tooltip="Rollback: Undo changes (Swarm Checkpoint)">@@rollback</span>
+        <span data-tooltip="Checkpoint: Force current memory checkpoint">@@checkpoint</span>
+        <span data-tooltip="Summarize: Generate a short summary">@@summary</span>
+        <span data-tooltip="Evolve: Automatically improve agent code">@@evolve</span>
+        <span data-tooltip="Coffee break: (Animation)">/coffee</span>
+        <span data-tooltip="UFO Event: (Animation)">/ufo</span>
+        <span data-tooltip="Ghost: (Animation)">/ghost</span>
+      </div>`;
+    }
     function buildWarRoomHTML() {
       const ttsChecked = document.getElementById('tts-enabled')?.checked ?? false;
       return `<div class="panel" id="war-room">
@@ -1981,26 +2023,7 @@
         <button class="btn-primary" style="flex:1; width:100%; padding:0;" onclick="sendChat()">Send</button>
       </div>
     </div>
-    <div class="chat-hints">
-      <span data-tooltip="Brainstorm: Activate the swarm for complex ideas.">@bs</span>
-      <span data-tooltip="Research: Start an autonomous research job.">@research</span>
-      <span data-tooltip="Job Task: Distribute background tasks to agents.">@job</span>
-      <span data-tooltip="Idea: Write down a thought in system memory.">@idea</span>
-      <span data-tooltip="Skill: Inject a new skill into an agent.">@skill</span>
-      <span data-tooltip="Free: Clear active jobs from an agent.">@free</span>
-      <span data-tooltip="Switch project: (e.g. @@project netzwerkpunkt)">@@project</span>
-      <span data-tooltip="Clear: (@@clear chat, @@clear @project, @@clear all agents)">@@clear</span>
-      <span data-tooltip="Status: Get system and agent status.">@@status</span>
-      <span data-tooltip="Switch provider: (e.g. @@provider ollama llama3)">@@provider</span>
-      <span data-tooltip="Git: Run git commands (e.g. @@git status)">@@git</span>
-      <span data-tooltip="Rollback: Undo changes (Swarm Checkpoint)">@@rollback</span>
-      <span data-tooltip="Checkpoint: Force current memory checkpoint">@@checkpoint</span>
-      <span data-tooltip="Summarize: Generate a short summary">@@summary</span>
-      <span data-tooltip="Evolve: Automatically improve agent code">@@evolve</span>
-      <span data-tooltip="Coffee break: (Animation)">/coffee</span>
-      <span data-tooltip="UFO Event: (Animation)">/ufo</span>
-      <span data-tooltip="Ghost: (Animation)">/ghost</span>
-    </div>
+    ${buildChatHintsHTML()}
   </div>`;
     }
 
@@ -2016,6 +2039,29 @@
       await loadWorkspace();
     }
 
+    function renderWorkspaceItemHTML(f) {
+      const date = new Date(f.mtime * 1000).toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const ext = f.name.split('.').pop().toLowerCase();
+      const isWeb = ['html', 'htm', 'css', 'js', 'svg'].includes(ext);
+      const isPy = ext === 'py';
+      let actionBtn = '';
+      if (isWeb) {
+        actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); openWorkspaceFile('${f.name}')" title="Im Browser öffnen">🌐 Open</button>
+        <button class="btn-primary" onclick="event.stopPropagation(); previewWorkspaceFile('${f.name}')" title="Live Preview">👁️ Preview</button>`;
+      } else if (isPy) {
+        actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); runWorkspaceFile('${f.name}')" title="Python ausführen">▶ Run</button>`;
+      }
+      return `<div class="mem-item" style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="cursor:pointer; flex:1;" onclick="readWorkspaceFile('${f.name}')">
+          <strong style="color:#0096ff">${f.name}</strong> 
+          <span style="font-size:0.8em;color:var(--text-dim);margin-left:10px;">${f.size} Bytes</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:0.75rem; color:var(--text-muted);">${date}</span>
+          ${actionBtn}
+        </div>
+    </div>`;
+    }
     async function loadWorkspace() {
       const list = document.getElementById('workspace-list');
       if (!list) return;
@@ -2036,34 +2082,31 @@
         list.innerHTML = '<div class="empty">This project folder is empty.</div>';
         return;
       }
-      let html = '';
-      files.forEach(f => {
-        const date = new Date(f.mtime * 1000).toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const ext = f.name.split('.').pop().toLowerCase();
-        const isWeb = ['html', 'htm', 'css', 'js', 'svg'].includes(ext);
-        const isPy = ext === 'py';
-        let actionBtn = '';
-        if (isWeb) {
-          actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); openWorkspaceFile('${f.name}')" title="Im Browser öffnen">🌐 Open</button>`;
-        } else if (isPy) {
-          actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); runWorkspaceFile('${f.name}')" title="Python ausführen">▶ Run</button>`;
-        }
-        html += `<div class="mem-item" style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="cursor:pointer; flex:1;" onclick="readWorkspaceFile('${f.name}')">
-            <strong style="color:#0096ff">${f.name}</strong> 
-            <span style="font-size:0.8em;color:var(--text-dim);margin-left:10px;">${f.size} Bytes</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span style="font-size:0.75rem; color:var(--text-muted);">${date}</span>
-            ${actionBtn}
-          </div>
-      </div>`;
-      });
-      list.innerHTML = html;
+      list.innerHTML = files.map(renderWorkspaceItemHTML).join('');
     }
 
     function openWorkspaceFile(name) {
       window.open(`/api/workspace/${name}/serve`, '_blank');
+    }
+
+    function previewWorkspaceFile(name) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-backdrop';
+      modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);";
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+      modal.innerHTML = `
+        <div class="panel" style="width:90%; height:90%; display:flex; flex-direction:column; background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius); box-shadow:0 20px 50px rgba(0,0,0,0.8); overflow:hidden;">
+          <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1);">
+            <h2 style="margin:0; font-size:1.2rem; display:flex; align-items:center; gap:8px;">🌐 Live Preview: <span style="color:var(--primary);">${name}</span></h2>
+            <div style="display:flex; gap:10px;">
+              <button onclick="window.open('/api/workspace/${name}/serve', '_blank')" style="font-size:0.75rem;">Open in Tab ↗</button>
+              <button onclick="this.closest('.modal-backdrop').remove()" class="btn-danger" style="font-size:0.75rem; padding:4px 10px;">Close</button>
+            </div>
+          </div>
+          <iframe src="/api/workspace/${name}/serve" style="flex:1; border:none; background:white; width:100%; height:100%;"></iframe>
+        </div>
+      `;
+      document.body.appendChild(modal);
     }
 
     async function runWorkspaceFile(name) {
@@ -2176,59 +2219,66 @@
     }
 
     // ── Chat ──
+    function handleShowboxSpeedCommand(m, ta) {
+      const speedVal = parseFloat(m.substring(15).trim());
+      if (!isNaN(speedVal) && speedVal > 0) {
+        window.showboxSpeed = speedVal * 1000;
+        if (window.activeShowboxIndex >= 0 && window.showboxActive) {
+          const idx = window.activeShowboxIndex;
+          window.closeShowbox();
+          setTimeout(() => window.triggerShowbox(idx), 100);
+        }
+        toast(`Showbox Speed: ${speedVal}s`, 'success');
+      } else {
+        toast('Ungültiger Speed-Wert!', 'error');
+      }
+      ta.value = '';
+    }
+    function handleShowboxLoadCommand(m, ta) {
+      const showName = m.substring(9).trim();
+      if (window.activeShowboxIndex >= 0) {
+        const s = document.createElement('script');
+        s.src = showName + '.js';
+        s.onload = () => {
+          if (window.loadedShowbox) {
+            const idx = window.activeShowboxIndex;
+            window.showboxes[idx] = window.loadedShowbox;
+            window.closeShowbox();
+            setTimeout(() => window.triggerShowbox(idx), 100);
+          }
+        };
+        document.head.appendChild(s);
+        toast(`Loading Showbox: ${showName}`, 'success');
+      } else {
+        toast('Please activate a Showbox first!', 'error');
+      }
+      ta.value = '';
+    }
+    function handleChatCommands(msg, ta) {
+      const m = msg.toLowerCase();
+      if (m === '@tts on') { const cb = document.getElementById('tts-enabled'); if (cb) cb.checked = true; ta.value = ''; toast('🗣️ TTS Aktiviert', 'success'); return true; }
+      if (m === '@tts off') { const cb = document.getElementById('tts-enabled'); if (cb) cb.checked = false; stopTTS(); ta.value = ''; toast('🔇 TTS Deaktiviert', 'info'); return true; }
+      if (m === '@tts') { const cb = document.getElementById('tts-enabled'); if (cb) { cb.checked = !cb.checked; if (!cb.checked) stopTTS(); toast(cb.checked ? '🗣️ TTS Aktiviert' : '🔇 TTS Deaktiviert', cb.checked ? 'success' : 'info'); } ta.value = ''; return true; }
+      if (m === '/ufo') { if (window.showUfoAttack) window.showUfoAttack(); return true; }
+      if (m === '/ghost') { if (window.showGhost) window.showGhost(); return true; }
+      if (m === '/coffee') { if (window.showCoffeeBreak) window.showCoffeeBreak(); return true; }
+      if (m.startsWith('@showbox speed ')) {
+        handleShowboxSpeedCommand(m, ta);
+        return true;
+      }
+      if (m.startsWith('@showbox ')) {
+        handleShowboxLoadCommand(m, ta);
+        return true;
+      }
+      return false;
+    }
     async function sendChat() {
       const ta = document.getElementById('chat-input');
       if (!ta) return;
       const msg = ta.value.trim();
       if (!msg) return;
+      if (handleChatCommands(msg, ta)) return;
       ta.value = '';
-
-      // Easter Egg Cheat Codes & UI Commands
-      const m = msg.toLowerCase();
-      if (m === '@tts on') { const cb = document.getElementById('tts-enabled'); if (cb) cb.checked = true; ta.value = ''; toast('🗣️ TTS Aktiviert', 'success'); return; }
-      if (m === '@tts off') { const cb = document.getElementById('tts-enabled'); if (cb) cb.checked = false; stopTTS(); ta.value = ''; toast('🔇 TTS Deaktiviert', 'info'); return; }
-      if (m === '@tts') { const cb = document.getElementById('tts-enabled'); if (cb) { cb.checked = !cb.checked; if (!cb.checked) stopTTS(); toast(cb.checked ? '🗣️ TTS Aktiviert' : '🔇 TTS Deaktiviert', cb.checked ? 'success' : 'info'); } ta.value = ''; return; }
-      if (m === '/ufo') { if (window.showUfoAttack) window.showUfoAttack(); return; }
-      if (m === '/ghost') { if (window.showGhost) window.showGhost(); return; }
-      if (m === '/coffee') { if (window.showCoffeeBreak) window.showCoffeeBreak(); return; }
-      if (m.startsWith('@showbox speed ')) {
-        const speedVal = parseFloat(m.substring(15).trim());
-        if (!isNaN(speedVal) && speedVal > 0) {
-          window.showboxSpeed = speedVal * 1000;
-          if (window.activeShowboxIndex >= 0 && window.showboxActive) {
-            const idx = window.activeShowboxIndex;
-            window.closeShowbox();
-            setTimeout(() => window.triggerShowbox(idx), 100);
-          }
-          toast(`Showbox Speed: ${speedVal}s`, 'success');
-        } else {
-          toast('Ungültiger Speed-Wert!', 'error');
-        }
-        ta.value = '';
-        return;
-      }
-
-      if (m.startsWith('@showbox ')) {
-        const showName = m.substring(9).trim();
-        if (window.activeShowboxIndex >= 0) {
-          const s = document.createElement('script');
-          s.src = showName + '.js';
-          s.onload = () => {
-            if (window.loadedShowbox) {
-              const idx = window.activeShowboxIndex;
-              window.showboxes[idx] = window.loadedShowbox;
-              window.closeShowbox();
-              setTimeout(() => window.triggerShowbox(idx), 100);
-            }
-          };
-          document.head.appendChild(s);
-          toast(`Loading Showbox: ${showName}`, 'success');
-        } else {
-          toast('Please activate a Showbox first!', 'error');
-        }
-        ta.value = '';
-        return;
-      }
 
       document.getElementById('ac-dropdown')?.classList.remove('show');
       const res = await api('POST', '/chat', { content: msg });
@@ -2246,12 +2296,78 @@
 
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+    function parseShowboxInMsg(m) {
+      let rawContent = m.content || "";
+      let showBoxFound = false;
+      let showData = null;
+      const showboxMatch = rawContent.match(/<SHOWBOX(?::(\d+))?>([\s\S]*?)<\/SHOWBOX>/);
+      const mid = m.id || Math.random().toString(36).slice(2);
+      
+      if (showboxMatch) {
+         showBoxFound = true;
+         rawContent = rawContent.replace(showboxMatch[0], '').trim();
+         if (!window._processedShowboxes.has(mid)) {
+             window._processedShowboxes.add(mid);
+             try { 
+               showData = JSON.parse(showboxMatch[2]); 
+               if (showboxMatch[1] !== undefined) {
+                   showData._targetIdx = parseInt(showboxMatch[1], 10) - 1; // 1-based to 0-based
+               }
+             } 
+             catch(e) { console.error("SHOWBOX parse error", e); }
+         }
+      }
+      return { rawContent, showBoxFound, showData };
+    }
+
+    function handleShowboxTrigger(showData) {
+      let slides = showData;
+      if (showData && !Array.isArray(showData) && Array.isArray(showData.slides)) {
+          slides = showData.slides;
+          if (showData._targetIdx !== undefined) slides._targetIdx = showData._targetIdx;
+      }
+      if (slides && Array.isArray(slides) && slides.length > 0) {
+         setTimeout(() => {
+             let targetIdx = window.activeShowboxIndex >= 0 ? window.activeShowboxIndex : 0;
+             if (slides._targetIdx !== undefined && slides._targetIdx >= 0 && slides._targetIdx < window.showboxes.length) {
+                 targetIdx = slides._targetIdx;
+             }
+             window.showboxes[targetIdx] = slides;
+             if (window.closeShowbox) window.closeShowbox();
+             setTimeout(() => { if (window.triggerShowbox) window.triggerShowbox(targetIdx); }, 100);
+         }, 300);
+      }
+    }
+
+    function renderChatMessageHTML(m) {
+      const isUser = m.metadata?.sender === 'user';
+      const name = isUser ? 'You' : (m.metadata?.sender || 'System');
+      const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
+      const c = isUser ? 'var(--primary)' : agentColor(name);
+      const nameColor = isUser ? 'var(--primary)' : (name.toLowerCase().startsWith('testag') ? '#0066FF' : 'inherit');
+      const mid = m.id || Math.random().toString(36).slice(2);
+      
+      const { rawContent, showBoxFound, showData } = parseShowboxInMsg(m);
+      let safe = esc(rawContent);
+      if (showBoxFound) {
+         const targetText = (showData && showData._targetIdx !== undefined) ? ` Button ${showData._targetIdx + 1}` : '';
+         safe += `<div style="color:var(--cyan);font-size:0.8em;margin-top:8px;">[ 🎬 Showbox Triggered${targetText} ]</div>`;
+      }
+      
+      handleShowboxTrigger(showData);
+
+      safe = safe.replace(/\[SOUL:\s*([\s\S]*?)\]/g, '<div style="font-size:0.6rem; color:var(--bg-surface); opacity:0.5; margin-top:4px;">[SOUL: $1]</div>');
+      safe = safe.replace(/\n/g, '<br>');
+      return `<div class="chat-msg ${isUser ? 'user' : 'agent'}" style="border-left-color:${c};">
+    <div class="chat-meta"><span class="agent-name" style="color:${nameColor}">${esc(name)}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Copy">📋</button><button class="copy-btn del-btn" onclick="deleteChatMsg('${mid}')" title="Delete">🗑</button>${time}</span></div>
+    <div class="mem-content" id="msg-${mid}">${safe}</div></div>`;
+    }
+
     async function refreshChat() {
       const el = document.getElementById('chat-display');
       if (!el) return;
       const msgs = await api('GET', '/chat?limit=20');
 
-      // Prevent DOM rebuild if messages haven't changed
       const dataStr = JSON.stringify(msgs || []);
       if (window._lastChatData === dataStr) return;
       window._lastChatData = dataStr;
@@ -2263,63 +2379,7 @@
       const sorted = msgs.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
       window._processedShowboxes = window._processedShowboxes || new Set();
 
-      el.innerHTML = sorted.map(m => {
-        const isUser = m.metadata?.sender === 'user';
-        const name = isUser ? 'You' : (m.metadata?.sender || 'System');
-        const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
-        const c = isUser ? 'var(--primary)' : agentColor(name);
-        const nameColor = isUser ? 'var(--primary)' : (name.toLowerCase().startsWith('testag') ? '#0066FF' : 'inherit');
-        const mid = m.id || Math.random().toString(36).slice(2);
-        
-        let rawContent = m.content || "";
-        let showBoxFound = false;
-        let showData = null;
-        const showboxMatch = rawContent.match(/<SHOWBOX(?::(\d+))?>([\s\S]*?)<\/SHOWBOX>/);
-        
-        if (showboxMatch) {
-           showBoxFound = true;
-           rawContent = rawContent.replace(showboxMatch[0], '').trim();
-           if (!window._processedShowboxes.has(mid)) {
-               window._processedShowboxes.add(mid);
-               try { 
-                 showData = JSON.parse(showboxMatch[2]); 
-                 if (showboxMatch[1] !== undefined) {
-                     showData._targetIdx = parseInt(showboxMatch[1], 10) - 1; // 1-based to 0-based
-                 }
-               } 
-               catch(e) { console.error("SHOWBOX parse error", e); }
-           }
-        }
-        
-        let safe = esc(rawContent);
-         if (showBoxFound) {
-            const targetText = (showData && showData._targetIdx !== undefined) ? ` Button ${showData._targetIdx + 1}` : '';
-            safe += `<div style="color:var(--cyan);font-size:0.8em;margin-top:8px;">[ 🎬 Showbox Triggered${targetText} ]</div>`;
-         }
-         
-         let slides = showData;
-         if (showData && !Array.isArray(showData) && Array.isArray(showData.slides)) {
-             slides = showData.slides;
-             if (showData._targetIdx !== undefined) slides._targetIdx = showData._targetIdx;
-         }
-         if (slides && Array.isArray(slides) && slides.length > 0) {
-            setTimeout(() => {
-                let targetIdx = window.activeShowboxIndex >= 0 ? window.activeShowboxIndex : 0;
-                if (slides._targetIdx !== undefined && slides._targetIdx >= 0 && slides._targetIdx < window.showboxes.length) {
-                    targetIdx = slides._targetIdx;
-                }
-                window.showboxes[targetIdx] = slides;
-                if (window.closeShowbox) window.closeShowbox();
-                setTimeout(() => { if (window.triggerShowbox) window.triggerShowbox(targetIdx); }, 100);
-            }, 300);
-         }
-
-        safe = safe.replace(/\[SOUL:\s*([\s\S]*?)\]/g, '<div style="font-size:0.6rem; color:var(--bg-surface); opacity:0.5; margin-top:4px;">[SOUL: $1]</div>');
-        safe = safe.replace(/\n/g, '<br>');
-        return `<div class="chat-msg ${isUser ? 'user' : 'agent'}" style="border-left-color:${c};">
-      <div class="chat-meta"><span class="agent-name" style="color:${nameColor}">${esc(name)}</span><span><button class="copy-btn" onclick="copyMsg('${mid}')" title="Copy">📋</button><button class="copy-btn del-btn" onclick="deleteChatMsg('${mid}')" title="Delete">🗑</button>${time}</span></div>
-      <div class="mem-content" id="msg-${mid}">${safe}</div></div>`;
-      }).join('');
+      el.innerHTML = sorted.map(renderChatMessageHTML).join('');
 
       if (wasAtBottom || !window._chatInitialized) {
         el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
@@ -2328,7 +2388,6 @@
         el.scrollTop = st;
       }
 
-      // TTS
       if (!window._spokenIds) window._spokenIds = new Set();
       sorted.filter(m => m.metadata?.sender !== 'user' && !window._spokenIds.has(m.id)).forEach(m => {
         window._spokenIds.add(m.id);
@@ -2564,7 +2623,20 @@
 
       // Showbox-Daten werden über die externe Datei "themes.js" geladen.
 
-      window.triggerShowbox = (showboxIndex) => {
+    function resizeShowboxText(sbText, sbLayer) {
+      let size = 80;
+      sbText.style.fontSize = size + 'px';
+      while((sbText.scrollHeight > sbLayer.clientHeight - 6 || sbText.scrollWidth > sbLayer.clientWidth - 6) && size > 8) {
+        size--;
+        sbText.style.fontSize = size + 'px';
+      }
+    }
+    function updateShowboxText(sbText, sbLayer, showboxSteps, step) {
+      sbText.innerHTML = showboxSteps[step];
+      resizeShowboxText(sbText, sbLayer);
+      sbText.style.opacity = 1;
+    }
+    window.triggerShowbox = (showboxIndex) => {
         if (document.getElementById('showbox-panel')) {
           selectPanelShowbox(showboxIndex);
           return;
@@ -2579,28 +2651,14 @@
         window.activeShowboxIndex = showboxIndex;
         if (!window.showboxes) window.showboxes = [["<span style='color:red;'>Keine themes.js gefunden!</span>"]];
         const showboxSteps = window.showboxes[showboxIndex] || window.showboxes[0];
-        
         window.showboxActive = true;
         let step = 0;
         
-        for(let i=0; i<totalLayers; i++) {
-          const l = document.getElementById(`layer-${i}`);
-          if(l) l.classList.remove('active');
-        }
+        document.querySelectorAll('[id^="layer-"]').forEach(l => l.classList.remove('active'));
         
         const sbLayer = document.getElementById('layer-showbox');
         const sbText = document.getElementById('showbox-text');
-        
-        const updateText = () => {
-          sbText.innerHTML = showboxSteps[step];
-          let size = 80;
-          sbText.style.fontSize = size + 'px';
-          while((sbText.scrollHeight > sbLayer.clientHeight - 6 || sbText.scrollWidth > sbLayer.clientWidth - 6) && size > 8) {
-            size--;
-            sbText.style.fontSize = size + 'px';
-          }
-          sbText.style.opacity = 1;
-        };
+        const updateText = () => updateShowboxText(sbText, sbLayer, showboxSteps, step);
 
         sbText.style.opacity = 0;
         showboxTimeout = setTimeout(updateText, 100);
@@ -2651,6 +2709,77 @@
     let activePanelShowboxIndex = 0;
     let activePanelSlideIndex = 0;
 
+    function buildShowboxHeaderHTML() {
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <h2>🎬 Showbox Center</h2>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="btn-primary" onclick="togglePanelShowboxPlay()" id="sb-play-btn" style="min-width:80px;">▶ Play</button>
+            <button class="btn-primary" onclick="prevPanelSlide()">◀ Back</button>
+            <button class="btn-primary" onclick="nextPanelSlide()">Next ▶</button>
+            <label style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
+              <input type="checkbox" id="sb-messe-modus" onchange="toggleMesseModus(this.checked)"> Exhibition Mode
+            </label>
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:0.8rem; color:var(--text-muted);">Speed:</span>
+              <input type="range" id="sb-speed-slider" min="1" max="10" value="3" onchange="updatePanelShowboxSpeed(this.value)" style="width:70px; cursor:pointer;">
+              <span id="sb-speed-val" style="font-size:0.85rem; color:var(--cyan); min-width:25px;">3s</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    function buildShowboxScreenColHTML() {
+      return `
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div id="sb-screen" style="flex:1; background:radial-gradient(circle, #101424 0%, #070912 100%); border:1px solid rgba(0, 150, 255, 0.15); border-radius:12px; display:flex; justify-content:center; align-items:center; padding:40px; box-shadow:inset 0 0 40px rgba(0, 150, 255, 0.1); position:relative; overflow:hidden;">
+            <div id="sb-screen-content" style="color:white; text-align:center; font-weight:bold; font-size:48px; line-height:1.3; transition: opacity 0.3s ease, transform 0.3s ease; word-break:break-word; max-width:90%;">
+              Loading presentation...
+            </div>
+            <div id="sb-slide-indicator" style="position:absolute; bottom:15px; font-size:0.8rem; color:var(--text-muted); background:rgba(0,0,0,0.4); padding:4px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
+              Slide 1 / 1
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px;">
+            ${[0, 1, 2, 3, 4, 5, 6].map(i => `
+              <button class="btn-primary" id="sb-group-${i}" onclick="selectPanelShowbox(${i})" style="flex:1; white-space:nowrap; padding:8px 12px; font-size:0.85rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">
+                Showbox ${i+1}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+    function buildShowboxEditorColHTML() {
+      return `
+        <div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius); padding:15px; display:flex; flex-direction:column; gap:15px; min-height:0; overflow-y:auto;">
+          <div>
+            <h3 style="margin-bottom:5px;">Showbox-Editor</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Passe die Slides für die gewählte Showbox an (HTML erlaubt):</p>
+            <textarea id="sb-editor" style="width:100%; height:180px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:6px; font-family:monospace; font-size:0.85rem; resize:vertical;"></textarea>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn-primary" onclick="savePanelShowboxContent()" style="flex:1;">Speichern</button>
+            <button class="btn-primary" onclick="resetPanelShowboxDefault()" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1);">Reset</button>
+          </div>
+          <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
+            <h4 style="margin-bottom:8px; color:var(--text-muted);">Folien-Übersicht</h4>
+            <div id="sb-slides-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+          </div>
+        </div>
+      `;
+    }
+    function buildShowboxPanelHTML() {
+      return `
+        <div class="panel" id="showbox-panel" style="display:flex; flex-direction:column; gap:20px; height:100%; box-sizing:border-box;">
+          ${buildShowboxHeaderHTML()}
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; flex:1; min-height:0;">
+            ${buildShowboxScreenColHTML()}
+            ${buildShowboxEditorColHTML()}
+          </div>
+        </div>
+      `;
+    }
     async function showShowboxPanel() {
       selectedId = null;
       if (panelShowboxInterval) {
@@ -2658,62 +2787,7 @@
         panelShowboxInterval = null;
         panelShowboxPlaying = false;
       }
-      document.getElementById('content').innerHTML = `
-        <div class="panel" id="showbox-panel" style="display:flex; flex-direction:column; gap:20px; height:100%; box-sizing:border-box;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-            <h2>🎬 Showbox Center</h2>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <button class="btn-primary" onclick="togglePanelShowboxPlay()" id="sb-play-btn" style="min-width:80px;">▶ Play</button>
-              <button class="btn-primary" onclick="prevPanelSlide()">◀ Back</button>
-              <button class="btn-primary" onclick="nextPanelSlide()">Next ▶</button>
-              <label style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
-                <input type="checkbox" id="sb-messe-modus" onchange="toggleMesseModus(this.checked)"> Exhibition Mode
-              </label>
-              <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
-                <span style="font-size:0.8rem; color:var(--text-muted);">Speed:</span>
-                <input type="range" id="sb-speed-slider" min="1" max="10" value="3" onchange="updatePanelShowboxSpeed(this.value)" style="width:70px; cursor:pointer;">
-                <span id="sb-speed-val" style="font-size:0.85rem; color:var(--cyan); min-width:25px;">3s</span>
-              </div>
-            </div>
-          </div>
-
-          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; flex:1; min-height:0;">
-            <div style="display:flex; flex-direction:column; gap:10px;">
-              <div id="sb-screen" style="flex:1; background:radial-gradient(circle, #101424 0%, #070912 100%); border:1px solid rgba(0, 150, 255, 0.15); border-radius:12px; display:flex; justify-content:center; align-items:center; padding:40px; box-shadow:inset 0 0 40px rgba(0, 150, 255, 0.1); position:relative; overflow:hidden;">
-                <div id="sb-screen-content" style="color:white; text-align:center; font-weight:bold; font-size:48px; line-height:1.3; transition: opacity 0.3s ease, transform 0.3s ease; word-break:break-word; max-width:90%;">
-                  Loading presentation...
-                </div>
-                <div id="sb-slide-indicator" style="position:absolute; bottom:15px; font-size:0.8rem; color:var(--text-muted); background:rgba(0,0,0,0.4); padding:4px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
-                  Slide 1 / 1
-                </div>
-              </div>
-              <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px;">
-                ${[0, 1, 2, 3, 4, 5, 6].map(i => `
-                  <button class="btn-primary" id="sb-group-${i}" onclick="selectPanelShowbox(${i})" style="flex:1; white-space:nowrap; padding:8px 12px; font-size:0.85rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">
-                    Showbox ${i+1}
-                  </button>
-                `).join('')}
-              </div>
-            </div>
-
-            <div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius); padding:15px; display:flex; flex-direction:column; gap:15px; min-height:0; overflow-y:auto;">
-              <div>
-                <h3 style="margin-bottom:5px;">Showbox-Editor</h3>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Passe die Slides für die gewählte Showbox an (HTML erlaubt):</p>
-                <textarea id="sb-editor" style="width:100%; height:180px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:6px; font-family:monospace; font-size:0.85rem; resize:vertical;"></textarea>
-              </div>
-              <div style="display:flex; gap:10px;">
-                <button class="btn-primary" onclick="savePanelShowboxContent()" style="flex:1;">Speichern</button>
-                <button class="btn-primary" onclick="resetPanelShowboxDefault()" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1);">Reset</button>
-              </div>
-              <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
-                <h4 style="margin-bottom:8px; color:var(--text-muted);">Folien-Übersicht</h4>
-                <div id="sb-slides-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
+      document.getElementById('content').innerHTML = buildShowboxPanelHTML();
       const speedSec = Math.round(window.showboxSpeed / 1000);
       document.getElementById('sb-speed-slider').value = speedSec;
       document.getElementById('sb-speed-val').innerText = speedSec + 's';
@@ -2895,11 +2969,49 @@
     }
 
     // ── LLM Config ──
+    function buildProviderLogosHTML() {
+      return `
+          <div class="provider-logos-row" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; margin-top: 15px;">
+             <!-- DeepSeek -->
+             <div class="provider-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+                <div class="provider-logo-wrap" style="width:36px; height:36px; background:rgba(0,102,255,0.1); border-radius:6px; display:flex; align-items:center; justify-content:center;">
+                   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#0066ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.5 12"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                </div>
+                <div>
+                   <div style="font-weight:bold; font-size:0.85rem;">DeepSeek</div>
+                   <div style="font-size:0.7rem; color:var(--text-dim);">Ultra-low latency</div>
+                </div>
+             </div>
+             <!-- OpenRouter -->
+             <div class="provider-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+                <div class="provider-logo-wrap" style="width:36px; height:36px; background:rgba(255,0,128,0.1); border-radius:6px; display:flex; align-items:center; justify-content:center;">
+                   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ff0080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                </div>
+                <div>
+                   <div style="font-weight:bold; font-size:0.85rem;">OpenRouter</div>
+                   <div style="font-size:0.7rem; color:var(--text-dim);">Unified Hub (Free models)</div>
+                </div>
+             </div>
+             <!-- Ollama (Local) -->
+             <div class="provider-card" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:12px; border-radius:8px; display:flex; align-items:center; gap:12px;">
+                <div class="provider-logo-wrap" style="width:36px; height:36px; background:rgba(0,255,150,0.1); border-radius:6px; display:flex; align-items:center; justify-content:center;">
+                   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#00ff96" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div>
+                   <div style="font-weight:bold; font-size:0.85rem;">Local Ollama</div>
+                   <div style="font-size:0.7rem; color:var(--text-dim);">100% Offline & Private</div>
+                </div>
+             </div>
+          </div>
+      `;
+    }
+
     async function showLLMConfig() {
       selectedId = null;
       document.getElementById('content').innerHTML = `
         <div class="panel" id="llm-panel">
           <h2>LLM Configuration</h2>
+          ${buildProviderLogosHTML()}
           <div style="display:flex; gap: 20px; flex-wrap: wrap;">
             <div style="flex:1; min-width: 250px; background:var(--bg-card); padding:15px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:15px;">
               <div>
@@ -2947,7 +3059,7 @@
       }
     }
 
-    async function loadLLMConfig() {
+    async function loadLanguageState() {
       try {
         const langRes = await api('GET', '/admin/language');
         const lang = langRes?.language || 'en';
@@ -2958,7 +3070,8 @@
       } catch (e) {
         console.error("Language loading error", e);
       }
-
+    }
+    async function loadSystemInfoState() {
       try {
         const sysInfo = await api('GET', '/system/info');
         if (sysInfo) {
@@ -2982,35 +3095,9 @@
         console.error("System info error", e);
         document.getElementById('system-info-panel').innerHTML = "System Info not available.";
       }
-
-      const keysRes = await api('GET', '/llm/keys');
-      if (keysRes) {
-        globalKeys = Object.keys(keysRes).length > 0 ? Object.values(keysRes) : [];
-        if (globalKeys.length > 0 && globalKeys[0].key) {
-           document.getElementById('llm-keys-input').value = globalKeys.map(k => k.key).join('\n');
-           renderKeyStatus(globalKeys);
-        }
-      }
-
-      const agentsRes = await api('GET', '/agents');
-      const llmAgentsRes = await api('GET', '/llm/agents');
-      
+    }
+    function loadLLMAgentsListState(agentsRes, llmAgentsRes, models, providers) {
       let html = '';
-      const providers = ['deepseek', 'openrouter', 'lokal'];
-      let models = {
-        'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
-        'openrouter': ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free'],
-        'lokal': ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
-      };
-      try {
-        const availableModels = await api('GET', '/llm/available_models');
-        if (availableModels && availableModels.deepseek) {
-          models = availableModels;
-        }
-      } catch (e) {
-        console.error("Failed to load available models", e);
-      }
-
       if (agentsRes && Array.isArray(agentsRes)) {
         agentsRes.forEach(a => {
            let safeAgentsRes = llmAgentsRes || {};
@@ -3032,6 +3119,39 @@
         });
       }
       document.getElementById('llm-agents-list').innerHTML = html;
+    }
+    async function loadLLMConfig() {
+      await loadLanguageState();
+      await loadSystemInfoState();
+
+      const keysRes = await api('GET', '/llm/keys');
+      if (keysRes) {
+        globalKeys = Object.keys(keysRes).length > 0 ? Object.values(keysRes) : [];
+        if (globalKeys.length > 0 && globalKeys[0].key) {
+           document.getElementById('llm-keys-input').value = globalKeys.map(k => k.key).join('\n');
+           renderKeyStatus(globalKeys);
+        }
+      }
+
+      const agentsRes = await api('GET', '/agents');
+      const llmAgentsRes = await api('GET', '/llm/agents');
+      
+      const providers = ['deepseek', 'openrouter', 'lokal'];
+      let models = {
+        'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
+        'openrouter': ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+        'lokal': ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
+      };
+      try {
+        const availableModels = await api('GET', '/llm/available_models');
+        if (availableModels && availableModels.deepseek) {
+          models = availableModels;
+        }
+      } catch (e) {
+        console.error("Failed to load available models", e);
+      }
+
+      loadLLMAgentsListState(agentsRes, llmAgentsRes, models, providers);
       window.llmModelsMap = models;
     }
 
