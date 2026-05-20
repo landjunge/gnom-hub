@@ -1517,6 +1517,36 @@
     .timer-timeout-pulse {
       animation: timer-timeout-glow 0.3s ease-in-out infinite alternate !important;
     }
+    .showbox-hints {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+      z-index: 30;
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      opacity: 0.15;
+      transition: opacity 0.3s ease, color 0.3s ease;
+    }
+    #layer-showbox:hover .showbox-hints {
+      opacity: 0.85;
+      color: rgba(255, 255, 255, 0.75);
+    }
+    .showbox-hints span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
   </style>
 </head>
 
@@ -1621,6 +1651,11 @@
             <div id="showbox-clock" style="position: absolute; top: 20px; right: 20px; font-size: 1.5rem; color: rgba(255,255,255,0.7); font-family: monospace; background: rgba(0,0,0,0.4); padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; pointer-events: none; z-index: 20;">00:00:00</div>
             <div id="showbox-timer" style="position: absolute; top: 20px; left: 20px; font-size: 1.5rem; color: #ff3366; font-family: monospace; background: rgba(0,0,0,0.4); padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255,51,102,0.3); display: none; pointer-events: none; z-index: 20;">00:00</div>
             <div class="layer-content" id="showbox-text" style="color:var(--text); font-weight:bold; width: 100%; text-align: center; word-break: break-word; line-height: 1.2;"></div>
+            <div class="showbox-hints">
+              <span>🎙️ @tts on/off</span>
+              <span>🕒 @showbox time on/off</span>
+              <span>⏰ @showbox timer [x] min/off</span>
+            </div>
           </div>
         </div>
         <div class="info-lamps-container">
