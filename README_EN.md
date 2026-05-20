@@ -27,7 +27,20 @@ Open **http://127.0.0.1:3002** — Welcome to the War Room.
 
 ## 🔥 Why Gnom-Hub changes the game
 
-What separates Gnom-Hub from monstrous frameworks like Langchain or AutoGen is its **uncompromising, raw efficiency**:
+What separates Gnom-Hub from monstrous or complex frameworks out there is its **uncompromising, raw efficiency**:
+
+### 📊 Gnom-Hub vs. The World
+
+| Criterion | **Gnom-Hub 🧠** | **OpenClaw 🦞** | **Agent Zero 0️⃣** | **LangChain 🦜** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Philosophy** | Radical minimalism (40-line rule per file) | All-in-one persistent assistant | Docker-first Sandbox | Monolithic boilerplate builder |
+| **Pure Code Size** | **~364 KB** (~5,500 lines) | **400k – 800k+ lines** (TypeScript Monolith) | **~10,000 lines** | **~1,200,000+ lines** |
+| **Install Size** | **~0.4 MB** Core (**~66 MB** incl. general libs) | **~350 MB** | **~250 MB** | **300 MB – 1 GB** |
+| **Dependencies** | **~6** (FastAPI, uvicorn, requests, dotenv, mcp) | **70+** direct NPM packages | **~15** (Docker SDK, LiteLLM) | **100+** packages |
+| **Evolution Loop** | **Built-in** (agents sign their own code via HMAC) | No (manual plugins only) | **Yes** (builds dynamic tools) | No (must be built manually) |
+| **Startup / Latency** | **Milliseconds** | 1–2 seconds | 2 seconds | 1–3 seconds (just for imports!) |
+
+---
 
 1. **"God-Mode" Desktop & Vision:** The AI controls your computer. The agents see your screen and act via a robust, self-healing 5-step vision loop with integrated **Pydantic-style schema validation (in pure Python)**. A local **sandbox whitelist** (`sandboxAG.py`) protects against destructive actions.
 2. **Self-Evolution & Auto-Healing:** Crash logs (`.backups/sandbox.log`) are not ignored. Agents (like `evolutionAG.py`) read their own errors, rewrite their own code, and commit the improvements via Git. The swarm evolves on its own.
