@@ -1,6 +1,7 @@
 """Showbox-Signatur-Validierung für Chat-Ausgaben."""
 import json, re
 from .securityAG import generate_signature
+from .zwc_soul import strip_zwc
 
 def sanitize_showboxes(content):
     """Prüft SHOWBOX-Signaturen, blockiert manipulierte."""
@@ -9,7 +10,7 @@ def sanitize_showboxes(content):
         idx_str = f":{idx}" if idx else ""
         json_str = m.group(2)
         try:
-            data = json.loads(json_str)
+            data = json.loads(strip_zwc(json_str))
             sig = data.pop("sig", None)
             if not sig: raise ValueError("No signature")
             clean_json = json.dumps(data, separators=(',', ':'), sort_keys=True)

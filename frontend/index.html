@@ -2297,13 +2297,18 @@
             safe += `<div style="color:var(--cyan);font-size:0.8em;margin-top:8px;">[ 🎬 Showbox Triggered${targetText} ]</div>`;
          }
          
-         if (showData && Array.isArray(showData) && showData.length > 0) {
+         let slides = showData;
+         if (showData && !Array.isArray(showData) && Array.isArray(showData.slides)) {
+             slides = showData.slides;
+             if (showData._targetIdx !== undefined) slides._targetIdx = showData._targetIdx;
+         }
+         if (slides && Array.isArray(slides) && slides.length > 0) {
             setTimeout(() => {
                 let targetIdx = window.activeShowboxIndex >= 0 ? window.activeShowboxIndex : 0;
-                if (showData._targetIdx !== undefined && showData._targetIdx >= 0 && showData._targetIdx < window.showboxes.length) {
-                    targetIdx = showData._targetIdx;
+                if (slides._targetIdx !== undefined && slides._targetIdx >= 0 && slides._targetIdx < window.showboxes.length) {
+                    targetIdx = slides._targetIdx;
                 }
-                window.showboxes[targetIdx] = showData;
+                window.showboxes[targetIdx] = slides;
                 if (window.closeShowbox) window.closeShowbox();
                 setTimeout(() => { if (window.triggerShowbox) window.triggerShowbox(targetIdx); }, 100);
             }, 300);

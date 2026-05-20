@@ -30,10 +30,12 @@ def _sanitize_json(raw):
     except json.JSONDecodeError: return json.loads(re.sub(r'(?<=": ")(.*?)(?="[,}])', lambda m: m.group().replace("\n", "\\n").replace("\t", "\\t"), raw, flags=re.DOTALL))
 def handle_showbox(ans, ms):
     from .securityAG import generate_signature
-    for m in ms:
+    for full, idx, raw in ms:
         try:
-            d = _sanitize_json(m.group(1).strip()); d.pop("sig", None)
+            d = _sanitize_json(raw.strip())
+            if isinstance(d, list): d = {"slides": d}
+            else: d.pop("sig", None)
             d["sig"] = generate_signature("Gnom", json.dumps(d, separators=(',', ':'), sort_keys=True))
-            ans = ans.replace(m.group(0), f"<SHOWBOX>{json.dumps(d)}</SHOWBOX>")
-        except Exception as e: ans = ans.replace(m.group(0), f"[Showbox-Fehler: Ungültiges JSON - {e}]")
+            ans = ans.replace(full, f"<SHOWBOX{':'+idx if idx else ''}>{json.dumps(d)}</SHOWBOX>")
+        except Exception as e: ans = ans.replace(full, f"[Showbox-Fehler: {e}]")
     return ans

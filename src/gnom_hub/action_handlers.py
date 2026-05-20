@@ -23,6 +23,11 @@ def process_actions(answer, agent, perms, bs_mode, wd):
     answer = handle_read(answer, list(re.finditer(r"\[READ:\s*(.*?)\]", answer)), wd, perms)
     answer = handle_shell(answer, list(re.finditer(r"\[SHELL:\s*(.*?)\]", answer)), agent, perms, bs_mode, wd)
     answer = handle_crawl(answer, list(re.finditer(r"\[CRAWL:\s*(.*?)\]", answer)), agent, perms)
-    answer = handle_showbox(answer, list(re.finditer(r"\[SHOWBOX:\s*(.*?)\]", answer, re.DOTALL)))
+    ms = []
+    for tag in ("SHOWBOX", "showbox"):
+        for m in re.finditer(rf"<{tag}(?::(\d+))?>([\s\S]*?)<\/{tag}>", answer): ms.append((m.group(0), m.group(1) or "", m.group(2)))
+        for m in re.finditer(rf"\[{tag}(?::(\d+))?\]([\s\S]*?)\[\/{tag}\]", answer): ms.append((m.group(0), m.group(1) or "", m.group(2)))
+        for m in re.finditer(rf"\[{tag}:\s*(.*?)\]", answer, re.DOTALL): ms.append((m.group(0), "", m.group(1)))
+    answer = handle_showbox(answer, ms)
     answer = _browser(answer, list(re.finditer(r"\[BROWSER:\s*(.*?)\]", answer, re.DOTALL)), agent, perms)
     return answer
