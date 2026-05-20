@@ -19,7 +19,8 @@ def run_workspace_file(filename: str):
     if not os.path.exists(p): return {"error": "File not found"}
     if not filename.endswith(".py"): return {"error": "Nur .py Dateien können ausgeführt werden."}
     try:
-        r = subprocess.run(["python3", p], capture_output=True, text=True, timeout=15, cwd=w)
+        from .sandbox_exec import run_sandboxed
+        r = run_sandboxed(["python3", p], cwd=w, timeout=15)
         return {"stdout": r.stdout[-2000:], "stderr": r.stderr[-1000:], "code": r.returncode}
     except subprocess.TimeoutExpired: return {"error": "Timeout nach 15 Sekunden"}
 @router.get("/api/project")

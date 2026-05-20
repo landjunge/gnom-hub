@@ -1,13 +1,19 @@
 from fastapi import APIRouter, HTTPException, Request; from datetime import datetime; import uuid, os, json; from .db import get_db, save_db; from .models import AgentEntry
 router = APIRouter()
 @router.get("/api/agents")
-def list_agents(): return get_db("agents")
+def list_agents():
+    ags = get_db("agents")
+    for a in ags:
+        if a.get("active_job"): a["status"] = "busy"
+    return ags
 @router.get("/api/agents/search")
-def search_agents(q: str): return [a for a in get_db("agents") if q.lower() in str(a).lower()]
+def search_agents(q: str): return [a for a in list_agents() if q.lower() in str(a).lower()]
 @router.get("/api/agents/{a_id}")
-def get_agent(a_id: str): return next((a for a in get_db("agents") if a.get("id") == a_id or a.get("name") == a_id), {})
+def get_agent(a_id: str): return next((a for a in list_agents() if a.get("id") == a_id or a.get("name") == a_id), {})
 @router.get("/api/agents/{a_id}/status")
-def get_agent_status(a_id: str): return {"status": next((a.get("status") for a in get_db("agents") if a.get("id") == a_id or a.get("name") == a_id), "offline")}
+def get_agent_status(a_id: str):
+    a = get_agent(a_id)
+    return {"status": a.get("status", "offline")}
 @router.post("/api/agents")
 def create_agent(a: AgentEntry):
     d = get_db("agents")

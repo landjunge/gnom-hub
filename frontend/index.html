@@ -870,6 +870,12 @@
       box-shadow: 0 0 6px var(--green);
     }
 
+    .dot.busy {
+      background: #ffaa00;
+      box-shadow: 0 0 8px #ffaa00;
+      animation: dot-pulse 1s infinite ease-in-out;
+    }
+
     .dot.off {
       background: var(--red);
     }
@@ -1465,6 +1471,7 @@
         Memory: <span id="s-memory">0</span>
       </div>
       <button class="btn-primary" onclick="showWorkspace()">Workspace</button>
+      <button class="btn-primary" onclick="showShowboxPanel()">Showbox</button>
       <button class="btn-primary" onclick="showLLMConfig()">LLM</button>
       <button class="btn-primary" onclick="openAddAgent()">+ Agent</button>
     </div>
@@ -1757,12 +1764,13 @@
         el.innerHTML = '<div class="empty">Keine Agenten.</div>';
       } else {
         const renderCard = (a) => {
-          const on = a.status === 'online';
+          const stClass = a.status === 'busy' ? 'busy' : (a.status === 'online' ? 'on' : 'off');
           const role = a.role && a.role !== 'normal' ? a.role : '';
           const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
           const c = agentColor(a.name);
+          const dotStyle = a.status === 'busy' ? 'background:#ffaa00;box-shadow:0 0 8px #ffaa00' : (a.status === 'online' ? `background:${c};box-shadow:0 0 6px ${c}` : '');
           return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
-        <h3><span class="dot ${on ? 'on' : 'off'}" style="${on ? 'background:' + c + ';box-shadow:0 0 6px ' + c : ''}"></span><span>${a.name}</span>${roleIcon}</h3>
+        <h3><span class="dot ${stClass}" style="${dotStyle}"></span><span>${a.name}</span>${roleIcon}</h3>
         <div class="desc">${a.description || '–'}</div>
         <div class="meta">${a.port ? `<span class="badge port">:${a.port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}</div>
       </div>`;
@@ -2624,6 +2632,256 @@
       }, 5000);
     })();
 
+    // ── Showbox Center ──
+    let panelShowboxPlaying = false;
+    let panelShowboxMesseModus = false;
+    let panelShowboxInterval = null;
+    let activePanelShowboxIndex = 0;
+    let activePanelSlideIndex = 0;
+
+    async function showShowboxPanel() {
+      selectedId = null;
+      if (panelShowboxInterval) {
+        clearInterval(panelShowboxInterval);
+        panelShowboxInterval = null;
+        panelShowboxPlaying = false;
+      }
+      document.getElementById('content').innerHTML = `
+        <div class="panel" id="showbox-panel" style="display:flex; flex-direction:column; gap:20px; height:100%; box-sizing:border-box;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <h2>🎬 Showbox Center</h2>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button class="btn-primary" onclick="togglePanelShowboxPlay()" id="sb-play-btn" style="min-width:80px;">▶ Play</button>
+              <button class="btn-primary" onclick="prevPanelSlide()">◀ Zurück</button>
+              <button class="btn-primary" onclick="nextPanelSlide()">Weiter ▶</button>
+              <label style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
+                <input type="checkbox" id="sb-messe-modus" onchange="toggleMesseModus(this.checked)"> Messe-Modus
+              </label>
+              <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                <span style="font-size:0.8rem; color:var(--text-muted);">Tempo:</span>
+                <input type="range" id="sb-speed-slider" min="1" max="10" value="3" onchange="updatePanelShowboxSpeed(this.value)" style="width:70px; cursor:pointer;">
+                <span id="sb-speed-val" style="font-size:0.85rem; color:var(--cyan); min-width:25px;">3s</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; flex:1; min-height:0;">
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div id="sb-screen" style="flex:1; background:radial-gradient(circle, #101424 0%, #070912 100%); border:1px solid rgba(0, 150, 255, 0.15); border-radius:12px; display:flex; justify-content:center; align-items:center; padding:40px; box-shadow:inset 0 0 40px rgba(0, 150, 255, 0.1); position:relative; overflow:hidden;">
+                <div id="sb-screen-content" style="color:white; text-align:center; font-weight:bold; font-size:48px; line-height:1.3; transition: opacity 0.3s ease, transform 0.3s ease; word-break:break-word; max-width:90%;">
+                  Lade Präsentation...
+                </div>
+                <div id="sb-slide-indicator" style="position:absolute; bottom:15px; font-size:0.8rem; color:var(--text-muted); background:rgba(0,0,0,0.4); padding:4px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
+                  Slide 1 / 1
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px;">
+                ${[0, 1, 2, 3, 4, 5, 6].map(i => `
+                  <button class="btn-primary" id="sb-group-${i}" onclick="selectPanelShowbox(${i})" style="flex:1; white-space:nowrap; padding:8px 12px; font-size:0.85rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">
+                    Showbox ${i+1}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius); padding:15px; display:flex; flex-direction:column; gap:15px; min-height:0; overflow-y:auto;">
+              <div>
+                <h3 style="margin-bottom:5px;">Showbox-Editor</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Passe die Slides für die gewählte Showbox an (HTML erlaubt):</p>
+                <textarea id="sb-editor" style="width:100%; height:180px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:6px; font-family:monospace; font-size:0.85rem; resize:vertical;"></textarea>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn-primary" onclick="savePanelShowboxContent()" style="flex:1;">Speichern</button>
+                <button class="btn-primary" onclick="resetPanelShowboxDefault()" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1);">Reset</button>
+              </div>
+              <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
+                <h4 style="margin-bottom:8px; color:var(--text-muted);">Folien-Übersicht</h4>
+                <div id="sb-slides-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      const speedSec = Math.round(window.showboxSpeed / 1000);
+      document.getElementById('sb-speed-slider').value = speedSec;
+      document.getElementById('sb-speed-val').innerText = speedSec + 's';
+      document.getElementById('sb-messe-modus').checked = panelShowboxMesseModus;
+      selectPanelShowbox(activePanelShowboxIndex);
+    }
+
+    function selectPanelShowbox(idx) {
+      if (panelShowboxInterval) {
+        clearInterval(panelShowboxInterval);
+        panelShowboxInterval = null;
+        panelShowboxPlaying = false;
+        const btn = document.getElementById('sb-play-btn');
+        if (btn) {
+          btn.innerText = '▶ Play';
+          btn.style.background = 'var(--primary)';
+        }
+      }
+      activePanelShowboxIndex = idx;
+      activePanelSlideIndex = 0;
+      for (let i = 0; i < 7; i++) {
+        const btn = document.getElementById(`sb-group-${i}`);
+        if (btn) {
+          if (i === idx) {
+            btn.style.background = 'rgba(0, 150, 255, 0.2)';
+            btn.style.borderColor = 'var(--cyan)';
+            btn.style.color = 'var(--cyan)';
+          } else {
+            btn.style.background = 'rgba(255,255,255,0.05)';
+            btn.style.borderColor = 'rgba(255,255,255,0.1)';
+            btn.style.color = 'white';
+          }
+        }
+      }
+      const currentSlides = window.showboxes[idx] || [];
+      document.getElementById('sb-editor').value = JSON.stringify(currentSlides, null, 2);
+      renderPanelSlide();
+      renderPanelSlidesList();
+    }
+
+    function renderPanelSlide() {
+      const screenContent = document.getElementById('sb-screen-content');
+      const indicator = document.getElementById('sb-slide-indicator');
+      if (!screenContent) return;
+      const currentSlides = window.showboxes[activePanelShowboxIndex] || [];
+      if (currentSlides.length === 0) {
+        screenContent.innerHTML = "<span style='color:red;'>Keine Slides vorhanden.</span>";
+        indicator.innerText = "0 / 0";
+        return;
+      }
+      if (activePanelSlideIndex >= currentSlides.length) activePanelSlideIndex = 0;
+      if (activePanelSlideIndex < 0) activePanelSlideIndex = currentSlides.length - 1;
+      screenContent.style.opacity = 0;
+      screenContent.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        screenContent.innerHTML = currentSlides[activePanelSlideIndex];
+        const screen = document.getElementById('sb-screen');
+        let size = 48;
+        screenContent.style.fontSize = size + 'px';
+        while ((screenContent.scrollHeight > screen.clientHeight - 80 || screenContent.scrollWidth > screen.clientWidth - 80) && size > 12) {
+          size -= 2;
+          screenContent.style.fontSize = size + 'px';
+        }
+        screenContent.style.opacity = 1;
+        screenContent.style.transform = 'scale(1)';
+        indicator.innerText = `Folie ${activePanelSlideIndex + 1} / ${currentSlides.length}`;
+      }, 200);
+      const items = document.querySelectorAll('.sb-slide-item');
+      items.forEach((item, i) => {
+        if (i === activePanelSlideIndex) {
+          item.style.background = 'rgba(0, 150, 255, 0.15)';
+          item.style.borderColor = 'var(--cyan)';
+        } else {
+          item.style.background = 'rgba(255,255,255,0.02)';
+          item.style.borderColor = 'rgba(255,255,255,0.05)';
+        }
+      });
+    }
+
+    function renderPanelSlidesList() {
+      const list = document.getElementById('sb-slides-list');
+      if (!list) return;
+      const currentSlides = window.showboxes[activePanelShowboxIndex] || [];
+      list.innerHTML = currentSlides.map((slide, i) => `
+        <div class="sb-slide-item" onclick="jumpToPanelSlide(${i})" style="padding:10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:6px; font-size:0.8rem; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all 0.2s;">
+          <strong>Folie ${i+1}:</strong> ${slide.replace(/<[^>]*>/g, '')}
+        </div>
+      `).join('');
+      const items = list.querySelectorAll('.sb-slide-item');
+      if (items[activePanelSlideIndex]) {
+        items[activePanelSlideIndex].style.background = 'rgba(0, 150, 255, 0.15)';
+        items[activePanelSlideIndex].style.borderColor = 'var(--cyan)';
+      }
+    }
+
+    function jumpToPanelSlide(idx) {
+      activePanelSlideIndex = idx;
+      renderPanelSlide();
+    }
+
+    function prevPanelSlide() {
+      activePanelSlideIndex--;
+      renderPanelSlide();
+    }
+
+    function nextPanelSlide() {
+      const currentSlides = window.showboxes[activePanelShowboxIndex] || [];
+      activePanelSlideIndex++;
+      if (activePanelSlideIndex >= currentSlides.length) {
+        if (panelShowboxMesseModus) {
+          activePanelShowboxIndex = (activePanelShowboxIndex + 1) % 7;
+          selectPanelShowbox(activePanelShowboxIndex);
+          return;
+        } else {
+          activePanelSlideIndex = 0;
+        }
+      }
+      renderPanelSlide();
+    }
+
+    function togglePanelShowboxPlay() {
+      const btn = document.getElementById('sb-play-btn');
+      if (panelShowboxPlaying) {
+        clearInterval(panelShowboxInterval);
+        panelShowboxInterval = null;
+        panelShowboxPlaying = false;
+        btn.innerText = '▶ Play';
+        btn.style.background = 'var(--primary)';
+      } else {
+        panelShowboxPlaying = true;
+        btn.innerText = '⏸ Pause';
+        btn.style.background = '#ffaa00';
+        panelShowboxInterval = setInterval(() => {
+          nextPanelSlide();
+        }, window.showboxSpeed);
+      }
+    }
+
+    function toggleMesseModus(val) {
+      panelShowboxMesseModus = val;
+    }
+
+    function updatePanelShowboxSpeed(val) {
+      window.showboxSpeed = val * 1000;
+      document.getElementById('sb-speed-val').innerText = val + 's';
+      if (panelShowboxPlaying) {
+        clearInterval(panelShowboxInterval);
+        panelShowboxInterval = setInterval(() => {
+          nextPanelSlide();
+        }, window.showboxSpeed);
+      }
+    }
+
+    async function savePanelShowboxContent() {
+      try {
+        const text = document.getElementById('sb-editor').value;
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) throw new Error("JSON muss ein Array sein.");
+        window.showboxes[activePanelShowboxIndex] = parsed;
+        renderPanelSlide();
+        renderPanelSlidesList();
+        const themesRes = await api('GET', '/showbox/themes');
+        if (themesRes) {
+          const cleanJs = `window.showboxes = ${JSON.stringify(window.showboxes, null, 2)};`;
+          await api('POST', '/showbox/themes', { content: cleanJs });
+          alert("Erfolgreich auf Server und Client gespeichert!");
+        } else {
+          alert("Clientseitig aktualisiert, Server konnte nicht erreicht werden.");
+        }
+      } catch (err) {
+        alert("Fehler beim Speichern: " + err.message);
+      }
+    }
+
+    async function resetPanelShowboxDefault() {
+      if (confirm("Möchtest du diese Showbox wirklich auf die Werkseinstellungen zurücksetzen?")) {
+        window.location.reload();
+      }
+    }
+
     // ── LLM Config ──
     async function showLLMConfig() {
       selectedId = null;
@@ -2631,12 +2889,17 @@
         <div class="panel" id="llm-panel">
           <h2>LLM Konfiguration</h2>
           <div style="display:flex; gap: 20px; flex-wrap: wrap;">
-            <div style="flex:1; min-width: 250px; background:var(--bg-card); padding:15px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
-              <h3 style="margin-bottom:5px;">API Keys</h3>
-              <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Ein Key pro Zeile</p>
-              <textarea id="llm-keys-input" rows="3" style="width:100%; margin-bottom:10px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:8px; border-radius:4px; font-size:0.85rem;" placeholder="sk-..."></textarea>
-              <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.85rem; padding:6px;">Speichern & Testen</button>
-              <div id="llm-keys-status" style="margin-top:10px; font-size:0.85rem; max-height:100px; overflow-y:auto;"></div>
+            <div style="flex:1; min-width: 250px; background:var(--bg-card); padding:15px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:15px;">
+              <div>
+                <h3 style="margin-bottom:5px;">API Keys</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Ein Key pro Zeile</p>
+                <textarea id="llm-keys-input" rows="3" style="width:100%; margin-bottom:10px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:8px; border-radius:4px; font-size:0.85rem;" placeholder="sk-..."></textarea>
+                <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.85rem; padding:6px;">Speichern & Testen</button>
+                <div id="llm-keys-status" style="margin-top:10px; font-size:0.85rem; max-height:100px; overflow-y:auto;"></div>
+              </div>
+              <div id="system-info-panel" style="font-size:0.85rem; padding:12px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
+                Lade System-Info...
+              </div>
             </div>
             <div style="flex:2; min-width: 400px; background:var(--bg-card); padding:20px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
               <h3>Agenten Zuweisung</h3>
@@ -2654,6 +2917,30 @@
 
     let globalKeys = [];
     async function loadLLMConfig() {
+      try {
+        const sysInfo = await api('GET', '/system/info');
+        if (sysInfo) {
+          let warnHtml = '';
+          if (sysInfo.is_intel) {
+            warnHtml = `
+              <div style="margin-top:10px; padding:10px; background:rgba(255,170,0,0.15); border:1px solid #ffaa00; border-radius:6px; color:#ffaa00; font-size:0.8rem; line-height:1.3;">
+                ⚠️ <strong>Intel CPU erkannt (${sysInfo.cpu})</strong><br>
+                Lokale Modelle > 4B Parameter laufen hier sehr langsam. Wir empfehlen die Nutzung von <strong>Gemma 2:2b</strong> oder <strong>Llama 3.2</strong>.
+              </div>
+            `;
+          }
+          document.getElementById('system-info-panel').innerHTML = `
+            <strong>💻 System Info:</strong><br>
+            • CPU: ${sysInfo.cpu}<br>
+            • RAM: ${sysInfo.ram}<br>
+            ${warnHtml}
+          `;
+        }
+      } catch (e) {
+        console.error("System info error", e);
+        document.getElementById('system-info-panel').innerHTML = "System Info nicht verfügbar.";
+      }
+
       const keysRes = await api('GET', '/llm/keys');
       if (keysRes) {
         globalKeys = Object.keys(keysRes).length > 0 ? Object.values(keysRes) : [];
@@ -2668,11 +2955,19 @@
       
       let html = '';
       const providers = ['deepseek', 'openrouter', 'lokal'];
-      const models = {
+      let models = {
         'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
-        'openrouter': ['deepseek/deepseek-v4-flash:free', 'openai/gpt-oss-120b:free', 'minimax/minimax-m2.5:free', 'nvidia/nemotron-nano-9b-v2:free', 'qwen/qwen3-coder:free', 'arcee-ai/trinity-large-thinking:free', 'qwen/qwen3-next-80b:free', 'qwen/qwen3-next-80b-a3b-instruct:free', 'baidu/cobuddy:free', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', 'poolside/laguna-xs.2:free', 'poolside/laguna-m.1:free', 'google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'liquid/lfm-2.5-1.2b-thinking:free', 'liquid/lfm-2.5-1.2b-instruct:free', 'nvidia/nemotron-3-nano-30b-a3b:free', 'nvidia/nemotron-nano-12b-v2-vl:free', 'z-ai/glm-4.5-air:free', 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', 'meta-llama/llama-3.3-70b-instruct:free', 'meta-llama/llama-3.2-3b-instruct:free', 'nousresearch/hermes-3-llama-3.1-405b:free'],
-        'lokal': ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2']
+        'openrouter': ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+        'lokal': ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
       };
+      try {
+        const availableModels = await api('GET', '/llm/available_models');
+        if (availableModels && availableModels.deepseek) {
+          models = availableModels;
+        }
+      } catch (e) {
+        console.error("Failed to load available models", e);
+      }
 
       if (agentsRes && Array.isArray(agentsRes)) {
         agentsRes.forEach(a => {

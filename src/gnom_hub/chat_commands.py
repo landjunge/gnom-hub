@@ -15,9 +15,22 @@ def handle_job(task):
     save_db("jobs", get_db("jobs") + [{"id": str(uuid.uuid4()), "task": task, "general": gen["name"], "status": "open", "ts": datetime.utcnow().isoformat()+"Z"}]); res = distribute_job(task); _post_chat(gen["name"], res)
     [a.update({"active_job": next((m.group(2).strip() for m in re.finditer(r'@(\w+)[\s→>:\-]+(.+)', res) if m.group(1).lower()==a["name"].lower()), "")}) for a in ags]; save_db("agents", ags); return {"status": "job_created"}
 def handle_sandbox(c):
-    open("sandbox.py", "w").write(c.replace("```python", "").replace("```", "").strip())
-    try: out = subprocess.run(["python3", "sandbox.py"], capture_output=True, text=True, timeout=5).stdout[:500]
-    except Exception as e: out = str(e)
+    import tempfile, os
+    code = c.replace("```python", "").replace("```", "").strip()
+    fd, path = tempfile.mkstemp(suffix=".py", prefix="sandbox_run_")
+    try:
+        os.write(fd, code.encode('utf-8'))
+        os.close(fd)
+        from .sandbox_exec import run_sandboxed
+        from .routes_workspace import get_workspace_dir
+        w = get_workspace_dir()
+        r = run_sandboxed(["python3", path], cwd=w, timeout=5)
+        out = (r.stdout + r.stderr)[:1500]
+    except Exception as e:
+        out = str(e)
+    finally:
+        try: os.remove(path)
+        except: pass
     _post_chat("Sandbox", f"Output:\n```\n{out}\n```"); return {"status": "executed"}
 def handle_summary(q=""): from .role_tools import summarize_chat; _post_chat("Summarizer", summarize_chat()); return {"status": "summarized"}
 def handle_checkpoint(q):

@@ -14,8 +14,11 @@ def ask_llm(ag, q, ctx, bs_mode=False):
     sys += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
     if bs_mode: sys += "\n[MODUS: BRAINSTORM — Nur diskutieren! KEIN [WRITE:] erlaubt.]"
     u_msg = f"{q}\n\nBisherige Diskussion:\n{ctx}" if ctx else q
+    ags = get_db("agents"); [x.update({"status": "busy"}) for x in ags if x["name"] == ag["name"]]; save_db("agents", ags)
     try:
         ans = ask_router(u_msg, sys, agent_name=ag.get("name", ""))
         if not ans or not isinstance(ans, str): return post(ag["name"], f"[Fehler: Keine Antwort vom LLM]")
         post(ag["name"], process_actions(ans, ag, soul.get("permissions", []), bs_mode, wd))
     except Exception as e: post(ag["name"], f"[Fehler: {str(e)[:80]}]")
+    finally:
+        ags = get_db("agents"); [x.update({"status": "online"}) for x in ags if x["name"] == ag["name"]]; save_db("agents", ags)

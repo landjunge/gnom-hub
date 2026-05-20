@@ -7,7 +7,10 @@ def handle_shell(ans, ms, ag, perms, bs, wd):
         elif "run" not in perms and "godmode" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
         elif "godmode" not in perms and SHELL_BLOCK.search(c): ans = ans.replace(o, f"[System: BLOCKIERT — gefährlicher Befehl: {c[:60]}]")
         else:
-            try: r = subprocess.run(c, shell=True, capture_output=True, text=True, timeout=30, cwd=wd); ans = ans.replace(o, f"[Shell ({c}):\n{(r.stdout+r.stderr)[:1500]}]")
+            try:
+                from .sandbox_exec import run_sandboxed
+                r = run_sandboxed(c, wd, timeout=30)
+                ans = ans.replace(o, f"[Shell ({c}):\n{(r.stdout+r.stderr)[:1500]}]")
             except Exception as e: ans = ans.replace(o, f"[Shell-Fehler: {str(e)[:80]}]")
     return ans
 def handle_crawl(ans, ms, ag, perms):

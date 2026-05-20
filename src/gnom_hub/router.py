@@ -20,24 +20,40 @@ def _call(pvd, mdl, key, msgs, n):
 def _try(pvd, mdl, key, msgs, n):
     try: ans = _call(pvd, mdl, key, msgs, n); return ans if ans else None
     except: return None
+def get_keys(pvd, kdb):
+    import os
+    ks = [k.get("key") for k in (kdb.values() if isinstance(kdb, dict) else kdb) if k.get("provider") == pvd and k.get("valid")]
+    if pvd == "deepseek" and DS_KEY: ks.append(DS_KEY)
+    elif pvd == "openrouter":
+        ks.extend([os.environ.get(f"OPENROUTER_KEY_FREE_{i}") for i in range(1, 6) if os.environ.get(f"OPENROUTER_KEY_FREE_{i}")])
+        if OR_KEY: ks.append(OR_KEY)
+    return list(dict.fromkeys(ks))
+
 def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     n, msgs = (agent_name or "").lower(), [{"role": "system", "content": sys}, {"role": "user", "content": p}]
     kdb, adb = get_db("llm_keys") or {}, get_db("llm_agents") or {}
     cfg = adb.get(n)
+
     if cfg and cfg.get("provider") and cfg.get("model"):
-        k = next((k for k in (kdb.values() if isinstance(kdb, dict) else kdb) if k.get("provider") == cfg["provider"] and k.get("valid")), None)
-        if cfg["provider"] == "lokal" or k:
-            ans = _try(cfg["provider"], cfg["model"], k.get("key") if k else "", msgs, agent_name)
+        pvd, mdl = cfg["provider"], cfg["model"]
+        if pvd == "lokal":
+            ans = _try("lokal", mdl, "", msgs, agent_name)
             if ans: return ans
-    if DS_KEY:
-        ans = _try("deepseek", "deepseek-chat", DS_KEY, msgs, agent_name)
+        else:
+            for k in get_keys(pvd, kdb):
+                ans = _try(pvd, mdl, k, msgs, agent_name)
+                if ans: return ans
+
+    for dk in get_keys("deepseek", kdb):
+        ans = _try("deepseek", "deepseek-chat", dk, msgs, agent_name)
         if ans: return ans
+
     for m in AGENT_MODELS.get(n, DEFAULT_MODELS):
-        if not OR_KEY: continue
-        ans = _try("openrouter", m, OR_KEY, msgs, agent_name)
-        if ans: return ans
-    # ── Absoluter Fallback auf lokale Modelle ──
-    for lm in ["llama3", "llama3:latest", "qwen2:7b", "phi3", "phi3:latest", "llama3.2", "mistral"]:
+        for ok in get_keys("openrouter", kdb):
+            ans = _try("openrouter", m, ok, msgs, agent_name)
+            if ans: return ans
+
+    for lm in ["llama3", "llama3:latest", "qwen2:7b", "phi3", "phi3:latest", "llama3.2", "gemma2", "gemma2:2b", "mistral"]:
         ans = _try("lokal", lm, "", msgs, agent_name)
         if ans: return ans
     return "[ROUTER-FEHLER] Alle Gleise offline."

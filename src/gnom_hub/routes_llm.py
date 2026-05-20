@@ -31,6 +31,58 @@ async def test_agent(req: Request):
         from .router import _call; ans = _call(p, m, k or "", [{"role":"user", "content":"Ping. Reply OK."}], "Test")
         return {"valid": bool(ans), "info": "OK" if ans else "Keine Antwort"}
     except Exception as e: return {"valid": False, "info": str(e)}
+@router.get("/api/llm/available_models")
+def get_available_models():
+    ds_models = ["deepseek-chat", "deepseek-reasoner", "deepseek-v4-flash", "deepseek-v4-pro"]
+    or_models = []
+    try:
+        r = requests.get("https://openrouter.ai/api/v1/models", timeout=5)
+        if r.status_code == 200:
+            for m in r.json().get("data", []):
+                mid = m.get("id")
+                if mid and mid.endswith(":free"):
+                    or_models.append(mid)
+    except Exception:
+        pass
+    if not or_models:
+        or_models = [
+            'deepseek/deepseek-v4-flash:free', 'openai/gpt-oss-120b:free', 'minimax/minimax-m2.5:free',
+            'nvidia/nemotron-nano-9b-v2:free', 'qwen/qwen3-coder:free', 'arcee-ai/trinity-large-thinking:free',
+            'qwen/qwen3-next-80b:free', 'meta-llama/llama-3.3-70b-instruct:free', 'meta-llama/llama-3.2-3b-instruct:free',
+            'nousresearch/hermes-3-llama-3.1-405b:free'
+        ]
+    local_models = []
+    try:
+        r = requests.get("http://127.0.0.1:11434/api/tags", timeout=3)
+        if r.status_code == 200:
+            for m in r.json().get("models", []):
+                name = m.get("name")
+                if name:
+                    local_models.append(name)
+    except Exception:
+        pass
+    if not local_models:
+        local_models = ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
+    return {
+        "deepseek": ds_models,
+        "openrouter": or_models,
+        "lokal": local_models
+    }
+@router.get("/api/system/info")
+def get_system_info():
+    import subprocess
+    try:
+        cpu = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()
+    except:
+        cpu = "Intel/Apple Silicon (unknown)"
+    try:
+        mem_bytes = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True).strip())
+        ram = f"{round(mem_bytes / (1024**3))} GB"
+    except:
+        ram = "32 GB"
+    is_intel = "intel" in cpu.lower()
+    return {"cpu": cpu, "ram": ram, "is_intel": is_intel}
+
 @router.post("/api/restart")
 def restart_server(request: Request):
     from .securityAG import _get_or_create_secret
