@@ -888,32 +888,45 @@
       border-radius: 50%;
       display: inline-block;
       flex-shrink: 0;
+      background: var(--c, var(--text-dim));
+      transition: all 0.3s ease-in-out;
     }
 
     .dot.on {
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
+      box-shadow: 0 0 6px var(--c, var(--green));
+      animation: dot-breathe 3.5s ease-in-out infinite alternate;
     }
 
     .dot.busy {
-      background: #ffaa00;
-      box-shadow: 0 0 8px #ffaa00;
-      animation: dot-pulse 1s infinite ease-in-out;
+      box-shadow: 0 0 8px var(--c, #ffaa00);
+      animation: dot-pulse 0.6s ease-in-out infinite alternate;
     }
 
     .dot.off {
       background: var(--red);
     }
 
-    @keyframes dot-pulse {
-
-      0%,
+    @keyframes dot-breathe {
+      0% {
+        opacity: 0.45;
+        box-shadow: 0 0 2px var(--c);
+      }
       100% {
         opacity: 1;
+        box-shadow: 0 0 8px var(--c);
       }
+    }
 
-      50% {
-        opacity: 0.4;
+    @keyframes dot-pulse {
+      0% {
+        opacity: 0.5;
+        box-shadow: 0 0 3px var(--c);
+        transform: scale(0.9);
+      }
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 10px var(--c);
+        transform: scale(1.1);
       }
     }
 
@@ -1873,7 +1886,7 @@
           const role = a.role && a.role !== 'normal' ? a.role : '';
           const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
           const c = agentColor(a.name);
-          const dotStyle = a.status === 'busy' ? 'background:#ffaa00;box-shadow:0 0 8px #ffaa00' : (a.status === 'online' ? `background:${c};box-shadow:0 0 6px ${c}` : '');
+          const dotStyle = a.status === 'busy' ? '--c:#ffaa00' : (a.status === 'online' ? `--c:${c}` : '');
           return `<div class="agent-card ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="border-left-color:${c};">
         <h3><span class="dot ${stClass}" style="${dotStyle}"></span><span>${a.name}</span>${roleIcon}</h3>
         <div class="desc">${a.description || '–'}</div>
@@ -2914,11 +2927,11 @@
             </div>
           </div>
           <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px;">
-            \${[0, 1, 2, 3, 4, 5, 6].map(i => \`
-              <button class="btn-primary" id="sb-group-\${i}" onclick="selectPanelShowbox(\${i})" style="flex:1; white-space:nowrap; padding:8px 12px; font-size:0.85rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">
-                Showbox \${i+1}
+            ${[0, 1, 2, 3, 4, 5, 6].map(i => `
+              <button class="btn-primary" id="sb-group-${i}" onclick="selectPanelShowbox(${i})" style="flex:1; white-space:nowrap; padding:8px 12px; font-size:0.85rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">
+                Showbox ${i+1}
               </button>
-            \`).join('')}
+            `).join('')}
           </div>
         </div>
       `;
