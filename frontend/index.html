@@ -1804,7 +1804,7 @@
       <h2>${agent.name} <div class="actions">
         ${openUiBtn} ${nudgeBtn}
         <button onclick="toggleStatus('${agent.id}','${agent.status}')">${on ? '⏹ Offline' : '▶ Online'}</button>
-        <button class="btn-danger" onclick="deleteAgent('${agent.id}')">Löschen</button>
+        <button class="btn-danger" onclick="deleteAgent('${agent.id}')">Delete</button>
       </div></h2>
       <div class="status-row">
         <span class="dot ${on ? 'on' : 'off'}"></span><span class="label">${on ? 'Online' : 'Offline'}</span>
@@ -1814,14 +1814,14 @@
     </div>
     <div class="panel">
       <h2>Memory <div class="actions">
-        <button class="btn-danger" onclick="clearMemory('${agent.id}')">Alle löschen</button>
+        <button class="btn-danger" onclick="clearMemory('${agent.id}')">Clear all</button>
       </div></h2>
       <div class="add-mem">
-        <textarea id="new-mem" placeholder="Neuen Memory-Eintrag…"></textarea>
-        <button class="btn-primary" onclick="addMemory('${agent.id}')" style="align-self:flex-end">Speichern</button>
+        <textarea id="new-mem" placeholder="New memory entry…"></textarea>
+        <button class="btn-primary" onclick="addMemory('${agent.id}')" style="align-self:flex-end">Save</button>
       </div>
-      <div class="mem-search"><input placeholder="Memories durchsuchen…" oninput="searchAgentMem('${agent.id}',this.value)"></div>
-      <div id="mem-list"><div class="empty">Lade…</div></div>
+      <div class="mem-search"><input placeholder="Search memories…" oninput="searchAgentMem('${agent.id}',this.value)"></div>
+      <div id="mem-list"><div class="empty">Loading…</div></div>
     </div>
     <div id="agent-ui-frame"></div>`;
       loadAgentMemory(agent.id);
@@ -1888,7 +1888,7 @@
     }
 
     async function clearMemory(agentId) {
-      if (!confirm('Alle Memories löschen?')) return;
+      if (!confirm('Clear all memories?')) return;
       await api('DELETE', `/agents/${agentId}/memory`);
       selectAgent(selectedId);
       updateStats();
@@ -1903,7 +1903,7 @@
     }
 
     async function deleteAgent(id) {
-      if (!confirm('Agent und alle Memories löschen?')) return;
+      if (!confirm('Delete agent and all memories?')) return;
       await api('DELETE', `/agents/${id}`);
       selectedId = null;
       showWarRoom();
@@ -1982,22 +1982,22 @@
       </div>
     </div>
     <div class="chat-hints">
-      <span data-tooltip="Brainstorm: Aktiviere den Schwarm für komplexe Ideen.">@bs</span>
-      <span data-tooltip="Research: Starte einen autonomen Recherche-Job.">@research</span>
-      <span data-tooltip="Job Task: Verteile Hintergrundaufgaben an Agenten.">@job</span>
-      <span data-tooltip="Idea: Notiere einen Gedanken in der System-Memory.">@idea</span>
-      <span data-tooltip="Skill: Injiziere einem Agenten eine neue Fähigkeit.">@skill</span>
-      <span data-tooltip="Free: Löse aktive Jobs von einem Agenten.">@free</span>
-      <span data-tooltip="Projekt wechseln: (z.B. @@projekt netzwerkpunkt)">@@projekt</span>
-      <span data-tooltip="Löschen: (@@clear chat, @@clear @projekt, @@clear all agents)">@@clear</span>
-      <span data-tooltip="Status: System- und Agenten-Status abrufen.">@@status</span>
-      <span data-tooltip="Provider wechseln: (z.B. @@provider ollama llama3)">@@provider</span>
-      <span data-tooltip="Git: Git Befehle ausführen (z.B. @@git status)">@@git</span>
-      <span data-tooltip="Rollback: Mache Änderungen rückgängig (Swarm-Checkpoint)">@@rollback</span>
-      <span data-tooltip="Checkpoint: Aktuellen Memory-Status erzwingen">@@checkpoint</span>
-      <span data-tooltip="Summarize: Generiere eine kurze Zusammenfassung">@@summary</span>
-      <span data-tooltip="Evolve: Agent-Code automatisch verbessern">@@evolve</span>
-      <span data-tooltip="Kaffeepause: (Animation)">/coffee</span>
+      <span data-tooltip="Brainstorm: Activate the swarm for complex ideas.">@bs</span>
+      <span data-tooltip="Research: Start an autonomous research job.">@research</span>
+      <span data-tooltip="Job Task: Distribute background tasks to agents.">@job</span>
+      <span data-tooltip="Idea: Write down a thought in system memory.">@idea</span>
+      <span data-tooltip="Skill: Inject a new skill into an agent.">@skill</span>
+      <span data-tooltip="Free: Clear active jobs from an agent.">@free</span>
+      <span data-tooltip="Switch project: (e.g. @@project netzwerkpunkt)">@@project</span>
+      <span data-tooltip="Clear: (@@clear chat, @@clear @project, @@clear all agents)">@@clear</span>
+      <span data-tooltip="Status: Get system and agent status.">@@status</span>
+      <span data-tooltip="Switch provider: (e.g. @@provider ollama llama3)">@@provider</span>
+      <span data-tooltip="Git: Run git commands (e.g. @@git status)">@@git</span>
+      <span data-tooltip="Rollback: Undo changes (Swarm Checkpoint)">@@rollback</span>
+      <span data-tooltip="Checkpoint: Force current memory checkpoint">@@checkpoint</span>
+      <span data-tooltip="Summarize: Generate a short summary">@@summary</span>
+      <span data-tooltip="Evolve: Automatically improve agent code">@@evolve</span>
+      <span data-tooltip="Coffee break: (Animation)">/coffee</span>
       <span data-tooltip="UFO Event: (Animation)">/ufo</span>
       <span data-tooltip="Ghost: (Animation)">/ghost</span>
     </div>
@@ -2010,7 +2010,7 @@
       document.getElementById('content').innerHTML = `
     <div class="panel" id="workspace-panel">
       <h2>Workspace <div class="actions"><button class="btn-primary" onclick="loadWorkspace()">Refresh</button></div></h2>
-      <div id="workspace-list"><div class="empty">Lade Dateien...</div></div>
+      <div id="workspace-list"><div class="empty">Loading files...</div></div>
     </div>
   `;
       await loadWorkspace();
@@ -2029,16 +2029,16 @@
       }
 
       if (!files || files.error) {
-        list.innerHTML = '<div class="empty">Fehler beim Laden des Workspaces.</div>';
+        list.innerHTML = '<div class="empty">Error loading workspace.</div>';
         return;
       }
       if (files.length === 0) {
-        list.innerHTML = '<div class="empty">Dieser Projekt-Ordner ist leer.</div>';
+        list.innerHTML = '<div class="empty">This project folder is empty.</div>';
         return;
       }
       let html = '';
       files.forEach(f => {
-        const date = new Date(f.mtime * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const date = new Date(f.mtime * 1000).toLocaleString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const ext = f.name.split('.').pop().toLowerCase();
         const isWeb = ['html', 'htm', 'css', 'js', 'svg'].includes(ext);
         const isPy = ext === 'py';
@@ -2124,7 +2124,7 @@
         }
       }
       if (expl && p !== 'default') {
-        expl.innerHTML = `🛡️ <strong>Projekt-Modus aktiv: ${p}</strong><br>Du bist im Projekt <b>${p}</b>. Die Kommunikation, alle Dateien und Agenten-Gedanken werden exklusiv für dieses Projekt gespeichert. Wenn du in 10 Jahren weiter machen willst, findest du alles exakt so wieder. <i>(Tippe <code>@projekt default</code> um das Projekt zu verlassen)</i>`;
+        expl.innerHTML = `🛡️ <strong>Project Mode active: ${p}</strong><br>You are in project <b>${p}</b>. Communications, files, and agent thoughts are saved exclusively for this project. If you return in 10 years, you will find everything exactly as you left it. <i>(Type <code>@project default</code> to exit the project)</i>`;
       }
     }
 
@@ -2137,7 +2137,7 @@
     }
 
     // ── Autocomplete ──
-    const BUILTIN_CMDS = ['bs', 'research', 'job', 'idea', 'summary', 'status', 'clear', 'skill', 'free', 'provider', 'git', 'rollback', 'checkpoint', 'projekt', 'evolve', 'tts'];
+    const BUILTIN_CMDS = ['bs', 'research', 'job', 'idea', 'summary', 'status', 'clear', 'skill', 'free', 'provider', 'git', 'rollback', 'checkpoint', 'project', 'projekt', 'evolve', 'tts'];
     let acIdx = -1;
 
     function onChatInput(ta) {
@@ -2222,9 +2222,9 @@
             }
           };
           document.head.appendChild(s);
-          toast(`Lade Showbox: ${showName}`, 'success');
+          toast(`Loading Showbox: ${showName}`, 'success');
         } else {
-          toast('Bitte zuerst eine Showbox aktivieren!', 'error');
+          toast('Please activate a Showbox first!', 'error');
         }
         ta.value = '';
         return;
@@ -2659,13 +2659,13 @@
             <h2>🎬 Showbox Center</h2>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
               <button class="btn-primary" onclick="togglePanelShowboxPlay()" id="sb-play-btn" style="min-width:80px;">▶ Play</button>
-              <button class="btn-primary" onclick="prevPanelSlide()">◀ Zurück</button>
-              <button class="btn-primary" onclick="nextPanelSlide()">Weiter ▶</button>
+              <button class="btn-primary" onclick="prevPanelSlide()">◀ Back</button>
+              <button class="btn-primary" onclick="nextPanelSlide()">Next ▶</button>
               <label style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
-                <input type="checkbox" id="sb-messe-modus" onchange="toggleMesseModus(this.checked)"> Messe-Modus
+                <input type="checkbox" id="sb-messe-modus" onchange="toggleMesseModus(this.checked)"> Exhibition Mode
               </label>
               <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
-                <span style="font-size:0.8rem; color:var(--text-muted);">Tempo:</span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">Speed:</span>
                 <input type="range" id="sb-speed-slider" min="1" max="10" value="3" onchange="updatePanelShowboxSpeed(this.value)" style="width:70px; cursor:pointer;">
                 <span id="sb-speed-val" style="font-size:0.85rem; color:var(--cyan); min-width:25px;">3s</span>
               </div>
@@ -2676,7 +2676,7 @@
             <div style="display:flex; flex-direction:column; gap:10px;">
               <div id="sb-screen" style="flex:1; background:radial-gradient(circle, #101424 0%, #070912 100%); border:1px solid rgba(0, 150, 255, 0.15); border-radius:12px; display:flex; justify-content:center; align-items:center; padding:40px; box-shadow:inset 0 0 40px rgba(0, 150, 255, 0.1); position:relative; overflow:hidden;">
                 <div id="sb-screen-content" style="color:white; text-align:center; font-weight:bold; font-size:48px; line-height:1.3; transition: opacity 0.3s ease, transform 0.3s ease; word-break:break-word; max-width:90%;">
-                  Lade Präsentation...
+                  Loading presentation...
                 </div>
                 <div id="sb-slide-indicator" style="position:absolute; bottom:15px; font-size:0.8rem; color:var(--text-muted); background:rgba(0,0,0,0.4); padding:4px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
                   Slide 1 / 1
@@ -2894,33 +2894,33 @@
       selectedId = null;
       document.getElementById('content').innerHTML = `
         <div class="panel" id="llm-panel">
-          <h2>LLM Konfiguration</h2>
+          <h2>LLM Configuration</h2>
           <div style="display:flex; gap: 20px; flex-wrap: wrap;">
             <div style="flex:1; min-width: 250px; background:var(--bg-card); padding:15px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:15px;">
               <div>
                 <h3 style="margin-bottom:5px;">API Keys</h3>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Ein Key pro Zeile</p>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">One key per line</p>
                 <textarea id="llm-keys-input" rows="3" style="width:100%; margin-bottom:10px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:8px; border-radius:4px; font-size:0.85rem;" placeholder="sk-..."></textarea>
-                <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.85rem; padding:6px;">Speichern & Testen</button>
+                <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.85rem; padding:6px;">Save & Test</button>
                 <div id="llm-keys-status" style="margin-top:10px; font-size:0.85rem; max-height:100px; overflow-y:auto;"></div>
               </div>
               <div>
-                <h3 style="margin-bottom:5px;">Sprache / Language</h3>
+                <h3 style="margin-bottom:5px;">System Language</h3>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                   <button class="btn-primary" id="lang-btn-de" onclick="setSystemLanguage('de')" style="flex:1; padding:5px; font-size:0.75rem;">Deutsch</button>
                   <button class="btn-primary" id="lang-btn-en" onclick="setSystemLanguage('en')" style="flex:1; padding:5px; font-size:0.75rem;">English</button>
                 </div>
               </div>
               <div id="system-info-panel" style="font-size:0.85rem; padding:12px; border-radius:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05);">
-                Lade System-Info...
+                Loading System Info...
               </div>
             </div>
             <div style="flex:2; min-width: 400px; background:var(--bg-card); padding:20px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
-              <h3>Agenten Zuweisung</h3>
-              <div id="llm-agents-list" style="margin-bottom:20px; max-height:400px; overflow-y:auto; padding-right:10px;">Lade Agenten...</div>
+              <h3>Agent Assignment</h3>
+              <div id="llm-agents-list" style="margin-bottom:20px; max-height:400px; overflow-y:auto; padding-right:10px;">Loading Agents...</div>
               <div style="display:flex; gap:10px;">
-                <button class="btn-primary" onclick="saveAgentLLMs()">Agenten-Settings Speichern</button>
-                <button class="btn-primary" onclick="api('POST', '/restart')" style="background:#cc3333;">Server Neustart</button>
+                <button class="btn-primary" onclick="saveAgentLLMs()">Save Agent Settings</button>
+                <button class="btn-primary" onclick="api('POST', '/restart')" style="background:#cc3333;">Restart Server</button>
               </div>
             </div>
           </div>
@@ -2945,7 +2945,7 @@
     async function loadLLMConfig() {
       try {
         const langRes = await api('GET', '/admin/language');
-        const lang = langRes?.language || 'de';
+        const lang = langRes?.language || 'en';
         document.getElementById('lang-btn-de').style.borderColor = lang === 'de' ? 'var(--primary)' : 'rgba(255,255,255,0.2)';
         document.getElementById('lang-btn-de').style.background = lang === 'de' ? 'rgba(0,150,255,0.2)' : 'transparent';
         document.getElementById('lang-btn-en').style.borderColor = lang === 'en' ? 'var(--primary)' : 'rgba(255,255,255,0.2)';
@@ -2961,8 +2961,8 @@
           if (sysInfo.is_intel) {
             warnHtml = `
               <div style="margin-top:10px; padding:10px; background:rgba(255,170,0,0.15); border:1px solid #ffaa00; border-radius:6px; color:#ffaa00; font-size:0.8rem; line-height:1.3;">
-                ⚠️ <strong>Intel CPU erkannt (${sysInfo.cpu})</strong><br>
-                Lokale Modelle > 4B Parameter laufen hier sehr langsam. Wir empfehlen die Nutzung von <strong>Gemma 2:2b</strong> oder <strong>Llama 3.2</strong>.
+                ⚠️ <strong>Intel CPU detected (${sysInfo.cpu})</strong><br>
+                Local models > 4B parameters run slowly here. We recommend using <strong>Gemma 2:2b</strong> or <strong>Llama 3.2</strong>.
               </div>
             `;
           }
@@ -2975,7 +2975,7 @@
         }
       } catch (e) {
         console.error("System info error", e);
-        document.getElementById('system-info-panel').innerHTML = "System Info nicht verfügbar.";
+        document.getElementById('system-info-panel').innerHTML = "System Info not available.";
       }
 
       const keysRes = await api('GET', '/llm/keys');
@@ -3041,7 +3041,7 @@
       const input = document.getElementById('llm-keys-input').value;
       const rawKeys = input.split('\n').map(k => k.trim()).filter(k => k);
       
-      document.getElementById('llm-keys-status').innerHTML = 'Teste Keys...';
+      document.getElementById('llm-keys-status').innerHTML = 'Testing Keys...';
       
       let testedKeys = [];
       let nextId = Date.now();
@@ -3094,7 +3094,7 @@
         });
       }
       await api('POST', '/llm/agents', config);
-      alert('Agenten-Settings gespeichert!');
+      alert('Agent settings saved successfully!');
     }
 
     async function testAgentLLM(aName) {
@@ -3112,7 +3112,7 @@
       } else {
         lamp.style.background = '#ff3333';
         lamp.style.boxShadow = '0 0 10px #ff3333';
-        if (res && res.info) alert(`Fehler bei ${aName}: ` + res.info);
+        if (res && res.info) alert(`Error testing ${aName}: ` + res.info);
       }
     }
   </script>

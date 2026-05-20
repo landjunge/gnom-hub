@@ -4,22 +4,22 @@ from datetime import datetime
 
 SEED_AGENTS = [
     # System (8)
-    ("GeneralAG",     "Task-Verteilung, Koordination",              "general"),
-    ("SummarizerAG",  "Zusammenfassungen, Informationsfilter",      "summarizer"),
-    ("WatchdogAG",    "System-Überwachung, Health-Checks",          "normal"),
-    ("CronjobAG",     "Zeitgesteuerte Aufgaben",                    "normal"),
-    ("BackupAG",      "Backups, Snapshots, Wiederherstellung",      "normal"),
-    ("SoulAG",        "Schwarm-Bewusstsein, Persönlichkeit",        "normal"),
-    ("SecurityAG",    "Sicherheit, Signatur-Prüfung",               "normal"),
-    ("SkillsAG",      "Skill-Erkennung, Fähigkeiten-Analyse",      "normal"),
+    ("GeneralAG",     "Task distribution, coordination",                  "general"),
+    ("SummarizerAG",  "Summaries, information filtering",                 "summarizer"),
+    ("WatchdogAG",    "System monitoring, health checks",                 "normal"),
+    ("CronjobAG",     "Scheduled tasks",                                  "normal"),
+    ("BackupAG",      "Backups, snapshots, recovery",                     "normal"),
+    ("SoulAG",        "Swarm consciousness, personality",                 "normal"),
+    ("SecurityAG",    "Security, signature verification",                 "normal"),
+    ("SkillsAG",      "Skill recognition, capability analysis",           "normal"),
     # Worker (7)
-    ("writerAG",      "Texte, Skripte, Inhalte und kreatives Schreiben",                   "normal"),
-    ("coderAG",       "Programmieren, Code schreiben, technische Umsetzung",               "normal"),
-    ("researcherAG",  "Recherchieren, Informationen sammeln und zusammenfassen",            "normal"),
-    ("editorAG",      "Ergebnisse prüfen, überarbeiten, Qualität sichern und finalisieren", "normal"),
-    ("web_crawlerAG", "Web-Surfer — Holt frische Webseiten, folgt Links",                  "normal"),
-    ("data_crawlerAG","Struktur-Extraktor — Tabellen, Listen, Preise, JSON",               "normal"),
-    ("smart_crawlerAG","Anti-Block-Crawler — Rate-Limits, Filter, schlau",                 "normal"),
+    ("writerAG",      "Texts, scripts, content, and creative writing",    "normal"),
+    ("coderAG",       "Programming, writing code, technical execution",   "normal"),
+    ("researcherAG",  "Researching, gathering and summarizing info",      "normal"),
+    ("editorAG",      "Checking results, editing, quality assurance",     "normal"),
+    ("web_crawlerAG", "Web surfer — Fetches web pages, follows links",    "normal"),
+    ("data_crawlerAG","Structure extractor — Tables, lists, JSON",        "normal"),
+    ("smart_crawlerAG","Anti-blocking crawler — Smart rate-limits",        "normal"),
 ]
 
 def create_seed():

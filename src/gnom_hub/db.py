@@ -34,8 +34,8 @@ def set_active_project(name: str):
     with _lock: _aw(p, s)
 def get_language() -> str:
     p = DATA_DIR / "state.json"
-    try: return json.load(open(p, "r")).get("language", "de") if p.exists() else "de"
-    except Exception as e: print(f"[DB] state.json language Fehler: {e}"); return "de"
+    try: return json.load(open(p, "r")).get("language", "en") if p.exists() else "en"
+    except Exception as e: print(f"[DB] state.json language Fehler: {e}"); return "en"
 def set_language(lang: str):
     p, s = DATA_DIR / "state.json", {}
     if p.exists():
