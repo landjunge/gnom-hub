@@ -1,37 +1,32 @@
+# Python build and cache files
 __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-*.env
 build/
 dist/
-.venv/
-.DS_Store
-*.log
 .pytest_cache/
+
+# Node.js
 node_modules/
-logs_*.txt
-gnom_workspace/
+
+# OS metadata
+.DS_Store
+
+# Local environments and secrets
+*.env
 .env.netzwerkpunkt
-collected_keys.txt
 .gnom-hub-tokens.json
+
+# Local workspace and caches
+.venv/
+gnom_workspace/
+.gnom-hub/
 .backups/
+
+# Logs and tests
+*.log
+logs_*.txt
 startup_log.txt
 test*.js
 test*.py
-.gnom-hub/
-# Deprecated root agents
-*AG.py
-elara.py
-kira.py
-lian.py
-org.py
-# Personal or irrelevant folders/files
-inseln/
-kreativ_universe_kira_lian_elara/
-clipboard_monitor.sh
-publish_trio.sh
-upload.exp
-instructions.md
-docs/status-report*
-docs/*screenshot*
