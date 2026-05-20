@@ -101,22 +101,24 @@ Each agent has its own **Soul** (role, rights, directive) that is sent with ever
 
 The system reacts to commands like a console:
 
-- **`@projekt [Name]`** → Creates or switches to an isolated project workspace. The file browser and agent memory seamlessly adapt to the active project. Reset with `@projekt default`.
+- **`@project [Name]`** (or `@@project [Name]`) → Creates or switches to an isolated project workspace (e.g. `@project SEO_Campaign`). The file browser and agent memory seamlessly adapt to the active project. Reset with `@project default`.
 - **`@bs [Topic]`** → (Brainstorm) Starts a dynamic cascade across all agents to collaboratively develop ideas.
 - **`@vision loop [Command]`** → Iterative, self-healing 5-step process to solve complex visual tasks on the desktop.
 - **`@desktop [Command]`** → Executes physical mouse/keyboard inputs.
-- **`@evolve [Agent]`** → Forces an agent to improve its own code based on error logs and re-commit.
-- **`@git [cmd]`** → Executes any Git command in the project.
-- **`@rollback HEAD~X`** → Automatic Git reset including synchronous restoration of AI memories.
-- **`@provider [ollama/openrouter]`** → Switches the LLM infrastructure on-the-fly.
+- **`@evolve [Agent]`** (or `@@evolve [Agent]`) → Forces an agent to improve its own code based on error logs and re-commit.
+- **`@@git [cmd]`** → Executes any Git command in the project.
+- **`@@rollback HEAD~X`** → Automatic Git reset including synchronous restoration of AI memories.
+- **`@@provider [ollama/openrouter]`** → Switches the LLM infrastructure on-the-fly.
 - **`@research [Topic]`** → Sends a research assignment specifically to all active domain agents.
 - **`@job [Task]`** → Hands a task over to the GeneralAG, who autonomously distributes it to appropriate workers.
 - **`@general [Task]`** → Hands a task over to the GeneralAG for autonomous swarm distribution.
 - **`@sandbox [Code]`** → Tests code in the blocked quarantine environment.
-- **`@checkpoint`** → Saves a hard snapshot of the entire swarm memory.
-- **`@summary`** → Forces the SummarizerAG to immediately summarize the discussion so far.
-- **`@status`** → Outputs a quick system ping across all agents and their jobs.
-- **`@clear`** → Clears the terminal (the database remains untouched).
+- **`@@checkpoint`** → Saves a hard snapshot of the entire swarm memory.
+- **`@@summary`** → Forces the SummarizerAG to immediately summarize the discussion so far.
+- **`@@status`** → Outputs a quick system ping across all agents and their jobs.
+- **`@@clear`** → Clears the terminal (the database remains untouched).
+- **`@browser [Command]`** → Controls a real Chromium browser via Playwright (e.g., `@browser open google.com`).
+- **`@publish`** → Deploys the frontend to your remote server via FTP.
 - **`Nuke (G-Button)`** → Hold logo for 2s: Kills all processes, frees ports, restarts the Hub. Visual feedback: Hover=Red, Fired=Dark, Ready=Green.
 
 ---
@@ -138,11 +140,93 @@ The Hub uses a two-stage router with an automatic fallback:
 - **Rate-Limit Handling:** 429 errors → 2s pause, then fallback.
 - **Token Tracking:** Every API call is counted (Free vs. Paid) and visible in the header.
 
-### 🛠️ Installation & Uninstallation
+### 🛠️ Complete Installation — Full Potential
+
+Gnom-Hub can do **everything** — but only if the dependencies are installed.  
+Here is what you need to unlock the Gnom's full potential.
+
+#### Basic Installation (1 Command)
 
 ```bash
-bash install.sh      # Installs everything + starts the Hub
+bash install.sh      # Installs core dependencies + starts the Hub
 bash uninstall.sh    # Interactive: Keep or delete data
+```
+
+#### 📦 What Needs to be Installed
+
+##### 1. Python Core (REQUIRED)
+```bash
+pip install fastapi uvicorn pydantic requests python-dotenv psutil mcp
+```
+> This is the backbone. Without it, nothing starts.
+
+##### 2. Browser Automation (Playwright) — `@browser`
+```bash
+pip install playwright
+playwright install chromium
+```
+> Allows the Gnom to **control real browsers**: Open pages, click, fill forms, extract data, and take screenshots. No fake crawling — a real Chromium browser.
+
+##### 3. Desktop Control (PyAutoGUI) — `@desktop` / `@vision`
+```bash
+pip install pyautogui Pillow
+```
+> Gives the Gnom **access to your screen**: Move the mouse, click, type, and analyze screenshots. The Vision Loop uses this for autonomous 5-step desktop automation.
+
+##### 4. Speech (Optional) — TTS & Whisper
+```bash
+pip install faster-whisper pyttsx3
+```
+> Speech recognition (Whisper) and Text-to-Speech (TTS). Allows the Gnom to listen and speak.
+
+##### 5. LLM Providers — At least one!
+
+| Provider | What you need | Cost |
+|----------|----------------|--------|
+| **DeepSeek** | `DEEPSEEK_API_KEY=sk-...` in `.env` | ~$0.14/1M Tokens |
+| **OpenRouter** | `OPENROUTER_KEY_FREE_1=sk-or-...` in `.env` | Free models available |
+| **Ollama (local)** | `brew install ollama && ollama pull deepseek-r1` | Free, requires GPU |
+
+> Put the keys in the `.env` file. The router automatically switches between providers if one fails.
+
+##### 6. System Tools (for full God-Mode)
+```bash
+# Git (Required — Auto-commits, Rollbacks, Evolution)
+brew install git
+
+# Node.js (Optional — for npm-based tools)
+brew install node
+
+# Selenium (Alternative to Playwright)
+pip install selenium
+```
+
+#### 🔓 What the Gnom Can Do With This
+
+| Capability | Requires | Command |
+|-----------|----------|---------|
+| 🌐 **Real Browser Control** | Playwright + Chromium | `@browser open google.com` |
+| 🖥️ **See & Control Screen** | PyAutoGUI + Pillow | `@desktop click login` |
+| 👁️ **Vision Loop (autonomous)** | PyAutoGUI + Pillow | `@vision open Safari and search X` |
+| 📁 **Read/Write files anywhere** | godmode permission | `[READ: /etc/hosts]` |
+| 💻 **Install programs** | godmode permission | `[SHELL: pip install pandas]` |
+| ⚙️ **Change system settings** | godmode permission | `[SHELL: defaults write ...]` |
+| 🧬 **Self-Evolution** | Git | `@evolve CoderAG` |
+| 🚀 **Deployment** | FTP credentials in `.env` | `@publish` |
+
+#### ⚡ All-in-One (Copy & Paste)
+
+```bash
+# Install everything the Gnom needs
+pip install fastapi uvicorn pydantic requests python-dotenv psutil mcp \
+            playwright pyautogui Pillow \
+            faster-whisper pyttsx3 selenium
+
+# Install Playwright browser binaries
+playwright install chromium
+
+# Done. Start:
+bash install.sh
 ```
 
 **License:** MIT
