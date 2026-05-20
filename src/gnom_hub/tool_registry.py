@@ -20,7 +20,7 @@ def format_tools_prompt(soul: dict, name: str):
     if "generate_image" in t: syn += "\n  [IMAGE: prompt] — Bild generieren"
     if "deploy" in t: syn += "\n  @publish — Frontend auf netzwerkpunkt.de deployen"
     if "browser" in t: syn += '\n  [BROWSER: {"action": "goto|click|type|read|screenshot", "target": "...", "value": "..."}]'
-    syn += '\n  [SHOWBOX: {"title": "Titel", "content": "HTML"}] — Showbox anzeigen'
+    syn += '\n  <SHOWBOX:lamp_index>["Folie 1 HTML", "Folie 2 HTML"]</SHOWBOX> — Aktualisiert die Showbox-Folien für Lampe lamp_index (1-7) und zeigt sie im Showbox-Zentrum an. Nutze modernes Inline-CSS (Gradients, Glassmorphism, Flex).'
     char = f" – {soul['character']}" if soul.get("character") else ""
     intro = f"Du bist {name} ({soul.get('role', 'Agent')}{char})."
     if soul.get("directive"):

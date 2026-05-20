@@ -80,11 +80,14 @@
     .lamp.on {
       opacity: 0.75;
       box-shadow: 0 0 6px currentColor;
+      animation: lamp-breathe var(--dur, 3.5s) ease-in-out infinite alternate;
+      animation-delay: var(--delay, 0s);
     }
 
     .lamp.busy {
       opacity: 1;
       box-shadow: 0 0 14px currentColor;
+      animation: lamp-pulse 0.5s ease-in-out infinite alternate;
     }
 
     @keyframes lamp-breathe {
@@ -2532,14 +2535,14 @@
         await loadAgents();
         updateLamps(agents);
         showWarRoom();
-        setInterval(async () => {
-
+      setInterval(async () => {
         const res = await api('GET', '/agents');
         agents = Array.isArray(res) ? res : (res?.agents || []);
-        renderAgentList(document.getElementById('agent-search').value);
+        const searchInput = document.getElementById('agent-search');
+        renderAgentList(searchInput ? searchInput.value : '');
         updateStats();
         updateLamps(agents);
-      }, 15000);
+      }, 3000);
       setInterval(refreshChat, 5000);
       } catch (err) {
         document.getElementById('content').innerHTML = `<div class="empty" style="padding:80px 20px"><h2 style="color:red">UI Error</h2><p>${err.message}</p></div>`;
@@ -2557,6 +2560,10 @@
       // Showbox-Daten werden über die externe Datei "themes.js" geladen.
 
       window.triggerShowbox = (showboxIndex) => {
+        if (document.getElementById('showbox-panel')) {
+          selectPanelShowbox(showboxIndex);
+          return;
+        }
         if (window.showboxActive && window.activeShowboxIndex === showboxIndex) {
           window.closeShowbox();
           return;

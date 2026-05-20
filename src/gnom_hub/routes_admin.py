@@ -13,10 +13,12 @@ def cleanup_offline(): online = [a for a in get_db("agents") if a.get("status") 
 def health(): return {"status": "ok", "agents": len(get_db("agents")), "memory": len(get_db("memory")), "tools": len(get_db("tools"))}
 @router.post("/nuke")
 def nuke_restart(request: Request):
+    import os, threading
     from .securityAG import _get_or_create_secret; from .proc_mgr import kill_process, restart_hub
     if request.headers.get("X-Hub-Secret") != _get_or_create_secret().hex(): return {"error": "Unauthorized"}
-    killed = [kill_process(t) for t in ["generalAG", "summarizerAG", "cronjobAG", "backupAG", "soulAG", "watchdogAG", "skillsAG", "securityAG"]]
-    import threading; threading.Timer(1.5, restart_hub).start()
+    port = os.environ.get("GNOM_HUB_PORT", "3002")
+    killed = [kill_process(t) for t in ["generalAG", "summarizerAG", "cronjobAG", "backupAG", "soulAG", "watchdogAG", "skillsAG", "securityAG", port]]
+    threading.Timer(1.5, restart_hub).start()
     return {"status": "nuked", "killed": killed, "restart": "in 1.5s"}
 ROLES = {"general": "SYSTEM-ROLLE: GENERAL. Task-Distributions-Maschine. Analysiere @job und verteile Aufgaben via @Name -> Aufgabe. Keine Erklärungen.",
          "summarizer": "SYSTEM-ROLLE: SUMMARIZER. Informationsfilter. Extrahiere Fakten/Entscheidungen. Stichpunkte, max 1 Satz pro Punkt."}
