@@ -1,14 +1,14 @@
 # 🧠 GNOM-HUB
 
 > **8 agents. ~1,800 lines. 55 modules. Zero tolerance for bloat.**
+>
+> 🇩🇪 **Read this in [German (README.de.md)](README.de.md)**
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8-blueviolet.svg)](#)
 [![Max Lines](https://img.shields.io/badge/Max_Lines/File-40-critical.svg)](#)
 [![Linting](https://img.shields.io/badge/Linting-Ruff-orange.svg)](#)
-
-*Read this in [German](README.de.md)*
 
 ---
 
