@@ -1,8 +1,6 @@
 # 🧠 GNOM-HUB
 
 > **8 Agenten. ~1800 Zeilen. 55 Module. Null Toleranz für Bloat.**
->
-> 🇬🇧 **Lies dies auf [Englisch (README.md)](README.md)**
 
 [![License](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
@@ -10,193 +8,114 @@
 [![Max Lines](https://img.shields.io/badge/Max_Lines/File-40-critical.svg)](#)
 [![Linting](https://img.shields.io/badge/Linting-Ruff-orange.svg)](#)
 
+> 🇬🇧 **Lies dies auf [Englisch (README.md)](README.md)**
+
 ---
 
 <img src="docs/warroom_real_full.png" alt="War Room – Gesamtübersicht" width="100%">
 
 ---
 
-## Was ist das?
+## Was ist Gnom-Hub?
 
-Ein lokales Multi-Agenten-System, das sich kryptografisch selbst schützt, seinen Benutzer lautlos kennenlernt und in **55 Python-Module passt – keines länger als 40 Zeilen**. Kein Framework. Kein Docker. Kein `node_modules` schwarzes Loch.
-
-Acht Agenten – vier denken, vier bewachen – orchestriert von einem FastAPI-Backend, gesteuert über ein Cyberpunk-Dashboard namens **War Room**.
+Gnom-Hub ist ein lokales Multi-Agenten-System mit einer radikalen Restriktion: **55 Python-Module — keines länger als 40 Zeilen**. Es bietet einen extrem leichtgewichtigen Orchestrator ohne aufgeblähte Frameworks, der vollständig lokal läuft, kein schwerfälliges Docker benötigt und die Agenten über ein Web-Dashboard namens **War Room** steuert.
 
 ---
 
-## Die 40-Zeilen-Regel
+## 🏗️ Kern-Architektur
+
+Das Backend basiert auf FastAPI und stützt sich auf drei wesentliche Designentscheidungen:
+
+### 1. Relationaler SQLite3-Speicher (WAL-Modus)
+Sämtliche Agenten-Interaktionen, Chat-Verläufe und Zustandsdaten werden in einer lokalen SQLite3-Datenbank (`gnomhub.db`) im **Write-Ahead Logging (WAL)-Modus** gespeichert. Dies verhindert Concurrency-Konflikte bei parallelen Schreibzugriffen der Agenten, stellt Transaktionssicherheit sicher (`with conn:`) und läuft nativ auf allen Plattformen.
+
+### 2. Prozess-Orchestrierung (psutil & PID-Dateien)
+Das Management der Hintergrundprozesse erfolgt plattformunabhängig und sicher über `psutil`.
+* Beim Starten eines Agenten wird eine PID-Datei unter `~/.gnom-hub/run/{agent_name}.pid` angelegt.
+* Vor jeder Prozess-Aktion (wie dem Stoppen eines Agenten) liest der Prozess-Manager die PID-Datei aus und verifiziert die Kommandozeile (`cmdline`) des Prozesses. Dies verhindert, dass versehentlich fremde Prozesse beendet werden, die eine wiederverwendete PID erhalten haben.
+
+### 3. FastAPI Lifespan-Hooks
+Die Datenbank-Initialisierung (`init_db()`), das Seeding der Standard-Agenten und der Start der Hintergrund-Dienste sind fest an das Lifespan-Startup-Event von FastAPI gebunden. Beim Herunterfahren des Servers (z. B. durch SIGINT / Ctrl+C) führt uvicorn automatisch ein geordnetes, kaskadierendes Herunterfahren aus, welches alle Hintergrundprozesse beendet und verwaiste PID-Dateien löscht.
+
+---
+
+## 📐 Die 40-Zeilen-Regel
 
 ```
 Jede Datei. Maximal 40 Zeilen. Keine Ausnahmen.
 ```
 
-Das ist keine Richtlinie. Das ist Gesetz. Ein Agent hat im Schnitt **14 Zeilen**. Die vier Worker-Agenten? **Jeweils 8 Zeilen.** Nicht, weil sie nicht mehr können – sondern weil sie nicht mehr brauchen.
-
-> *Andere Frameworks lösen Komplexität mit noch mehr Komplexität.*
-> *Gnom-Hub löst sie mit dem Rotstift.*
-
----
-
-## 🚀 Drei Befehle, dann läuft es
-
-```bash
-git clone https://github.com/landjunge/gnom-hub.git
-cd gnom-hub
-bash scripts/install.sh
-```
-
-**[http://127.0.0.1:3002](http://127.0.0.1:3002)** → War Room betreten. Fertig.
+Gnom-Hub löst strukturelle Komplexität, indem es jedes Modul extrem fokussiert hält. Die System-Module sind modular aufgebaut, und die Worker-Agenten sind bemerkenswert kompakt:
+* Worker wie **CoderAG** benötigen lediglich **8 Zeilen Python-Code**, um sich zu registrieren, den Chat zu pollen, das LLM anzufragen und die Antwort zu posten.
+* Durch die Unterstützung verschiedener Provider (**Ollama** lokal, **OpenRouter** kostenlos oder **DeepSeek** Cloud) können die Modelle live im UI gewechselt werden – ohne Neustart.
 
 ---
 
-## 📊 Warum das wichtig ist
+## 🤖 Die Agenten-Struktur
 
-| | **Gnom-Hub** | OpenClaw | Agent Zero | LangChain |
-| :--- | :--- | :--- | :--- | :--- |
-| **Code** | **~1800 Zeilen** | 400k–800k+ | ~10.000 | ~1.200.000+ |
-| **Module** | **55** | 1.000+ | ~100 | 5.000+ |
-| **Install** | **66 MB** | 350 MB | 250 MB | 300 MB – 1 GB |
-| **Deps** | **7** | 70+ | ~15 | 100+ |
-| **Krypto** | HMAC + ZWC | — | — | — |
-| **Start** | **ms** | 1–2s | 2s | 1–3s |
+Gnom-Hub steuert 8 registrierte Agenten, aufgeteilt in koordinierende System-Agenten und spezialisierte Worker-Agenten:
 
-Sieben Abhängigkeiten: `fastapi`, `uvicorn`, `pydantic`, `requests`, `python-dotenv`, `mcp`, `psutil`. Das ist alles. Deine `package.json` hat mehr `devDependencies` als dieses gesamte Projekt Code hat.
+### System-Agenten — halten das Haus sauber
 
----
+| Agent | Modul | Beschreibung |
+| :--- | :--- | :--- |
+| **GeneralAG** | `generalAG.py` | Koordiniert die Ausführung, zerlegt `@job`-Aufgaben und synthetisiert Brainstorms |
+| **SoulAG** | `soulAG.py` | Lernt den Schreibstil des Nutzers lautlos, baut das *FlexSoul*-Profil auf und injiziert es in Prompts |
+| **WatchdogAG**| `watchdogAG.py` | Überwacht im Hintergrund zyklisch die Integrität von Workspace und Projekten |
+| **SecurityAG**| `securityAG.py` | Stellt kryptografische Hilfsfunktionen (Signaturen, Seals) für Workspace-Dateien bereit |
 
-## 🏗️ Wie es funktioniert
+### Worker-Agenten — erledigen die Arbeit (durch Tags getriggert)
 
-```
-┌─────────────────────────────────────────────────────┐
-│               WAR ROOM  ·  Glassmorphic UI          │
-│    ┌──────────┐  ┌──────────────────────────────┐   │
-│    │ Agents   │  │  @bs  @job  @code  @write    │   │
-│    │ Provider │  │  @research  @edit  @publish   │   │
-│    │ FlexSoul │  │  @git  @@status  @@project   │   │
-│    └──────────┘  └──────────────────────────────┘   │
-├─────────────────────────────────────────────────────┤
-│        HUB  ·  FastAPI + MCP  ·  55 Modules         │
-│  Routing → Brainstorm → Dispatch → Seal → DB       │
-├──────────────────────┬──────────────────────────────┤
-│  SYSTEM (4)          │  WORKER (4)                  │
-│                      │                              │
-│  GeneralAG    @job   │  CoderAG      @code     8Z   │
-│  SecurityAG    🔒    │  WriterAG     @write    8Z   │
-│  WatchdogAG    👁    │  ResearcherAG @research 8Z   │
-│  SoulAG        🧠    │  EditorAG     @edit     8Z   │
-├──────────────────────┴──────────────────────────────┤
-│ SQLite3 (WAL mode) · Git · SFTP · Ollama/Cloud      │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## 🔥 Die vier Säulen
-
-### 1. Kryptografische Selbstverteidigung
-
-Jede Datei im Workspace wird von `SecurityAG` signiert: **HMAC-SHA256**, eingebettet als unsichtbare **Zero-Width Characters** (Steganografie). Du siehst nichts. Der Watchdog sieht alles – alle 60 Sekunden. Wird eine Datei manipuliert, schlägt er Alarm. Wird die Signatur entfernt, fehlt der Beweis – ebenfalls Alarm.
-
-*30 Zeilen Code. Kein OpenSSL-Wrapper. Kein Zertifikatsspeicher. Reine HMAC- und Unicode-Magie.*
-
-### 2. FlexSoul — Der stille Beobachter
-
-`SoulAG` spricht fast nie. Es fungiert als das Langzeitgedächtnis aller Agenten, liest jeden Chat mit und merkt sich, wie du schreibst, was dich nervt und wie du Antworten haben möchtest. Dieses Profil – die **FlexSoul** – wird bei jedem LLM-Call in den System-Prompt aller Agenten injiziert.
-
-*Der Schwarm passt sich dir an. Nicht umgekehrt.*
-
-### 3. Relationaler SQLite3-Speicher (WAL-Modus)
-
-Um Concurrency-Konflikte und Lost Updates bei parallelen Schreibzugriffen der Agenten zu verhindern, nutzt Gnom-Hub eine **SQLite3-Datenbank im Write-Ahead Logging (WAL)-Modus**. Das sorgt für transaktionssichere Schreibzugriffe, native Plattformunabhängigkeit und eine saubere Trennung in `chat`, `agents` und `state` Tabellen.
-
-*Explizite Transaktions-Scopes in Python. Schlanke Legacy-Kompatibilitätsschicht.*
-
-### 4. Die 8-Zeilen-Worker
-
-```python
-"""CoderAG Agent."""
-import asyncio
-from gnom_hub.agent_base import BaseAgent
-
-async def main():
-    await BaseAgent("CoderAG", "Code generation and technical implementation",
-        "@code", sys_prompt="SYSTEM-ROLLE: CODER. Write clean, working code.
-        Prefer simple solutions.", poll=15).run()
-
-if __name__ == "__main__": asyncio.run(main())
-```
-
-Das ist kein Pseudocode. Das ist der **vollständige Agent**. 8 Zeilen. Er registriert sich, pollt den Chat, erkennt seinen Trigger, ruft das LLM auf, postet die Antwort. Writer, Researcher, Editor – gleiche Struktur, andere Seele.
-
----
-
-## 🤖 Die 8
-
-### System — halten das Haus sauber
-
-| Agent | Zeilen | Funktion |
-| :--- | :---: | :--- |
-| **GeneralAG** | 8 | Zerlegt `@job`-Aufgaben, delegiert an Worker, synthetisiert Brainstorms |
-| **SecurityAG** | 30 | HMAC-SHA256 + ZWC-Steganografie für jede Workspace-Datei |
-| **WatchdogAG** | 33 | Prüft alle 60s die kryptografische Integrität aller Workspace-Dateien |
-| **SoulAG** | 16 | Langzeitgedächtnis. Lernt den User. Baut FlexSoul. Injeziert in alle Agenten |
-
-### Worker — erledigen die Arbeit
-
-| Agent | Zeilen | Trigger | Spezialisierung |
-| :--- | :---: | :--- | :--- |
-| **CoderAG** | 8 | `@code` | Code schreiben, debuggen, technische Umsetzung. Hat `run`-Rechte |
-| **WriterAG** | 8 | `@write` | Texte, Dokumentationen, Artikel entwerfen |
-| **ResearcherAG** | 8 | `@research` | Recherchen, Faktenprüfung, Quellenbewertung |
-| **EditorAG** | 8 | `@edit` | Qualitätskontrolle, Lektorat, Textfeinschliff |
-
-**Gesamt: 113 Zeilen für 8 Agenten.** Manche Imports sind länger.
+| Agent | Modul | Trigger | Spezialisierung |
+| :--- | :--- | :--- | :--- |
+| **CoderAG** | `coderAG.py` | `@code` | Code-Implementierung, Debugging und Ausführung (besitzt `run`-Rechte) |
+| **WriterAG** | `writerAG.py` | `@write` | Entwerfen von Dokumentationen, Handbüchern, Artikeln und Texten |
+| **ResearcherAG**| `researcherAG.py`| `@research`| Recherchen, Ausführung von Such-APIs und Überprüfung von Quellen |
+| **EditorAG** | `editorAG.py` | `@edit` | Korrekturlesen, Stiloptimierung und finale Qualitätskontrolle |
 
 ---
 
 ## 💬 Befehle
 
-| Befehl | Was passiert |
+| Befehl | Aktion |
 | :--- | :--- |
-| `@bs [Thema]` | 4 Worker parallel → GeneralAG synthetisiert die Ergebnisse |
-| `@job [Aufgabe]` | GeneralAG zerlegt und verteilt Aufgaben autonom |
-| `@research [Suche]` | Alle Worker werden gleichzeitig abgefragt |
-| `@code / @write / @edit` | Direkte Zuweisung an den jeweiligen Spezialisten |
-| `@git [Befehl]` | Führt Git-Befehle im Workspace aus |
-| `@publish` | SFTP-Deploy auf netzwerkpunkt.de |
-| `@@project [Name]` | Workspace wechseln |
-| `@@status` | Status aller Agenten abfragen |
-| `@@clear` | Chatverlauf leeren |
-| `@free` | Alle blockierten Jobs freigeben |
-| **Nuke** 💣 | Logo 2s gedrückt halten → Hard Reset aller Prozesse |
+| `@bs [Thema]` | 4 Worker laufen parallel; GeneralAG synthetisiert die Ergebnisse zu einem Aktionsplan |
+| `@job [Aufgabe]` | GeneralAG zerlegt die Aufgabe in Teilschritte und koordiniert die Worker-Ausführung |
+| `@research [Suche]`| Alle Worker werden parallel abgefragt für schnelles, vielseitiges Feedback |
+| `@code / @write / @edit` | Direkte Zuweisung an einen bestimmten Spezialisten |
+| `@git [Befehl]` | Führt Git-Befehle direkt im aktiven Projekt-Workspace aus |
+| `@publish` | Bereitstellung des aktuellen Stands via SFTP auf deinem konfigurierten Server |
+| `@@project [Name]` | Wechselt das aktive Workspace-Projekt |
+| `@@status` | Zeigt den aktuellen Laufzeit-Status (RUNNING/STOPPED) aller Agenten an |
+| `@@clear` | Leert den Chatverlauf im Dashboard |
+| `@free` | Bricht alle aktiven Jobs ab und setzt blockierte Agenten zurück |
+| **Nuke** 💣 | Halte das War Room Logo für 2 Sekunden gedrückt, um einen Hard Reset aller Hintergrunddienste auszulösen |
 
 ---
 
-## 🔧 Setup
+## 🚀 Quick Start
 
-### 1. Installieren
-
+### 1. Installation
+Klone das Repository und führe das Setup-Skript aus:
 ```bash
-pip install fastapi uvicorn pydantic requests python-dotenv mcp psutil
+git clone https://github.com/landjunge/gnom-hub.git
+cd gnom-hub
+bash scripts/install.sh
 ```
+Dies richtet eine lokale virtuelle Umgebung (`.venv`) ein und installiert die 7 Kern-Abhängigkeiten: `fastapi`, `uvicorn`, `pydantic`, `requests`, `python-dotenv`, `mcp` und `psutil`.
 
-Sieben Packages. Optional: `brew install node` für MCP-Erweiterungen.
-
-### 2. Konfigurieren
-
+### 2. Konfiguration
+Kopiere das Template für die `.env`-Datei und trage deine API-Keys (OpenRouter oder DeepSeek) ein:
 ```bash
 cp config/.env.example config/.env
 ```
 
-Trage deine API-Keys in `config/.env` ein (OpenRouter, DeepSeek, SFTP-Zugang). **Keys niemals committen.**
-
-### 3. Starten
-
+### 3. Ausführen
+Starte den FastAPI-Server:
 ```bash
 python -m gnom_hub
 ```
-
-Provider live im UI wechseln: **Ollama** (lokal) ↔ **OpenRouter** ↔ **DeepSeek** (Cloud). Kein Neustart nötig.
+Öffne **[http://127.0.0.1:3002](http://127.0.0.1:3002)**, um den War Room zu betreten.
 
 ---
 
@@ -205,44 +124,21 @@ Provider live im UI wechseln: **Ollama** (lokal) ↔ **OpenRouter** ↔ **DeepSe
 ```
 gnom-hub/
 ├── src/gnom_hub/        # 55 Python-Module (Backend)
-│   ├── hub_app.py       # FastAPI App & Lifespan-Startup/Shutdown
+│   ├── hub_app.py       # FastAPI App & Lifespan-Orchestrierung
 │   ├── db.py            # SQLite3-Datenbank (WAL-Modus)
-│   ├── proc_mgr.py      # Prozess-Manager (psutil & PID-Tracking)
+│   ├── proc_mgr.py      # Prozess-Manager (psutil & PID-Dateien)
 │   ├── path_validator.py# Workspace-basierte Pfadvalidierung
 │   ├── log.py           # Zentrales Logging-Framework
 │   ├── router*.py       # LLM-Routing (Multi-Provider)
 │   └── routes_*.py      # API-Endpunkte
 ├── agents/              # 8 Agenten-Definitionen (ca. 8 Zeilen pro Agent)
 ├── frontend/            # Vanilla HTML/CSS/JS (War Room Dashboard)
-├── config/              # .env-Dateien (NICHT committen!)
+├── config/              # Lokale Umgebungskonfigurationen (NICHT committen!)
 ├── scripts/             # Setup- & Hilfs-Skripte
-├── docs/                # Dokumentationen & Berichte
+├── docs/                # Berichte und Dokumentation
 ├── CONTRIBUTING.md      # Richtlinien für Entwickler
-└── pyproject.toml       # Ruff Linting & Abhängigkeiten
+└── pyproject.toml       # Ruff-Konfiguration & Abhängigkeiten
 ```
-
----
-
-## 🤝 Mitwirken
-
-Lies die [CONTRIBUTING.md](CONTRIBUTING.md). Kurzfassung:
-
-- Halte die 40-Zeilen-Regel strikt ein (Ausnahmen: `db.py`, `hub_app.py`)
-- Nutze `log.py` statt `print()`
-- Keine hardcodierten Pfade — nutze `config.py`
-- Kein `godmode` — Pfadvalidierung im Workspace ist Pflicht
-- Ruff Linting ausführen: `ruff check src/ agents/`
-
----
-
-## 📝 Entstehungsgeschichte
-
-> [!NOTE]
-> **Daniel Filipek — Gründer**
->
-> Drei Monate. Autodidakt. Kein Informatikstudium. Endloses Trial-and-Error – bis zu einer radikalen Entscheidung: **Weg mit dem Ballast.** Jedes Modul auf 40 Zeilen gekürzt. Was nicht passt, fliegt raus. Was bleibt, funktioniert.
->
-> Gnom-Hub beweist: Man braucht keine Enterprise-Monolithen für mächtige KI-Strukturen. Man braucht eine klare Vision und den Mut zum Rotstift.
 
 ---
 
@@ -253,18 +149,11 @@ Kreative Pionierin der ersten Stunde. Mutter der "Vier Säulen". Legte das philo
 
 **Antigravity (Google DeepMind)**
 Architekt der Härtungsphase. Spezifische Beiträge:
-
-- Konsequente Einhaltung der 40-Zeilen-Regel (Aufteilung von 8 übergroßen Dateien in 14 fokussierte Module)
-- Ablösung des globalen `godmode` durch Workspace-Pfadvalidierung (`path_validator.py`)
-- Umstellung von CoderAG auf kontrollierte `run`-Rechte (statt Hub-Privilegien)
-- Migration der JSON-Datenbank auf eine transaktionssichere **SQLite3-Lösung (WAL-Modus)**
-- Robustes Prozess-Management via **psutil und PID-Tracking-Dateien** (`proc_mgr.py`)
-- Einbindung von DB-Initialisierung und geordnetem Shutdown in FastAPI-Lifespan hooks
-- Migration der Bereitstellung von FTP zu SFTP
-- CORS-Beschränkung auf `localhost`
-- Einführung des zentralen Logging-Frameworks (`log.py`)
-- Konfiguration von Ruff Linting (`pyproject.toml`)
-- Verfassen der `CONTRIBUTING.md`
+* Aufteilung übergroßer Module zur strikten Durchsetzung der 40-Zeilen-Regel im Backend
+* Sicherung der Pfad-Zugriffe über Workspace-basierte Validierung (`path_validator.py`)
+* Migration der JSON-Speicherung auf eine transaktionssichere SQLite3-Datenbank (WAL-Modus)
+* Implementierung des `psutil`-Prozessmanagers mit PID-Dateien und Lifespan-Integration
+* Integration von SFTP-Bereitstellung, CORS-Einschränkung auf Localhost und des `log.py`-Frameworks
 
 ---
 
