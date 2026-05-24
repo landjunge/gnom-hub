@@ -2519,7 +2519,11 @@
 
     async function saveMem(id) {
       const c = document.getElementById('ed-' + id).value;
-      await fetch(API + `/memory/${id}?content=${encodeURIComponent(c)}`, { method: 'PUT' });
+      await fetch(API + `/memory/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: c })
+      });
       selectAgent(selectedId);
     }
 
@@ -2728,7 +2732,7 @@
               <button onclick="this.closest('.modal-backdrop').remove()" class="btn-danger" style="font-size:0.75rem; padding:4px 10px;">Close</button>
             </div>
           </div>
-          <iframe src="/api/workspace/${name}/serve" style="flex:1; border:none; background:white; width:100%; height:100%;"></iframe>
+          <iframe src="/api/workspace/${name}/serve" sandbox="allow-scripts allow-same-origin" style="flex:1; border:none; background:white; width:100%; height:100%;"></iframe>
         </div>
       `;
       document.body.appendChild(modal);
@@ -3193,7 +3197,17 @@
         }
       }
     }
-    setInterval(checkTimers, 60000); // Check every minute
+    // ── Interval cleanup registry ──
+    const _intervalIds = [];
+    function _trackInterval(fn, ms) { const id = setInterval(fn, ms); _intervalIds.push(id); return id; }
+    window.addEventListener('beforeunload', () => {
+      _intervalIds.forEach(id => clearInterval(id));
+      if (window.showboxTimerInterval) clearInterval(window.showboxTimerInterval);
+      if (typeof showboxInterval !== 'undefined' && showboxInterval) clearInterval(showboxInterval);
+      if (typeof panelShowboxInterval !== 'undefined' && panelShowboxInterval) clearInterval(panelShowboxInterval);
+    });
+
+    _trackInterval(checkTimers, 60000); // Check every minute
 
     window.showboxTimeEnabled = false;
     function updateShowboxClocks() {
@@ -3205,7 +3219,7 @@
       if (clock1) clock1.innerText = timeStr;
       if (clock2) clock2.innerText = timeStr;
     }
-    setInterval(updateShowboxClocks, 1000);
+    _trackInterval(updateShowboxClocks, 1000);
 
     window.showboxTimerInterval = null;
     window.showboxTimerRemaining = 0;
@@ -3312,7 +3326,7 @@
         await loadAgents();
         updateLamps(agents);
         showWarRoom();
-      setInterval(async () => {
+      _trackInterval(async () => {
         const res = await api('GET', '/agents');
         agents = Array.isArray(res) ? res : (res?.agents || []);
         const searchInput = document.getElementById('agent-search');
@@ -3320,7 +3334,7 @@
         updateStats();
         updateLamps(agents);
       }, 3000);
-      setInterval(refreshChat, 5000);
+      _trackInterval(refreshChat, 5000);
       } catch (err) {
         document.getElementById('content').innerHTML = `<div class="empty" style="padding:80px 20px"><h2 style="color:red">UI Error</h2><p>${err.message}</p></div>`;
       }
@@ -3397,7 +3411,7 @@
         if(curr) curr.classList.add('active');
       };
 
-      setInterval(() => {
+      _trackInterval(() => {
         if (window.showboxActive) return;
         const oldL = document.getElementById(`layer-${currentLayer}`);
         if(oldL) oldL.classList.remove('active');
@@ -3582,7 +3596,7 @@
       const currentSlides = window.showboxes[activePanelShowboxIndex] || [];
       list.innerHTML = currentSlides.map((slide, i) => `
         <div class="sb-slide-item" onclick="jumpToPanelSlide(${i})" style="padding:10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:6px; font-size:0.8rem; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all 0.2s;">
-          <strong>Folie ${i+1}:</strong> ${slide.replace(/<[^>]*>/g, '')}
+          <strong>Folie ${i+1}:</strong> ${esc(slide.replace(/<[^>]*>/g, ''))}
         </div>
       `).join('');
       const items = list.querySelectorAll('.sb-slide-item');

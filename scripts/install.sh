@@ -1,13 +1,13 @@
 #!/bin/bash
 # ═══════════════════════════════════════════
-#  GNOM-HUB — Installation
+#  GNOM-HUB — Installation & App Builder
 # ═══════════════════════════════════════════
 set -e
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-DATA_DIR="$HOME/.gnom-hub/data"
-LOG_DIR="$HOME/.gnom-hub/logs"
 VENV_DIR="$REPO_DIR/.venv"
+ICON_PNG="$REPO_DIR/frontend/assets/logo.png"
+APP_DIR="/Applications/Gnom-Hub.app"
 
 G='\033[0;32m'; Y='\033[1;33m'; C='\033[0;36m'; R='\033[0;31m'; B='\033[1m'; N='\033[0m'
 
@@ -25,8 +25,7 @@ echo ""
 # ── 1. Python prüfen ──
 echo -e "${B}▸ Python prüfen...${N}"
 if ! command -v python3 &>/dev/null; then
-    echo -e "${R}✗ Python 3 nicht gefunden. Bitte installieren: brew install python3${N}"
-    exit 1
+    echo -e "${R}✗ Python 3 nicht gefunden. brew install python3${N}"; exit 1
 fi
 PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 echo -e "  Python $PY_VER ${G}✓${N}"
@@ -43,181 +42,134 @@ source "$VENV_DIR/bin/activate"
 
 # ── 3. Core installieren ──
 echo -e "${B}▸ Core-Dependencies installieren...${N}"
-pip install -q fastapi uvicorn pydantic requests python-dotenv
+pip install -q fastapi uvicorn pydantic requests python-dotenv mcp
 pip install -q -e "$REPO_DIR"
-echo -e "  Core installiert ${G}✓${N}"
+echo -e "  6 Packages installiert ${G}✓${N}"
 
-# ══════════════════════════════════════
-#  TOOL-AUSWAHL — Was soll der Gnom können?
-# ══════════════════════════════════════
-echo ""
-echo -e "${Y}═══════════════════════════════════════════${N}"
-echo -e "${B}  🔧 TOOL-AUSWAHL — Was soll der Gnom können?${N}"
-echo -e "${Y}═══════════════════════════════════════════${N}"
-echo ""
-echo -e "Wähle aus, welche Fähigkeiten du installieren willst."
-echo -e "Jedes Tool wird erklärt — du entscheidest."
-echo ""
-
-# ── Tool 1: Browser-Automation ──
-echo -e "${C}┌─────────────────────────────────────────────┐${N}"
-echo -e "${C}│${N} ${B}🌐 BROWSER-AUTOMATION (Playwright)${N}"
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  Gibt dem Gnom einen echten Chromium-Browser."
-echo -e "${C}│${N}  Er kann Webseiten öffnen, Formulare ausfüllen,"
-echo -e "${C}│${N}  Buttons klicken, Daten extrahieren und"
-echo -e "${C}│${N}  Screenshots von Webseiten machen."
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  ${Y}Command:${N} @browser öffne google.com"
-echo -e "${C}│${N}  ${Y}Braucht:${N} ~150 MB (Chromium-Download)"
-echo -e "${C}└─────────────────────────────────────────────┘${N}"
-read -p "  Installieren? [j/N] " BROWSER
-if [[ "$BROWSER" =~ ^[jJyY]$ ]]; then
-    pip install -q playwright
-    playwright install chromium
-    echo -e "  Browser-Automation ${G}✓${N}"
-else
-    echo -e "  Browser-Automation ${R}übersprungen${N}"
-fi
-echo ""
-
-# ── Tool 2: Desktop-Steuerung ──
-echo -e "${C}┌─────────────────────────────────────────────┐${N}"
-echo -e "${C}│${N} ${B}🖥️  DESKTOP-STEUERUNG (PyAutoGUI)${N}"
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  Der Gnom sieht deinen Bildschirm und kann"
-echo -e "${C}│${N}  Maus und Tastatur steuern. Perfekt für"
-echo -e "${C}│${N}  automatisierte Desktop-Workflows."
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  ${Y}Commands:${N} @desktop, @vision"
-echo -e "${C}│${N}  ${Y}Braucht:${N} ~5 MB + Accessibility-Rechte (macOS)"
-echo -e "${C}└─────────────────────────────────────────────┘${N}"
-read -p "  Installieren? [j/N] " DESKTOP
-if [[ "$DESKTOP" =~ ^[jJyY]$ ]]; then
-    pip install -q pyautogui Pillow
-    echo -e "  Desktop-Steuerung ${G}✓${N}"
-    echo -e "  ${Y}⚠ macOS: Accessibility-Rechte für Terminal/IDE aktivieren!${N}"
-else
-    echo -e "  Desktop-Steuerung ${R}übersprungen${N}"
-fi
-echo ""
-
-# ── Tool 3: Sprache ──
-echo -e "${C}┌─────────────────────────────────────────────┐${N}"
-echo -e "${C}│${N} ${B}🎤 SPRACHE (Whisper + TTS)${N}"
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  Spracherkennung (Whisper) und Text-to-Speech."
-echo -e "${C}│${N}  Der Gnom kann dir zuhören und antworten."
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  ${Y}Braucht:${N} ~500 MB (Whisper-Modell beim ersten Start)"
-echo -e "${C}└─────────────────────────────────────────────┘${N}"
-read -p "  Installieren? [j/N] " SPEECH
-if [[ "$SPEECH" =~ ^[jJyY]$ ]]; then
-    pip install -q faster-whisper pyttsx3
-    echo -e "  Sprache ${G}✓${N}"
-else
-    echo -e "  Sprache ${R}übersprungen${N}"
-fi
-echo ""
-
-# ── Tool 4: Selenium ──
-echo -e "${C}┌─────────────────────────────────────────────┐${N}"
-echo -e "${C}│${N} ${B}🕷️  SELENIUM (Alternative Browser-Engine)${N}"
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  Alternative zu Playwright. Ältere, aber"
-echo -e "${C}│${N}  robustere Browser-Automation. Nutzt deinen"
-echo -e "${C}│${N}  installierten Chrome/Firefox."
-echo -e "${C}│${N}"
-echo -e "${C}│${N}  ${Y}Braucht:${N} ~2 MB + Chrome oder Firefox"
-echo -e "${C}└─────────────────────────────────────────────┘${N}"
-read -p "  Installieren? [j/N] " SELENIUM
-if [[ "$SELENIUM" =~ ^[jJyY]$ ]]; then
-    pip install -q selenium
-    echo -e "  Selenium ${G}✓${N}"
-else
-    echo -e "  Selenium ${R}übersprungen${N}"
-fi
-echo ""
-
-# ══════════════════════════════════════
-#  SYSTEM-SETUP
-# ══════════════════════════════════════
-
-# ── 4. Datenverzeichnisse ──
+# ── 4. Verzeichnisse & Datenbanken ──
 echo -e "${B}▸ Datenverzeichnisse...${N}"
-mkdir -p "$DATA_DIR" "$LOG_DIR" "$HOME/.gnom-hub/run"
-echo -e "  $DATA_DIR ${G}✓${N}"
+mkdir -p "$REPO_DIR/logs" "$REPO_DIR/gnom_workspace/default"
+echo -e "  Verzeichnisse ${G}✓${N}"
 
 # ── 5. .env prüfen ──
 if [ ! -f "$REPO_DIR/config/.env" ]; then
     echo -e "${B}▸ config/.env erstellen...${N}"
     cat > "$REPO_DIR/config/.env" <<'EOF'
-# Gnom-Hub Konfiguration
+# ── Gnom-Hub Konfiguration ──
 # Mindestens einen Key setzen:
+
+# DeepSeek (günstig, schnell)
+# DEEPSEEK_API_KEY=sk-...
 
 # OpenRouter (kostenlose Modelle)
 # OPENROUTER_KEY_FREE_1=sk-or-...
 
-# DeepSeek (bezahlter Fallback)
-# DEEPSEEK_API_KEY=sk-...
-
-# Hub-Port (Standard: 3002)
-# GNOM_HUB_PORT=3002
+# FTP Deploy (optional)
+# FTP_HOST=...
+# FTP_USER=...
+# FTP_PASS=...
+# FTP_REMOTE_DIR=...
 EOF
     echo -e "  config/.env Template erstellt — ${Y}Keys eintragen!${N} ${G}✓${N}"
 else
     echo -e "  config/.env existiert ${G}✓${N}"
 fi
 
-# ── 6. Datenbanken ──
-echo -e "${B}▸ Datenbanken prüfen...${N}"
-for db in memory chat jobs ideas tokens tools domains; do
-    if [ ! -f "$DATA_DIR/$db.json" ]; then
-        echo "[]" > "$DATA_DIR/$db.json"
-    fi
+# ── 6. macOS App Bundle bauen ──
+echo ""
+echo -e "${B}▸ Gnom-Hub.app bauen...${N}"
+
+mkdir -p "${APP_DIR}/Contents/MacOS" "${APP_DIR}/Contents/Resources"
+
+# Icon (logo.png ist JPEG-Format, iconutil braucht echtes PNG)
+if [ -f "$ICON_PNG" ]; then
+    ICONSET="/tmp/GnomIcon.iconset"
+    REAL_PNG="/tmp/gnom_icon.png"
+    sips -s format png "$ICON_PNG" --out "$REAL_PNG" > /dev/null 2>&1
+    rm -rf "$ICONSET" && mkdir -p "$ICONSET"
+    sips -z 16 16     "$REAL_PNG" --out "${ICONSET}/icon_16x16.png"      > /dev/null 2>&1
+    sips -z 32 32     "$REAL_PNG" --out "${ICONSET}/icon_16x16@2x.png"   > /dev/null 2>&1
+    sips -z 32 32     "$REAL_PNG" --out "${ICONSET}/icon_32x32.png"      > /dev/null 2>&1
+    sips -z 64 64     "$REAL_PNG" --out "${ICONSET}/icon_32x32@2x.png"   > /dev/null 2>&1
+    sips -z 128 128   "$REAL_PNG" --out "${ICONSET}/icon_128x128.png"    > /dev/null 2>&1
+    sips -z 256 256   "$REAL_PNG" --out "${ICONSET}/icon_128x128@2x.png" > /dev/null 2>&1
+    sips -z 256 256   "$REAL_PNG" --out "${ICONSET}/icon_256x256.png"    > /dev/null 2>&1
+    sips -z 512 512   "$REAL_PNG" --out "${ICONSET}/icon_256x256@2x.png" > /dev/null 2>&1
+    sips -z 512 512   "$REAL_PNG" --out "${ICONSET}/icon_512x512.png"    > /dev/null 2>&1
+    sips -z 1024 1024 "$REAL_PNG" --out "${ICONSET}/icon_512x512@2x.png" > /dev/null 2>&1
+    iconutil -c icns "$ICONSET" -o "${APP_DIR}/Contents/Resources/AppIcon.icns" 2>/dev/null || true
+    rm -rf "$ICONSET" "$REAL_PNG"
+fi
+
+# Launcher
+cat > "${APP_DIR}/Contents/MacOS/Gnom-Hub" << LAUNCHER
+#!/bin/bash
+DIR="${REPO_DIR}"
+cd "\$DIR"
+source .venv/bin/activate
+set -a; [ -f config/.env ] && source config/.env; set +a
+mkdir -p logs
+pkill -f "[pP]ython.*gnom_hub" 2>/dev/null
+pkill -f "[pP]ython.*agents\..*AG" 2>/dev/null
+sleep 1
+python3 -m gnom_hub > logs/logs_hub.txt 2>&1 &
+sleep 2
+for ag in generalAG soulAG researcherAG writerAG editorAG coderAG; do
+    python3 -u -m agents.\${ag} > logs/logs_\${ag}.txt 2>&1 &
 done
-echo -e "  Datenbanken ${G}✓${N}"
+open "http://127.0.0.1:3002"
+wait
+LAUNCHER
+chmod +x "${APP_DIR}/Contents/MacOS/Gnom-Hub"
 
-# ── 7. LLM-Provider ──
+# Info.plist
+cat > "${APP_DIR}/Contents/Info.plist" << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>Gnom-Hub</string>
+    <key>CFBundleDisplayName</key><string>Gnom-Hub</string>
+    <key>CFBundleIdentifier</key><string>de.netzwerkpunkt.gnom-hub</string>
+    <key>CFBundleVersion</key><string>1.0</string>
+    <key>CFBundleExecutable</key><string>Gnom-Hub</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>LSUIElement</key><true/>
+</dict>
+</plist>
+PLIST
+
+echo -e "  Gnom-Hub.app → /Applications ${G}✓${N}"
+
+# ── 7. Dock hinzufügen ──
+# Prüfen ob schon im Dock
+if ! defaults read com.apple.dock persistent-apps 2>/dev/null | grep -q "Gnom-Hub"; then
+    defaults write com.apple.dock persistent-apps -array-add "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>${APP_DIR}</string><key>_CFURLStringType</key><integer>0</integer></dict><key>file-label</key><string>Gnom-Hub</string><key>file-type</key><integer>41</integer></dict><key>tile-type</key><string>file-tile</string></dict>"
+    killall Dock 2>/dev/null || true
+    echo -e "  Dock-Icon hinzugefügt ${G}✓${N}"
+else
+    echo -e "  Dock-Icon existiert bereits ${G}✓${N}"
+fi
+
+# ── 8. LLM-Provider Info ──
 echo ""
 echo -e "${Y}═══════════════════════════════════════════${N}"
-echo -e "${B}  🧠 LLM-PROVIDER — Woher kommt die Intelligenz?${N}"
+echo -e "${B}  🧠 LLM-PROVIDER${N}"
 echo -e "${Y}═══════════════════════════════════════════${N}"
 echo ""
-echo -e "  Der Gnom braucht mindestens einen LLM-Provider."
-echo -e "  Trag die Keys in ${B}.env${N} ein:"
-echo ""
-echo -e "  ${C}1)${N} ${B}DeepSeek${N}      — Schnell, günstig (~\$0.14/1M Tokens)"
-echo -e "                     DEEPSEEK_API_KEY=sk-..."
-echo ""
-echo -e "  ${C}2)${N} ${B}OpenRouter${N}    — Kostenlose Modelle verfügbar"
-echo -e "                     OPENROUTER_KEY_FREE_1=sk-or-..."
-echo ""
-echo -e "  ${C}3)${N} ${B}Ollama (lokal)${N} — Kostenlos, braucht GPU"
-echo -e "                     brew install ollama && ollama pull deepseek-r1"
+echo -e "  Keys in ${B}config/.env${N} eintragen:"
+echo -e "  ${C}1)${N} ${B}Ollama (lokal)${N}  — brew install ollama && ollama pull deepseek-r1"
+echo -e "  ${C}2)${N} ${B}DeepSeek${N}        — DEEPSEEK_API_KEY=sk-..."
+echo -e "  ${C}3)${N} ${B}OpenRouter${N}      — OPENROUTER_KEY_FREE_1=sk-or-..."
 echo ""
 
-# ── Zusammenfassung ──
-echo ""
+# ── Fertig ──
 echo -e "${G}═══════════════════════════════════════════${N}"
 echo -e "${B}  ✅ Installation abgeschlossen!${N}"
 echo -e "${G}═══════════════════════════════════════════${N}"
 echo ""
-echo -e "  Installiert:"
-echo -e "    ${G}✓${N} Core (FastAPI, Uvicorn, Pydantic)"
-[[ "$BROWSER" =~ ^[jJyY]$ ]]  && echo -e "    ${G}✓${N} Browser-Automation (Playwright)"
-[[ "$DESKTOP" =~ ^[jJyY]$ ]]  && echo -e "    ${G}✓${N} Desktop-Steuerung (PyAutoGUI)"
-[[ "$SPEECH" =~ ^[jJyY]$ ]]   && echo -e "    ${G}✓${N} Sprache (Whisper + TTS)"
-[[ "$SELENIUM" =~ ^[jJyY]$ ]] && echo -e "    ${G}✓${N} Selenium"
+echo -e "  ${B}Starten:${N}  Klick auf 🧠 Gnom-Hub im Dock"
+echo -e "  ${B}Oder:${N}     open /Applications/Gnom-Hub.app"
+echo -e "  ${B}War Room:${N} http://127.0.0.1:3002"
 echo ""
-echo -e "  ${Y}Nicht vergessen:${N}"
-echo -e "    → LLM-Keys in ${B}config/.env${N} eintragen"
-echo ""
-echo -e "  ${B}Frontend:${N}   http://127.0.0.1:3002"
-echo -e "  ${B}Agenten:${N}    bash scripts/start_agents.sh"
-echo ""
-
-# ── 8. Hub starten ──
-echo -e "${B}▸ Gnom-Hub starten...${N}"
-source "$VENV_DIR/bin/activate"
-python -m gnom_hub

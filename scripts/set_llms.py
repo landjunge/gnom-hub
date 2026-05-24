@@ -1,4 +1,7 @@
-import requests
+"""Konfiguriert LLM-Modelle für alle aktiven Agenten."""
+import requests, os
+
+HUB_PORT = os.environ.get("GNOM_HUB_PORT", "3002")
 
 config = {
     "generalag": {"provider": "openrouter", "model": "deepseek/deepseek-v4-flash:free"},
@@ -8,11 +11,8 @@ config = {
     "researcherag": {"provider": "openrouter", "model": "arcee-ai/trinity-large-thinking:free"},
     "editorag": {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
     "writerag": {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
-    "summarizerag": {"provider": "openrouter", "model": "qwen/qwen3-next-80b:free"},
-    "web_crawlerag": {"provider": "openrouter", "model": "nvidia/nemotron-nano-9b-v2:free"},
-    "data_crawlerag": {"provider": "openrouter", "model": "nvidia/nemotron-nano-9b-v2:free"},
-    "smart_crawlerag": {"provider": "openrouter", "model": "nvidia/nemotron-nano-9b-v2:free"}
+    "soulag": {"provider": "openrouter", "model": "deepseek/deepseek-v4-flash:free"},
 }
 
-r = requests.post("http://127.0.0.1:3002/api/llm/agents", json=config)
+r = requests.post(f"http://127.0.0.1:{HUB_PORT}/api/llm/agents", json=config)
 print(r.status_code, r.text)

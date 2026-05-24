@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request; from pydantic import BaseModel; from .db import get_db, save_db; import uuid, os, threading; from datetime import datetime
+from fastapi import APIRouter, Request; from pydantic import BaseModel; from .db import get_db, save_db; import uuid, os, threading; from datetime import datetime, timezone
 router = APIRouter(prefix="/api/admin")
 class ToolDef(BaseModel): name: str; description: str = ""; method: str = "GET"; path: str = ""
 @router.get("/tools")
@@ -27,7 +27,7 @@ def set_role(agent_id: str, role: str):
     for x in agents: x["role"] = "normal" if x.get("role") == role and role != "normal" else x.get("role", "normal")
     agent["role"] = role; save_db("agents", agents)
     mem = [m for m in get_db("memory") if not (m.get("agent_id") == agent.get("id") and m.get("type") == "role")]
-    if role in roles_dict: mem.append({"id": str(uuid.uuid4()), "agent_id": agent.get("id"), "content": f"[SYSTEM] {roles_dict[role]}", "type": "role", "timestamp": datetime.utcnow().isoformat()+"Z"})
+    if role in roles_dict: mem.append({"id": str(uuid.uuid4()), "agent_id": agent.get("id"), "content": f"[SYSTEM] {roles_dict[role]}", "type": "role", "timestamp": datetime.now(timezone.utc).isoformat()+"Z"})
     save_db("memory", mem); from .role_prompt import implant; file_path = implant(agent["name"], roles_dict[role]) if role in roles_dict else None
     return {"agent": agent["name"], "role": role, "file": file_path}
 @router.get("/language")

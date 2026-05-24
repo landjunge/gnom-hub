@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException
-from datetime import datetime
+from fastapi import APIRouter, HTTPException, Request
+from datetime import datetime, timezone
 import uuid
 from .db import get_db, save_db
 from .models import MemoryEntry, AgentIdReq, SearchReq
@@ -9,7 +9,7 @@ router = APIRouter()
 @router.post("/api/tools/save_memory")
 def add_memory(e: MemoryEntry):
     if not any(a.get("id") == e.agent_id for a in get_db("agents")): raise HTTPException(404, "")
-    e.timestamp = e.timestamp or (datetime.utcnow().isoformat() + "Z")
+    e.timestamp = e.timestamp or (datetime.now(timezone.utc).isoformat() + "Z")
     n = {"id": str(uuid.uuid4()), **e.dict()}; save_db("memory", get_db("memory") + [n])
     nudge(e.agent_id)
     return n
@@ -24,7 +24,11 @@ def proxy_get_memory(r: AgentIdReq): return get_agent_memory(r.agent_id)
 @router.post("/api/tools/search_memory")
 def proxy_search_memory(r: SearchReq): return search_memory(r.query)
 @router.put("/api/memory/{m_id}")
-def update_memory(m_id: str, content: str):
+async def update_memory(m_id: str, request: Request):
+    body = await request.json()
+    content = body.get("content") if isinstance(body, dict) else None
+    if not content:
+        raise HTTPException(422, "Missing 'content' in request body")
     d = get_db("memory")
     for m in d:
         if m.get("id") == m_id: m["content"] = content; save_db("memory", d); return m

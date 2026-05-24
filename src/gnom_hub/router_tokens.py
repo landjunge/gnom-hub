@@ -1,6 +1,7 @@
 import os, json
+from .config import TOKENS_FILE
 
-LLM_TOKENS_FILE = os.path.join(os.path.dirname(__file__), "../../.gnom-hub-tokens.json")
+LLM_TOKENS_FILE = str(TOKENS_FILE)
 
 def track_tokens(key_name, model, usage):
     """Zählt Tokens pro Call und akkumuliert sie."""
@@ -17,7 +18,8 @@ def track_tokens(key_name, model, usage):
         data["calls"] = data.get("calls", 0) + 1
         data["history"].append({"key": key_name, "model": model, "prompt": prompt_t, "completion": comp_t, "total": total_t})
         if len(data["history"]) > 200: data["history"] = data["history"][-200:]
-        json.dump(data, open(LLM_TOKENS_FILE, "w"), indent=2)
+        with open(LLM_TOKENS_FILE, "w") as f:
+            json.dump(data, f, indent=2)
         print(f"[TOKENS] +{total_t} (Gesamt: {data['total']}, Calls: {data['calls']})")
     except Exception as e:
         print(f"[TOKENS] Tracking-Fehler: {e}")

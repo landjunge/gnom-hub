@@ -9,10 +9,10 @@ SEED_AGENTS = [
     ("SecurityAG",    "Security, signature verification",                 "normal"),
     ("WatchdogAG",    "System monitoring, health checks",                 "normal"),
     # Worker (4)
-    ("researcherAG",  "Researching, gathering and summarizing info",      "normal"),
-    ("writerAG",      "Texts, scripts, content, and creative writing",    "normal"),
-    ("editorAG",      "Checking results, editing, quality assurance",     "normal"),
-    ("coderAG",       "Programming, writing code, technical execution",   "normal"),
+    ("ResearcherAG",  "Researching, gathering and summarizing info",      "normal"),
+    ("WriterAG",      "Texts, scripts, content, and creative writing",    "normal"),
+    ("EditorAG",      "Checking results, editing, quality assurance",     "normal"),
+    ("CoderAG",       "Programming, writing code, technical execution",   "normal"),
 ]
 
 def create_seed():

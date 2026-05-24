@@ -1,6 +1,6 @@
-from fastapi import APIRouter; from fastapi.responses import HTMLResponse; import os, subprocess; from .db import get_active_project
-router, BASE_WORKSPACE = APIRouter(), "/Users/landjunge/Documents/AG-Flega/gnom_workspace"
-def get_workspace_dir(): d = os.path.join(BASE_WORKSPACE, get_active_project()); os.makedirs(d, exist_ok=True); return d
+from fastapi import APIRouter; from fastapi.responses import HTMLResponse; import os, subprocess; from .db import get_active_project; from .config import WORKSPACE_DIR
+router = APIRouter()
+def get_workspace_dir(): d = os.path.join(str(WORKSPACE_DIR), get_active_project()); os.makedirs(d, exist_ok=True); return d
 @router.get("/api/workspace")
 def list_workspace():
     w = get_workspace_dir()

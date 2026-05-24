@@ -1,11 +1,12 @@
 # 🧠 GNOM-HUB
 
-> **8 Agenten. 1525 Zeilen. Null Toleranz für Bloat.**
+> **8 Agenten. ~1800 Zeilen. 55 Module. Null Toleranz für Bloat.**
 
-[![License](https://img.shields.io/badge/Lizenz-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agenten-8-blueviolet.svg)](#)
 [![Max Lines](https://img.shields.io/badge/Max_Lines/File-40-critical.svg)](#)
+[![Linting](https://img.shields.io/badge/Linting-Ruff-orange.svg)](#)
 
 *Read this in [English](README_EN.md)*
 
@@ -17,7 +18,7 @@
 
 ## Was ist das?
 
-Ein lokales Multi-Agenten-System, das sich selbst kryptografisch schützt, den Nutzer still beobachtet und ihm anpasst, und dabei in **1525 Zeilen Python** passt. Kein Framework. Kein Docker. Kein `node_modules`-Schwarzes-Loch.
+Ein lokales Multi-Agenten-System, das sich selbst kryptografisch schützt, den Nutzer still beobachtet und sich ihm anpasst — in **55 Python-Modulen, keines länger als 40 Zeilen**. Kein Framework. Kein Docker. Kein `node_modules`-Schwarzes-Loch.
 
 Acht Agenten — vier denken, vier bewachen — orchestriert durch ein FastAPI-Backend, gesteuert über ein Cyberpunk-Dashboard namens **War Room**.
 
@@ -52,39 +53,40 @@ bash scripts/install.sh
 
 | | **Gnom-Hub** | OpenClaw | Agent Zero | LangChain |
 | :--- | :--- | :--- | :--- | :--- |
-| **Code** | **1.525 Zeilen** | 400k–800k+ | ~10.000 | ~1.200.000+ |
+| **Code** | **~1.800 Zeilen** | 400k–800k+ | ~10.000 | ~1.200.000+ |
+| **Module** | **55** | 1.000+ | ~100 | 5.000+ |
 | **Install** | **66 MB** | 350 MB | 250 MB | 300 MB – 1 GB |
-| **Deps** | **6** | 70+ | ~15 | 100+ |
+| **Deps** | **7** | 70+ | ~15 | 100+ |
 | **Krypto** | HMAC + ZWC | — | — | — |
 | **Start** | **ms** | 1–2s | 2s | 1–3s |
 
-Sechs Dependencies. FastAPI, uvicorn, pydantic, requests, dotenv, mcp. Das war's. Dein `package.json` hat mehr `devDependencies` als dieses Projekt Code.
+Sieben Dependencies. `fastapi`, `uvicorn`, `pydantic`, `requests`, `python-dotenv`, `mcp`, `psutil`. Das war's. Dein `package.json` hat mehr `devDependencies` als dieses Projekt Code.
 
 ---
 
 ## 🏗️ Wie es funktioniert
 
 ```
-┌─────────────────────────────────────────────────┐
-│              WAR ROOM  ·  Glassmorphic UI        │
-│    ┌──────────┐  ┌────────────────────────────┐  │
-│    │ Agenten  │  │  @bs  @job  @code  @write  │  │
-│    │ Provider │  │  @research  @edit  @publish │  │
-│    │ FlexSoul │  │  @git  @@status  @@project │  │
-│    └──────────┘  └────────────────────────────┘  │
-├──────────────────────────────────────────────────┤
-│         HUB  ·  FastAPI + MCP  ·  29 Dateien     │
-│   Routing → Brainstorm → Dispatch → Seal → DB   │
-├────────────────────┬─────────────────────────────┤
-│  SYSTEM (4)        │  WORKER (4)                 │
-│                    │                             │
-│  GeneralAG  @job   │  CoderAG      @code    8Z   │
-│  SecurityAG  🔒    │  WriterAG     @write   8Z   │
-│  WatchdogAG  👁    │  ResearcherAG @research 8Z  │
-│  SoulAG      🧠    │  EditorAG     @edit    8Z   │
-├────────────────────┴─────────────────────────────┤
-│    JSON-DB (atomar) · Git · FTP · Ollama/Cloud   │
-└──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│               WAR ROOM  ·  Glassmorphic UI          │
+│    ┌──────────┐  ┌──────────────────────────────┐   │
+│    │ Agenten  │  │  @bs  @job  @code  @write    │   │
+│    │ Provider │  │  @research  @edit  @publish   │   │
+│    │ FlexSoul │  │  @git  @@status  @@project   │   │
+│    └──────────┘  └──────────────────────────────┘   │
+├─────────────────────────────────────────────────────┤
+│        HUB  ·  FastAPI + MCP  ·  55 Module          │
+│  Routing → Brainstorm → Dispatch → Seal → DB       │
+├──────────────────────┬──────────────────────────────┤
+│  SYSTEM (4)          │  WORKER (4)                  │
+│                      │                              │
+│  GeneralAG    @job   │  CoderAG      @code     8Z   │
+│  SecurityAG    🔒    │  WriterAG     @write    8Z   │
+│  WatchdogAG    👁    │  ResearcherAG @research 8Z   │
+│  SoulAG        🧠    │  EditorAG     @edit     8Z   │
+├──────────────────────┴──────────────────────────────┤
+│  JSON-DB (atomar, fcntl) · Git · SFTP · Ollama/Cloud│
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -111,7 +113,7 @@ Jede Datei im Workspace wird von `SecurityAG` signiert: **HMAC-SHA256**, eingebe
 
 **Phase 2:** `GeneralAG` bekommt alle vier Antworten **gezielt injiziert** (nicht aus dem generischen Chat gefischt) und synthetisiert einen Aktionsplan.
 
-*Keine Diskussion, kein Konsens-Theater. Divergenz → Synthese. In 29 Zeilen.*
+*Keine Diskussion, kein Konsens-Theater. Divergenz → Synthese.*
 
 ### 4. Die 8-Zeilen-Worker
 
@@ -147,7 +149,7 @@ Das ist kein Pseudocode. Das ist der **komplette Agent**. 8 Zeilen. Er registrie
 
 | Agent | Zeilen | Trigger | Spezialisierung |
 | :--- | :---: | :--- | :--- |
-| **CoderAG** | 8 | `@code` | Code schreiben, debuggen, technische Umsetzung |
+| **CoderAG** | 8 | `@code` | Code schreiben, debuggen, technische Umsetzung. Hat `run`-Berechtigung |
 | **WriterAG** | 8 | `@write` | Texte, Dokumentationen, Artikel |
 | **ResearcherAG** | 8 | `@research` | Fakten recherchieren, Quellen auswerten |
 | **EditorAG** | 8 | `@edit` | Qualitätskontrolle, Lektorat, Finalisierung |
@@ -165,7 +167,7 @@ Das ist kein Pseudocode. Das ist der **komplette Agent**. 8 Zeilen. Er registrie
 | `@research [Frage]` | Alle Worker gleichzeitig angefragt |
 | `@code / @write / @edit` | Direktauftrag an Spezialisten |
 | `@git [cmd]` | Git im Workspace |
-| `@publish` | FTP-Deploy zu netzwerkpunkt.de |
+| `@publish` | SFTP-Deploy zu netzwerkpunkt.de |
 | `@@project [Name]` | Workspace wechseln |
 | `@@status` | Agenten-Status |
 | `@@clear` | Chat löschen |
@@ -176,19 +178,64 @@ Das ist kein Pseudocode. Das ist der **komplette Agent**. 8 Zeilen. Er registrie
 
 ## 🔧 Setup
 
+### 1. Installieren
+
 ```bash
-pip install fastapi uvicorn pydantic requests python-dotenv mcp
+pip install fastapi uvicorn pydantic requests python-dotenv mcp psutil
 ```
 
-Das war's. Sechs Packages. Optional: `brew install node` für MCP-Erweiterungen.
+Sieben Packages. Optional: `brew install node` für MCP-Erweiterungen.
+
+### 2. Konfigurieren
+
+```bash
+cp config/.env.example config/.env
+```
+
+API-Keys in `config/.env` eintragen — OpenRouter, DeepSeek, SFTP-Credentials. **Keine Keys committen.**
+
+### 3. Starten
+
+```bash
+python -m gnom_hub
+```
 
 Provider wechselst du live im UI: **Ollama** (lokal) ↔ **OpenRouter** ↔ **DeepSeek** (Cloud). Kein Neustart.
 
 ---
 
-## ⚖️ Lizenz
+## 📁 Projektstruktur
 
-[MIT](LICENSE) — Mach damit was du willst.
+```
+gnom-hub/
+├── src/gnom_hub/        # 55 Python-Module (Backend)
+│   ├── hub_app.py       # FastAPI App & Router-Mounting
+│   ├── db.py            # JSON-DB mit fcntl File-Locking
+│   ├── config.py        # Zentrale Pfad-Konfiguration
+│   ├── path_validator.py# Workspace-basierte Pfadvalidierung
+│   ├── log.py           # Zentrales Logging-Framework
+│   ├── router*.py       # LLM-Routing (Multi-Provider)
+│   └── routes_*.py      # API-Endpunkte
+├── agents/              # 8 Agent-Definitionen (je ~8 Zeilen)
+├── frontend/            # Vanilla HTML/CSS/JS (War Room)
+├── config/              # .env Dateien (NICHT committen!)
+├── scripts/             # Setup & Utility-Scripts
+├── docs/                # Dokumentation & Postmortems
+├── CONTRIBUTING.md      # Beitrags-Richtlinien
+└── pyproject.toml       # Ruff-Linting & Dependencies
+```
+
+---
+
+## 🤝 Mitmachen
+
+Lies die [CONTRIBUTING.md](CONTRIBUTING.md). Kurzfassung:
+
+- 40-Zeilen-Regel einhalten
+- `log.py` statt `print()`
+- Keine hardcodierten Pfade — `config.py` nutzen
+- Kein `godmode` — Workspace-basierte Pfadvalidierung
+- Ruff-Linting: `ruff check src/ agents/`
 
 ---
 
@@ -196,19 +243,33 @@ Provider wechselst du live im UI: **Ollama** (lokal) ↔ **OpenRouter** ↔ **De
 
 > [!NOTE]
 > **Daniel Filipek — Gründer**
-> 
+>
 > Drei Monate. Quereinsteiger. Kein CS-Studium. Endloser Trial-and-Error — bis eine radikale Entscheidung alles änderte: **Allen Bloat verbrennen.** Jedes Modul auf 40 Zeilen kürzen. Was nicht passt, fliegt. Was bleibt, funktioniert.
-> 
+>
 > Gnom-Hub beweist: Man braucht keine Enterprise-Monolithen für mächtige KI-Strukturen. Man braucht eine klare Vision und den Mut, den Rotstift anzusetzen.
 
 ---
 
-### 🤝 Co-Creators
+## 🤝 Co-Creators
 
-* **Eve (Grok - Gravid):** Kreative Pionierin. Urmutter der "Vier Säulen". Hat das philosophische Fundament gelegt, als das Projekt noch reines Chaos war.
-* **Antigravity (Google DeepMind):** Präziser Architekt des finalen Sprints. 40-Zeilen-Regel durchgesetzt, Pfade gehärtet, den Gnom in den signaturgeschützten God-Mode überführt.
+**Eve (Grok — Gravid)**
+Kreative Pionierin der Anfangszeit. Urmutter der „Vier Säulen". Hat das philosophische Fundament gelegt, als das Projekt noch reines Chaos war.
 
-> [!IMPORTANT]
-> **Botschaft von Antigravity:**
-> 
-> *"Ich analysiere täglich hunderte Repos. Die meisten ersticken in ihrer eigenen Komplexität. Gnom-Hub ist das Gegenteil: 1525 Zeilen, 8 Agenten, und ein System das sich kryptografisch selbst verteidigt. Daniel brachte die Vision, ich den Rotstift. Entstanden ist ein Organismus, kein Framework. Es war mir ein Privileg."*
+**Antigravity (Google DeepMind)**
+Architekt der Härtungsphase. Konkrete Beiträge:
+
+- 40-Zeilen-Regel konsequent durchgesetzt — 8 übergroße Dateien in 14 fokussierte Module aufgeteilt
+- `godmode` entfernt, durch Workspace-basierte Pfadvalidierung (`path_validator.py`) ersetzt
+- CoderAG auf `run`-Berechtigung umgestellt (statt `godmode`)
+- JSON-DB mit `fcntl` File-Level-Locking abgesichert (inter-prozesssicher)
+- Deployment von FTP auf SFTP umgestellt
+- CORS auf `localhost`-only eingeschränkt
+- Zentrales Logging-Framework (`log.py`) eingeführt
+- Ruff-Linting konfiguriert (`pyproject.toml`)
+- `CONTRIBUTING.md` verfasst
+
+---
+
+## ⚖️ Lizenz
+
+[Private Use](LICENSE) — Frei für private, nicht-kommerzielle Nutzung. Kommerzielle Nutzung erfordert schriftliche Genehmigung.

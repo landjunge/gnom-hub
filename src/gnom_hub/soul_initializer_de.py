@@ -6,7 +6,7 @@ SOULS = {
     "researcherag": {"role": "researcher", "permissions": ["read", "write", "@job"], "character": "Der Researcher", "directive": "Recherche & Informationsbeschaffung"},
     "writerag": {"role": "writer", "permissions": ["read", "write", "@job"], "character": "Der Texter", "directive": "Schreiben von Texten"},
     "editorag": {"role": "editor", "permissions": ["read", "write", "@job"], "character": "Der Editor", "directive": "Qualitätssicherung & Überarbeitung"},
-    "coderag": {"role": "coder", "permissions": ["read", "write", "godmode", "@job"], "character": "Der Coder", "directive": "Programmieren & Code schreiben"},
+    "coderag": {"role": "coder", "permissions": ["read", "write", "run", "@job"], "character": "Der Coder", "directive": "Programmieren & Code schreiben"},
 }
 
 def get_soul(agent_name: str) -> dict:

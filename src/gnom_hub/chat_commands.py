@@ -1,7 +1,7 @@
 import uuid, re, subprocess; from datetime import datetime; from fastapi import APIRouter; from .db import get_db, save_db
 router = APIRouter()
 def _post_chat(s, c): save_db("memory", get_db("memory") + [{"id":str(uuid.uuid4()),"agent_id":"war-room","content":c,"metadata":{"type":"role_response","sender":s},"timestamp":datetime.utcnow().isoformat()+"Z"}])
-def handle_idea(t): save_db("ideas", get_db("ideas") + [{"id":str(uuid.uuid4()),"content":t,"ts":datetime.utcnow().isoformat()+"Z"}]); return {"status": "idea_saved"}
+
 def handle_clear(q=""): from .chat_clear import handle_clear as _hc; return _hc(q)
 def handle_status(): return {"agents": [{"name":a["name"],"role":a.get("role","—"),"st":a.get("skill",a.get("status"))} for a in get_db("agents")]}
 def handle_free(q): ags=get_db("agents"); t=q.replace("@","").strip().lower(); [a.update({"active_job":""}) for a in ags if not t or a["name"].lower()==t]; save_db("agents", ags); _post_chat("System", f"Jobs cleared: {t or 'ALL'}"); return {"status": "ok"}
@@ -21,7 +21,7 @@ def handle_git(q, rb=False):
     except Exception as e: r = f"Error: {e}"
     _post_chat("System", f"Git: {r[:300]}"); return {"status": "ok"}
 def handle_publish(q=""):
-    from .ftp_deploy import sync_index; from .db import get_active_project; from .config import DATA_DIR
+    from .ftp_sync import sync_index; from .db import get_active_project; from .config import DATA_DIR
     sync_index(DATA_DIR / get_active_project())
     _post_chat("System", "🚀 Manuelles Deployment zu netzwerkpunkt.de abgeschlossen!")
     return {"status": "ok"}

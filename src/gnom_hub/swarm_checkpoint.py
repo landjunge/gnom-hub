@@ -2,8 +2,9 @@ import json
 from pathlib import Path
 from datetime import datetime
 import glob
+from .config import PROJECT_ROOT
 
-BACKUP_DIR = Path(".backups/swarm")
+BACKUP_DIR = PROJECT_ROOT / ".backups" / "swarm"
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 def save_swarm_checkpoint(souls: list[dict], war_room_state: list[dict]):

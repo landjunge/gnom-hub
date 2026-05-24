@@ -1,8 +1,8 @@
-import os, uuid; from datetime import datetime; from .db import get_db, save_db, get_active_project; from .router import ask_router
+import os, uuid; from datetime import datetime, timezone; from .db import get_db, save_db, get_active_project; from .router import ask_router; from .config import WORKSPACE_DIR
 def get_workspace_dir():
-    d = os.path.join("/Users/landjunge/Documents/AG-Flega/gnom_workspace", get_active_project()); os.makedirs(d, exist_ok=True); return d
+    d = os.path.join(str(WORKSPACE_DIR), get_active_project()); os.makedirs(d, exist_ok=True); return d
 def post(sender, content):
-    save_db("memory", get_db("memory") + [{"id": str(uuid.uuid4()), "agent_id": "war-room", "project": get_active_project(), "content": content, "metadata": {"type": "brainstorm", "status": "open", "sender": sender}, "timestamp": datetime.utcnow().isoformat() + "Z"}])
+    save_db("memory", get_db("memory") + [{"id": str(uuid.uuid4()), "agent_id": "war-room", "project": get_active_project(), "content": content, "metadata": {"type": "brainstorm", "status": "open", "sender": sender}, "timestamp": datetime.now(timezone.utc).isoformat() + "Z"}])
 def get_ctx():
     from .zwc_soul import strip_zwc; c = [m for m in get_db("memory") if m.get("agent_id") == "war-room" and m.get("project", "default") == get_active_project()]
     return "\n".join(f"[{m.get('metadata',{}).get('sender','?')}] {strip_zwc(m['content'])[:1000]}" for m in sorted(c, key=lambda x: x.get("timestamp",""))[-8:])

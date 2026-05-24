@@ -1,21 +1,21 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-import os
+from .config import FRONTEND_DIR
 
 router = APIRouter()
-THEMES_PATH = "/Users/landjunge/Documents/AG-Flega/frontend/themes.js"
+THEMES_PATH = FRONTEND_DIR / "themes.js"
 
 class ThemesData(BaseModel):
     content: str
 
 @router.get("/api/showbox/themes")
 def get_themes():
-    if os.path.exists(THEMES_PATH):
-        return {"content": open(THEMES_PATH, "r").read()}
+    if THEMES_PATH.exists():
+        return {"content": THEMES_PATH.read_text(encoding="utf-8")}
     return {"content": ""}
 
 @router.post("/api/showbox/themes")
 def save_themes(data: ThemesData):
-    with open(THEMES_PATH, "w") as f:
-        f.write(data.content)
+    THEMES_PATH.write_text(data.content, encoding="utf-8")
     return {"status": "ok"}
+

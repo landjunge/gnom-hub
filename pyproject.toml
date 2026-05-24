@@ -9,12 +9,13 @@ description = "Gnom-Hub - Minimalistischer Orchestrator"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "fastapi",
-    "uvicorn",
-    "pydantic",
-    "requests",
-    "mcp",
-    "psutil"
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "pydantic>=2.0.0",
+    "requests>=2.28.0",
+    "mcp>=0.1.0",
+    "psutil>=5.9.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.scripts]
@@ -22,3 +23,29 @@ gnom-hub = "gnom_hub.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 160
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort (import ordering)
+    "S",      # bandit (security)
+    "UP",     # pyupgrade (deprecated syntax)
+    "B",      # bugbear (common pitfalls)
+]
+ignore = [
+    "E501",   # line too long (handled by line-length)
+    "E731",   # lambda assignment
+    "S101",   # assert usage
+    "S603",   # subprocess without shell=True
+    "S607",   # partial path for subprocess
+    "B023",   # function def in loop
+]
+
+[tool.ruff.lint.per-file-ignores]
+"agents/*.py" = ["E402"]  # module level import not at top
+"scripts/*.py" = ["S", "E402"]  # scripts may have security-irrelevant patterns

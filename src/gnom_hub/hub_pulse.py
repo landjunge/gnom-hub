@@ -1,13 +1,13 @@
 import time, threading, requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .db import get_db, save_db
 TIMEOUT = 120
 def _alive(port):
     try: requests.get(f"http://127.0.0.1:{port}/", timeout=1); return True
-    except: return False
+    except Exception: return False
 def pulse_janitor():
     """Prüft Agenten-Status. Port lebt → auto-online. Kein Agent wird offline gesetzt."""
-    agents, now, changed = get_db("agents"), datetime.utcnow(), False
+    agents, now, changed = get_db("agents"), datetime.now(timezone.utc), False
     for a in agents:
         port = a.get("port", 0)
         if not port: continue

@@ -1,5 +1,5 @@
-import asyncio, requests; from .soul_initializer import get_soul; from .router import ask_router
-HUB_URL = "http://127.0.0.1:3002"
+import asyncio, os, requests; from .soul_initializer import get_soul; from .router import ask_router
+HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
         self.n, self.d, self.t, self.sys, self.p, self.model, self.seen = name, desc, trigger, sys_prompt, poll, model, set()
@@ -9,13 +9,13 @@ class BaseAgent:
             self.sys = format_tools_prompt(soul, name)
     def post(self, p, j=None):
         try: return requests.post(f"{HUB_URL}{p}", json=j).json()
-        except: return {}
+        except Exception: return {}
     def put(self, p, j=None):
         try: return requests.put(f"{HUB_URL}{p}", json=j).json()
-        except: return {}
+        except Exception: return {}
     def get(self, p):
         try: return requests.get(f"{HUB_URL}{p}").json()
-        except: return []
+        except Exception: return []
     async def run(self):
         self.post("/api/agents/register", {"name": self.n, "port": 0, "description": self.d, "status": "online", "capabilities": [self.t]}); print(f"🚀 {self.n} aktiv")
         while True:
