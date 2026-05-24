@@ -41,7 +41,6 @@ def _seed_agents(conn):
     default_agents = [
         {"name": "SoulAG", "description": "Swarm consciousness", "status": "online", "capabilities": ["@soul"], "role": "soul"},
         {"name": "GeneralAG", "description": "Task coordinator", "status": "online", "capabilities": ["@job"], "role": "general"},
-        {"name": "SecurityAG", "description": "Cryptographic protection", "status": "online", "capabilities": [], "role": "security"},
         {"name": "WatchdogAG", "description": "Workspace integrity check", "status": "online", "capabilities": [], "role": "watchdog"},
         {"name": "CoderAG", "description": "Code implementation", "status": "online", "capabilities": ["@code"], "role": "normal"},
         {"name": "WriterAG", "description": "Documentation editor", "status": "online", "capabilities": ["@write"], "role": "normal"},
