@@ -208,7 +208,6 @@ gnom-hub/
 │   ├── hub_app.py       # FastAPI App & Lifespan-Startup/Shutdown
 │   ├── db.py            # SQLite3-Datenbank (WAL-Modus)
 │   ├── proc_mgr.py      # Prozess-Manager (psutil & PID-Tracking)
-│   ├── config.py        # Zentrale Pfad-Konfiguration
 │   ├── path_validator.py# Workspace-basierte Pfadvalidierung
 │   ├── log.py           # Zentrales Logging-Framework
 │   ├── router*.py       # LLM-Routing (Multi-Provider)
