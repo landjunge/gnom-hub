@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from .audio_tts import tts
 from .audio_stt import transcribe
-from .db import get_db
+from .db import get_all_agents
 router = APIRouter()
 class TTSRequest(BaseModel):
     text: str
@@ -12,7 +12,7 @@ class TTSRequest(BaseModel):
 async def do_tts(req: TTSRequest):
     voice = ""
     if req.agent_id:
-        agent = next((a for a in get_db("agents") if a.get("id") == req.agent_id), None)
+        agent = next((a for a in get_all_agents() if a.get("id") == req.agent_id), None)
         if agent: voice = agent.get("voice_id", "")
     path = tts(req.text, voice)
     if path and path.exists():

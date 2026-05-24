@@ -3,7 +3,7 @@ import os, re
 from .path_validator import _safe
 
 def handle_write(answer, matches, agent, perms, bs_mode, wd):
-    from agents.securityAG import seal_content; from .ftp_deploy import get_deploy; from .ftp_sync import sync_index
+    from agents.securityAG import seal_content
     for m in matches:
         fname, content = m.group(1).strip(), m.group(2).strip()
         content = re.sub(r"^```\w*\n", "", re.sub(r"\n```$", "", content).strip())
@@ -20,7 +20,7 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                     with open(fpath, "w", encoding="utf-8") as f:
                         f.write(seal_content(agent["name"], content, fname))
                     r = f"[System: Datei '{fname}' gespeichert.]"
-                    if get_deploy() and fname.endswith((".html", ".md", ".css")): sync_index(wd)
+
                 except Exception as e: r = f"[System-Fehler: {fname}: {e}]"
         answer = answer.replace(m.group(0), r)
     return answer

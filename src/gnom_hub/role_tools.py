@@ -1,10 +1,10 @@
 """Role Tools — distribute_job (General)."""
-from .db import get_db, save_db
+from .db import get_all_agents
 def _llm(sys_prompt, user_prompt, max_tokens=None):
     from .router import ask_router
     return ask_router(user_prompt, sys_prompt)
 def distribute_job(job_text):
-    ags = get_db("agents")
+    ags = get_all_agents()
     gen = next((a for a in ags if a.get("role") == "general"), None)
     if not gen: gen = next((a for a in ags if a.get("name","").lower() == "generalag"), None)
     from .soul_initializer import get_soul

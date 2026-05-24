@@ -1,7 +1,4 @@
-from fastapi import APIRouter
-from datetime import datetime
-from .db import get_db, save_db
-from pydantic import BaseModel
+from fastapi import APIRouter; from pydantic import BaseModel; from .db import register_agent_in_db, set_agent_status
 router = APIRouter()
 class RegisterPayload(BaseModel):
     name: str
@@ -9,21 +6,11 @@ class RegisterPayload(BaseModel):
     description: str = ""
 @router.post("/api/agents/register")
 def register_agent(p: RegisterPayload):
-    agents = get_db("agents")
-    for a in agents:
-        if a.get("name") == p.name:
-            a["status"] = "online"; a["port"] = p.port; a["description"] = p.description or str(p.port)
-            a["last_seen"] = datetime.utcnow().isoformat() + "Z"
-            save_db("agents", agents); return a
-    import uuid
-    n = {"id": str(uuid.uuid4()), "name": p.name, "port": p.port, "description": p.description or str(p.port),
-         "status": "online", "created_at": datetime.utcnow().isoformat() + "Z", "last_seen": datetime.utcnow().isoformat() + "Z"}
-    save_db("agents", agents + [n]); return n
+    r = register_agent_in_db(p.name, p.port, p.description)
+    if not r: from fastapi import HTTPException; raise HTTPException(500, "Registration failed")
+    return r
 @router.post("/api/agents/{a_id}/heartbeat")
 def heartbeat(a_id: str):
-    agents = get_db("agents")
-    for a in agents:
-        if a.get("id") == a_id:
-            a["status"] = "online"; a["last_seen"] = datetime.utcnow().isoformat() + "Z"
-            save_db("agents", agents); return a
-    return {"error": "not found"}
+    r = set_agent_status(a_id, "online")
+    if not r: return {"error": "not found"}
+    return r

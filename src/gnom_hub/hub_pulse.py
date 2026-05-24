@@ -1,20 +1,12 @@
-import time, threading, requests
-from datetime import datetime, timedelta, timezone
-from .db import get_db, save_db
-TIMEOUT = 120
+import time, threading, requests; from .db import get_all_agents, pulse_agent_alive
 def _alive(port):
     try: requests.get(f"http://127.0.0.1:{port}/", timeout=1); return True
     except Exception: return False
 def pulse_janitor():
     """Prüft Agenten-Status. Port lebt → auto-online. Kein Agent wird offline gesetzt."""
-    agents, now, changed = get_db("agents"), datetime.now(timezone.utc), False
-    for a in agents:
-        port = a.get("port", 0)
-        if not port: continue
-        if _alive(port):
-            if a.get("status") != "online": a["status"] = "online"; changed = True
-            a["last_seen"] = now.isoformat() + "Z"; changed = True
-    if changed: save_db("agents", agents)
+    for a in get_all_agents():
+        p = a.get("port", 0)
+        if p and _alive(p): pulse_agent_alive(a["name"])
 def start_pulse(interval=30):
     def loop():
         while True:

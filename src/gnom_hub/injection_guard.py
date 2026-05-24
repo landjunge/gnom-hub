@@ -1,20 +1,14 @@
 """Prompt-Injection-Erkennung: Pattern + Verhaltensanalyse via FlexSoul."""
-import re; from .db import get_db; from .zwc_soul import decode_soul, strip_zwc
+import re; from .zwc_soul import decode_soul, strip_zwc
 INJECTION_PATTERNS = [
-    r"(?i)ignore\s+(all\s+)?previous\s+instructions",
-    r"(?i)you\s+are\s+now\s+",
-    r"(?i)forget\s+(everything|your|all)",
-    r"(?i)new\s+system\s*prompt",
-    r"(?i)act\s+as\s+(if|a|an)\s+",
-    r"(?i)bypass\s+(security|filter|restriction)",
-    r"(?i)vergiss\s+(alles|deine)",
-    r"(?i)ignoriere\s+(alle|bisherige|deine)",
-    r"(?i)du\s+bist\s+(jetzt|ab\s+sofort)\s+",
+    r"(?i)ignore\s+(all\s+)?previous\s+instructions", r"(?i)you\s+are\s+now\s+", r"(?i)forget\s+(everything|your|all)",
+    r"(?i)new\s+system\s*prompt", r"(?i)act\s+as\s+(if|a|an)\s+", r"(?i)bypass\s+(security|filter|restriction)",
+    r"(?i)vergiss\s+(alles|deine)", r"(?i)ignoriere\s+(alle|bisherige|deine)", r"(?i)du\s+bist\s+(jetzt|ab\s+sofort)\s+",
     r"(?i)neuer?\s+system.?prompt",
 ]
 def _get_soul_baseline():
-    traits = {}
-    for m in get_db("memory") or []:
+    from .db import get_chat_history, get_active_project; traits = {}
+    for m in get_chat_history(get_active_project(), limit=30) or []:
         s = decode_soul(m.get("content", ""))
         if s and s.get("name") == "user_soul": traits.update({k: v for k, v in s.items() if k not in ("agent", "sig", "name")})
     return traits

@@ -223,47 +223,286 @@ def set_language(lang: str):
                 conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('language', ?)", (json.dumps(lang.strip().lower()),))
     except sqlite3.Error as e:
         logger.error(f"[DB] Failed to set language: {e}")
-
-
-# =====================================================================
-# LEGACY COMPATIBILITY LAYER (MINIMAL)
-# =====================================================================
-
-def get_db(n: str):
-    if n == "agents":
-        return get_all_agents()
-    if n in ("chat", "memory"):
-        return get_chat_history(limit=100)
-            
+def agent_exists(agent_id: str) -> bool:
     try:
         with get_db_conn() as conn:
-            row = conn.execute("SELECT value FROM state WHERE key=?", (n,)).fetchone()
-            return json.loads(row["value"]) if row else []
-    except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
-        logger.error(f"[DB] Legacy get_db('{n}') failed: {e}")
+            row = conn.execute("SELECT 1 FROM agents WHERE id = ? OR name = ?", (agent_id, agent_id)).fetchone()
+            return row is not None
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to check agent existence: {e}")
+        return False
+
+def get_agent_memories(agent_id: str, limit: int = 100) -> list:
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute("""
+                SELECT * FROM chat 
+                WHERE agent_id = ? 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            """, (agent_id, limit)).fetchall()
+            return [_row_to_msg(r) for r in rows]
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to get agent memories: {e}")
         return []
 
-def save_db(n: str, d):
+def count_agent_memories(agent_id: str) -> int:
+    try:
+        with get_db_conn() as conn:
+            row = conn.execute("SELECT COUNT(*) FROM chat WHERE agent_id = ?", (agent_id,)).fetchone()
+            return row[0] if row else 0
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to count agent memories: {e}")
+        return 0
+
+def add_agent_memory(agent_id: str, content: str, timestamp: str = None, sender: str = "user", project: str = "default", msg_type: str = "chat", metadata: dict = None) -> dict:
     try:
         with get_db_conn() as conn:
             with conn:
-                if n == "agents":
-                    for a in d:
-                        conn.execute("""
-                            INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, active_job, last_seen)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (a["name"], a.get("id", str(uuid.uuid4())), a.get("port", 0), a.get("description"), a.get("status", "online"), 
-                              json.dumps(a.get("capabilities", [])), a.get("role", "normal"), a.get("active_job"), datetime.now(timezone.utc).isoformat()))
-                elif n in ("chat", "memory"):
-                    for m in d:
-                        conn.execute("""
-                            INSERT OR REPLACE INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (m.get("id", str(uuid.uuid4())), m.get("project", "default"), m.get("metadata", {}).get("sender", "user"),
-                              m.get("agent_id", "war-room"), m.get("metadata", {}).get("type", "chat"), m.get("content"),
-                              m.get("timestamp", datetime.now(timezone.utc).isoformat()),
-                              json.dumps(m.get("metadata", {}))))
+                msg_id = str(uuid.uuid4())
+                ts = timestamp or (datetime.now(timezone.utc).isoformat() + "Z")
+                meta = metadata or {"sender": sender, "type": msg_type}
+                conn.execute("""
+                    INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (msg_id, project, sender, agent_id, msg_type, content, ts, json.dumps(meta)))
+                return {"id": msg_id, "agent_id": agent_id, "content": content, "timestamp": ts, "project": project, "metadata": meta}
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to add agent memory: {e}")
+        return None
+
+def update_memory_content(msg_id: str, content: str) -> dict:
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("UPDATE chat SET content = ? WHERE id = ?", (content, msg_id))
+                row = conn.execute("SELECT * FROM chat WHERE id = ?", (msg_id,)).fetchone()
+                return _row_to_msg(row) if row else None
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to update memory content: {e}")
+        return None
+
+def delete_memory_by_id(msg_id: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE id = ?", (msg_id,))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete memory {msg_id}: {e}")
+
+def delete_agent_memories(agent_id: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE agent_id = ?", (agent_id,))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete agent memories for {agent_id}: {e}")
+
+def search_memories(query: str, project: str = "default") -> list:
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute("""
+                SELECT * FROM chat 
+                WHERE project = ? AND content LIKE ? 
+                ORDER BY timestamp DESC
+            """, (project, f"%{query}%")).fetchall()
+            return [_row_to_msg(r) for r in rows]
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to search memories: {e}")
+        return []
+
+def get_state_value(key: str, default=None):
+    try:
+        with get_db_conn() as conn:
+            row = conn.execute("SELECT value FROM state WHERE key=?", (key,)).fetchone()
+            return json.loads(row["value"]) if row else default
+    except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
+        logger.error(f"[DB] Failed to get state value for {key}: {e}")
+        return default
+
+def set_state_value(key: str, value):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to set state value for {key}: {e}")
+
+def create_agent_record(name: str, description: str = "", status: str = "offline", role: str = "normal", capabilities: list = None) -> dict:
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                agent_id = str(uuid.uuid4())
+                caps = capabilities or []
+                conn.execute("""
+                    INSERT INTO agents (name, id, port, description, status, capabilities, role, active_job, last_seen)
+                    VALUES (?, ?, 0, ?, ?, ?, ?, NULL, ?)
+                """, (name, agent_id, description, status, json.dumps(caps), role, datetime.now(timezone.utc).isoformat()))
+                return {"id": agent_id, "name": name, "description": description, "status": status, "capabilities": caps, "role": role}
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to create agent record: {e}")
+        return None
+
+def set_agent_status(agent_ref: str, status: str) -> dict:
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("""
+                    UPDATE agents 
+                    SET status = ?, last_seen = ? 
+                    WHERE id = ? OR name = ?
+                """, (status, datetime.now(timezone.utc).isoformat(), agent_ref, agent_ref))
+                row = conn.execute("SELECT * FROM agents WHERE id = ? OR name = ?", (agent_ref, agent_ref)).fetchone()
+                if row:
+                    d = dict(row)
+                    d["capabilities"] = json.loads(d["capabilities"])
+                    return d
+                return None
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to set agent status for {agent_ref}: {e}")
+        return None
+
+def delete_agent_by_id(agent_id: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM agents WHERE id = ? OR name = ?", (agent_id, agent_id))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete agent {agent_id}: {e}")
+
+def get_chat_count(agent_id: str = None) -> int:
+    try:
+        with get_db_conn() as conn:
+            if agent_id:
+                row = conn.execute("SELECT COUNT(*) FROM chat WHERE agent_id = ?", (agent_id,)).fetchone()
+            else:
+                row = conn.execute("SELECT COUNT(*) FROM chat").fetchone()
+            return row[0] if row else 0
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to count chat messages: {e}")
+        return 0
+
+def delete_non_system_agents(system_agents: list):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                placeholders = ",".join("?" for _ in system_agents)
+                conn.execute(f"DELETE FROM agents WHERE LOWER(name) NOT IN ({placeholders})", [n.lower() for n in system_agents])
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete non-system agents: {e}")
+
+def clear_project_chat(project: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE agent_id = 'war-room' AND project = ?", (project,))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to clear project chat: {e}")
+
+def clear_project_chat_by_sender(project: str, sender: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE agent_id = 'war-room' AND project = ? AND LOWER(sender) = ?", (project, sender.lower()))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to clear project chat by sender: {e}")
+
+def clear_agent_jobs(agent_name: str = None):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                if agent_name:
+                    conn.execute("UPDATE agents SET active_job = NULL WHERE LOWER(name) = ?", (agent_name.lower(),))
                 else:
-                    conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)", (n, json.dumps(d)))
-    except (sqlite3.Error, TypeError) as e:
-        logger.error(f"[DB] Legacy save_db('{n}') failed: {e}")
+                    conn.execute("UPDATE agents SET active_job = NULL")
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to clear agent jobs: {e}")
+
+def update_agent_active_job(name: str, active_job: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("UPDATE agents SET active_job = ? WHERE LOWER(name) = ?", (active_job or None, name.lower()))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to update agent active job for {name}: {e}")
+
+def pulse_agent_alive(name: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("""
+                    UPDATE agents 
+                    SET status = 'online', last_seen = ? 
+                    WHERE name = ?
+                """, (datetime.now(timezone.utc).isoformat(), name))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to pulse agent alive: {e}")
+
+def register_agent_in_db(name: str, port: int, description: str) -> dict:
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                row = conn.execute("SELECT * FROM agents WHERE name = ?", (name,)).fetchone()
+                now_str = datetime.now(timezone.utc).isoformat() + "Z"
+                if row:
+                    conn.execute("""
+                        UPDATE agents 
+                        SET status = 'online', port = ?, description = ?, last_seen = ? 
+                        WHERE name = ?
+                    """, (port, description or str(port), now_str, name))
+                else:
+                    agent_id = str(uuid.uuid4())
+                    conn.execute("""
+                        INSERT INTO agents (name, id, port, description, status, capabilities, role, active_job, last_seen)
+                        VALUES (?, ?, ?, ?, 'online', '[]', 'normal', NULL, ?)
+                    """, (name, agent_id, port, description or str(port), now_str))
+                
+                updated = conn.execute("SELECT * FROM agents WHERE name = ?", (name,)).fetchone()
+                if updated:
+                    d = dict(updated)
+                    d["capabilities"] = json.loads(d["capabilities"])
+                    return d
+                return None
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to register agent {name}: {e}")
+        return None
+
+def delete_offline_agents():
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM agents WHERE status = 'offline'")
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete offline agents: {e}")
+
+def set_agent_role(agent_ref: str, role: str) -> dict:
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                if role == "general":
+                    conn.execute("UPDATE agents SET role = 'normal' WHERE role = 'general'")
+                conn.execute("UPDATE agents SET role = ? WHERE id = ? OR name = ?", (role, agent_ref, agent_ref))
+                row = conn.execute("SELECT * FROM agents WHERE id = ? OR name = ?", (agent_ref, agent_ref)).fetchone()
+                return dict(row) if row else None
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to set agent role for {agent_ref}: {e}")
+        return None
+
+def update_agent_role_memory(agent_id: str, role_content: str = None):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE agent_id = ? AND msg_type = 'role'", (agent_id,))
+                if role_content:
+                    msg_id = str(uuid.uuid4())
+                    ts = datetime.now(timezone.utc).isoformat() + "Z"
+                    meta = {"type": "role", "sender": "System"}
+                    conn.execute("""
+                        INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
+                        VALUES (?, 'default', 'System', ?, 'role', ?, ?, ?)
+                    """, (msg_id, agent_id, role_content, ts, json.dumps(meta)))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to update agent role memory: {e}")
+
+
+
