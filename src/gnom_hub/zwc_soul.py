@@ -2,7 +2,6 @@ import json, base64
 Z, R = {'0': '\u200b', '1': '\u200c'}, {'\u200b': '0', '\u200c': '1'}
 def soul_to_bits(d: dict) -> str: return ''.join(format(ord(c), '08b') for c in base64.b64encode(json.dumps(d, separators=(',', ':')).encode()).decode())
 def bits_to_zwc(b: str) -> str: return ''.join(Z[bit] for bit in ''.join(bit * 3 for bit in b))
-def encode_soul(m: str, d: dict) -> str: return m + bits_to_zwc(soul_to_bits(d))
 def extract_zwc(t: str) -> str: return ''.join(R.get(c, '') for c in t if c in R)
 def strip_zwc(t: str) -> str: return ''.join(c for c in t if c not in R)
 def correct_ecc(zb: str) -> str:
@@ -18,3 +17,5 @@ def decode_soul(t: str):
     cb = correct_ecc(zb)
     try: return json.loads(base64.b64decode(''.join(chr(int(cb[i:i+8], 2)) for i in range(0, len(cb), 8))).decode())
     except: return None
+def add_agent_metadata(agent_name: str, message: str) -> str:
+    return message + bits_to_zwc(soul_to_bits({"agent": agent_name}))
