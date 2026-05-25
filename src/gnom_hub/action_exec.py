@@ -25,11 +25,13 @@ def handle_crawl(ans, ms, ag, perms):
     return ans
 def handle_showbox(ans, ms):
     from .json_sanitizer import _sanitize_json
+    from agents.securityAG import generate_signature
     for full, idx, raw in ms:
         try:
             d = _sanitize_json(raw.strip())
             if isinstance(d, list): d = {"slides": d}
             else: d.pop("sig", None)
+            d["sig"] = generate_signature("Gnom", json.dumps(d, separators=(',', ':'), sort_keys=True))
             ans = ans.replace(full, f"<SHOWBOX{':'+idx if idx else ''}>{json.dumps(d)}</SHOWBOX>")
         except Exception as e: ans = ans.replace(full, f"[Showbox-Fehler: {e}]")
     return ans
