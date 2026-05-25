@@ -3722,7 +3722,13 @@
           <div style="display:flex; gap: 20px; flex-wrap: wrap;">
             <div style="flex:1; min-width: 250px; background:var(--bg-card); padding:15px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:15px;">
               <div>
-                <h3 style="margin-bottom:5px;">API Keys</h3>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                  <h3 style="margin:0;">API Keys</h3>
+                  <label style="display:flex; align-items:center; gap:5px; font-size:0.75rem; color:var(--text-muted); cursor:pointer;">
+                    <input type="checkbox" id="toggle-show-keys" onchange="toggleKeysVisibility(this.checked)" style="width:12px; height:12px; accent-color:var(--primary);">
+                    <span>Keys anzeigen</span>
+                  </label>
+                </div>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Füge alle API-Keys ein (ein Key pro Zeile)</p>
                 <textarea id="llm-keys-input" rows="6" style="width:100%; margin-bottom:10px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:8px; border-radius:4px; font-size:0.85rem;" placeholder="Einfügen per Cmd+V&#10;- sk-... (OpenAI / DeepSeek / Mistral)&#10;- sk-ant-... (Anthropic)&#10;- AIzaSy... (Gemini)&#10;- sk-or-... (OpenRouter)"></textarea>
                 <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.85rem; padding:6px;">Save, Test & Assign</button>
@@ -3785,6 +3791,7 @@
     }
 
     let globalKeys = [];
+    window.showKeysFull = false;
     async function setSystemLanguage(lang) {
       try {
         await api('POST', '/admin/language', { language: lang });
@@ -3974,11 +3981,13 @@
       if (keysRes) {
         globalKeys = Object.keys(keysRes).length > 0 ? Object.values(keysRes) : [];
         renderKeyStatus(globalKeys);
-        if (globalKeys.length > 0 && globalKeys[0].key) {
+        if (globalKeys.length > 0) {
            document.getElementById('llm-keys-input').value = globalKeys.map(k => {
+             if (!k.key) return '';
              const keyName = k.provider ? k.provider.toUpperCase() + "_API_KEY=" : "";
-             return keyName + maskKey(k.key);
-           }).join('\n');
+             const displayKey = window.showKeysFull ? k.key : maskKey(k.key);
+             return keyName + displayKey;
+           }).filter(k => k).join('\n');
         }
       }
 
@@ -4035,6 +4044,19 @@
       return `${prefix}••••••••••••${suffix}`;
     }
 
+    window.toggleKeysVisibility = function(show) {
+      window.showKeysFull = show;
+      if (globalKeys.length > 0) {
+        document.getElementById('llm-keys-input').value = globalKeys.map(k => {
+          if (!k.key) return '';
+          const keyName = k.provider ? k.provider.toUpperCase() + "_API_KEY=" : "";
+          const displayKey = window.showKeysFull ? k.key : maskKey(k.key);
+          return keyName + displayKey;
+        }).filter(k => k).join('\n');
+      }
+      renderKeyStatus(globalKeys);
+    };
+
     function cleanKey(line) {
       let raw = line.trim();
       if (raw.startsWith("export ")) {
@@ -4084,6 +4106,8 @@
         let existing = null;
         if (isMasked) {
           existing = globalKeys.find(gk => maskKey(gk.key) === k);
+        } else {
+          existing = globalKeys.find(gk => gk.key === k);
         }
         
         if (existing) {
@@ -4119,7 +4143,7 @@
       let h = '';
       keys.forEach((k, idx) => {
         let mainColor = k.valid ? '#39ff14' : '#ff3333';
-        let keyObscured = k.key ? maskKey(k.key) : 'Unknown';
+        let keyObscured = (k.key && !window.showKeysFull) ? maskKey(k.key) : (k.key || 'Unknown');
         
         let capsHtml = '';
         const capConfig = [
