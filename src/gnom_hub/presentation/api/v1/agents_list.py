@@ -3,9 +3,9 @@ from fastapi import APIRouter
 from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository
 from gnom_hub.core.config import TOKENS_FILE
 
-router = APIRouter(prefix="/api/agents", tags=["agents"])
+router = APIRouter(tags=["agents"])
 
-@router.get("")
+@router.get("/api/agents")
 def list_agents():
     repo = SQLiteAgentRepository()
     ags = [dict(a.__dict__) for a in repo.get_all()]
@@ -13,15 +13,15 @@ def list_agents():
         if a.get("active_job"): a["status"] = "busy"
     return ags
 
-@router.get("/search")
+@router.get("/api/agents/search")
 def search_agents(q: str):
     return [a for a in list_agents() if q.lower() in str(a).lower()]
 
-@router.get("/{a_id}")
+@router.get("/api/agents/{a_id}")
 def get_agent(a_id: str):
     return next((a for a in list_agents() if a.get("id") == a_id or a.get("name") == a_id), {})
 
-@router.get("/stats/system")
+@router.get("/api/stats")
 def get_system_stats():
     from gnom_hub.soul_initializer import SOULS
     from gnom_hub.infrastructure.database.chat_repo import SQLiteChatRepository
