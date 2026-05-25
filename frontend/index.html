@@ -3738,7 +3738,10 @@
               </div>
             </div>
             <div style="flex:2; min-width: 400px; background:var(--bg-card); padding:20px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
-              <h3>Agent Assignment</h3>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="margin:0;">Agent Assignment</h3>
+                <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.75rem; padding:4px 8px; background:#00E5FF; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 5px rgba(0,229,255,0.3);">Auto-Route All</button>
+              </div>
               <div id="llm-agents-list" style="margin-bottom:20px; max-height:400px; overflow-y:auto; padding-right:10px;">Loading Agents...</div>
               <div style="display:flex; gap:10px;">
                 <button class="btn-primary" onclick="saveAgentLLMs()">Save Agent Settings</button>
@@ -4057,6 +4060,24 @@
       });
       document.getElementById('llm-keys-status').innerHTML = h || '<div style="color:var(--text-muted)">Keine Keys hinterlegt.</div>';
     }
+
+    window.autoRouteAllAgents = function() {
+      const agents = window.llmAgentsListGlobal || [];
+      agents.forEach(a => {
+        const name = a.name.toLowerCase();
+        const pSelect = document.getElementById(`prov-${a.name}`);
+        if (pSelect) {
+          pSelect.value = 'auto';
+          window.updateModels(a.name);
+          const mSelect = document.getElementById(`mod-${a.name}`);
+          if (mSelect) {
+            const isCoderOrSec = name.includes('coder') || name.includes('security') || name.includes('watchdog');
+            mSelect.value = isCoderOrSec ? 'stage_4' : 'stage_3';
+            window.updateAgentCaps(a.name);
+          }
+        }
+      });
+    };
 
     async function saveAgentLLMs() {
       const agentsRes = await api('GET', '/agents');
