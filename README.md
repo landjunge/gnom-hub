@@ -236,16 +236,17 @@ Das Preset-System (zur Fokus-Ausrichtung des Schwarms) ist strikt auf der Anwend
 ### Was voll funktionsfähig ist:
 * [x] **Prozessmanagement**: Zuverlässiger Start, Stopp und Statusabgleich der 8 Hintergrund-Agenten via `psutil` und PID-Dateien unter `~/.gnom-hub/run/`.
 * [x] **Datenkonsistenz**: Transaktionssichere Speicherung aller Chats, Agenten-Zustände und Fakten in SQLite (WAL-Modus).
-* [x] **Preset-Steuerung**: Dynamische Anpassung von Prompts und LLM-Modellen je nach Preset ohne Server-Neustart.
-* [x] **Gedächtnis (SoulAG)**: Asynchrones Mitlernen von Benutzereingaben und tokenbasiertes Jaccard-Retrieval.
+* [x] **Preset-Steuerung**: Dynamische Anpassung von Prompts und LLM-Modellen je nach Preset ohne Server-Neustart (inklusive Unterstützung für Custom Presets).
+* [x] **Gedächtnis (SoulAG)**: Asynchrones Mitlernen von Benutzereingaben sowie semantische Vektorsuche und TF-IDF-Fallback (LRU- & SQLite-Caching).
 * [x] **Ausführungsschutz & Doppel-Genehmigung**: Validierung von Dateipfaden und Befehlen über WatchdogAG und SecurityAG mit Eskalations-Routing.
+* [x] **Zero-Trust-Kapabilitäten**: Temporäres Freigabesystem (Leases) mit TTL-Cache für wiederholte Dateizugriffe, Befehle und Browser-Aktionen.
+* [x] **Browser-Automation**: Containerisierte Playwright-Schnittstelle im Backend, geschützt über das Zero-Trust-Capability-System (erfordert Docker).
 * [x] **Observability**: Integriertes Agent Health Dashboard zur Echtzeit-Statistikenüberwachung aller 8 Agenten.
 * [x] **Datenbereinigung**: Tägliche Cleanup-Routinen für veraltete Log- und Faktendaten.
 
 ### Was in Arbeit / geplant ist:
 * [ ] **MCP-Erweiterung**: Dynamische Registrierung und Anbindung externer Model Context Protocol (MCP) Server.
 * [ ] **Erweiterte Sandbox**: Derzeit sind Dateizugriffe außerhalb des Workspace selbst für den `godmode` des CoderAG stark eingeschränkt.
-* [ ] **Browser-Automation**: Die Playwright-Schnittstelle im Backend ist vorbereitet, im Standard-Setup jedoch deaktiviert.
 
 ---
 
