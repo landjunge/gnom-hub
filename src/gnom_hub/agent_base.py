@@ -23,7 +23,7 @@ class BaseAgent:
             for m in new:
                 try:
                     from .soul import soul_instance
-                    sys = soul_instance.inject_context(self.sys, m["content"])
+                    sys = soul_instance.inject_context(self.sys, m["content"], self.n)
                     r = ask_router(m["content"], sys, agent_name=self.n)
                     if r and not r.startswith("[ROUTER-FEHLER]"): self._req("post", "/api/chat", {"content": r, "sender": self.n})
                 except Exception as e: print(f"[{self.n}] Error: {e}")

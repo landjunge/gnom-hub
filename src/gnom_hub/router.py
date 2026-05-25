@@ -9,8 +9,8 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     n = (agent_name or "").lower()
     active_preset = (get_state_value("active_preset") or "Web Development").strip('"\'')
     
-    from .preset_service import get_preset_prompt
-    preset_prompt = get_preset_prompt(active_preset, n)
+    from .soul import soul_instance
+    preset_prompt = soul_instance.get_preset_prompt(active_preset, n)
     if preset_prompt: sys = preset_prompt + "\n\n" + sys
     msgs = [{"role": "system", "content": sys}, {"role": "user", "content": p}]
     kdb, adb = get_state_value("llm_keys") or {}, get_state_value("llm_agents") or {}
