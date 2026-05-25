@@ -512,7 +512,18 @@ def update_agent_role_memory(agent_id: str, role_content: str = None):
 # SOUL AG
 # =====================================================================
 
-def save_soul_fact(key: str, value: str):
+def save_soul_fact(key: str, value: str, agent: str = "System"):
+    ag = (agent or "System").strip()
+    limits = {
+        "active_preset": ["GeneralAG", "SoulAG", "System"],
+        "approved_system_paths": ["SecurityAG", "WatchdogAG", "System"],
+        "approved_security_writes": ["SecurityAG", "WatchdogAG", "System"],
+        "approved_security_commands": ["SecurityAG", "WatchdogAG", "System"]
+    }
+    for rk, allowed in limits.items():
+        if key == rk and ag not in allowed:
+            add_chat_message("default", "SecurityAG", "securityag", "chat", f"@user @WatchdogAG: Warnung! {ag} hat versucht, den Schlüssel '{key}' zu schreiben. Blockiert.")
+            raise PermissionError(f"Agent {ag} is not allowed to write key '{key}'")
     try:
         with get_db_conn() as conn:
             with conn:

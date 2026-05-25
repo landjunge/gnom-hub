@@ -25,7 +25,7 @@ class SoulAG:
                 for f in json.loads(res[s:e+1]):
                     k, v = f.get("key", ""), f.get("value", "")
                     conf = self._validate(k, v)
-                    if conf >= 2: save_soul_fact(k, v)
+                    if conf >= 2: save_soul_fact(k, v, agent="SoulAG")
                     elif conf == 1: add_chat_message("default", "SoulAG", "soulag", "chat", f"@user @WatchdogAG: Unsicherheit bei Fact '{k}': '{v}'. Bitte prüfen.")
                     else: print(f"[SoulAG] Rejected invalid fact: {k}={v}")
         except Exception: pass
