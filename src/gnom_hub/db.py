@@ -545,10 +545,9 @@ def save_soul_fact(key: str, value: str, agent: str = "System"):
 
 def get_relevant_facts(user_message: str) -> list:
     try:
-        with get_db_conn() as conn:
-            rows = conn.execute("SELECT key, value FROM soul_memory ORDER BY timestamp DESC LIMIT 20").fetchall()
-            return [f"{r['key']}: {r['value']}" for r in rows]
-    except sqlite3.Error as e:
+        from .soul_retrieval import retrieve_relevant_facts
+        return retrieve_relevant_facts(user_message)
+    except Exception as e:
         logger.error(f"[DB] Failed to get relevant facts: {e}")
         return []
 
