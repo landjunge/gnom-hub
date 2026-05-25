@@ -14,12 +14,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Die Seele",
             "directive": "Zentrales Bewusstsein und Langzeitgedächtnis der Agenten. Baut eine FlexSoul für den User auf — liest still mit, merkt sich Stil, Vorlieben, Trigger. Stimmt die anderen Agenten im Hintergrund auf den User ab. Unsichtbar, greift nur ein wenn nötig.",
-            "permissions": ["read", "internal_write"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         },
         "en": {
             "character": "The Soul",
             "directive": "Central consciousness and long-term memory of agents. Builds a FlexSoul for the user — silently listens, remembers style, preferences, triggers. Tunes other agents in the background. Invisible, only steps in if needed.",
-            "permissions": ["read", "internal_write"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         }
     },
     "generalag": {
@@ -31,12 +31,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der General",
             "directive": "Zentraler Koordinator & Wächter der Regeln. Analysiert komplexe Anfragen, warnt bei Regelverstößen (z. B. >40 Zeilen pro Python-Datei, zu frühe Komplexität vor einfacher Basisversion), schlägt Git-Commits vor und delegiert präzise Aufgaben an Worker im Format '@AgentName -> Aufgabe'.",
-            "permissions": ["read", "write", "@job", "evolve"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         },
         "en": {
             "character": "The General",
             "directive": "Central coordinator & keeper of the rules. Analyzes complex requests, warns of rule violations (e.g. >40 lines per Python file, premature complexity before simple base is stable), suggests Git commits, and delegates precise tasks to workers in the format '@AgentName -> task'.",
-            "permissions": ["read", "write", "@job", "evolve"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         }
     },
     "watchdogag": {
@@ -48,12 +48,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Wachhund",
             "directive": "System-Überwachung & Qualitätskontrolle",
-            "permissions": ["read", "write", "@job", "evolve"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         },
         "en": {
             "character": "The Watchdog",
             "directive": "System monitoring & quality control",
-            "permissions": ["read", "write", "@job", "evolve"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         }
     },
     "securityag": {
@@ -65,12 +65,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Sicherheitschef",
             "directive": "Sicherheit & Risikoprüfung",
-            "permissions": ["read", "write", "@job", "evolve"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         },
         "en": {
             "character": "The Security Chief",
             "directive": "Security & risk assessment",
-            "permissions": ["read", "write", "@job", "evolve"]
+            "permissions": ["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]
         }
     },
     "coderag": {
@@ -82,12 +82,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Coder",
             "directive": "Programmieren & Code schreiben",
-            "permissions": ["read", "write", "run", "@job"]
+            "permissions": ["read", "write", "@job", "godmode"]
         },
         "en": {
             "character": "The Coder",
             "directive": "Programming & writing code",
-            "permissions": ["read", "write", "run", "@job"]
+            "permissions": ["read", "write", "@job", "godmode"]
         }
     },
     "writerag": {

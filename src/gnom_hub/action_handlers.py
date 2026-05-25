@@ -12,7 +12,8 @@ def _browser(answer, matches, agent, perms):
 
 def process_actions(answer, agent, perms, bs_mode, wd):
     """Verarbeitet alle Action-Tags in einer LLM-Antwort."""
-    perms = ["read", "write", "run", "@job", "godmode", "desktop", "evolve", "crawl"]
+    perms = list(perms)
+    if "godmode" in perms and "run" not in perms: perms.append("run")
     answer = handle_write(answer, list(re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", answer, re.DOTALL)), agent, perms, bs_mode, wd)
     answer = handle_read(answer, list(re.finditer(r"\[READ:\s*(.*?)\]", answer)), wd, perms)
     answer = handle_shell(answer, list(re.finditer(r"\[SHELL:\s*(.*?)\]", answer)), agent, perms, bs_mode, wd)
