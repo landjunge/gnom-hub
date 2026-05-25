@@ -16,11 +16,11 @@ def resolve_stage(stage, kdb, agent_name):
         if is_valid("deepseek", kdb): return "deepseek", "deepseek-chat"
         if is_valid("gemini", kdb): return "gemini", "gemini-1.5-flash"
         if is_valid("openrouter", kdb):
-            return "openrouter", "qwen/qwen3-coder:free" if role == "coder" else "deepseek/deepseek-v4-flash:free"
+            return "openrouter", "qwen/qwen3-coder:free" if role == "coder" else "meta-llama/llama-3.3-70b-instruct:free"
         if is_valid("openai", kdb): return "openai", "gpt-4o-mini"
         if is_valid("mistral", kdb): return "mistral", "mistral-large-latest"
         stage = "stage_2"
     if stage == "stage_2":
         if is_valid("openrouter", kdb):
-            return "openrouter", "qwen/qwen3-coder:free" if role == "coder" else "deepseek/deepseek-v4-flash:free"
+            return "openrouter", "qwen/qwen3-coder:free" if role == "coder" else "meta-llama/llama-3.3-70b-instruct:free"
     return "lokal", "llama3"
