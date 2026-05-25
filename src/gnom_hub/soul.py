@@ -26,13 +26,56 @@ class SoulAG:
 soul_instance = SoulAG()
 def _save_rules(res: str, prefix=""):
     s, e = res.find("["), res.rfind("]")
-    if s != -1 and e != -1: [(save_soul_fact(f"evolution_{f['agent']}_{uuid.uuid4().hex[:6]}", prefix + f["rule"], agent="GeneralAG"), add_chat_message("default", "GeneralAG", "generalag", "chat", f"@user @SoulAG: Regel für {f['agent']} gelernt: '{f['rule']}'")) for f in json.loads(res[s:e+1]) if f.get("agent") and f.get("rule")]
+    if s != -1 and e != -1:
+        try:
+            rules = json.loads(res[s:e+1])
+            for f in rules:
+                if f.get("agent") and f.get("rule"):
+                    agent_name = f["agent"]
+                    rule_text = prefix + f["rule"]
+                    save_soul_fact(f"evolution_{agent_name}_{uuid.uuid4().hex[:6]}", rule_text, agent="GeneralAG")
+                    add_chat_message("default", "GeneralAG", "generalag", "chat", f"@user @SoulAG: Regel für {agent_name} gelernt: '{f['rule']}'")
+                    try:
+                        from gnom_hub.evolution_v2 import create_version
+                        create_version(agent_name, rule_text)
+                    except Exception as ex:
+                        import logging
+                        logging.getLogger("db").error(f"[Soul] Failed to create prompt version for {agent_name}: {ex}")
+        except Exception as ex:
+            import logging
+            logging.getLogger("db").error(f"[Soul] Failed to parse and save rules: {ex}")
+
 def run_evolution(task: str, hist: str):
     try: _save_rules(ask_router(f"Analysiere '{task}' und den Verlauf:\n{hist}\nSchlage Verbesserungen vor. Antworte NUR im JSON-Format: [{{\"agent\": \"AgentName\", \"rule\": \"Regelinhalt\"}}]", sys="Du bist Optimierer.", agent_name="GeneralAG"))
     except Exception: pass
+
 def handle_user_feedback(vote: str, comment: str):
     save_soul_fact(f"feedback_{uuid.uuid4().hex[:6]}", f"Vote: {vote} | {comment}", agent="User")
     add_chat_message("default", "System", "system", "chat", f"@user Feedback: {vote} | {comment}")
+    
+    try:
+        from gnom_hub.evolution_v2 import update_version_score
+        from gnom_hub.db import get_chat_history
+        
+        active_agents = set()
+        history = get_chat_history(limit=40)
+        for msg in history:
+            sender = msg.get("sender")
+            if sender and sender.lower() not in ["user", "system", "generalag", "soulag", "watchdogag", "securityag"]:
+                from gnom_hub.agent_definitions import AGENT_DEFINITIONS
+                for ag_key, ag_def in AGENT_DEFINITIONS.items():
+                    if ag_def["name"].lower() == sender.lower():
+                        active_agents.add(ag_def["name"])
+        
+        if not active_agents:
+            active_agents = {"CoderAG", "WriterAG", "ResearcherAG", "EditorAG"}
+            
+        for agent in active_agents:
+            update_version_score(agent, vote)
+    except Exception as ex:
+        import logging
+        logging.getLogger("db").error(f"[Soul] Failed to update version scores: {ex}")
+
     if comment.strip():
         try: _save_rules(ask_router(f"User-Feedback: '{comment}'. Schlage Verbesserungen vor. Antworte NUR im JSON-Format: [{{\"agent\": \"AgentName\", \"rule\": \"Regelinhalt\"}}]", sys="Du bist Optimierer.", agent_name="GeneralAG"), "User-Feedback: ")
         except Exception: pass

@@ -88,6 +88,8 @@ def init_db():
                         key TEXT NOT NULL,
                         value TEXT NOT NULL,
                         timestamp TEXT NOT NULL,
+                        priority TEXT DEFAULT 'medium',
+                        agent TEXT DEFAULT 'System',
                         UNIQUE(key)
                     );
                     CREATE TABLE IF NOT EXISTS audit_log (
@@ -99,9 +101,28 @@ def init_db():
                         trace_id TEXT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
+                    CREATE TABLE IF NOT EXISTS prompt_versions (
+                        id TEXT PRIMARY KEY,
+                        agent TEXT NOT NULL,
+                        base_prompt TEXT NOT NULL,
+                        modifications TEXT NOT NULL,
+                        performance_score REAL DEFAULT 1.0,
+                        created_at TEXT NOT NULL,
+                        feedback_count INTEGER DEFAULT 0,
+                        is_active INTEGER DEFAULT 0,
+                        parent_id TEXT DEFAULT NULL
+                    );
                     CREATE INDEX IF NOT EXISTS idx_agent_event ON audit_log(agent, event_type);
                     CREATE INDEX IF NOT EXISTS idx_timestamp ON audit_log(timestamp DESC);
                 """)
+                try:
+                    conn.execute("ALTER TABLE soul_memory ADD COLUMN priority TEXT DEFAULT 'medium'")
+                except sqlite3.OperationalError:
+                    pass
+                try:
+                    conn.execute("ALTER TABLE soul_memory ADD COLUMN agent TEXT DEFAULT 'System'")
+                except sqlite3.OperationalError:
+                    pass
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('active_project', '\"default\"')")
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('language', '\"en\"')")
                 
@@ -542,6 +563,18 @@ def save_soul_fact(key: str, value: str, agent: str = "System"):
                              (key, value, datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")))
     except sqlite3.Error as e:
         logger.error(f"[DB] Failed to save soul fact: {e}")
+
+def add_to_soul_memory(fact: str, priority: str = "medium", agent: str = "System"):
+    key = f"fact_{agent.lower()}_{uuid.uuid4().hex[:8]}"
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO soul_memory (key, value, timestamp, priority, agent) VALUES (?, ?, ?, ?, ?)",
+                    (key, fact, datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), priority, agent)
+                )
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to add to soul memory: {e}")
 
 def get_relevant_facts(user_message: str) -> list:
     try:

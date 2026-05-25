@@ -88,6 +88,14 @@ Das System wurde in einem strukturierten Prozess um folgende Funktionen erweiter
 *   **Dashboard Feedback-Panel**: Interaktive Buttons (Daumen hoch/runter) und ein Kommentarfeld im Bento-Grid ermöglichen die direkte Eingabe von Feedback.
 *   **Feedback-basiertes Lernen**: SoulAG speichert das Feedback in der Datenbank, lässt es von GeneralAG analysieren, leitet daraus neue Verhaltensregeln ab und aktualisiert die Worker-Prompts dynamisch.
 
+### ⚡ Phase 14: Advanced Swarm Execution & Top 5 Integration Features
+*   **Prompt Version Manager**: System zur vollautomatischen Versionierung von System-Prompts bei Evolution-Iterationen inklusive Score-Tracking und automatischem Rollback auf die Vorgängerversion bei Leistungsdegradation.
+*   **Semantic Memory Retriever**: Intelligentes Relevanz-Retrieval per lokaler TF-IDF Kosinus-Ähnlichkeit aus dem `soul_memory` (top_k=8) mit nahtlosem Fallback auf die neuesten Fakten und regelbasiertem Pruning alter Einträge.
+*   **Explainable Output**: Erklärbarer Output-Wrapper mit strukturierter Begründungskette (Reasoning Chain), Zuversichts-Index (Confidence Score), Alternativen, genutzten Quellen aus dem Gedächtnis und genauer Zeiterfassung.
+*   **Token Budget Manager**: Echtzeit-Budgetüberwachung mit automatischer Preisschätzung vor teuren LLM-Aufrufen, täglichen Limits und Warnmeldungen im Dashboard/Chat bei Erreichen von 80% des Budgets.
+*   **Graceful Fallback & Degradation**: Robuste Ausfallsicherung durch automatisches Routing bei blockierten oder fehlerhaften Agenten (z. B. Fallback von `CoderAG` auf `GeneralAG`), dokumentiert in einem persistenten Ausfall-Log.
+*   **Strikte 40-Zeilen-Kompatibilität**: Alle 5 neuen Integrationsmanager wurden modularisiert und in Hilfsdateien aufgeteilt, um die radikale 40-Zeilen-Regel im Backend zu 100% einzuhalten.
+
 ---
 
 

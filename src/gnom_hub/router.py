@@ -11,9 +11,14 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
         if prs := get_preset_prompt(active_preset, n): sys = prs + "\n\n" + sys
     if agent_name:
         try:
-            with get_db_conn() as conn:
-                r = [row["value"] for row in conn.execute("SELECT value FROM soul_memory WHERE key LIKE ?", (f"evolution_{agent_name}_%",)).fetchall()]
-                if r: sys += "\n\n=== SELBSTVERBESSERTE REGELN ===\n" + "\n".join(f"- {x}" for x in r)
+            from gnom_hub.evolution_v2 import get_active_version
+            active_version = get_active_version(agent_name)
+            if active_version:
+                r = active_version.modifications
+            else:
+                with get_db_conn() as conn:
+                    r = [row["value"] for row in conn.execute("SELECT value FROM soul_memory WHERE key LIKE ?", (f"evolution_{agent_name}_%",)).fetchall()]
+            if r: sys += "\n\n=== SELBSTVERBESSERTE REGELN ===\n" + "\n".join(f"- {x}" for x in r)
         except Exception: pass
     msgs = [{"role": "system", "content": sys}, {"role": "user", "content": p}]
     kdb, adb = get_state_value("llm_keys") or {}, get_state_value("llm_agents") or {}
