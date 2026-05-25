@@ -16,6 +16,31 @@ Jedes Backend-Modul unterliegt der strengen **40-Zeilen-Regel** (unter `src/gnom
 
 ---
 
+## ✅ Abgeschlossene Phasen (Härtungs-Milestones)
+
+Das System wurde in einem strukturierten Prozess um folgende Funktionen erweitert:
+
+### 🛡️ Phase 1: Sicherheit & Gatekeeper
+*   **Doppelte Genehmigung**: Jede Dateiänderung und Befehlsausführung durch Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) erfordert ein explizites `APPROVED` von `WatchdogAG` (Strikte Einhaltung der 40-Zeilen-Regel & Clean Architecture) **und** `SecurityAG` (Schadcode- & Musterscan).
+*   **Absoluter Systemdateien-Schutz**: Systemkritische Dateien (`index.html`, `run.sh`, `.env`, `src/gnom_hub/*`, `config/*` etc.) sind für Worker-Agenten **vollkommen tabu** (Zugriffsschutz greift direkt im Pfad-Validator; kein Bypass für Worker).
+*   **Eskalationsrouting bei Unsicherheit**: Ist die LLM-Prüfung unentschlossen, wird eine Eskalation an `@user @SoulAG` im Chat ausgelöst. Freigaben können manuell durch das Eintragen in die Datenbank (`approved_security_writes` / `approved_security_commands`) autorisiert werden.
+
+### 📊 Phase 2: Observability & Agent Health Dashboard
+*   **Strukturiertes JSON-Logging & DB-Audit-Trail**: Alle Systemevents und LLM-Aufrufe (mit Latenzen, Tokenverbrauch, Kosten) werden strukturiert als JSON protokolliert und in einer indexierten `audit_log` Tabelle abgelegt.
+*   **Agent Health API**: Der Endpunkt `/api/metrics` stellt Echtzeit-Statistiken bereit, welche die In-Memory-Metriken mit den Datenbank-Heartbeats (`last_seen`) aller 8 Agenten zusammenführen.
+*   **Status-Dashboard**: Ein im Header verlinktes, glassmorphes Bento-Grid-Dashboard visualisiert farbcodiert den Status aller 8 Agenten (Grün = Alive/Online, Gelb = Warning/Hohe Fehlerrate/Heartbeat-Verzug, Rot = Dead/Offline) samt Latenzen, Erfolgsraten und Anfragen-Zähler. Automatisches Polling stoppt selbsttätig beim Verlassen der Ansicht.
+
+### 🧠 Phase 3: SoulAG Memory Upgrade (Retrieval)
+*   **Tokenbasiertes Jaccard-Retrieval**: Das statische Limit der letzten 20 Fakten wurde durch ein intelligentes Such- und Relevanz-Retrieval-System (`soul_retrieval.py`) ersetzt.
+*   **Relevanzgewichtung**: Treffer in Faktenschlüsseln (Keys) werden doppelt so hoch gewichtet wie Treffer im Inhalt (Value), um präzise Kontextinjektionen zu ermöglichen.
+*   **Automatischer Fallback**: Bieten Suchanfragen keinerlei Keyword-Überlappung (Score = 0), fällt das System nahtlos auf die neuesten Fakten zurück, um kontinuierlichen Kontext zu gewährleisten.
+
+### 🔄 Phase 4: Error-Recovery & DB-Cleanup
+*   **API-Failover & Key-Rotation**: Bei Ausfällen von Remote-LLMs rotieren die Provider-Keys oder der Router fällt transparent auf lokale/alternative Modelle (z.B. Offline-Llama) zurück.
+*   **Automatisiertes DB-Cleanup**: Die Funktion `cleanup_old_data` löscht abgelaufene Fakten (älter als 30 Tage) und alte Chat-Nachrichten (älter als 7 Tage). Kritische Konfigurations-Chats (`role`) sowie geschützte Gedächtnisschlüssel (wie `active_preset` oder manuelle Sicherheitsfreigaben) bleiben dauerhaft erhalten.
+
+---
+
 ## 🏗️ Architektur
 
 ```mermaid
@@ -81,25 +106,8 @@ Das Preset-System erlaubt das Umschalten des gesamten Schwarms auf ein bestimmte
    ```json
    [{"key": "fact_key", "value": "fact_value"}]
    ```
-3. **Relationale Persistenz**: In [db.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/db.py) werden diese Fakten in der Tabelle `soul_memory` gespeichert:
-   ```sql
-   CREATE TABLE IF NOT EXISTS soul_memory (
-       id INTEGER PRIMARY KEY AUTOINCREMENT,
-       key TEXT NOT NULL,
-       value TEXT NOT NULL,
-       timestamp TEXT NOT NULL,
-       UNIQUE(key)
-   );
-   ```
-   Dank `UNIQUE(key)` überschreibt ein neuerer Fakt mit demselben Schlüssel den alten Wert atomar (`INSERT OR REPLACE`).
-4. **Kontext-Injektion**: Vor jeder Anfrage an einen Worker-Agenten ruft der Router die bis zu 20 neuesten Einträge aus `soul_memory` ab und hängt sie strukturiert an das System-Prompt an:
-   ```
-   === RELEVANTE INFORMATIONEN ===
-   - user_name: Max Mustermann
-   - prefer_language: German
-   - active_preset: Web Development
-   ```
-   Dadurch wissen alle Worker-Agenten sofort über den aktuellen Kontext Bescheid, ohne dass dieser manuell im Chat wiederholt werden muss.
+3. **Relationale Persistenz**: In [db.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/db.py) werden diese Fakten in der Tabelle `soul_memory` gespeichert. Dank `UNIQUE(key)` überschreibt ein neuerer Fakt mit demselben Schlüssel den alten Wert atomar (`INSERT OR REPLACE`).
+4. **Kontext-Injektion**: Vor jeder Anfrage an einen Worker-Agenten ruft der Router die relevantesten Einträge aus `soul_memory` über ein tokenbasiertes Jaccard-Retrieval-System ab und hängt sie strukturiert an das System-Prompt an.
 5. **Preset-Interaktionen**: Auch Preset-Wechsel werden über `save_soul_fact("active_preset", preset)` als Fakt in `soul_memory` abgelegt, sodass nachfolgende Worker-Agenten über den Kontext-Injektor den aktuellen System-Fokus mitgeteilt bekommen.
 
 ---
@@ -128,7 +136,7 @@ Alle von Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) ange
 
 #### 1. WatchdogAG (Pfad- und Integritätsschutz)
 Der Watchdog schützt den Systemkern vor unbefugten Dateizugriffen und Manipulationen:
-* **Absoluter Systemdateien-Schutz**: Systemkritische Dateien (`index.html`, `run.sh`, `.env`) und Verzeichnisse (`src/gnom_hub/`, `config/`, `scripts/`) sind für Worker-Agenten **vollkommen tabu**. Jeglicher Lese-, Schreib- oder Ausführungsversuch auf diese Pfade wird sofort unterbunden.
+* **Absoluter Systemdateien-Schutz**: Systemkritische Dateien (`index.html`, `run.sh`, `.env`) und Verzeichnisse (`src/gnom_hub/`, `config/`, `scripts/`) sind für Worker-Agenten **vollkommen tabu**. Jeglicher Lese-, Schreib- oder Ausführungsversuch auf diese Pfade wird sofort unterbunden. Ein Zugriffsbypass über `approved_system_paths` existiert für Worker nicht.
 * **Pfad-Validierung & Sandboxing**: Alle Dateipfade werden über `is_worker_blocked` in [path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/path_validator.py) normalisiert und in absolute Pfade aufgelöst (`os.path.realpath`). Versuche von Directory-Traversal-Attacken (z. B. mit `../`) werden im Keim erstickt. Jeder Pfad muss zwingend innerhalb des dafür vorgesehenen Workspace-Verzeichnisses (`WORKSPACE_DIR`) liegen.
 
 #### 2. SecurityAG (Code- und Befehlsanalyse)
@@ -151,8 +159,8 @@ Obwohl der CoderAG diese weitreichenden Privilegien besitzt, wird er **lückenlo
 Wenn eine Sicherheitsprüfung anschlägt oder ein Worker unbefugt auf geschützte Pfade zugreifen will:
 1. **Sofortige Blockade**: Die Ausführung wird gestoppt, das angeforderte Tag im Antworttext wird durch eine Sicherheitsmeldung ersetzt.
 2. **Chat-Eskalation**: Es wird ein System-Eintrag im Chat erzeugt, der den Operator (`@user`) und das übergeordnete Schwarmgedächtnis (`@SoulAG`) namentlich taggt und über den genauen Pfad bzw. Befehlsverstoß informiert.
-3. **Manuelle Freigabe**: Eine Ausführung blockierter Ressourcen ist ausschließlich über manuelle Einträge in der SQLite-Datenbank (Tabelle `state`) durch den Administrator möglich:
-   * `approved_system_paths`: Whitelist für geschützte Pfade.
+3. **Manuelle Freigabe**: Eine Ausführung blockierter Ressourcen ist ausschließlich über manuelle Einträge in der SQLite-Datenbank durch den Administrator (User/SoulAG) möglich:
+   * `approved_system_paths`: Whitelist für geschützte Pfade (nur für administrative Rollen).
    * `approved_security_writes`: Whitelist für geprüfte Dateiinhalte.
    * `approved_security_commands`: Whitelist für autorisierte Terminal-Befehle.
 
@@ -165,18 +173,19 @@ Das Preset-System (zur Fokus-Ausrichtung des Schwarms) ist strikt auf der Anwend
 
 ---
 
-
 ## 🚦 Entwicklungsstand (Ehrlich & Konkret)
 
 ### Was voll funktionsfähig ist:
 * [x] **Prozessmanagement**: Zuverlässiger Start, Stopp und Statusabgleich der 8 Hintergrund-Agenten via `psutil` und PID-Dateien unter `~/.gnom-hub/run/`.
 * [x] **Datenkonsistenz**: Transaktionssichere Speicherung aller Chats, Agenten-Zustände und Fakten in SQLite (WAL-Modus).
 * [x] **Preset-Steuerung**: Dynamische Anpassung von Prompts und LLM-Modellen je nach Preset ohne Server-Neustart.
-* [x] **Gedächtnis (SoulAG)**: Asynchrones Mitlernen von Benutzereingaben und automatische Kontext-Injektion.
-* [x] **Ausführungsschutz**: Validierung von Dateipfaden auf den aktiven Workspace.
+* [x] **Gedächtnis (SoulAG)**: Asynchrones Mitlernen von Benutzereingaben und tokenbasiertes Jaccard-Retrieval.
+* [x] **Ausführungsschutz & Doppel-Genehmigung**: Validierung von Dateipfaden und Befehlen über WatchdogAG und SecurityAG mit Eskalations-Routing.
+* [x] **Observability**: Integriertes Agent Health Dashboard zur Echtzeit-Statistikenüberwachung aller 8 Agenten.
+* [x] **Datenbereinigung**: Tägliche Cleanup-Routinen für veraltete Log- und Faktendaten.
 
 ### Was in Arbeit / geplant ist:
-* [ ] **MCP-Erweiterung**: Dynamische Registrierung und Anbindung externer Model Context Protocol (MCP) Server ist noch rudimentär.
+* [ ] **MCP-Erweiterung**: Dynamische Registrierung und Anbindung externer Model Context Protocol (MCP) Server.
 * [ ] **Erweiterte Sandbox**: Derzeit sind Dateizugriffe außerhalb des Workspace selbst für den `godmode` des CoderAG stark eingeschränkt.
 * [ ] **Browser-Automation**: Die Playwright-Schnittstelle im Backend ist vorbereitet, im Standard-Setup jedoch deaktiviert.
 

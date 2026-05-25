@@ -8,7 +8,7 @@
 [![Max Lines](https://img.shields.io/badge/Max_Lines/File-40-critical.svg)](#)
 [![Linting](https://img.shields.io/badge/Linting-Ruff-orange.svg)](#)
 
-> 🇬🇧 **Lies dies auf [Englisch (README.md)](README.md)**
+> 🇬🇧 **Read this in [English (README.md)](README.md)**
 
 ---
 
@@ -25,32 +25,28 @@ Gnom-Hub ist ein lokales Multi-Agenten-System mit einer radikalen Restriktion: *
 
 ---
 
-## 🚀 Neue Features
+## ✅ Abgeschlossene Phasen (Härtungs-Milestones)
 
-### 1. Zentralisiertes Agenten-Register (`agent_definitions.py`)
-Gnom-Hub verwaltet einen Schwarm von **8 Agenten (4 System-Koordinatoren + 4 Worker-Spezialisten)**, die vollständig in einer einzigen zentralen Datei definiert sind: `src/gnom_hub/agent_definitions.py`.
-- **System-Agenten**: `SoulAG` (Gedächtnis), `GeneralAG` (Koordinator), `WatchdogAG` (Workspace-Integrität) und `SecurityAG` (Sicherheit und Signaturen).
-- **Worker-Agenten**: `CoderAG` (Programmierung), `ResearcherAG` (Recherche/Web-Crawling), `WriterAG` (Texterstellung) und `EditorAG` (Korrekturlesen/Qualitätssicherung).
+Das System wurde in einem strukturierten Prozess um folgende Funktionen erweitert:
 
-### 2. Workflow-Preset-System
-Direkt unter der Showbox in der linken Seitenleiste bietet die Benutzeroberfläche ein Dropdown-Menü mit **6 Workflow-Modi**:
-1. 💻 **Web Development**: Fokus auf sauberen HTML, CSS, JavaScript Code, Responsive Design, Barrierefreiheit, Performance und moderne Web-APIs.
-2. 🎨 **Graphic Design**: Fokus auf visuelle Ästhetik, Farbharmonien, Typografie, UI/UX Layouts, SVG-Generierung und Grafik-Design-Prinzipien.
-3. 🎵 **Audio Production**: Fokus auf Sound-Synthese, Web Audio API, Audio-Processing, Soundeffekte, Musiktheorie und akustische Gestaltung.
-4. 🎬 **Video Production**: Fokus auf Video-Streaming, Canvas-Animationen, CSS-Transitions, Video-Editing-Konzepte und visuelle Effekte.
-5. ✍️ **Marketing & Copy**: Fokus auf überzeugende Texte, SEO-Optimierung, Conversion-Rates, Social Media Strategien und zielgruppengerechte Ansprache.
-6. 🔍 **Research & Analysis**: Fokus auf tiefgehende Recherche, Datenanalyse, Faktenprüfung, strukturierte Berichte und wissenschaftliche Genauigkeit.
+### 🛡️ Phase 1: Sicherheit & Gatekeeper
+*   **Doppelte Genehmigung**: Jede Dateiänderung und Befehlsausführung durch Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) erfordert ein explizites `APPROVED` von `WatchdogAG` (Strikte Einhaltung der 40-Zeilen-Regel & Clean Architecture) **und** `SecurityAG` (Schadcode- & Musterscan).
+*   **Absoluter Systemdateien-Schutz**: Systemkritische Dateien (`index.html`, `run.sh`, `.env`, `src/gnom_hub/*`, `config/*` etc.) sind für Worker-Agenten **vollkommen tabu** (Zugriffsschutz greift direkt im Pfad-Validator; kein Bypass für Worker).
+*   **Eskalationsrouting bei Unsicherheit**: Ist die LLM-Prüfung unentschlossen, wird eine Eskalation an `@user @SoulAG` im Chat ausgelöst. Freigaben können manuell durch das Eintragen in die Datenbank (`approved_security_writes` / `approved_security_commands`) autorisiert werden.
 
-### 3. Rollenbasierte & Sichere Werkzeug-Rechte (Tool-Permissions)
-Die Berechtigungen der Agenten sind rollenbasiert und werden dynamisch aus der zentralen `agent_definitions.py` geladen:
-- **System-Agenten** bekommen Vollzugriff: `["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]`.
-- **Worker-Agenten** bekommen ausschließlich Lese-/Schreibzugriff im Workspace sowie Chat-Rechte: `["read", "write", "@job"]`.
-- **CoderAG** erhält zusätzlich den `godmode`-Status: `["read", "write", "@job", "godmode"]` (dies schaltet die Playwright `browser`-Steuerung sowie Kommandozeilenbefehle über `run` frei).
-- Alle Zugriffe werden in Echtzeit in der Action-Engine (`action_handlers.py`) geprüft.
+### 📊 Phase 2: Observability & Agent Health Dashboard
+*   **Strukturiertes JSON-Logging & DB-Audit-Trail**: Alle Systemevents und LLM-Aufrufe (mit Latenzen, Tokenverbrauch, Kosten) werden strukturiert als JSON protokolliert und in einer indexierten `audit_log` Tabelle abgelegt.
+*   **Agent Health API**: Der Endpunkt `/api/metrics` stellt Echtzeit-Statistiken bereit, welche die In-Memory-Metriken mit den Datenbank-Heartbeats (`last_seen`) aller 8 Agenten zusammenführen.
+*   **Status-Dashboard**: Ein im Header verlinktes, glassmorphes Bento-Grid-Dashboard visualisiert farbcodiert den Status aller 8 Agenten (Grün = Alive/Online, Gelb = Warning/Hohe Fehlerrate/Heartbeat-Verzug, Rot = Dead/Offline) samt Latenzen, Erfolgsraten und Anfragen-Zähler. Automatisches Polling stoppt selbsttätig beim Verlassen der Ansicht.
 
-### 4. Weitere Verbesserungen
-- **Chat-Schriftgröße**: Die Schriftgröße der Chat-Nachrichten und Metadaten im Dashboard wurde um 1/3 verkleinert, um die Lesbarkeit bei längeren Konversationen im War Room zu erhöhen.
-- **ISO-Timestamp-Fix**: Behebung des doppelten UTC-Offset-Fehlers (`+00:00Z`), welcher im Frontend zu `"Invalid Date"`-Anzeigen in Chat-Nachrichten geführt hat.
+### 🧠 Phase 3: SoulAG Memory Upgrade (Retrieval)
+*   **Tokenbasiertes Jaccard-Retrieval**: Das statische Limit der letzten 20 Fakten wurde durch ein intelligentes Such- und Relevanz-Retrieval-System (`soul_retrieval.py`) ersetzt.
+*   **Relevanzgewichtung**: Treffer in Faktenschlüsseln (Keys) werden doppelt so hoch gewichtet wie Treffer im Inhalt (Value), um präzise Kontextinjektionen zu ermöglichen.
+*   **Automatischer Fallback**: Bieten Suchanfragen keinerlei Keyword-Überlappung (Score = 0), fällt das System nahtlos auf die neuesten Fakten zurück, um kontinuierlichen Kontext zu gewährleisten.
+
+### 🔄 Phase 4: Error-Recovery & DB-Cleanup
+*   **API-Failover & Key-Rotation**: Bei Ausfällen von Remote-LLMs rotieren die Provider-Keys oder der Router fällt transparent auf lokale/alternative Modelle (z.B. Offline-Llama) zurück.
+*   **Automatisiertes DB-Cleanup**: Die Funktion `cleanup_old_data` löscht abgelaufene Fakten (älter als 30 Tage) und alte Chat-Nachrichten (älter als 7 Tage). Kritische Konfigurations-Chats (`role`) sowie geschützte Gedächtnisschlüssel (wie `active_preset` oder manuelle Sicherheitsfreigaben) bleiben dauerhaft erhalten.
 
 ---
 
@@ -107,6 +103,52 @@ Gnom-Hub steuert 8 registrierte Agenten, aufgeteilt in koordinierende System-Age
 
 ---
 
+## 🛡️ Sicherheit & Schutzmechanismen
+
+Sicherheit ist in Gnom-Hub kein nachträgliches Add-on, sondern ein **fundamentales Architekturprinzip**. Da das System autonom agierende Agenten mit weitreichenden Werkzeugen ausstattet, wird jede Aktionen über eine strikte, mehrstufige Sicherheitsbarriere geleitet.
+
+### 👮‍♂️ Aktive Gatekeeper: WatchdogAG & SecurityAG
+Alle von Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) angeforderten Datei- und Befehlsaktionen werden in der zentralen Dispatcher-Schicht [action_handlers.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/action_handlers.py) abgefangen, analysiert und erst nach erfolgreicher Validierung ausgeführt.
+
+#### 1. WatchdogAG (Pfad- und Integritätsschutz)
+Der Watchdog schützt den Systemkern vor unbefugten Dateizugriffen und Manipulationen:
+* **Absoluter Systemdateien-Schutz**: Systemkritische Dateien (`index.html`, `run.sh`, `.env`) und Verzeichnisse (`src/gnom_hub/`, `config/`, `scripts/`) sind für Worker-Agenten **vollkommen tabu**. Jeglicher Lese-, Schreib- oder Ausführungsversuch auf diese Pfade wird sofort unterbunden. Ein Zugriffsbypass über `approved_system_paths` existiert für Worker nicht.
+* **Pfad-Validierung & Sandboxing**: Alle Dateipfade werden über `is_worker_blocked` in [path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/path_validator.py) normalisiert und in absolute Pfade aufgelöst (`os.path.realpath`). Versuche von Directory-Traversal-Attacken (z. B. mit `../`) werden im Keim erstickt. Jeder Pfad muss zwingend innerhalb des dafür vorgesehenen Workspace-Verzeichnisses (`WORKSPACE_DIR`) liegen.
+
+#### 2. SecurityAG (Code- und Befehlsanalyse)
+Die SecurityAG bewacht die Ausführungsebene und scannt Aktionen auf potenziell destruktive Absichten:
+* **Inhalts-Prüfung**: Jeder Schreibzugriff (`[WRITE]`) eines Workers wird auf gefährliche Funktionen, Code-Muster oder Systemaufrufe untersucht (z. B. `rm -rf`, `eval(`, `os.system(`, `subprocess.`, `exec(`, `pickle.load`, `chmod 777`, `shutil.rmtree`).
+* **Terminal-Überwachung**: Jedes Shell-Kommando (`[SHELL]`) wird vorab geparst. Unsafe-Commands (wie Netzwerk-Downloads via `curl` oder `wget`, Berechtigungsänderungen via `chmod 777` oder destruktive Systemkommandos) werden blockiert.
+
+---
+
+### 👑 CoderAG: Godmode unter strenger Kontrolle
+Der `CoderAG` ist der mächtigste Worker im Schwarm. Er besitzt als einziger den `godmode`-Status und ist berechtigt:
+* Shell-Kommandos auf Systemebene auszuführen (`[SHELL]`).
+* Browser-Automationen über die Playwright-Schnittstelle zu steuern (`[BROWSER]`).
+
+Obwohl der CoderAG diese weitreichenden Privilegien besitzt, wird er **lückenlos und ohne Ausnahmen** durch das Duo aus WatchdogAG und SecurityAG überwacht. Jeder seiner Befehle und jeder Dateizugriff wird derselben strikten Sicherheitsprüfung unterzogen. Ein „Ausbrechen“ aus dem zugewiesenen Workspace oder das Einschleusen destruktiver Befehle ist auch für den CoderAG im `godmode` unmöglich.
+
+---
+
+### 🚨 Eskalationskette & Freigaben bei Unsicherheit
+Wenn eine Sicherheitsprüfung anschlägt oder ein Worker unbefugt auf geschützte Pfade zugreifen will:
+1. **Sofortige Blockade**: Die Ausführung wird gestoppt, das angeforderte Tag im Antworttext wird durch eine Sicherheitsmeldung ersetzt.
+2. **Chat-Eskalation**: Es wird ein System-Eintrag im Chat erzeugt, der den Operator (`@user`) und das übergeordnete Schwarmgedächtnis (`@SoulAG`) namentlich taggt und über den genauen Pfad bzw. Befehlsverstoß informiert.
+3. **Manuelle Freigabe**: Eine Ausführung blockierter Ressourcen ist ausschließlich über manuelle Einträge in der SQLite-Datenbank durch den Administrator (User/SoulAG) möglich:
+   * `approved_system_paths`: Whitelist für geschützte Pfade (nur für administrative Rollen).
+   * `approved_security_writes`: Whitelist für geprüfte Dateiinhalte.
+   * `approved_security_commands`: Whitelist für autorisierte Terminal-Befehle.
+
+---
+
+### 🔒 Immunität der System-Agenten (Preset-Isolation)
+Das Preset-System (zur Fokus-Ausrichtung des Schwarms) ist strikt auf der Anwendungsebene isoliert:
+* **Fokus-Wechsel nur auf Worker-Ebene**: Ein Preset-Wechsel verändert die Prompt-Modifikatoren und LLM-Modelle **ausschließlich** für die 4 Worker-Agenten (`ResearcherAG`, `WriterAG`, `EditorAG`, `CoderAG`).
+* **Unantastbare Systemebene**: Die 4 administrativen System-Agenten (`SoulAG`, `GeneralAG`, `WatchdogAG`, `SecurityAG`) behalten permanent ihre feste Konfiguration (Standardmodelle auf High-End-Tier `stage_3`, unveränderliche System-Prompts, unbeschränkte Systemrechte). Ein Preset-Wechsel kann somit niemals die Kontrollinstanzen der Plattform manipulieren oder schwächen.
+
+---
+
 ## 💬 Befehle
 
 | Befehl | Aktion |
@@ -117,7 +159,7 @@ Gnom-Hub steuert 8 registrierte Agenten, aufgeteilt in koordinierende System-Age
 | `@code / @write / @edit` | Direkte Zuweisung an einen bestimmten Spezialisten |
 | `@git [Befehl]` | Führt Git-Befehle direkt im aktiven Projekt-Workspace aus |
 | `@publish` | Bereitstellung des aktuellen Stands via SFTP auf deinem konfigurierten Server |
-| `@@project [Name]` | Wechselt das aktive Workspace-Projekt |
+| `@@project [Name]` | Wechselt das active Workspace-Projekt |
 | `@@status` | Zeigt den aktuellen Laufzeit-Status (RUNNING/STOPPED) aller Agenten an |
 | `@@clear` | Leert den Chatverlauf im Dashboard |
 | `@free` | Bricht alle aktiven Jobs ab und setzt blockierte Agenten zurück |
@@ -145,7 +187,7 @@ cp config/.env.example config/.env
 ### 3. Ausführen
 Starte den FastAPI-Server:
 ```bash
-python -m gnom_hub
+./run.sh
 ```
 Öffne **[http://127.0.0.1:3002](http://127.0.0.1:3002)**, um den War Room zu betreten.
 
@@ -169,7 +211,7 @@ gnom-hub/
 ├── scripts/             # Setup- & Hilfs-Skripte
 ├── docs/                # Berichte und Dokumentation
 ├── CONTRIBUTING.md      # Richtlinien für Entwickler
-└── pyproject.toml       # Ruff-Konfiguration & Abhängigkeiten
+├── pyproject.toml       # Ruff-Konfiguration & Abhängigkeiten
 ```
 
 ---
@@ -186,6 +228,7 @@ Architekt der Härtungsphase. Spezifische Beiträge:
 * Migration der JSON-Speicherung auf eine transaktionssichere SQLite3-Datenbank (WAL-Modus)
 * Implementierung des `psutil`-Prozessmanagers mit PID-Dateien und Lifespan-Integration
 * Integration von SFTP-Bereitstellung, CORS-Einschränkung auf Localhost und des `log.py`-Frameworks
+* Implementation der Phasen 1-4 (Doppel-Gatekeeper, Health Dashboard, Jaccard Memory Retrieval & DB Cleanup)
 
 ---
 
