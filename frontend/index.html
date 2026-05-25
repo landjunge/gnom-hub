@@ -2746,12 +2746,12 @@
           </style>
           <h2>Agent Health Dashboard</h2>
           <div id="swarm-status-banner" style="display:none; margin-top:8px; padding:8px; background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2); border-radius:var(--radius); box-shadow:0 0 10px rgba(0,229,255,0.05); backdrop-filter:blur(10px);">
-            <div style="font-weight:bold; color:var(--accent); font-size:0.63rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; display:flex; align-items:center; gap:4px;">
+            <div style="font-weight:bold; color:var(--accent); font-size:0.84rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; display:flex; align-items:center; gap:4px;">
               <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); animation: pulse-glow 1.5s infinite;"></span>
               Swarm Intelligence & Team Workflows
             </div>
-            <div id="swarm-workflow-text" style="font-size:0.57rem; color:#fff; font-weight:500; margin-bottom:3px;">None</div>
-            <div id="swarm-comms-text" style="font-size:0.51rem; color:var(--text-dim); line-height:1.4;"></div>
+            <div id="swarm-workflow-text" style="font-size:0.76rem; color:#fff; font-weight:500; margin-bottom:3px;">None</div>
+            <div id="swarm-comms-text" style="font-size:0.68rem; color:var(--text-dim); line-height:1.4;"></div>
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px;" id="dashboard-grid">
             <div class="empty">Metriken werden geladen...</div>
@@ -2778,7 +2778,7 @@
           if (wfText) wfText.textContent = wf || 'Team-Workflow: Diskussions-Schwarm aktiv';
           if (commsText) {
             commsText.innerHTML = comms.map(c => `
-              <div style="display:flex; align-items:center; gap:6px; margin-top:2px; font-size: 0.51rem;">
+              <div style="display:flex; align-items:center; gap:6px; margin-top:2px; font-size: 0.68rem;">
                 <span style="color:var(--accent); font-weight:600;">${c.from}</span>
                 <span style="color:rgba(255,255,255,0.6);">💬 fragt/antwortet</span>
                 <span style="color:var(--accent); font-weight:600;">${c.to}</span>
@@ -2817,19 +2817,19 @@
         return `
           <div class="agent-health-card" style="background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; border-top: 3px solid \${agentColorHex}; transition: all 0.3s ease;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h3 style="margin: 0; font-size: 0.69rem; color: #fff; text-transform: capitalize;">\${n.replace('ag', 'AG')}</h3>
-              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.45rem; font-weight: bold; color: \${color};">
+              <h3 style="margin: 0; font-size: 0.92rem; color: #fff; text-transform: capitalize;">\${n.replace('ag', 'AG')}</h3>
+              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.6rem; font-weight: bold; color: \${color};">
                 <span style="width: 6px; height: 6px; border-radius: 50%; background: \${color}; display: inline-block; box-shadow: 0 0 6px \${color};"></span>
                 <span>\${statusLabel}</span>
               </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.51rem; color: rgba(255, 255, 255, 0.7);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.68rem; color: rgba(255, 255, 255, 0.7);">
               <div>Requests: <strong style="color: #fff;">\${m.total}</strong></div>
               <div>Errors: <strong style="color: #fff;">\${m.failed}</strong></div>
               <div>Avg. Latenz: <strong style="color: #fff;">\${m.avg_time_ms.toFixed(0)} ms</strong></div>
               <div>Erfolg: <strong style="color: #fff;">\${successPercent}%</strong></div>
             </div>
-            <div style="font-size: 0.45rem; color: rgba(255,255,255,0.4); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px; margin-top: 2px;">
+            <div style="font-size: 0.6rem; color: rgba(255,255,255,0.4); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px; margin-top: 2px;">
               Letzter kontakt: \${lastSeenStr}
             </div>
           </div>
