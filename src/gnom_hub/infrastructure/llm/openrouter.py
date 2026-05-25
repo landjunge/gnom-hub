@@ -1,10 +1,11 @@
 import httpx
-from typing import Optional
+from typing import Optional, List
 from ...core.config import Config
 from ...common.exceptions import LLMProviderError
 
 class OpenRouterClient:
-    """Client für OpenRouter API – optimiert für Free-Tier-Modelle."""
+    FREE_MODELS = ["meta-llama/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct", "qwen/qwen2.5-7b-instruct", "deepseek/deepseek-chat"]
+    _working_models: List[str] = []
 
     def __init__(self):
         self.api_key = Config.OPENROUTER_API_KEY
@@ -13,15 +14,23 @@ class OpenRouterClient:
             raise LLMProviderError("OPENROUTER_API_KEY ist nicht gesetzt")
 
     async def ask(self, prompt: str, model: Optional[str] = None) -> str:
-        """Sendet eine Prompt-Anfrage. Verwendet das vom SmartRouter übergebene Modell."""
-        # Fallback auf ein günstiges Modell, falls keines übergeben wurde
-        final_model = model or "meta-llama/llama-3.1-8b-instruct"
-        headers = {"Authorization": f"Bearer {self.api_key}", "HTTP-Referer": "http://localhost:8000", "X-Title": "Gnom-Hub"}
-        payload = {"model": final_model, "messages": [{"role": "user", "content": prompt}]}
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            try:
-                response = await client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
-                response.raise_for_status()
-                return response.json()["choices"][0]["message"]["content"].strip()
-            except Exception as e:
-                raise LLMProviderError(f"OpenRouter-Anfrage fehlgeschlagen: {e}") from e
+        models_to_try = [model] if model else []
+        for m in self._working_models + self.FREE_MODELS:
+            if m not in models_to_try: models_to_try.append(m)
+        for attempt, current_model in enumerate(models_to_try, 1):
+            print(f"🟡 OpenRouter Versuch {attempt} → {current_model}")
+            headers = {"Authorization": f"Bearer {self.api_key}", "HTTP-Referer": "http://localhost:8000", "X-Title": "Gnom-Hub"}
+            payload = {"model": current_model, "messages": [{"role": "user", "content": prompt}]}
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                try:
+                    response = await client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
+                    response.raise_for_status()
+                    content = response.json()["choices"][0]["message"]["content"].strip()
+                    if current_model in self._working_models:
+                        self._working_models.remove(current_model)
+                    self._working_models.insert(0, current_model)
+                    print(f"✅ OpenRouter Erfolg mit {current_model}")
+                    return content
+                except Exception as e:
+                    print(f"❌ Fehlgeschlagen mit {current_model}: {e}")
+        raise LLMProviderError("OpenRouter: Alle Modelle sind fehlgeschlagen")
