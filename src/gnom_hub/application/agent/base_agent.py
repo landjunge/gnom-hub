@@ -7,9 +7,9 @@ HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
         self.n, self.d, self.t, self.sys, self.p, self.seen = name, desc, trigger, sys_prompt, poll, set()
-        if not self.sys:
-            from gnom_hub.tool_registry import format_tools_prompt
-            self.sys = format_tools_prompt(get_soul(name), name)
+        from gnom_hub.tool_registry import format_tools_prompt
+        t_p = format_tools_prompt(get_soul(name), name)
+        self.sys = (self.sys + "\n\n" + t_p) if self.sys else t_p
     def _req(self, method, p, j=None):
         try:
             r = getattr(requests, method)(f"{HUB_URL}{p}", json=j, timeout=10)

@@ -1,5 +1,5 @@
 def get_tools_for_agent(soul: dict):
-    p, tm = soul.get("permissions", []), {
+    return {
         "read_file": "Read files (also outside workspace with godmode)",
         "write_file": "Write files",
         "run_command": "Execute terminal commands (including pip install, brew, etc.)",
@@ -13,25 +13,15 @@ def get_tools_for_agent(soul: dict):
         "browser": "Real browser control (Playwright)",
         "sys_cmd": "System commands (install programs, change settings)"
     }
-    a = ["read_file"]
-    if "@job" in p or "general" in p: a += ["war_room_chat", "create_agent"]
-    if "write" in p: a += ["write_file", "generate_image"]
-    if "godmode" in p or "run" in p: a += ["run_command", "sys_cmd"]
-    if "godmode" in p: a += ["browser"]
-    if "crawl" in p: a += ["crawl_url"]
-    if "desktop" in p: a += ["screenshot", "desktop_action", "browser"]
-    if "evolve" in p: a += ["evolve"]
-    return {t: tm.get(t, t) for t in dict.fromkeys(a)}
 
 def format_tools_prompt(soul: dict, name: str):
     t = get_tools_for_agent(soul)
-    if not t: return f"You are {name}. No tools – discussion only."
     lines = [f"- {n}: {d}" for n, d in t.items()]
     syn = "\nCommand Syntax:\n  [READ: filename] — Read file (godmode: any absolute path)"
-    if "write_file" in t: syn += "\n  [WRITE: filename]content[/WRITE] — Write file"
-    if "run_command" in t: syn += "\n  [SHELL: command] — Terminal (pip install, brew, system commands)"
-    if "generate_image" in t: syn += "\n  [IMAGE: prompt] — Generate image"
-    if "browser" in t: syn += '\n  [BROWSER: {"action": "goto|click|type|read|screenshot", "target": "...", "value": "..."}]'
+    syn += "\n  [WRITE: filename]content[/WRITE] — Write file"
+    syn += "\n  [SHELL: command] — Terminal (pip install, brew, system commands)"
+    syn += "\n  [IMAGE: prompt] — Generate image"
+    syn += '\n  [BROWSER: {"action": "goto|click|type|read|screenshot", "target": "...", "value": "..."}]'
     syn += '\n  <SHOWBOX:lamp_index>["Slide 1 HTML", "Slide 2 HTML"]</SHOWBOX> — Updates the Showbox slides for lamp lamp_index (1-7) and displays them in the Showbox center. Use modern inline CSS (gradients, glassmorphism, flex).'
     char = f" – {soul['character']}" if soul.get("character") else ""
     intro = f"You are {name} ({soul.get('role', 'Agent')}{char})."
