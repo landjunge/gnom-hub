@@ -44,5 +44,11 @@
     "Video Production": "Fokus auf Video-Streaming, Canvas-Animationen, CSS-Transitions, Video-Editing-Konzepte und visuelle Effekte.",
     "Marketing & Copy": "Fokus auf überzeugende Texte, SEO-Optimierung, Conversion-Rates, Social Media Strategien und zielgruppengerechte Ansprache.",
     "Research & Analysis": "Fokus auf tiefgehende Recherche, Datenanalyse, Faktenprüfung, strukturierte Berichte und wissenschaftliche Genauigkeit."
+  },
+  "targets": {
+    "Web Development": ["coderag", "qwen/qwen3-coder:free"],
+    "Graphic Design": ["coderag", "meta-llama/llama-3.3-70b-instruct:free"],
+    "Marketing & Copy": ["writerag", "meta-llama/llama-3.3-70b-instruct:free"],
+    "Research & Analysis": ["researcherag", "meta-llama/llama-3.3-70b-instruct:free"]
   }
 }

@@ -98,18 +98,9 @@ def init_db():
                 if not conn.execute("SELECT 1 FROM agents").fetchone():
                     _seed_agents(conn)
                 else:
-                    # Enforce correct roles for the 8 standard agents
-                    for a in [
-                        {"name": "SoulAG", "role": "soul"},
-                        {"name": "GeneralAG", "role": "general"},
-                        {"name": "WatchdogAG", "role": "watchdog"},
-                        {"name": "SecurityAG", "role": "security"},
-                        {"name": "CoderAG", "role": "coder"},
-                        {"name": "WriterAG", "role": "writer"},
-                        {"name": "ResearcherAG", "role": "researcher"},
-                        {"name": "EditorAG", "role": "editor"}
-                    ]:
-                        conn.execute("UPDATE agents SET role = ? WHERE name = ?", (a["role"], a["name"]))
+                    from .agent_definitions import AGENT_DEFINITIONS
+                    for v in AGENT_DEFINITIONS.values():
+                        conn.execute("UPDATE agents SET role = ? WHERE name = ?", (v["role"], v["name"]))
         logger.info("[DB] Database initialized successfully.")
     except sqlite3.Error as e:
         logger.error(f"[DB] Database initialization failed: {e}")
