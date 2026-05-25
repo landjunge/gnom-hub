@@ -104,14 +104,67 @@ Das Preset-System erlaubt das Umschalten des gesamten Schwarms auf ein bestimmte
 
 ---
 
-## 🛡️ Sicherheit & Permission-Modell
+## 🛡️ Sicherheit & Schutzmechanismen
 
-Werkzeug-Zugriffe (z. B. Dateizugriffe, HTTP-Anfragen oder Terminalbefehle) werden bei jeder Aktion in [action_handlers.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/action_handlers.py) gegen die in [agent_definitions.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/agent_definitions.py) definierten Berechtigungen abgeglichen:
+Sicherheit ist in Gnom-Hub kein nachträgliches Add-on, sondern ein **fundamentales Architekturprinzip**. Da das System autonom agierende Agenten mit weitreichenden Werkzeugen ausstattet, wird jede Aktion über eine strikte, mehrstufige Sicherheitsbarriere geleitet.
 
-* **Pfad-Validierung**: Alle Dateizugriffe durchlaufen [path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/path_validator.py). Schreib- und Lesezugriffe außerhalb des aktiven Projekt-Workspace werden blockiert, es sei denn, ein Agent besitzt das explizite `run`-Recht (gekoppelt an `godmode`).
-* **Shell-Schutz**: System-Befehle werden in einer Sandbox ausgeführt. Gefährliche Befehle (z. B. rekursives Löschen auf Systemebene) werden per Regex-Muster blockiert.
+```mermaid
+graph TD
+    Worker[Worker-Agent: z.B. CoderAG] -->|Aktion angefordert| Dispatcher[action_handlers.py]
+    Dispatcher -->|Pfad- & Integritäts-Check| Watchdog[WatchdogAG]
+    Dispatcher -->|Code- & Pattern-Check| Security[SecurityAG]
+    
+    Watchdog -->|Verstoß erkannt| Block[Aktion blockieren + Chat-Warnung an @user & @SoulAG]
+    Security -->|Gefahr erkannt| Block
+    
+    Watchdog -->|Pfad ok / Freigabe| Exec[Sichere Ausführung im Workspace]
+    Security -->|Inhalt ok / Freigabe| Exec
+```
 
 ---
+
+### 👮‍♂️ Aktive Gatekeeper: WatchdogAG & SecurityAG
+Alle von Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) angeforderten Datei- und Befehlsaktionen werden in der zentralen Dispatcher-Schicht [action_handlers.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/action_handlers.py) abgefangen, analysiert und erst nach erfolgreicher Validierung ausgeführt.
+
+#### 1. WatchdogAG (Pfad- und Integritätsschutz)
+Der Watchdog schützt den Systemkern vor unbefugten Dateizugriffen und Manipulationen:
+* **Absoluter Systemdateien-Schutz**: Systemkritische Dateien (`index.html`, `run.sh`, `.env`) und Verzeichnisse (`src/gnom_hub/`, `config/`, `scripts/`) sind für Worker-Agenten **vollkommen tabu**. Jeglicher Lese-, Schreib- oder Ausführungsversuch auf diese Pfade wird sofort unterbunden.
+* **Pfad-Validierung & Sandboxing**: Alle Dateipfade werden über `is_worker_blocked` in [path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/path_validator.py) normalisiert und in absolute Pfade aufgelöst (`os.path.realpath`). Versuche von Directory-Traversal-Attacken (z. B. mit `../`) werden im Keim erstickt. Jeder Pfad muss zwingend innerhalb des dafür vorgesehenen Workspace-Verzeichnisses (`WORKSPACE_DIR`) liegen.
+
+#### 2. SecurityAG (Code- und Befehlsanalyse)
+Die SecurityAG bewacht die Ausführungsebene und scannt Aktionen auf potenziell destruktive Absichten:
+* **Inhalts-Prüfung**: Jeder Schreibzugriff (`[WRITE]`) eines Workers wird auf gefährliche Funktionen, Code-Muster oder Systemaufrufe untersucht (z. B. `rm -rf`, `eval(`, `os.system(`, `subprocess.`, `exec(`, `pickle.load`, `chmod 777`, `shutil.rmtree`).
+* **Terminal-Überwachung**: Jedes Shell-Kommando (`[SHELL]`) wird vorab geparst. Unsafe-Commands (wie Netzwerk-Downloads via `curl` oder `wget`, Berechtigungsänderungen via `chmod 777` oder destruktive Systemkommandos) werden blockiert.
+
+---
+
+### 👑 CoderAG: Godmode unter strenger Kontrolle
+Der `CoderAG` ist der mächtigste Worker im Schwarm. Er besitzt als einziger den `godmode`-Status und ist berechtigt:
+* Shell-Kommandos auf Systemebene auszuführen (`[SHELL]`).
+* Browser-Automationen über die Playwright-Schnittstelle zu steuern (`[BROWSER]`).
+
+Obwohl der CoderAG diese weitreichenden Privilegien besitzt, wird er **lückenlos und ohne Ausnahmen** durch das Duo aus WatchdogAG und SecurityAG überwacht. Jeder seiner Befehle und jeder Dateizugriff wird derselben strikten Sicherheitsprüfung unterzogen. Ein „Ausbrechen“ aus dem zugewiesenen Workspace oder das Einschleusen destruktiver Befehle ist auch für den CoderAG im `godmode` unmöglich.
+
+---
+
+### 🚨 Eskalationskette & Freigaben bei Unsicherheit
+Wenn eine Sicherheitsprüfung anschlägt oder ein Worker unbefugt auf geschützte Pfade zugreifen will:
+1. **Sofortige Blockade**: Die Ausführung wird gestoppt, das angeforderte Tag im Antworttext wird durch eine Sicherheitsmeldung ersetzt.
+2. **Chat-Eskalation**: Es wird ein System-Eintrag im Chat erzeugt, der den Operator (`@user`) und das übergeordnete Schwarmgedächtnis (`@SoulAG`) namentlich taggt und über den genauen Pfad bzw. Befehlsverstoß informiert.
+3. **Manuelle Freigabe**: Eine Ausführung blockierter Ressourcen ist ausschließlich über manuelle Einträge in der SQLite-Datenbank (Tabelle `state`) durch den Administrator möglich:
+   * `approved_system_paths`: Whitelist für geschützte Pfade.
+   * `approved_security_writes`: Whitelist für geprüfte Dateiinhalte.
+   * `approved_security_commands`: Whitelist für autorisierte Terminal-Befehle.
+
+---
+
+### 🔒 Immunität der System-Agenten (Preset-Isolation)
+Das Preset-System (zur Fokus-Ausrichtung des Schwarms) ist strikt auf der Anwendungsebene isoliert:
+* **Fokus-Wechsel nur auf Worker-Ebene**: Ein Preset-Wechsel verändert die Prompt-Modifikatoren und LLM-Modelle **ausschließlich** für die 4 Worker-Agenten (`ResearcherAG`, `WriterAG`, `EditorAG`, `CoderAG`).
+* **Unantastbare Systemebene**: Die 4 administrativen System-Agenten (`SoulAG`, `GeneralAG`, `WatchdogAG`, `SecurityAG`) behalten permanent ihre feste Konfiguration (Standardmodelle auf High-End-Tier `stage_3`, unveränderliche System-Prompts, unbeschränkte Systemrechte). Ein Preset-Wechsel kann somit niemals die Kontrollinstanzen der Plattform manipulieren oder schwächen.
+
+---
+
 
 ## 🚦 Entwicklungsstand (Ehrlich & Konkret)
 
