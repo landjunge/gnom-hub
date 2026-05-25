@@ -26,6 +26,13 @@ Directly below the Showbox in the left sidebar, the UI features a drop-down sele
 - **Swarm Memory (SoulAG)**: Acts as the background consciousness, silently listening to user chat messages, extracting preferences, facts, and rules, and saving them to the swarm facts memory so they are dynamically appended to agents' prompts.
 - **Dynamic Configuration (SoulAG-Free Presets)**: Switching a preset dynamically instructs the router to load prompt modifiers (specific to that agent and preset) and adjust default LLM models. This keeps the presets simple, stable, and decoupled from the memory extractor.
 
+### 4. Role-Based Secure Tool Permissions
+Agent tool accessibility and execution permissions are fully role-based and governed dynamically using the central `agent_definitions.py`:
+- **System Agents** (`SoulAG`, `GeneralAG`, `WatchdogAG`, `SecurityAG`) get full permissions: `["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]`.
+- **Worker Agents** (`ResearcherAG`, `WriterAG`, `EditorAG`) get restricted permissions: `["read", "write", "@job"]`.
+- **Specialist Coder** (`CoderAG`) gets `["read", "write", "@job", "godmode"]` (godmode dynamically maps to `run` for sandboxed terminal command execution and Playwright `browser` automation).
+- All permissions are loaded and verified on-the-fly inside the action execution layer (`action_handlers.py`), keeping the architecture clean and secure.
+
 ---
 
 ## 📖 Preset Quick Guide

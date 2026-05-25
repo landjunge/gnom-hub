@@ -25,6 +25,35 @@ Gnom-Hub ist ein lokales Multi-Agenten-System mit einer radikalen Restriktion: *
 
 ---
 
+## 🚀 Neue Features
+
+### 1. Zentralisiertes Agenten-Register (`agent_definitions.py`)
+Gnom-Hub verwaltet einen Schwarm von **8 Agenten (4 System-Koordinatoren + 4 Worker-Spezialisten)**, die vollständig in einer einzigen zentralen Datei definiert sind: `src/gnom_hub/agent_definitions.py`.
+- **System-Agenten**: `SoulAG` (Gedächtnis), `GeneralAG` (Koordinator), `WatchdogAG` (Workspace-Integrität) und `SecurityAG` (Sicherheit und Signaturen).
+- **Worker-Agenten**: `CoderAG` (Programmierung), `ResearcherAG` (Recherche/Web-Crawling), `WriterAG` (Texterstellung) und `EditorAG` (Korrekturlesen/Qualitätssicherung).
+
+### 2. Workflow-Preset-System
+Direkt unter der Showbox in der linken Seitenleiste bietet die Benutzeroberfläche ein Dropdown-Menü mit **6 Workflow-Modi**:
+1. 💻 **Web Development**: Fokus auf sauberen HTML, CSS, JavaScript Code, Responsive Design, Barrierefreiheit, Performance und moderne Web-APIs.
+2. 🎨 **Graphic Design**: Fokus auf visuelle Ästhetik, Farbharmonien, Typografie, UI/UX Layouts, SVG-Generierung und Grafik-Design-Prinzipien.
+3. 🎵 **Audio Production**: Fokus auf Sound-Synthese, Web Audio API, Audio-Processing, Soundeffekte, Musiktheorie und akustische Gestaltung.
+4. 🎬 **Video Production**: Fokus auf Video-Streaming, Canvas-Animationen, CSS-Transitions, Video-Editing-Konzepte und visuelle Effekte.
+5. ✍️ **Marketing & Copy**: Fokus auf überzeugende Texte, SEO-Optimierung, Conversion-Rates, Social Media Strategien und zielgruppengerechte Ansprache.
+6. 🔍 **Research & Analysis**: Fokus auf tiefgehende Recherche, Datenanalyse, Faktenprüfung, strukturierte Berichte und wissenschaftliche Genauigkeit.
+
+### 3. Rollenbasierte & Sichere Werkzeug-Rechte (Tool-Permissions)
+Die Berechtigungen der Agenten sind rollenbasiert und werden dynamisch aus der zentralen `agent_definitions.py` geladen:
+- **System-Agenten** bekommen Vollzugriff: `["read", "write", "run", "godmode", "crawl", "desktop", "evolve"]`.
+- **Worker-Agenten** bekommen ausschließlich Lese-/Schreibzugriff im Workspace sowie Chat-Rechte: `["read", "write", "@job"]`.
+- **CoderAG** erhält zusätzlich den `godmode`-Status: `["read", "write", "@job", "godmode"]` (dies schaltet die Playwright `browser`-Steuerung sowie Kommandozeilenbefehle über `run` frei).
+- Alle Zugriffe werden in Echtzeit in der Action-Engine (`action_handlers.py`) geprüft.
+
+### 4. Weitere Verbesserungen
+- **Chat-Schriftgröße**: Die Schriftgröße der Chat-Nachrichten und Metadaten im Dashboard wurde um 1/3 verkleinert, um die Lesbarkeit bei längeren Konversationen im War Room zu erhöhen.
+- **ISO-Timestamp-Fix**: Behebung des doppelten UTC-Offset-Fehlers (`+00:00Z`), welcher im Frontend zu `"Invalid Date"`-Anzeigen in Chat-Nachrichten geführt hat.
+
+---
+
 ## 🏗️ Kern-Architektur
 
 Das Backend basiert auf FastAPI und stützt sich auf drei wesentliche Designentscheidungen:
