@@ -2571,7 +2571,7 @@
       const n = document.getElementById('add-name').value.trim();
       const p = parseInt(document.getElementById('add-port').value) || 0;
       const d = document.getElementById('add-desc').value.trim();
-      if (!n || !p) { alert('Name and Port are required.'); return; }
+      if (!n || !p) { toast('Name and Port are required.', 'error'); return; }
       await api('POST', '/agents/register', { name: n, port: p, description: d });
       document.getElementById('add-name').value = '';
       document.getElementById('add-port').value = '';
@@ -3475,7 +3475,7 @@
             <textarea id="sb-editor" style="width:100%; height:180px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:6px; font-family:monospace; font-size:0.85rem; resize:vertical;"></textarea>
           </div>
           <div style="display:flex; gap:10px;">
-            <button class="btn-primary" onclick="savePanelShowboxContent()" style="flex:1;">Speichern</button>
+            <button id="save-showbox-btn" class="btn-primary" onclick="savePanelShowboxContent()" style="flex:1;">Speichern</button>
             <button class="btn-primary" onclick="resetPanelShowboxDefault()" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1);">Reset</button>
           </div>
           <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
@@ -3664,6 +3664,10 @@
     }
 
     async function savePanelShowboxContent() {
+      const btn = document.getElementById('save-showbox-btn');
+      const origText = btn ? btn.innerText : 'Speichern';
+      const origBg = btn ? btn.style.background : '';
+      
       try {
         const text = document.getElementById('sb-editor').value;
         const parsed = JSON.parse(text);
@@ -3675,12 +3679,32 @@
         if (themesRes) {
           const cleanJs = `window.showboxes = ${JSON.stringify(window.showboxes, null, 2)};`;
           await api('POST', '/showbox/themes', { content: cleanJs });
-          alert("Erfolgreich auf Server und Client gespeichert!");
+          if (btn) {
+            btn.innerText = 'Gespeichert! ✓';
+            btn.style.background = '#39ff14';
+            btn.style.color = '#000';
+          }
+          toast("Erfolgreich auf Server und Client gespeichert!", "success");
         } else {
-          alert("Clientseitig aktualisiert, Server konnte nicht erreicht werden.");
+          if (btn) {
+            btn.innerText = 'Server Offline!';
+            btn.style.background = '#ffa500';
+          }
+          toast("Clientseitig aktualisiert, Server konnte nicht erreicht werden.", "warning");
         }
       } catch (err) {
-        alert("Fehler beim Speichern: " + err.message);
+        if (btn) {
+          btn.innerText = 'Fehler!';
+          btn.style.background = '#ff3333';
+        }
+        toast("Fehler beim Speichern: " + err.message, "error");
+      }
+      if (btn) {
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = origBg;
+          btn.style.color = '';
+        }, 1500);
       }
     }
 
@@ -3751,8 +3775,7 @@
               </div>
               <div id="llm-agents-list" style="margin-bottom:20px; max-height:400px; overflow-y:auto; padding-right:10px;">Loading Agents...</div>
               <div style="display:flex; gap:10px;">
-                <button class="btn-primary" onclick="saveAgentLLMs()">Save Agent Settings</button>
-                <button class="btn-primary" onclick="api('POST', '/restart')" style="background:#cc3333;">Restart Server</button>
+                <button id="save-agents-btn" class="btn-primary" onclick="saveAgentLLMs()">Save Agent Settings</button>
               </div>
             </div>
           </div>
@@ -4103,6 +4126,10 @@
     };
 
     async function saveAgentLLMs() {
+      const btn = document.getElementById('save-agents-btn');
+      const origText = btn ? btn.innerText : 'Save Agent Settings';
+      const origBg = btn ? btn.style.background : '';
+      
       const agentsRes = await api('GET', '/agents');
       let config = {};
       if (agentsRes && Array.isArray(agentsRes)) {
@@ -4117,8 +4144,28 @@
           }
         });
       }
-      await api('POST', '/llm/agents', config);
-      alert('Agent settings saved successfully!');
+      const res = await api('POST', '/llm/agents', config);
+      if (res) {
+        if (btn) {
+          btn.innerText = 'Saved! ✓';
+          btn.style.background = '#39ff14';
+          btn.style.color = '#000';
+        }
+        toast('Agent settings saved successfully!', 'success');
+      } else {
+        if (btn) {
+          btn.innerText = 'Error saving';
+          btn.style.background = '#ff3333';
+        }
+        toast('Failed to save agent settings.', 'error');
+      }
+      if (btn) {
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = origBg;
+          btn.style.color = '';
+        }, 1500);
+      }
     }
 
     async function testAgentLLM(aName) {
