@@ -4,7 +4,7 @@ from ...core.config import Config
 from ...common.exceptions import LLMProviderError
 
 class OpenRouterClient:
-    FREE_MODELS = ["meta-llama/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct", "qwen/qwen2.5-7b-instruct", "deepseek/deepseek-chat", "llama3.2"]
+    FREE_MODELS = ["google/gemma-2-9b-it", "meta-llama/llama-3.1-8b-instruct", "mistralai/mistral-7b-instruct", "qwen/qwen2.5-7b-instruct", "deepseek/deepseek-chat", "llama3.2"]
 
     def __init__(self):
         self.api_key = Config.OPENROUTER_API_KEY
@@ -14,7 +14,8 @@ class OpenRouterClient:
 
     async def ask(self, prompt: str, model: Optional[str] = None) -> str:
         models_to_try = [model] if model else []
-        models_to_try.extend([m for m in self.FREE_MODELS if m not in models_to_try])
+        for m in self.FREE_MODELS:
+            if m not in models_to_try: models_to_try.append(m)
         for i, current_model in enumerate(models_to_try, 1):
             print(f"🟡 OpenRouter Versuch {i}/{len(models_to_try)} → {current_model}")
             headers = {"Authorization": f"Bearer {self.api_key}", "HTTP-Referer": "http://localhost:8000", "X-Title": "Gnom-Hub"}
