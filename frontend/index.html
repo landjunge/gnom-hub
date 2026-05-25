@@ -3850,7 +3850,20 @@
         document.getElementById('system-info-panel').innerHTML = "System Info not available.";
       }
     }
-    function getAgentCapsHtml(pSel) {
+    function getModelDisplayName(p, m) {
+      if (p === 'auto') {
+        const labels = {
+          'stage_1': 'Stage 1: Local',
+          'stage_2': 'Stage 2: Free',
+          'stage_3': 'Stage 3: Balanced',
+          'stage_4': 'Stage 4: Premium'
+        };
+        return labels[m] || m;
+      }
+      return m;
+    }
+
+    function getAgentCapsHtml(pSel, mSel) {
       const capConfig = [
         { name: 'text', color: '#39ff14', title: 'Text Chat' },
         { name: 'vision', color: '#00e5ff', title: 'Vision' },
@@ -3859,7 +3872,34 @@
         { name: 'tools', color: '#b026ff', title: 'Tools (Function Calling)' }
       ];
       let activeCaps = [];
-      if (pSel === 'lokal') {
+      if (pSel === 'auto') {
+        let providersToCheck = [];
+        if (mSel === 'stage_1') {
+          activeCaps = ['text', 'vision', 'tools'];
+        } else if (mSel === 'stage_2') {
+          providersToCheck = ['openrouter', 'lokal'];
+        } else if (mSel === 'stage_3') {
+          providersToCheck = ['deepseek', 'gemini', 'openrouter', 'mistral', 'openai', 'lokal'];
+        } else {
+          providersToCheck = ['anthropic', 'openai', 'gemini', 'deepseek', 'openrouter', 'mistral', 'lokal'];
+        }
+        if (providersToCheck.length > 0) {
+          if (providersToCheck.includes('lokal')) {
+            activeCaps = ['text', 'vision', 'tools'];
+          }
+          (globalKeys || []).forEach(k => {
+            if (providersToCheck.includes(k.provider) && k.valid) {
+              if (k.caps && Array.isArray(k.caps)) {
+                k.caps.forEach(c => {
+                  if (!activeCaps.includes(c)) {
+                    activeCaps.push(c);
+                  }
+                });
+              }
+            }
+          });
+        }
+      } else if (pSel === 'lokal') {
         activeCaps = ['text', 'vision', 'tools'];
       } else {
         (globalKeys || []).forEach(k => {
@@ -3897,18 +3937,19 @@
              <select id="prov-${a.name}" onchange="updateModels('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; width:120px;">
                ${providers.map(p => `<option value="${p}" ${p === pSel ? 'selected':''}>${p}</option>`).join('')}
              </select>
-             <select id="mod-${a.name}" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; width:140px; flex-shrink:0;">
-               ${(models[pSel]||[]).map(m => `<option value="${m}" ${m === mSel ? 'selected':''}>${m}</option>`).join('')}
+             <select id="mod-${a.name}" onchange="updateAgentCaps('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; width:140px; flex-shrink:0;">
+               ${(models[pSel]||[]).map(m => `<option value="${m}" ${m === mSel ? 'selected':''}>${getModelDisplayName(pSel, m)}</option>`).join('')}
              </select>
              <button class="btn-primary" onclick="testAgentLLM('${a.name}')" style="padding:4px 10px; font-size:0.8rem; flex-shrink:0;">Test</button>
              <div id="lamp-${a.name}" style="width:12px; height:12px; border-radius:50%; background:gray; box-shadow:0 0 5px rgba(0,0,0,0.5); flex-shrink:0;"></div>
              <div id="caps-agent-${a.name}" style="display:flex; gap:3px; align-items:center; flex-shrink:0; margin-left:4px;">
-               ${getAgentCapsHtml(pSel)}
+               ${getAgentCapsHtml(pSel, mSel)}
              </div>
            </div>`;
         });
       }
       document.getElementById('llm-agents-list').innerHTML = html;
+      window.llmAgentsListGlobal = agentsRes;
     }
     async function loadLLMConfig() {
       await loadLanguageState();
@@ -3927,8 +3968,9 @@
       const agentsRes = await api('GET', '/agents');
       const llmAgentsRes = await api('GET', '/llm/agents');
       
-      const providers = ['deepseek', 'openrouter', 'openai', 'anthropic', 'gemini', 'mistral', 'lokal'];
+      const providers = ['auto', 'deepseek', 'openrouter', 'openai', 'anthropic', 'gemini', 'mistral', 'lokal'];
       let models = {
+        'auto': ['stage_1', 'stage_2', 'stage_3', 'stage_4'],
         'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
         'openrouter': ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free'],
         'openai': ['gpt-4o', 'gpt-4o-mini', 'o1-mini', 'o1-preview'],
@@ -3950,16 +3992,22 @@
       window.llmModelsMap = models;
     }
 
+    window.updateAgentCaps = function(aName) {
+      const p = document.getElementById(`prov-${aName}`).value;
+      const m = document.getElementById(`mod-${aName}`).value;
+      const capsContainer = document.getElementById(`caps-agent-${aName}`);
+      if (capsContainer) {
+        capsContainer.innerHTML = getAgentCapsHtml(p, m);
+      }
+    };
+
     window.updateModels = function(aName) {
       const p = document.getElementById(`prov-${aName}`).value;
       const modSelect = document.getElementById(`mod-${aName}`);
       const mods = window.llmModelsMap[p] || [];
-      modSelect.innerHTML = mods.map(m => `<option value="${m}">${m}</option>`).join('');
+      modSelect.innerHTML = mods.map(m => `<option value="${m}">${getModelDisplayName(p, m)}</option>`).join('');
       
-      const capsContainer = document.getElementById(`caps-agent-${aName}`);
-      if (capsContainer) {
-        capsContainer.innerHTML = getAgentCapsHtml(p);
-      }
+      window.updateAgentCaps(aName);
     };
 
     async function saveAndTestKeys() {

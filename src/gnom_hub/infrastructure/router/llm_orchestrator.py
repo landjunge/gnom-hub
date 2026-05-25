@@ -1,6 +1,7 @@
 from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository
 from .router_config import AGENT_MODELS, DEFAULT_MODELS
 from .router_call import _try, _try_keys
+from .router_stage import resolve_stage
 
 LOCAL_MODELS = ["llama3", "llama3:latest", "qwen2:7b", "phi3", "phi3:latest", "llama3.2", "gemma2", "gemma2:2b", "mistral"]
 
@@ -11,6 +12,8 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     cfg = adb.get(n)
     if cfg and cfg.get("provider") and cfg.get("model"):
         pvd, mdl = cfg["provider"], cfg["model"]
+        if pvd == "auto":
+            pvd, mdl = resolve_stage(mdl, kdb, n)
         ans = _try("lokal", mdl, "", msgs, agent_name) if pvd == "lokal" else _try_keys(pvd, mdl, kdb, msgs, agent_name)
         if ans: return ans
     ans = _try_keys("deepseek", "deepseek-chat", kdb, msgs, agent_name)

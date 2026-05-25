@@ -21,6 +21,7 @@ def get_available_models():
     except Exception: pass
     if not local_models: local_models = ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
     return {
+        "auto": ["stage_1", "stage_2", "stage_3", "stage_4"],
         "deepseek": ds_models, "openrouter": or_models, "lokal": local_models,
         "openai": ["gpt-4o", "gpt-4o-mini", "o1-mini", "o1-preview"],
         "anthropic": ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"],
