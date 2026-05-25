@@ -4024,21 +4024,56 @@
       window.updateAgentCaps(aName);
     };
 
+    function cleanKey(line) {
+      let raw = line.trim();
+      if (raw.startsWith("export ")) {
+        raw = raw.substring(7).trim();
+      }
+      if (raw.includes("=")) {
+        raw = raw.split("=")[1].trim();
+      } else if (raw.includes(":")) {
+        raw = raw.split(":")[1].trim();
+      }
+      raw = raw.replace(/^['"]|['"]$/g, '').trim();
+      raw = raw.replace(/^[-*+•]\s*/, '').trim();
+      raw = raw.replace(/\s*(#|\/\/).*$/, '').trim();
+      raw = raw.replace(/\s*\(.*?\)\s*$/, '').trim();
+      return raw;
+    }
+
+    function detectProvider(line, cleanedKey) {
+      const upper = line.toUpperCase();
+      if (upper.includes("OPENROUTER")) return "openrouter";
+      if (upper.includes("DEEPSEEK")) return "deepseek";
+      if (upper.includes("ANTHROPIC") || upper.includes("CLAUDE")) return "anthropic";
+      if (upper.includes("GEMINI") || upper.includes("GOOGLE")) return "gemini";
+      if (upper.includes("OPENAI")) return "openai";
+      if (upper.includes("MISTRAL")) return "mistral";
+      
+      if (cleanedKey.startsWith("sk-or-")) return "openrouter";
+      if (cleanedKey.startsWith("sk-ant-")) return "anthropic";
+      if (cleanedKey.startsWith("AIzaSy")) return "gemini";
+      return null;
+    }
+
     async function saveAndTestKeys() {
       const input = document.getElementById('llm-keys-input').value;
-      const rawKeys = input.split('\n').map(k => k.trim()).filter(k => k);
+      const rawLines = input.split('\n').map(k => k.trim()).filter(k => k);
       
       document.getElementById('llm-keys-status').innerHTML = 'Testing & assigning keys...';
       
       let testedKeys = [];
       let nextId = Date.now();
       
-      for(let k of rawKeys) {
-        let res = await api('POST', '/llm/test', { key: k });
+      for(let line of rawLines) {
+        let k = cleanKey(line);
+        if (!k) continue;
+        let p = detectProvider(line, k);
+        let res = await api('POST', '/llm/test', { key: k, provider: p });
         testedKeys.push({
           id: 'k_' + (nextId++),
           key: k,
-          provider: res ? res.provider : 'unknown',
+          provider: res ? (res.provider || p || 'unknown') : (p || 'unknown'),
           valid: res && res.valid,
           info: res ? res.info : 'Error',
           caps: res && res.caps ? res.caps : []
@@ -4056,6 +4091,7 @@
       renderKeyStatus(testedKeys);
       loadLLMConfig();
     }
+
 
     function renderKeyStatus(keys) {
       let h = '';
