@@ -3739,6 +3739,31 @@
               </div>
             </div>
           </div>
+          <!-- Auto-Routing Stages Legend -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:8px; display:flex; flex-direction:column; gap:10px; margin-top:20px;">
+             <h3 style="margin:0; font-size:0.95rem; color:#00E5FF; display:flex; align-items:center; gap:6px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                Auto-Routing Tier Stages
+             </h3>
+             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; font-size:0.8rem; line-height:1.4;">
+                <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+                   <strong style="color:#39ff14;">Stage 1: Local</strong>
+                   <div style="color:var(--text-dim); margin-top:4px;">Runs locally hosted models exclusively (Ollama). 100% offline and private fallback.</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+                   <strong style="color:#00e5ff;">Stage 2: Free</strong>
+                   <div style="color:var(--text-dim); margin-top:4px;">Prioritizes free API models (OpenRouter free tier). Falls back to Local.</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+                   <strong style="color:#ffa500;">Stage 3: Balanced</strong>
+                   <div style="color:var(--text-dim); margin-top:4px;">Optimized for lowest cost paid APIs (DeepSeek, Gemini Flash, Mistral, GPT-4o-mini).</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+                   <strong style="color:#ff007f;">Stage 4: Premium</strong>
+                   <div style="color:var(--text-dim); margin-top:4px;">Employs high-capability frontier models (Claude 3.5 Sonnet, GPT-4o, Gemini Pro).</div>
+                </div>
+             </div>
+          </div>
         </div>
       `;
       loadLLMConfig();
