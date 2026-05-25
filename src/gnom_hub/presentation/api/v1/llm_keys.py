@@ -14,8 +14,16 @@ async def get_keys():
 @router.post("/api/llm/keys")
 async def save_keys(req: Request):
     j = await req.json()
-    SQLiteStateRepository().set_value("llm_keys", j)
+    # Filter out invalid keys so they are not saved in database
+    valid_keys = {kid: v for kid, v in j.items() if isinstance(v, dict) and v.get("valid")}
+    SQLiteStateRepository().set_value("llm_keys", valid_keys)
     write_keys_to_desktop(j)
+    
+    # Trigger model verification in background
+    import asyncio
+    from gnom_hub.presentation.api.v1.llm_models import check_and_update_models
+    asyncio.create_task(check_and_update_models())
+    
     return {"status": "ok"}
 
 @router.post("/api/llm/test")
@@ -29,8 +37,32 @@ async def test_key(req: Request):
 async def auto_assign():
     db, rep = SQLiteStateRepository(), SQLiteAgentRepository()
     agents, maps = rep.get_all(), {}
+    kdb = db.get_value("llm_keys", {})
+    
     for a in agents:
+        role = a.role or "normal"
+        if role == "normal":
+            name_lower = a.name.lower()
+            if "coder" in name_lower:
+                role = "coder"
+            elif "writer" in name_lower:
+                role = "writer"
+            elif "editor" in name_lower:
+                role = "editor"
+            elif "researcher" in name_lower:
+                role = "researcher"
+            elif "security" in name_lower or "watchdog" in name_lower:
+                role = "security"
+            elif "soul" in name_lower:
+                role = "soul"
+                
+        if role != a.role:
+            a.role = role
+            rep.save(a)
+            
         from gnom_hub.infrastructure.router.router_stage import SmartRouter
-        maps[a.name.lower()] = {"provider": "auto", "model": SmartRouter.get_stage_for_role(a.role or "normal")}
+        pvd, mdl = SmartRouter.get_best_specific_assignment(role, kdb)
+        maps[a.name.lower()] = {"provider": pvd, "model": mdl}
+        
     db.set_value("llm_agents", maps)
     return {"status": "ok"}

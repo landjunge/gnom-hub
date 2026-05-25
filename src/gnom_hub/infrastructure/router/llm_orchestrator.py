@@ -15,14 +15,21 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     if pvd == "auto":
         from .router_stage import SmartRouter
         resolved_pvd, resolved_mdl = SmartRouter.resolve_stage(mdl, kdb, n)
-        candidates = [(resolved_pvd, resolved_mdl), ("lokal", "llama3.2")] if resolved_pvd == "openrouter" else [("lokal", "llama3.2")]
+        if resolved_pvd == "lokal":
+            candidates = [("lokal", resolved_mdl)]
+        else:
+            candidates = [(resolved_pvd, resolved_mdl), ("lokal", "llama3.2")]
     else:
-        candidates = [(pvd, mdl), ("lokal", "llama3.2")]
+        if pvd == "lokal":
+            candidates = [("lokal", mdl)]
+        else:
+            candidates = [(pvd, mdl), ("lokal", "llama3.2")]
     for p, m in candidates:
         ans = _try("lokal", m, "", msgs, agent_name) if p == "lokal" else _try_keys(p, m, kdb, msgs, agent_name)
         if ans:
             if cfg.get("provider") != p or cfg.get("model") != m:
-                adb[n] = {"provider": p, "model": m}
-                repo.set_value("llm_agents", adb)
+                if cfg.get("provider") != "auto":
+                    adb[n] = {"provider": p, "model": m}
+                    repo.set_value("llm_agents", adb)
             return ans
     return "[ROUTER-FEHLER] Alle Gleise offline."

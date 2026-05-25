@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Request
-from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository
+from pydantic import BaseModel
+from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository as SR
 from gnom_hub.infrastructure.database.agent_role import set_agent_role, update_agent_role_memory
 
 router = APIRouter(prefix="/api/admin")
-
 ROLES = {
     "de": {"general": "SYSTEM-ROLLE: GENERAL. Task-Verteilung, Koordination. Analysiere @job und verteile Aufgaben via @Name -> Aufgabe. Keine Erklärungen."},
     "en": {"general": "SYSTEM ROLE: GENERAL. Task distribution and coordination. Analyze @job and distribute tasks via @Name -> Task. No explanations."}
@@ -11,24 +11,30 @@ ROLES = {
 
 @router.put("/agents/{agent_id}/role")
 def set_role(agent_id: str, role: str):
-    state_repo = SQLiteStateRepository()
-    lang = state_repo.get_language()
-    roles_dict = ROLES[lang]
     if role not in ("general", "normal"): return {"error": "Invalid role"}
-    agent = set_agent_role(agent_id, role)
-    if not agent: return {"error": "Agent not found"}
-    role_content = roles_dict[role] if role in roles_dict else None
-    update_agent_role_memory(agent["id"], role_content)
+    a = set_agent_role(agent_id, role)
+    if not a: return {"error": "Agent not found"}
+    c = ROLES[SR().get_language()].get(role)
+    update_agent_role_memory(a["id"], c)
     from gnom_hub.role_prompt import implant
-    file_path = implant(agent["name"], role_content) if role_content else None
-    return {"agent": agent["name"], "role": role, "file": file_path}
+    return {"agent": a["name"], "role": role, "file": implant(a["name"], c) if c else None}
 
 @router.get("/language")
-def get_sys_language():
-    return {"language": SQLiteStateRepository().get_language()}
+def get_sys_language(): return {"language": SR().get_language()}
 
 @router.post("/language")
 async def set_sys_language(req: Request):
-    j = await req.json()
-    SQLiteStateRepository().set_language(j.get("language", "en"))
+    SR().set_language((await req.json()).get("language", "en"))
     return {"status": "ok"}
+
+class PresetPayload(BaseModel): preset: str
+
+@router.get("/preset")
+def get_preset(): return {"preset": (SR().get_value("active_preset", "Web Development") or "").strip('"\'')}
+
+@router.post("/preset")
+def set_preset(p: PresetPayload):
+    SR().set_value("active_preset", p.preset)
+    from gnom_hub.soul import soul_instance
+    if hasattr(soul_instance, "on_preset_change"): soul_instance.on_preset_change(p.preset)
+    return {"status": "ok", "preset": p.preset}

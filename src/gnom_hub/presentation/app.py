@@ -10,9 +10,32 @@ from gnom_hub.infrastructure.process.psutil_mgr import start_background_agents, 
 from gnom_hub.presentation.api.router import router as api_router
 from gnom_hub import chat_commands
 
+async def start_openrouter_updater():
+    import asyncio
+    while True:
+        try:
+            from gnom_hub.presentation.api.v1.llm_models import check_and_update_models
+            print("Running scheduled OpenRouter free models check...")
+            await check_and_update_models()
+            print("Scheduled OpenRouter free models check complete.")
+        except Exception as e:
+            print(f"Error in background openrouter updater: {e}")
+        await asyncio.sleep(2 * 3600)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_tables(); start_background_agents(); yield; kill_background_agents()
+    create_tables()
+    from gnom_hub.db import init_db
+    init_db()
+    start_background_agents()
+    
+    import asyncio
+    updater_task = asyncio.create_task(start_openrouter_updater())
+    
+    yield
+    
+    updater_task.cancel()
+    kill_background_agents()
 
 app = FastAPI(title="GNOM-HUB", lifespan=lifespan)
 app.add_middleware(

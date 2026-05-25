@@ -34,3 +34,11 @@ async def test_agent(req: Request):
         ans = await loop.run_in_executor(None, _call, p, m, k or "", [{"role":"user", "content":"Ping. Reply OK."}], "Test")
         return {"valid": bool(ans), "info": "OK" if ans else "Keine Antwort", "resolved_provider": p, "resolved_model": m}
     except Exception as e: return {"valid": False, "info": str(e), "resolved_provider": p, "resolved_model": m}
+
+@router.get("/api/llm/routing_insights")
+async def get_routing_insights():
+    db = SQLiteStateRepository()
+    kdb = db.get_value("llm_keys", {})
+    adb = db.get_value("llm_agents", {})
+    from gnom_hub.infrastructure.router.router_stage import SmartRouter
+    return SmartRouter.get_routing_insights(kdb, adb)

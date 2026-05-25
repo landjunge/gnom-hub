@@ -41,11 +41,12 @@ def _seed_agents(conn):
     default_agents = [
         {"name": "SoulAG", "description": "Swarm consciousness", "status": "online", "capabilities": ["@soul"], "role": "soul"},
         {"name": "GeneralAG", "description": "Task coordinator", "status": "online", "capabilities": ["@job"], "role": "general"},
-        {"name": "WatchdogAG", "description": "Workspace integrity check", "status": "online", "capabilities": [], "role": "watchdog"},
-        {"name": "CoderAG", "description": "Code implementation", "status": "online", "capabilities": ["@code"], "role": "normal"},
-        {"name": "WriterAG", "description": "Documentation editor", "status": "online", "capabilities": ["@write"], "role": "normal"},
-        {"name": "ResearcherAG", "description": "Web research & crawling", "status": "online", "capabilities": ["@research"], "role": "normal"},
-        {"name": "EditorAG", "description": "Quality control & text polish", "status": "online", "capabilities": ["@edit"], "role": "normal"}
+        {"name": "WatchdogAG", "description": "Workspace integrity check", "status": "online", "capabilities": ["@watchdog"], "role": "watchdog"},
+        {"name": "SecurityAG", "description": "Security & risk assessment", "status": "online", "capabilities": ["@security"], "role": "security"},
+        {"name": "CoderAG", "description": "Code implementation", "status": "online", "capabilities": ["@code"], "role": "coder"},
+        {"name": "WriterAG", "description": "Documentation editor", "status": "online", "capabilities": ["@write"], "role": "writer"},
+        {"name": "ResearcherAG", "description": "Web research & crawling", "status": "online", "capabilities": ["@research"], "role": "researcher"},
+        {"name": "EditorAG", "description": "Quality control & text polish", "status": "online", "capabilities": ["@edit"], "role": "editor"}
     ]
     try:
         for a in default_agents:
@@ -54,7 +55,7 @@ def _seed_agents(conn):
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (a["name"], str(uuid.uuid4()), 0, a["description"], a["status"], 
                   json.dumps(a["capabilities"]), a["role"], None, datetime.now(timezone.utc).isoformat()))
-        logger.info("[DB] Default agents successfully seeded.")
+        logger.info("[DB] Default 8 agents successfully seeded.")
     except sqlite3.Error as e:
         logger.error(f"[DB] Error seeding agents: {e}")
 
@@ -103,6 +104,19 @@ def init_db():
                 # Wenn agents Tabelle leer ist, führe Seeding aus
                 if not conn.execute("SELECT 1 FROM agents").fetchone():
                     _seed_agents(conn)
+                else:
+                    # Enforce correct roles for the 8 standard agents
+                    for a in [
+                        {"name": "SoulAG", "role": "soul"},
+                        {"name": "GeneralAG", "role": "general"},
+                        {"name": "WatchdogAG", "role": "watchdog"},
+                        {"name": "SecurityAG", "role": "security"},
+                        {"name": "CoderAG", "role": "coder"},
+                        {"name": "WriterAG", "role": "writer"},
+                        {"name": "ResearcherAG", "role": "researcher"},
+                        {"name": "EditorAG", "role": "editor"}
+                    ]:
+                        conn.execute("UPDATE agents SET role = ? WHERE name = ?", (a["role"], a["name"]))
         logger.info("[DB] Database initialized successfully.")
     except sqlite3.Error as e:
         logger.error(f"[DB] Database initialization failed: {e}")

@@ -648,7 +648,7 @@
 
     .sidebar-square {
       width: calc(100% - 16px);
-      margin: auto 8px 73px 8px;
+      margin: auto 8px 10px 8px;
       border: 2px solid rgba(255, 255, 255, 0.08);
       border-radius: var(--radius);
       background: rgba(10, 12, 20, 0.5);
@@ -659,6 +659,11 @@
       padding: 8px;
       gap: 6px;
       position: relative;
+    }
+
+    #preset-select:hover {
+      border-color: var(--primary) !important;
+      box-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
     }
 
     .provider-select {
@@ -1708,6 +1713,17 @@
           <div class="info-lamp" style="--c: #00FFFF;" onclick="triggerShowbox(6)" title="Showbox 7"></div>
         </div>
       </div>
+      <div class="preset-container" style="padding: 0 10px 15px 10px; flex-shrink: 0;">
+        <label for="preset-select" style="display: block; font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.4); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.8px;">Workflow Preset</label>
+        <select id="preset-select" onchange="changePreset(this.value)" style="width: 100%; background: rgba(18, 22, 36, 0.85); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 0.82rem; outline: none; cursor: pointer; transition: var(--transition); font-weight: 500;">
+          <option value="Web Development">💻 Web Development</option>
+          <option value="Graphic Design">🎨 Graphic Design</option>
+          <option value="Audio Production">🎵 Audio Production</option>
+          <option value="Video Production">🎬 Video Production</option>
+          <option value="Marketing & Copy">✍️ Marketing & Copy</option>
+          <option value="Research & Analysis">🔍 Research & Analysis</option>
+        </select>
+      </div>
     </div>
 
     <div class="content" id="content">
@@ -2357,6 +2373,33 @@
         const text = await r.text();
         return text ? JSON.parse(text) : null;
       } catch (e) { console.error('API:', path, e); return null; }
+    }
+
+    async function changePreset(preset) {
+      try {
+        const res = await api('POST', '/admin/preset', { preset });
+        if (res && res.status === 'ok') {
+          toast(`Preset gewechselt zu: ${preset}`, 'success');
+          setTimeout(refreshChat, 1000);
+        } else {
+          toast(`Fehler beim Wechseln des Presets`, 'error');
+        }
+      } catch (e) {
+        console.error("Failed to change preset", e);
+        toast(`Fehler: ${e.message}`, 'error');
+      }
+    }
+
+    async function loadActivePreset() {
+      try {
+        const res = await api('GET', '/admin/preset');
+        if (res && res.preset) {
+          const el = document.getElementById('preset-select');
+          if (el) el.value = res.preset;
+        }
+      } catch (e) {
+        console.error("Failed to load active preset", e);
+      }
     }
 
     // ── Colors ──
@@ -3317,6 +3360,7 @@
           return;
         }
         await loadAgents();
+        await loadActivePreset();
         updateLamps(agents);
         showWarRoom();
       _trackInterval(async () => {
@@ -3779,10 +3823,23 @@
                   <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.75rem; padding:4px 8px; background:#fff; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 5px rgba(255,255,255,0.2);">Auto-Route All</button>
                 </div>
               </div>
+              
+              <!-- Dynamic Auto-Routing Progress Banner -->
+              <div id="routing-progress-banner" style="display:none; align-items:center; justify-content:space-between; margin-bottom:15px; padding:12px 16px; background:rgba(0,229,255,0.08); border:1px solid rgba(0,229,255,0.2); border-radius:8px; font-size:0.85rem; transition:all 0.3s ease;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div id="routing-banner-spinner" style="width:16px; height:16px; border:2px solid rgba(0,229,255,0.3); border-top-color:#00e5ff; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                  <span id="routing-progress-text" style="color:#00e5ff; font-weight:500;">Auto-routing läuft: Mappe Agenten zu optimalen LLMs...</span>
+                </div>
+                <div id="routing-progress-percentage" style="color:rgba(0,229,255,0.7); font-family:monospace; font-weight:bold;">0%</div>
+              </div>
+              
               <div id="llm-agents-list" style="margin-bottom:20px; max-height:400px; overflow-y:auto; padding-right:10px;">Loading Agents...</div>
               <div style="display:flex; gap:10px;">
                 <button id="save-agents-btn" class="btn-primary" onclick="saveAgentLLMs()">Save Agent Settings</button>
               </div>
+              
+              <!-- Intelligent Routing Insights Panel -->
+              <div id="routing-insights-panel" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px; display:none;"></div>
             </div>
           </div>
         </div>
@@ -3883,6 +3940,39 @@
         };
         return labels[m] || m;
       }
+      if (p === 'openrouter') {
+        const labels = {
+          'baidu/cobuddy:free': 'Baidu CoBuddy (Free)',
+          'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free': 'Nvidia Nemotron Omni Reasoning (Free)',
+          'poolside/laguna-xs.2:free': 'Poolside Laguna XS (Free)',
+          'poolside/laguna-m.1:free': 'Poolside Laguna M (Free)',
+          'deepseek/deepseek-v4-flash:free': 'DeepSeek Flash (Free)',
+          'google/gemma-2-9b-it': 'Gemma 2 9B IT',
+          'meta-llama/llama-3.1-8b-instruct': 'Llama 3.1 8B',
+          'mistralai/mistral-7b-instruct': 'Mistral 7B',
+          'qwen/qwen2.5-7b-instruct': 'Qwen 2.5 7B',
+          'deepseek/deepseek-chat': 'DeepSeek Chat',
+          'llama3.2': 'Llama 3.2',
+          'liquid/lfm-2.5-1.2b-thinking:free': 'Liquid LFM 2.5 1.2B Thinking (Free)',
+          'liquid/lfm-2.5-1.2b-instruct:free': 'Liquid LFM 2.5 1.2B Instruct (Free)',
+          'nvidia/nemotron-3-nano-30b-a3b:free': 'Nvidia Nemotron 3 Nano (Free)',
+          'nvidia/nemotron-nano-9b-v2:free': 'Nvidia Nemotron Nano 9B v2 (Free)',
+          'openai/gpt-oss-120b:free': 'OpenAI GPT OSS 120B (Free)',
+          'openai/gpt-oss-20b:free': 'OpenAI GPT OSS 20B (Free)',
+          'arcee-ai/trinity-large-thinking:free': 'Arcee Trinity Large Thinking (Free)',
+          'z-ai/glm-4.5-air:free': 'GLM 4.5 Air (Free)',
+          'nvidia/nemotron-3-super-120b-a12b:free': 'Nvidia Nemotron 3 Super (Free)',
+          'nvidia/nemotron-nano-12b-v2-vl:free': 'Nvidia Nemotron Nano 12B Vision (Free)',
+          'google/gemma-4-26b-a4b-it:free': 'Gemma 4 26B (Free)',
+          'google/gemma-4-31b-it:free': 'Gemma 4 31B (Free)',
+          'minimax/minimax-m2.5:free': 'MiniMax M2.5 (Free)',
+          'qwen/qwen3-next-80b-a3b-instruct:free': 'Qwen 3 Next 80B (Free)',
+          'cognitivecomputations/dolphin-mistral-24b-venice-edition:free': 'Dolphin Mistral 24B Venice (Free)',
+          'meta-llama/llama-3.2-3b-instruct:free': 'Llama 3.2 3B (Free)',
+          'nousresearch/hermes-3-llama-3.1-405b:free': 'Hermes 3 Llama 3.1 405B (Free)'
+        };
+        return labels[m] || m;
+      }
       return m;
     }
 
@@ -3955,12 +4045,17 @@
            let pSel = conf.provider || 'deepseek';
            let mSel = conf.model || 'deepseek-chat';
            
+           // Ensure model selection is registered in local options map to prevent default override
+           if (models[pSel] && !models[pSel].includes(mSel)) {
+             models[pSel].push(mSel);
+           }
+           
            html += `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:0.9rem;">
              <div style="width:120px; font-weight:bold; overflow:hidden; text-overflow:ellipsis;">${a.name}</div>
              <select id="prov-${a.name}" onchange="updateModels('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; width:120px;">
                ${providers.map(p => `<option value="${p}" ${p === pSel ? 'selected':''}>${getProviderDisplayName(p)}</option>`).join('')}
              </select>
-             <select id="mod-${a.name}" onchange="updateAgentCaps('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; width:140px; flex-shrink:0;">
+             <select id="mod-${a.name}" data-db-model="${mSel}" onchange="updateAgentCaps('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.2); padding:4px; border-radius:4px; width:140px; flex-shrink:0;">
                ${(models[pSel]||[]).map(m => `<option value="${m}" ${m === mSel ? 'selected':''}>${getModelDisplayName(pSel, m)}</option>`).join('')}
              </select>
              <button class="btn-primary" onclick="testAgentLLM('${a.name}')" style="padding:4px 10px; font-size:0.8rem; flex-shrink:0;">Test</button>
@@ -4007,17 +4102,44 @@
         'mistral': ['mistral-large-latest', 'pixtral-large-latest', 'codestral-latest'],
         'lokal': ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
       };
-      try {
-        const availableModels = await api('GET', '/llm/available_models');
-        if (availableModels) {
-          models = { ...models, ...availableModels };
-        }
-      } catch (e) {
-        console.error("Failed to load available models", e);
-      }
-
       loadLLMAgentsListState(agentsRes, llmAgentsRes, models, providers);
       window.llmModelsMap = models;
+
+      // Fetch available models asynchronously in the background so the UI doesn't hang
+      api('GET', '/llm/available_models').then(availableModels => {
+        if (availableModels) {
+          models = { ...models, ...availableModels };
+          window.llmModelsMap = models;
+          // Dynamically update each agent's model dropdown with working ones, preserving selection if still present
+          if (agentsRes && Array.isArray(agentsRes)) {
+            agentsRes.forEach(a => {
+              const provSel = document.getElementById(`prov-${a.name}`);
+              const modSelect = document.getElementById(`mod-${a.name}`);
+              if (provSel && modSelect) {
+                const currentProv = provSel.value;
+                const currentMod = modSelect.value;
+                const dbMod = modSelect.getAttribute('data-db-model') || currentMod;
+                const mods = models[currentProv] || [];
+                modSelect.innerHTML = mods.map(m => `<option value="${m}">${getModelDisplayName(currentProv, m)}</option>`).join('');
+                if (mods.includes(dbMod)) {
+                  modSelect.value = dbMod;
+                } else if (mods.includes(currentMod)) {
+                  modSelect.value = currentMod;
+                } else if (mods.length > 0) {
+                  modSelect.value = mods[0];
+                }
+                window.updateAgentCaps(a.name);
+              }
+            });
+          }
+        }
+      }).catch(e => {
+        console.error("Failed to load available models asynchronously", e);
+      }).finally(() => {
+        if (window.loadRoutingInsights) {
+          window.loadRoutingInsights();
+        }
+      });
     }
 
     window.updateAgentCaps = function(aName) {
@@ -4190,48 +4312,244 @@
       document.getElementById('llm-keys-status').innerHTML = h || '<div style="color:var(--text-muted)">Keine Keys hinterlegt.</div>';
     }
 
+    window.runRoutingWithProgress = async function(agents, routeActionPromise) {
+      const banner = document.getElementById('routing-progress-banner');
+      const text = document.getElementById('routing-progress-text');
+      const pct = document.getElementById('routing-progress-percentage');
+      const spinner = document.getElementById('routing-banner-spinner');
+      
+      if (banner) {
+        banner.style.display = 'flex';
+        banner.style.background = 'rgba(0,229,255,0.08)';
+        banner.style.borderColor = 'rgba(0,229,255,0.2)';
+        if (text) {
+          text.innerText = 'Auto-routing läuft: Mappe Agenten zu optimalen LLMs...';
+          text.style.color = '#00e5ff';
+        }
+        if (pct) {
+          pct.innerText = '0%';
+          pct.style.color = 'rgba(0,229,255,0.7)';
+        }
+        if (spinner) {
+          spinner.style.display = 'block';
+          spinner.style.borderColor = 'rgba(0,229,255,0.3)';
+          spinner.style.borderTopColor = '#00e5ff';
+        }
+      }
+      
+      try {
+        // 1. Run the route assignment action
+        await routeActionPromise;
+        
+        // 2. Reload the UI config to reflect changes in dropdowns
+        await loadLLMConfig();
+        
+        // 3. Test agents in parallel with progress updates
+        let completed = 0;
+        const total = agents.length;
+        if (total === 0) {
+          if (pct) pct.innerText = '100%';
+        }
+        
+        const testPromises = agents.map(async (a) => {
+          const provSelect = document.getElementById(`prov-${a.name}`);
+          const modSelect = document.getElementById(`mod-${a.name}`);
+          const p = provSelect ? provSelect.value : 'auto';
+          const m = modSelect ? modSelect.value : 'stage_3';
+          
+          // Show status lamp as yellow/testing
+          const lamp = document.getElementById(`lamp-${a.name}`);
+          if (lamp) {
+            lamp.style.background = 'yellow';
+            lamp.style.boxShadow = '0 0 8px yellow';
+            lamp.title = 'Test läuft...';
+          }
+          
+          try {
+            let res = await api('POST', '/llm/test_agent', { agent: a.name, provider: p, model: m });
+            if (lamp) {
+              if (res && res.valid) {
+                lamp.style.background = '#39ff14';
+                lamp.style.boxShadow = '0 0 10px #39ff14';
+                let detail = (res.resolved_provider && res.resolved_model) ? ` (${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
+                lamp.title = `Test erfolgreich${detail}`;
+              } else {
+                lamp.style.background = '#ff3333';
+                lamp.style.boxShadow = '0 0 10px #ff3333';
+                lamp.title = res ? (res.info || 'Test fehlgeschlagen') : 'Fehler';
+              }
+            }
+          } catch (e) {
+            if (lamp) {
+              lamp.style.background = '#ff3333';
+              lamp.style.boxShadow = '0 0 10px #ff3333';
+              lamp.title = 'Verbindungsfehler';
+            }
+          }
+          
+          completed++;
+          const percent = Math.round((completed / total) * 100);
+          if (pct) {
+            pct.innerText = `${percent}%`;
+          }
+        });
+        
+        await Promise.all(testPromises);
+        
+        // 4. Update banner to success state
+        if (banner) {
+          banner.style.background = 'rgba(57,255,20,0.08)';
+          banner.style.borderColor = 'rgba(57,255,20,0.2)';
+          if (text) {
+            text.innerText = `Auto-routing abgeschlossen! ${total} Agenten erfolgreich verifiziert.`;
+            text.style.color = '#39ff14';
+          }
+          if (pct) {
+            pct.innerText = '100%';
+            pct.style.color = 'rgba(57,255,20,0.7)';
+          }
+          if (spinner) {
+            spinner.style.display = 'none';
+          }
+          
+          // Refresh insights list
+          await loadRoutingInsights();
+          
+          // Fade out banner after 3 seconds
+          setTimeout(() => {
+            banner.style.display = 'none';
+          }, 3000);
+        }
+      } catch (err) {
+        console.error("Routing progress error", err);
+        if (banner) {
+          banner.style.background = 'rgba(255,51,51,0.08)';
+          banner.style.borderColor = 'rgba(255,51,51,0.2)';
+          if (text) {
+            text.innerText = 'Fehler beim Auto-routing.';
+            text.style.color = '#ff3333';
+          }
+          if (spinner) spinner.style.display = 'none';
+          setTimeout(() => { banner.style.display = 'none'; }, 4000);
+        }
+      }
+    };
+
     window.setAllAgentsToStage = async function(stage) {
       const agents = window.llmAgentsListGlobal || [];
-      agents.forEach(a => {
-        const pSelect = document.getElementById(`prov-${a.name}`);
-        if (pSelect) {
-          pSelect.value = 'auto';
-          window.updateModels(a.name);
-          const mSelect = document.getElementById(`mod-${a.name}`);
-          if (mSelect) {
-            mSelect.value = stage;
-            window.updateAgentCaps(a.name);
-          }
-        }
-      });
-      // Concurrently run tests
-      const testPromises = agents.map(a => testAgentLLM(a.name));
-      await Promise.all(testPromises);
-      // Auto-save settings
-      await saveAgentLLMs();
+      const overridePromise = (async () => {
+        let config = {};
+        agents.forEach(a => {
+          config[a.name.toLowerCase()] = {
+            provider: 'auto',
+            model: stage
+          };
+        });
+        await api('POST', '/llm/agents', config);
+      })();
+      
+      await window.runRoutingWithProgress(agents, overridePromise);
     };
 
     window.autoRouteAllAgents = async function() {
       const agents = window.llmAgentsListGlobal || [];
-      agents.forEach(a => {
-        const name = a.name.toLowerCase();
-        const pSelect = document.getElementById(`prov-${a.name}`);
-        if (pSelect) {
-          pSelect.value = 'auto';
-          window.updateModels(a.name);
-          const mSelect = document.getElementById(`mod-${a.name}`);
-          if (mSelect) {
-            const isCoderOrSec = name.includes('coder') || name.includes('security') || name.includes('watchdog');
-            mSelect.value = isCoderOrSec ? 'stage_4' : 'stage_3';
-            window.updateAgentCaps(a.name);
-          }
+      await window.runRoutingWithProgress(agents, api('POST', '/llm/auto_assign'));
+    };
+
+    window.loadRoutingInsights = async function() {
+      const container = document.getElementById('routing-insights-panel');
+      if (!container) return;
+      
+      try {
+        const insights = await api('GET', '/llm/routing_insights');
+        if (insights && Array.isArray(insights) && insights.length > 0) {
+          container.style.display = 'block';
+          
+          let html = `
+            <h3 style="margin-bottom:15px; font-size:1.05rem; color:#00e5ff; display:flex; align-items:center; gap:8px; font-weight:600;">
+              <svg style="width:20px; height:20px; fill:#00e5ff; filter: drop-shadow(0 0 5px rgba(0,229,255,0.6));" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-4h-2V7h2v2z"/></svg>
+              <span>Intelligent Routing Insights & Empfehlungen</span>
+            </h3>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+          `;
+          
+          insights.forEach(ins => {
+            let badgeColor = '#888';
+            let badgeBg = 'rgba(255,255,255,0.02)';
+            let borderLeft = '4px solid rgba(255,255,255,0.2)';
+            let badgeText = ins.status;
+            let actionHtml = '';
+            let iconSvg = '';
+            
+            if (ins.status === 'optimal') {
+              badgeColor = '#39ff14';
+              badgeBg = 'rgba(57,255,20,0.02)';
+              borderLeft = '4px solid #39ff14';
+              badgeText = 'Optimiert';
+              iconSvg = `<svg style="width:16px; height:16px; fill:#39ff14; flex-shrink:0;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+            } else if (ins.status === 'upgrade_available') {
+              badgeColor = '#00e5ff';
+              badgeBg = 'rgba(0,229,255,0.04)';
+              borderLeft = '4px solid #00e5ff';
+              badgeText = 'Upgrade';
+              iconSvg = `<svg style="width:16px; height:16px; fill:#00e5ff; flex-shrink:0; filter: drop-shadow(0 0 3px #00e5ff);" viewBox="0 0 24 24"><path d="M2 13h6v8h8v-8h6L12 3 2 13z"/></svg>`;
+              actionHtml = `<button onclick="applyUpgrade('${ins.agent}', '${ins.optimal_provider}', '${ins.optimal_model}')" class="btn-primary" style="font-size:0.75rem; padding:6px 12px; margin-left:auto; background:#00e5ff; color:#000; border-radius:6px; font-weight:bold; border:none; cursor:pointer; box-shadow:0 0 10px rgba(0,229,255,0.4); transition:all 0.2s; white-space:nowrap; outline:none;" onmouseover="this.style.boxShadow='0 0 15px #00e5ff'" onmouseout="this.style.boxShadow='0 0 10px rgba(0,229,255,0.4)'">Empfehlung anwenden</button>`;
+            } else if (ins.status === 'manual_override') {
+              badgeColor = '#ffa500';
+              badgeBg = 'rgba(255,165,0,0.02)';
+              borderLeft = '4px solid #ffa500';
+              badgeText = 'Override';
+              iconSvg = `<svg style="width:16px; height:16px; fill:#ffa500; flex-shrink:0;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
+              actionHtml = `<button onclick="applyUpgrade('${ins.agent}', '${ins.optimal_provider}', '${ins.optimal_model}')" class="btn-primary" style="font-size:0.75rem; padding:5px 10px; margin-left:auto; background:transparent; border:1px solid rgba(255,255,255,0.25); color:rgba(255,255,255,0.85); border-radius:6px; cursor:pointer; transition:all 0.2s; white-space:nowrap;" onmouseover="this.style.borderColor='rgba(255,255,255,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.25)'">Zurücksetzen</button>`;
+            }
+            
+            html += `
+              <div style="display:flex; align-items:center; gap:12px; padding:12px; background:${badgeBg}; border:1px solid rgba(255,255,255,0.05); border-left:${borderLeft}; border-radius:6px; font-size:0.8rem; line-height:1.4; transition:all 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(255,255,255,0.08)';" onmouseout="this.style.background='${badgeBg}'; this.style.borderColor='rgba(255,255,255,0.05)';">
+                <div style="display:flex; align-items:center; gap:8px; width:120px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; color:#fff;">
+                  ${iconSvg}
+                  <span>${ins.agent}</span>
+                </div>
+                <div style="flex-grow:1; color:rgba(255,255,255,0.7);">${ins.explanation}</div>
+                <div style="display:flex; align-items:center; gap:10px; flex-shrink:0; margin-left:auto;">
+                  <span style="font-size:0.65rem; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid ${badgeColor}44; color:${badgeColor}; font-family:monospace; background:rgba(0,0,0,0.2);">${badgeText.toUpperCase()}</span>
+                  ${actionHtml}
+                </div>
+              </div>
+            `;
+          });
+          
+          html += `</div>`;
+          container.innerHTML = html;
+        } else {
+          container.style.display = 'none';
         }
-      });
-      // Concurrently run tests
-      const testPromises = agents.map(a => testAgentLLM(a.name));
-      await Promise.all(testPromises);
-      // Auto-save settings
+      } catch (e) {
+        console.error("Failed to load routing insights", e);
+        container.style.display = 'none';
+      }
+    };
+
+    window.applyUpgrade = async function(aName, pvd, mdl) {
+      const pSelect = document.getElementById(`prov-${aName}`);
+      if (pSelect) {
+        pSelect.value = pvd;
+        window.updateModels(aName);
+        const mSelect = document.getElementById(`mod-${aName}`);
+        if (mSelect) {
+          mSelect.value = mdl;
+          window.updateAgentCaps(aName);
+        }
+      }
+      
+      const lamp = document.getElementById(`lamp-${aName}`);
+      if (lamp) {
+        lamp.style.background = 'yellow';
+        lamp.style.boxShadow = '0 0 8px yellow';
+      }
+      
       await saveAgentLLMs();
+      await testAgentLLM(aName);
+      await loadRoutingInsights();
     };
 
     async function saveAgentLLMs() {

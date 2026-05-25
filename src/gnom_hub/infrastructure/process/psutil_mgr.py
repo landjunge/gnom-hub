@@ -1,6 +1,6 @@
 import os, sys, subprocess, psutil
 from gnom_hub.core.config import RUN_DIR, PROJECT_ROOT
-AGENTS = ["generalAG", "soulAG", "researcherAG", "writerAG", "editorAG", "coderAG", "watchdogAG"]
+AGENTS = ["generalAG", "soulAG", "researcherAG", "writerAG", "editorAG", "coderAG", "watchdogAG", "securityAG"]
 
 def _get_proc(name: str):
     try:
