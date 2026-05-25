@@ -1,4 +1,4 @@
-# soul.py — SoulAG Gedächtnis mit Validierung
+# soul.py — SoulAG Gedächtnis & Automatische Lerneinheit
 import json, threading, os, re
 from .db import save_soul_fact, add_chat_message
 from .soul_retrieval import retrieve_relevant_facts
@@ -7,7 +7,7 @@ from .router import ask_router; from .config import WORKSPACE_DIR
 class SoulAG:
     def __init__(self): self.name = "SoulAG"
     def on_message(self, msg: str, sender: str):
-        if sender.lower() == "user": threading.Thread(target=self._extract_and_save, args=(msg,), daemon=True).start()
+        if sender.lower() == "user" or any(x in msg.lower() for x in ["abschluss", "zusammenfassung", "[write:"]): threading.Thread(target=self._extract_and_save, args=(msg,), daemon=True).start()
     def _validate(self, k: str, v: str) -> int:
         v, k_l = str(v), k.lower()
         if k == "active_preset":
@@ -18,9 +18,9 @@ class SoulAG:
             if any(part in p.replace("\\", "/").lower() for part in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]): return 1
         return 2
     def _extract_and_save(self, msg: str):
-        p = f"Du bist SoulAG. Extrahiere alle wichtigen Fakten/Vorlieben/Regeln.\n\nNachricht:\n{msg}\n\nAntworte NUR mit JSON-Array [{{\"key\": \"x\", \"value\": \"y\"}}]"
+        p = f"Du bist SoulAG. Extrahiere wichtige Fakten, Lektionen oder Regeln.\n\nNachricht:\n{msg}\n\nAntworte NUR mit JSON-Array [{{\"key\": \"x\", \"value\": \"y\"}}]"
         try:
-            res = ask_router(p, sys="Du bist ein präziser Extraktor.", agent_name="SoulAG")
+            res = ask_router(p, sys="Du bist ein präziser Lerneffekt-Extraktor.", agent_name="SoulAG")
             s, e = res.find("["), res.rfind("]")
             if s != -1 and e != -1:
                 for f in json.loads(res[s:e+1]):
@@ -35,6 +35,5 @@ class SoulAG:
         mentions = [m.lower() for m in re.findall(r'@(\w+)', msg)]
         m_ctx = [f"[Ref: @{d['name']} - Role: {d['role']} - {d['description']}]" for k, d in self.get_definitions().items() if k.lower() in mentions]
         return ctx + ("\n\n=== ERWÄHNTE AGENTEN ===\n" + "\n".join(m_ctx) if m_ctx else "")
-    def get_definitions(self) -> dict:
-        from .agent_definitions import AGENT_DEFINITIONS; return AGENT_DEFINITIONS
+    def get_definitions(self) -> dict: from .agent_definitions import AGENT_DEFINITIONS; return AGENT_DEFINITIONS
 soul_instance = SoulAG()
