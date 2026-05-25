@@ -1,7 +1,8 @@
 # action_handlers.py — Dispatcher für alle Action-Tags
 import re; from .action_write import handle_write, handle_read
 from .action_exec import handle_shell, handle_crawl, handle_showbox
-from .path_validator import is_worker_blocked, is_security_block
+from .path_validator import is_worker_blocked
+from .gatekeeper import verify_write, verify_cmd
 
 def _browser(ans, ms, agent, perms):
     if "godmode" not in perms and "desktop" not in perms: return ans
@@ -14,27 +15,15 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     w_ms, r_ms, sh_ms = [], [], []
     for m in re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", ans, re.DOTALL):
         fn, content = m.group(1).strip(), m.group(2).strip()
-        if is_worker_blocked(agent, fn, wd, perms): ans = ans.replace(m.group(0), f"[WatchdogAG: Schreibzugriff auf '{fn}' blockiert.]")
-        elif is_security_block(agent, fn, content, wd, perms): ans = ans.replace(m.group(0), f"[SecurityAG: Sicherheitsfreigabe für '{fn}' erforderlich.]")
-        else: w_ms.append(m)
+        if verify_write(agent, fn, content, wd, perms): w_ms.append(m)
+        else: ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
     for m in re.finditer(r"\[READ:\s*(.*?)\]", ans):
-        if is_worker_blocked(agent, m.group(1).strip(), wd, perms): ans = ans.replace(m.group(0), f"[WatchdogAG: Lesezugriff auf '{m.group(1).strip()}' blockiert.]")
+        if is_worker_blocked(agent, m.group(1).strip(), wd, perms): ans = ans.replace(m.group(0), f"[WatchdogAG: Lesezugriff blockiert.]")
         else: r_ms.append(m)
     for m in re.finditer(r"\[SHELL:\s*(.*?)\]", ans):
         cmd = m.group(1).strip()
-        is_worker = (agent or {}).get("role", "") not in ["soul", "general", "watchdog", "security"]
-        if is_worker and any(p in cmd.lower() for p in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]):
-            from .db import add_chat_message
-            add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"@user @SoulAG: Warnung! Worker {agent.get('name')} Shell blockiert: '{cmd}'")
-            ans = ans.replace(m.group(0), f"[WatchdogAG: Befehl '{cmd}' blockiert.]")
-        elif is_worker and any(p in cmd.lower() for p in ["rm -rf", "eval", "chmod 777", "wget ", "curl "]):
-            from .db import get_state_value, add_chat_message
-            approved = get_state_value("approved_security_commands", [])
-            if cmd in approved: sh_ms.append(m)
-            else:
-                add_chat_message("default", "SecurityAG", "securityag", "chat", f"@user @SoulAG: Warnung! SecurityAG hat die Befehlsausführung '{cmd}' durch {agent.get('name')} blockiert.")
-                ans = ans.replace(m.group(0), f"[SecurityAG: Befehl '{cmd}' blockiert. Sicherheitsfreigabe erforderlich.]")
-        else: sh_ms.append(m)
+        if verify_cmd(agent, cmd): sh_ms.append(m)
+        else: ans = ans.replace(m.group(0), f"[Gatekeeper: Befehlsausführung verweigert.]")
     ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)
     ans = handle_read(ans, r_ms, wd, perms)
     ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)

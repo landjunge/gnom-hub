@@ -9,7 +9,11 @@ def is_docker_running():
     except:
         return False
 
-def run_in_sandbox(command: str, timeout: int = 30):
+def run_in_sandbox(command: str, agent=None, timeout: int = 30):
+    if agent:
+        from .gatekeeper import verify_cmd
+        if not verify_cmd(agent, command):
+            raise PermissionError("Befehlsausführung verweigert durch Gatekeeper.")
     wd = os.path.abspath(str(WORKSPACE_DIR))
     if is_docker_running():
         cmd = [
