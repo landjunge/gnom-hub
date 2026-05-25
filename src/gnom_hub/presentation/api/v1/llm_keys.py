@@ -2,17 +2,20 @@ from fastapi import APIRouter, Request
 from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository
 from gnom_hub.infrastructure.llm.key_verifier import auto_detect_and_verify, verify_key
 from gnom_hub.infrastructure.llm.key_assigner import auto_assign_keys
+from gnom_hub.infrastructure.llm.desktop_syncer import sync_desktop_keys, write_keys_to_desktop
 
 router = APIRouter()
 
 @router.get("/api/llm/keys")
-def get_keys():
+async def get_keys():
     d = SQLiteStateRepository().get_value("llm_keys", {})
-    return d if isinstance(d, dict) else {}
+    return await sync_desktop_keys(d if isinstance(d, dict) else {})
 
 @router.post("/api/llm/keys")
 async def save_keys(req: Request):
-    SQLiteStateRepository().set_value("llm_keys", await req.json())
+    j = await req.json()
+    SQLiteStateRepository().set_value("llm_keys", j)
+    write_keys_to_desktop(j)
     return {"status": "ok"}
 
 @router.post("/api/llm/test")
