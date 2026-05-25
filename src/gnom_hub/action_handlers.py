@@ -1,28 +1,33 @@
 # action_handlers.py — Dispatcher für alle Action-Tags
-import re
-from .action_write import handle_write, handle_read
+import re; from .action_write import handle_write, handle_read
 from .action_exec import handle_shell, handle_crawl, handle_showbox
+from .path_validator import is_worker_blocked
 
-def _browser(answer, matches, agent, perms):
-    """Verarbeitet [BROWSER: {...}] Tags."""
-    if "godmode" not in perms and "desktop" not in perms: return answer
-    for m in matches:
-        answer = answer.replace(m.group(0), "[Browser: BROWSER-Aktionen sind in dieser 8-Agenten-Konfiguration deaktiviert]")
-    return answer
+def _browser(ans, ms, agent, perms):
+    if "godmode" not in perms and "desktop" not in perms: return ans
+    for m in ms: ans = ans.replace(m.group(0), "[Browser: BROWSER-Aktionen deaktiviert]")
+    return ans
 
-def process_actions(answer, agent, perms, bs_mode, wd):
-    """Verarbeitet alle Action-Tags in einer LLM-Antwort."""
+def process_actions(ans, agent, perms, bs_mode, wd):
     perms = list(perms)
     if "godmode" in perms and "run" not in perms: perms.append("run")
-    answer = handle_write(answer, list(re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", answer, re.DOTALL)), agent, perms, bs_mode, wd)
-    answer = handle_read(answer, list(re.finditer(r"\[READ:\s*(.*?)\]", answer)), wd, perms)
-    answer = handle_shell(answer, list(re.finditer(r"\[SHELL:\s*(.*?)\]", answer)), agent, perms, bs_mode, wd)
-    answer = handle_crawl(answer, list(re.finditer(r"\[CRAWL:\s*(.*?)\]", answer)), agent, perms)
-    ms = []
-    for tag in ("SHOWBOX", "showbox"):
-        for m in re.finditer(rf"<{tag}(?::(\d+))?>([\s\S]*?)<\/{tag}>", answer): ms.append((m.group(0), m.group(1) or "", m.group(2)))
-        for m in re.finditer(rf"\[{tag}(?::(\d+))?\]([\s\S]*?)\[\/{tag}\]", answer): ms.append((m.group(0), m.group(1) or "", m.group(2)))
-        for m in re.finditer(rf"\[{tag}:\s*(.*?)\]", answer, re.DOTALL): ms.append((m.group(0), "", m.group(1)))
-    answer = handle_showbox(answer, ms)
-    answer = _browser(answer, list(re.finditer(r"\[BROWSER:\s*(.*?)\]", answer, re.DOTALL)), agent, perms)
-    return answer
+    w_ms, r_ms, sh_ms = [], [], []
+    for m in re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", ans, re.DOTALL):
+        if is_worker_blocked(agent, m.group(1).strip(), wd, perms): ans = ans.replace(m.group(0), f"[WatchdogAG: Schreibzugriff auf '{m.group(1).strip()}' blockiert.]")
+        else: w_ms.append(m)
+    for m in re.finditer(r"\[READ:\s*(.*?)\]", ans):
+        if is_worker_blocked(agent, m.group(1).strip(), wd, perms): ans = ans.replace(m.group(0), f"[WatchdogAG: Lesezugriff auf '{m.group(1).strip()}' blockiert.]")
+        else: r_ms.append(m)
+    for m in re.finditer(r"\[SHELL:\s*(.*?)\]", ans):
+        cmd = m.group(1).strip()
+        if any(p in cmd.lower() for p in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]):
+            from .db import add_chat_message
+            add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"@user @SoulAG: Warnung! Worker {agent.get('name')} Shell blockiert: '{cmd}'")
+            ans = ans.replace(m.group(0), f"[WatchdogAG: Befehl '{cmd}' blockiert.]")
+        else: sh_ms.append(m)
+    ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)
+    ans = handle_read(ans, r_ms, wd, perms)
+    ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
+    ans = handle_crawl(ans, list(re.finditer(r"\[CRAWL:\s*(.*?)\]", ans)), agent, perms)
+    show_ms = [(m.group(0), m.group(1) or "", m.group(2)) for t in ("SHOWBOX", "showbox") for rx in (rf"<{t}(?::(\d+))?>([\s\S]*?)<\/{t}>", rf"\[{t}(?::(\d+))?\]([\s\S]*?)\[\/{t}\]") for m in re.finditer(rx, ans)] + [(m.group(0), "", m.group(1)) for t in ("SHOWBOX", "showbox") for m in re.finditer(rf"\[{t}:\s*(.*?)\]", ans, re.DOTALL)]
+    return _browser(handle_showbox(ans, show_ms), list(re.finditer(r"\[BROWSER:\s*(.*?)\]", ans, re.DOTALL)), agent, perms)
