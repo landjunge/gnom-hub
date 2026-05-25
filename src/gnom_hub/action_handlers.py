@@ -3,11 +3,7 @@ import re; from .action_write import handle_write, handle_read
 from .action_exec import handle_shell, handle_crawl, handle_showbox
 from .path_validator import is_worker_blocked
 from .gatekeeper import verify_write, verify_cmd
-
-def _browser(ans, ms, agent, perms):
-    if "godmode" not in perms and "desktop" not in perms: return ans
-    for m in ms: ans = ans.replace(m.group(0), "[Browser: BROWSER-Aktionen deaktiviert]")
-    return ans
+from .action_browser import handle_browser
 
 def process_actions(ans, agent, perms, bs_mode, wd):
     perms = list(perms)
@@ -29,4 +25,5 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
     ans = handle_crawl(ans, list(re.finditer(r"\[CRAWL:\s*(.*?)\]", ans)), agent, perms)
     show_ms = [(m.group(0), m.group(1) or "", m.group(2)) for t in ("SHOWBOX", "showbox") for rx in (rf"<{t}(?::(\d+))?>([\s\S]*?)<\/{t}>", rf"\[{t}(?::(\d+))?\]([\s\S]*?)\[\/{t}\]") for m in re.finditer(rx, ans)] + [(m.group(0), "", m.group(1)) for t in ("SHOWBOX", "showbox") for m in re.finditer(rf"\[{t}:\s*(.*?)\]", ans, re.DOTALL)]
-    return _browser(handle_showbox(ans, show_ms), list(re.finditer(r"\[BROWSER:\s*(.*?)\]", ans, re.DOTALL)), agent, perms)
+    ans = handle_showbox(ans, show_ms)
+    return handle_browser(ans, list(re.finditer(r"\[BROWSER:\s*(.*?)\]", ans, re.DOTALL)), agent, perms, wd)

@@ -48,7 +48,13 @@ Das System wurde in einem strukturierten Prozess um folgende Funktionen erweiter
 *   **API-Failover & Key-Rotation**: Bei Ausfällen von Remote-LLMs rotieren die Provider-Keys oder der Router fällt transparent auf lokale/alternative Modelle (z.B. Offline-Llama) zurück.
 *   **Automatisiertes DB-Cleanup**: Die Funktion `cleanup_old_data` löscht abgelaufene Fakten (älter als 30 Tage) und alte Chat-Nachrichten (älter als 7 Tage). Kritische Konfigurations-Chats (`role`) sowie geschützte Gedächtnisschlüssel (wie `active_preset` oder manuelle Sicherheitsfreigaben) bleiben dauerhaft erhalten.
 
+### 🌐 Phase 5: Browser-Automation (Playwright)
+*   **Containerisierte Playwright-Sandbox**: CoderAG kann echte Web-Interaktionen via Playwright ausführen. Die Ausführung erfolgt streng isoliert innerhalb eines Docker-Containers (`mcr.microsoft.com/playwright/python:v1.43.0-jammy`).
+*   **Netzwerk-Isolation per Default**: Die Sandbox startet standardmäßig ohne Netzwerkverbindung (`--network=none`), um lokale Host-Ressourcen zu schützen.
+*   **URL-Whitelisting & Gatekeeping**: Der Zugriff auf externe URLs ist standardmäßig blockiert und wechselt nur auf `--network=bridge`, wenn die Ziel-URL explizit in `approved_external_urls` freigegeben ist und die Ausführung sowohl von `WatchdogAG` als auch `SecurityAG` doppelt autorisiert wurde.
+
 ---
+
 
 ## 🏗️ Kern-Architektur
 
