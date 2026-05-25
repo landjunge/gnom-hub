@@ -44,7 +44,12 @@ Das System wurde in einem strukturierten Prozess um folgende Funktionen erweiter
 *   **Netzwerk-Isolation per Default**: Die Sandbox startet standardmäßig ohne Netzwerkverbindung (`--network=none`), um lokale Host-Ressourcen zu schützen.
 *   **URL-Whitelisting & Gatekeeping**: Der Zugriff auf externe URLs ist standardmäßig blockiert und wechselt nur auf `--network=bridge`, wenn die Ziel-URL explizit in `approved_external_urls` freigegeben ist und die Ausführung sowohl von `WatchdogAG` als auch `SecurityAG` doppelt autorisiert wurde.
 
+### 🧠 Phase 6: Erweitertes SoulAG Retrieval (Pipeline-Integration)
+*   **Volle Pipeline-Integration**: Das Keyword-Matching-Retrieval (`soul_retrieval.py`) ist nun vollständig in die SoulAG-Pipeline (`soul.py`) integriert.
+*   **Erweiterter Kontext (top_k=8)**: Statt starr die letzten 20 Fakten zu injizieren, sucht das System gezielt nach den bis zu 8 relevantesten Fakten aus der gesamten Historie der Datenbank und bettet diese dynamisch vor jeder Worker-Anfrage in den System-Prompt ein.
+
 ---
+
 
 ## 🏗️ Architektur
 

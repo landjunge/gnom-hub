@@ -3,7 +3,7 @@ import re, datetime
 from .db import get_db_conn
 
 def _tokenize(text: str) -> set:
-    return set(re.findall(r'\w+', (text or '').lower()))
+    return set(re.findall(r'[a-zA-Z0-9]+', (text or '').lower()))
 
 def retrieve_relevant_facts(query: str, top_k: int = 5) -> list:
     q_tokens = _tokenize(query)

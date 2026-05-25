@@ -1,6 +1,7 @@
 # soul.py — SoulAG Gedächtnis mit Validierung
 import json, threading, os
-from .db import save_soul_fact, get_relevant_facts, add_chat_message
+from .db import save_soul_fact, add_chat_message
+from .soul_retrieval import retrieve_relevant_facts
 from .router import ask_router; from .config import WORKSPACE_DIR
 
 class SoulAG:
@@ -30,7 +31,7 @@ class SoulAG:
                     else: print(f"[SoulAG] Rejected invalid fact: {k}={v}")
         except Exception: pass
     def inject_context(self, sys: str, msg: str) -> str:
-        facts = get_relevant_facts(msg)
+        facts = retrieve_relevant_facts(msg, top_k=8)
         return sys + "\n\n=== RELEVANTE INFORMATIONEN ===\n" + "\n".join(f"- {f}" for f in facts) if facts else sys
     def get_definitions(self) -> dict:
         from .agent_definitions import AGENT_DEFINITIONS; return AGENT_DEFINITIONS
