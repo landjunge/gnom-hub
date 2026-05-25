@@ -3876,9 +3876,10 @@
       }
       return capConfig.map(c => {
         let hasCap = activeCaps.includes(c.name);
-        let bg = hasCap ? c.color : 'rgba(255,255,255,0.1)';
+        let bg = hasCap ? c.color : '#222';
+        let border = hasCap ? `1px solid ${c.color}` : '1px solid rgba(255,255,255,0.1)';
         let boxS = hasCap ? `0 0 4px ${c.color}` : 'none';
-        return `<span style="width:8px; height:8px; border-radius:50%; background:${bg}; box-shadow:${boxS}; display:inline-block;" title="${c.title}: ${hasCap ? 'Ja' : 'Nein'}"></span>`;
+        return `<span style="width:8px; height:8px; border-radius:50%; background:${bg}; border:${border}; box-shadow:${boxS}; display:inline-block; flex-shrink:0;" title="${c.title}: ${hasCap ? 'Ja' : 'Nein'}"></span>`;
       }).join('');
     }
 
@@ -4011,9 +4012,10 @@
         
         capConfig.forEach(c => {
           let hasCap = k.caps && k.caps.includes(c.name);
-          let bg = hasCap ? c.color : 'rgba(255,255,255,0.1)';
+          let bg = hasCap ? c.color : '#222';
+          let border = hasCap ? `1px solid ${c.color}` : '1px solid rgba(255,255,255,0.1)';
           let boxS = hasCap ? `0 0 4px ${c.color}` : 'none';
-          capsHtml += `<span style="width:8px; height:8px; border-radius:50%; background:${bg}; box-shadow:${boxS}; display:inline-block; margin-left:4px;" title="${c.title}: ${hasCap ? 'Ja' : 'Nein'}"></span>`;
+          capsHtml += `<span style="width:8px; height:8px; border-radius:50%; background:${bg}; border:${border}; box-shadow:${boxS}; display:inline-block; margin-left:4px; flex-shrink:0;" title="${c.title}: ${hasCap ? 'Ja' : 'Nein'}"></span>`;
         });
 
         h += `
@@ -4053,15 +4055,17 @@
       
       lamp.style.background = 'yellow';
       lamp.style.boxShadow = '0 0 8px yellow';
+      lamp.title = 'Test läuft...';
       
       let res = await api('POST', '/llm/test_agent', { agent: aName, provider: p, model: m });
       if (res && res.valid) {
         lamp.style.background = '#39ff14';
         lamp.style.boxShadow = '0 0 10px #39ff14';
+        lamp.title = 'Test erfolgreich';
       } else {
         lamp.style.background = '#ff3333';
         lamp.style.boxShadow = '0 0 10px #ff3333';
-        if (res && res.info) alert(`Error testing ${aName}: ` + res.info);
+        lamp.title = (res && res.info) ? `Fehler: ${res.info}` : 'Test fehlgeschlagen';
       }
     }
   </script>
