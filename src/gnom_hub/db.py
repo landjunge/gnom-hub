@@ -38,26 +38,18 @@ def get_db_conn():
 
 def _seed_agents(conn):
     """Initialisiert die 8 Standard-Agenten direkt in der übergebenen Verbindung."""
-    default_agents = [
-        {"name": "SoulAG", "description": "Swarm consciousness", "status": "online", "capabilities": ["@soul"], "role": "soul"},
-        {"name": "GeneralAG", "description": "Task coordinator", "status": "online", "capabilities": ["@job"], "role": "general"},
-        {"name": "WatchdogAG", "description": "Workspace integrity check", "status": "online", "capabilities": ["@watchdog"], "role": "watchdog"},
-        {"name": "SecurityAG", "description": "Security & risk assessment", "status": "online", "capabilities": ["@security"], "role": "security"},
-        {"name": "CoderAG", "description": "Code implementation", "status": "online", "capabilities": ["@code"], "role": "coder"},
-        {"name": "WriterAG", "description": "Documentation editor", "status": "online", "capabilities": ["@write"], "role": "writer"},
-        {"name": "ResearcherAG", "description": "Web research & crawling", "status": "online", "capabilities": ["@research"], "role": "researcher"},
-        {"name": "EditorAG", "description": "Quality control & text polish", "status": "online", "capabilities": ["@edit"], "role": "editor"}
-    ]
+    from .agent_definitions import AGENT_DEFINITIONS
     try:
-        for a in default_agents:
+        for k, v in AGENT_DEFINITIONS.items():
             conn.execute("""
                 INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, active_job, last_seen)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (a["name"], str(uuid.uuid4()), 0, a["description"], a["status"], 
-                  json.dumps(a["capabilities"]), a["role"], None, datetime.now(timezone.utc).isoformat()))
+            """, (v["name"], str(uuid.uuid4()), 0, v["description"], "online", 
+                  json.dumps(v["capabilities"]), v["role"], None, datetime.now(timezone.utc).isoformat()))
         logger.info("[DB] Default 8 agents successfully seeded.")
     except sqlite3.Error as e:
         logger.error(f"[DB] Error seeding agents: {e}")
+
 
 def init_db():
     """Erstellt alle benötigten Tabellen idempotent und führt Seeding bei Bedarf aus."""

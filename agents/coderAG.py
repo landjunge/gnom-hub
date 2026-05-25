@@ -1,8 +1,10 @@
 """CoderAG Agent."""
 import asyncio
 from gnom_hub.agent_base import BaseAgent
+from gnom_hub.agent_definitions import AGENT_DEFINITIONS
 
 async def main():
-    await BaseAgent("CoderAG", "Code generation and technical implementation", "@code", sys_prompt="SYSTEM-ROLLE: CODER. Write clean, working code. Prefer simple solutions.", poll=15).run()
+    cfg = AGENT_DEFINITIONS["coderag"]
+    await BaseAgent(cfg["name"], cfg["description"], cfg["capabilities"][0], sys_prompt=cfg["sys_prompt"], poll=15).run()
 
 if __name__ == "__main__": asyncio.run(main())
