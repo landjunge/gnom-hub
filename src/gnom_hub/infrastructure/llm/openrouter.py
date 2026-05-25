@@ -4,8 +4,7 @@ from ...core.config import Config
 from ...common.exceptions import LLMProviderError
 
 class OpenRouterClient:
-    FREE_MODELS = ["meta-llama/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct", "qwen/qwen2.5-7b-instruct", "deepseek/deepseek-chat"]
-    _successful_models: List[str] = []
+    FREE_MODELS = ["meta-llama/llama-3.1-8b-instruct", "google/gemma-2-9b-it", "mistralai/mistral-7b-instruct", "qwen/qwen2.5-7b-instruct", "deepseek/deepseek-chat", "llama3.2"]
 
     def __init__(self):
         self.api_key = Config.OPENROUTER_API_KEY
@@ -15,10 +14,9 @@ class OpenRouterClient:
 
     async def ask(self, prompt: str, model: Optional[str] = None) -> str:
         models_to_try = [model] if model else []
-        for m in self._successful_models + self.FREE_MODELS:
-            if m not in models_to_try: models_to_try.append(m)
-        for attempt, current_model in enumerate(models_to_try[:6], 1):
-            print(f"🟡 OpenRouter Versuch {attempt} → {current_model}")
+        models_to_try.extend([m for m in self.FREE_MODELS if m not in models_to_try])
+        for i, current_model in enumerate(models_to_try, 1):
+            print(f"🟡 OpenRouter Versuch {i}/{len(models_to_try)} → {current_model}")
             headers = {"Authorization": f"Bearer {self.api_key}", "HTTP-Referer": "http://localhost:8000", "X-Title": "Gnom-Hub"}
             payload = {"model": current_model, "messages": [{"role": "user", "content": prompt}]}
             async with httpx.AsyncClient(timeout=60.0) as client:
@@ -26,11 +24,8 @@ class OpenRouterClient:
                     response = await client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
                     response.raise_for_status()
                     content = response.json()["choices"][0]["message"]["content"].strip()
-                    if current_model in self._successful_models:
-                        self._successful_models.remove(current_model)
-                    self._successful_models.insert(0, current_model)
                     print(f"✅ Erfolg mit {current_model}")
                     return content
                 except Exception as e:
                     print(f"❌ Fehlgeschlagen mit {current_model}: {e}")
-        raise LLMProviderError("OpenRouter: Alle Modelle fehlgeschlagen")
+        raise LLMProviderError("OpenRouter: Kein Modell hat funktioniert")
