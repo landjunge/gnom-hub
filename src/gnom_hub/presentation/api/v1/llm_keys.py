@@ -21,10 +21,10 @@ async def save_keys(req: Request):
 @router.post("/api/llm/test")
 async def test_key(req: Request):
     j = await req.json()
-    k, p = j.get("key"), j.get("provider")
+    k, p, l = j.get("key"), j.get("provider"), j.get("label", "")
     if p:
         return await verify_key(p, k)
-    return await auto_detect_and_verify(k)
+    return await auto_detect_and_verify(k, l)
 
 @router.post("/api/llm/auto_assign")
 async def auto_assign():

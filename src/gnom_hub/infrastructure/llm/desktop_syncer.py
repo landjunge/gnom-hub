@@ -11,7 +11,7 @@ async def sync_desktop_keys(db_keys: dict) -> dict:
         parsed = [(re.sub(r'^[\s#]*(UNGÜLTIG:\s*)?', '', l.split("=", 1)[0], flags=re.IGNORECASE).strip() if "=" in l else "API_KEY", clean_key(l)) for l in lines]
         to_verify = [pk for pk in parsed if pk[1] not in [v.get("key") for v in db_keys.values() if isinstance(v, dict)]]
         if to_verify:
-            res_list = await asyncio.gather(*(auto_detect_and_verify(k) for _, k in to_verify), return_exceptions=True)
+            res_list = await asyncio.gather(*(auto_detect_and_verify(k, lbl) for lbl, k in to_verify), return_exceptions=True)
             for idx, ((lbl, clean_k), res) in enumerate(zip(to_verify, res_list)):
                 d = res if isinstance(res, dict) else {}
                 kid = f"k_{int(time.time() * 1000) + idx}"

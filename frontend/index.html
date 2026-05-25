@@ -3867,7 +3867,9 @@
         'anthropic': 'Anthropic',
         'gemini': 'Gemini',
         'mistral': 'Mistral',
-        'lokal': 'Local (Ollama)'
+        'lokal': 'Local (Ollama)',
+        'elevenlabs': 'ElevenLabs (TTS)',
+        'brave': 'Brave (Web Search)'
       };
       return labels[p] || p;
     }
@@ -4082,10 +4084,14 @@
       if (upper.includes("GEMINI") || upper.includes("GOOGLE")) return "gemini";
       if (upper.includes("OPENAI")) return "openai";
       if (upper.includes("MISTRAL")) return "mistral";
+      if (upper.includes("ELEVEN") || upper.includes("11LABS")) return "elevenlabs";
+      if (upper.includes("BRAVE")) return "brave";
       
       if (cleanedKey.startsWith("sk-or-")) return "openrouter";
       if (cleanedKey.startsWith("sk-ant-")) return "anthropic";
       if (cleanedKey.startsWith("AIzaSy")) return "gemini";
+      if (cleanedKey.startsWith("BS-")) return "brave";
+      if (/^[0-9a-fA-F]{32}$/.test(cleanedKey)) return "elevenlabs";
       return null;
     }
 
@@ -4123,7 +4129,7 @@
           testedKeys.push(existing);
         } else {
           let p = detectProvider(line, k);
-          let res = await api('POST', '/llm/test', { key: k, provider: p });
+          let res = await api('POST', '/llm/test', { key: k, provider: p, label: label });
           testedKeys.push({
             id: 'k_' + (nextId++),
             key: k,
@@ -4160,7 +4166,8 @@
           { name: 'text', color: '#39ff14', title: 'Text Chat' },
           { name: 'vision', color: '#00e5ff', title: 'Vision' },
           { name: 'image', color: '#ff007f', title: 'Bildgenerierung' },
-          { name: 'audio', color: '#ffa500', title: 'Audio' },
+          { name: 'audio', color: '#ffa500', title: 'Audio (TTS)' },
+          { name: 'web', color: '#00ffcc', title: 'Web Suche' },
           { name: 'tools', color: '#b026ff', title: 'Tools (Function Calling)' }
         ];
         
