@@ -559,6 +559,22 @@ def log_audit_event(agent: str, event_type: str, details: dict, trace_id: str = 
                     INSERT INTO audit_log (timestamp, agent, event_type, details, trace_id)
                     VALUES (?, ?, ?, ?, ?)
                 """, (datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                      agent, event_type, json.dumps(details), trace_id))
+                       agent, event_type, json.dumps(details), trace_id))
     except sqlite3.Error as e:
         logger.error(f"[DB] Failed to save audit log: {e}")
+
+def cleanup_old_data(days_chat: int = 7, days_soul: int = 30):
+    try:
+        from datetime import timedelta
+        limit_chat = (datetime.now(timezone.utc) - timedelta(days=days_chat)).isoformat().replace("+00:00", "Z")
+        limit_soul = (datetime.now(timezone.utc) - timedelta(days=days_soul)).isoformat().replace("+00:00", "Z")
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE timestamp < ? AND msg_type != 'role'", (limit_chat,))
+                protected = ["active_preset", "approved_system_paths", "approved_security_writes", "approved_security_commands"]
+                placeholders = ",".join("?" for _ in protected)
+                conn.execute(f"DELETE FROM soul_memory WHERE timestamp < ? AND key NOT IN ({placeholders})", (limit_soul, *protected))
+        logger.info("[DB] Old chats and soul facts cleaned up successfully.")
+    except Exception as e:
+        logger.error(f"[DB] Cleanup failed: {e}")
+

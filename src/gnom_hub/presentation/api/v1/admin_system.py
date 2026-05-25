@@ -11,6 +11,8 @@ router = APIRouter(prefix="/api/admin")
 @router.post("/cleanup")
 def cleanup_offline():
     SQLiteAgentRepository().delete_offline()
+    from gnom_hub.db import cleanup_old_data
+    cleanup_old_data()
     return {"status": "ok"}
 
 @router.get("/health")
