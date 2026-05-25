@@ -62,6 +62,23 @@ Das System wurde in einem strukturierten Prozess um folgende Funktionen erweiter
 *   **Swarm-Coordination**: GeneralAG koordiniert mehrere Agenten parallel und führt Ergebnisse nach Beendigung aller Teilaufgaben automatisch in ein finales Dokument/Code-Artefakt zusammen.
 *   **Visuelle Swarm-Aktivität**: Ein pulsierendes Swarm-Status-Banner im Dashboard zeigt in Echtzeit an, welche Agenten gerade miteinander kommunizieren und welcher Team-Workflow aktiv ist.
 
+### 🔗 Phase 10: Advanced Swarm Intelligence & Dynamic Team Workflows
+*   **Parallele Swarm-Koordination**: GeneralAG koordiniert die parallele Ausführung mehrerer Worker-Agenten gleichzeitig und führt deren Ergebnisse nach Abschluss automatisch in ein konsolidiertes Ergebnis zusammen.
+*   **Git Automation**: Automatische Workspace-Commits nach erfolgreichen Swarm-Aktionen zur Gewährleistung der Projekthistorie.
+
+### 🧠 Phase 11: Persistent Knowledge Base & Intelligent Learning System
+*   **Persistente SQLite-Wissensbasis**: Erlernte Fakten und Benutzerpräferenzen werden sitzungsübergreifend in der SQLite-Datenbank persistiert.
+*   **Semantisches LLM-Retrieval**: Das Suchsystem bewertet die Relevanz gespeicherter Fakten mithilfe eines LLM-basierten Filters (top_k=8) und injiziert diese kontextbezogen in die Agenten-Prompts, selbst bei fehlender Keyword-Übereinstimmung.
+
+### 🔄 Phase 12: Agent Evolution & Self-Improvement
+*   **Dynamische Evolution-Schleife**: Nach jedem großen `@job` analysiert GeneralAG den Verlauf und generiert konkrete Verbesserungsempfehlungen für die System-Prompts der beteiligten Worker-Agenten.
+*   **Selbstverbesserungs-Log**: Die erlernten Optimierungsregeln werden als `evolution_{agent}_{hex}` in `soul_memory` persistiert, fließen bei zukünftigen Aufrufen automatisch in die Prompts ein und werden visuell im Dashboard unter "Agent Evolution & Self-Improvement Log" (Bento-Card mit lila Akzent) dargestellt.
+
+### 💬 Phase 13: User Feedback Loop & Continuous Improvement
+*   **Aktive Feedback-Aufforderung**: GeneralAG bittet den Nutzer nach jedem abgeschlossenen Swarm-Workflow im Chat aktiv um eine Bewertung des Ergebnisses.
+*   **Dashboard Feedback-Panel**: Interaktive Buttons (Daumen hoch/runter) und ein Kommentarfeld im Bento-Grid ermöglichen die direkte Eingabe von Feedback.
+*   **Feedback-basiertes Lernen**: SoulAG speichert das Feedback in der Datenbank, lässt es von GeneralAG analysieren, leitet daraus neue Verhaltensregeln ab und aktualisiert die Worker-Prompts dynamisch.
+
 ---
 
 
