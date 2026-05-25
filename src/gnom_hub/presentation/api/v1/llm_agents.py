@@ -22,7 +22,7 @@ async def test_agent(req: Request):
     p, m = j.get("provider"), j.get("model")
     kdb = SQLiteStateRepository().get_value("llm_keys", {})
     if p == "auto":
-        from gnom_hub.infrastructure.router.router_stage import resolve_stage
+        from gnom_hub.infrastructure.router.router_stage_compat import resolve_stage
         p, m = resolve_stage(m, kdb, j.get("agent", "Test"))
     k = next((x.get("key") for x in (kdb.values() if isinstance(kdb, dict) else kdb) if x.get("provider") == p and x.get("valid")), None)
     if not k:

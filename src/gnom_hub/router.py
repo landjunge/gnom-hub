@@ -1,6 +1,6 @@
 from .router_config import AGENT_MODELS, DEFAULT_MODELS; from .db import get_state_value, set_state_value
 from gnom_hub.infrastructure.router.router_call import _call, _try_keys
-from gnom_hub.infrastructure.router.router_stage import get_stage_options
+from gnom_hub.infrastructure.router.router_stage_compat import get_stage_options
 
 def _try(pvd, mdl, key, msgs, n):
     try: return _call(pvd, mdl, key, msgs, n)

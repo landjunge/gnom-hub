@@ -1,6 +1,6 @@
 from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository
 from .router_call import _try_keys, _call
-from .router_stage import get_stage_options
+from .router_stage_compat import get_stage_options
 
 def _try(pvd, mdl, key, msgs, n):
     try: return _call(pvd, mdl, key, msgs, n)
