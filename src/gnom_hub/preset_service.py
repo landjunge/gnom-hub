@@ -33,4 +33,4 @@ def handle_preset_change(preset: str):
         set_state_value("llm_agents", adb)
     focus = load_presets().get("focus", {}).get(preset, "Allgemeine Unterstützung des Schwarms.")
     msg = f"Preset gewechselt zu: **{preset}**.\n\nIch habe das Verhalten und die Modelle der Worker-Agenten wie folgt angepasst: *{focus}*"
-    add_chat_message("default", "SoulAG", "soulag", "chat", msg)
+    add_chat_message("default", "System", "system", "chat", msg)

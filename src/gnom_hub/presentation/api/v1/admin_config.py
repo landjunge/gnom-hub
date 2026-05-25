@@ -5,9 +5,7 @@ from gnom_hub.infrastructure.database.agent_role import set_agent_role, update_a
 
 router = APIRouter(prefix="/api/admin")
 ROLES = {
-    "de": {"general": "SYSTEM-ROLLE: GENERAL. Task-Verteilung, Koordination. Analysiere @job und verteile Aufgaben via @Name -> Aufgabe. Keine Erklärungen."},
-    "en": {"general": "SYSTEM ROLE: GENERAL. Task distribution and coordination. Analyze @job and distribute tasks via @Name -> Task. No explanations."}
-}
+    "de": {"general": "SYSTEM-ROLLE: GENERAL. Task-Verteilung, Koordination. Analysiere @job und verteile Aufgaben via @Name -> Aufgabe. Keine Erklärungen."}, "en": {"general": "SYSTEM ROLE: GENERAL. Task distribution and coordination. Analyze @job and distribute tasks via @Name -> Task. No explanations."}}
 
 @router.put("/agents/{agent_id}/role")
 def set_role(agent_id: str, role: str):
@@ -34,7 +32,6 @@ def get_preset(): return {"preset": (SR().get_value("active_preset", "Web Develo
 
 @router.post("/preset")
 def set_preset(p: PresetPayload):
-    SR().set_value("active_preset", p.preset)
-    from gnom_hub.soul import soul_instance
-    if hasattr(soul_instance, "on_preset_change"): soul_instance.on_preset_change(p.preset)
+    from gnom_hub.preset_service import handle_preset_change
+    handle_preset_change(p.preset)
     return {"status": "ok", "preset": p.preset}

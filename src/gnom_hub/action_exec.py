@@ -25,6 +25,7 @@ def handle_crawl(ans, ms, ag, perms):
     return ans
 def handle_showbox(ans, ms):
     from .json_sanitizer import _sanitize_json
+    for full, idx, raw in ms:
         try:
             d = _sanitize_json(raw.strip())
             if isinstance(d, list): d = {"slides": d}
