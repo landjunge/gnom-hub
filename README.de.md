@@ -285,7 +285,7 @@ Architekt der Härtungsphase. Spezifische Beiträge:
 * Migration der JSON-Speicherung auf eine transaktionssichere SQLite3-Datenbank (WAL-Modus)
 * Implementierung des `psutil`-Prozessmanagers mit PID-Dateien und Lifespan-Integration
 * Integration von SFTP-Bereitstellung, CORS-Einschränkung auf Localhost und des `log.py`-Frameworks
-* Implementation der Phasen 1-4 (Doppel-Gatekeeper, Health Dashboard, Jaccard Memory Retrieval & DB Cleanup)
+* Implementation der Härtungs-Phasen 1-15 (darunter Zero-Trust Capabilities, local Embeddings mit FAISS & TF-IDF-Fallback, Custom Presets, Prompt Versioning, Swarm Intelligence, User Feedback Loop und extrem performantes In-Memory/SQLite-Caching)
 
 ---
 
