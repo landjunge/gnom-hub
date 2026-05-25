@@ -3738,9 +3738,16 @@
               </div>
             </div>
             <div style="flex:2; min-width: 400px; background:var(--bg-card); padding:20px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
                 <h3 style="margin:0;">Agent Assignment</h3>
-                <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.75rem; padding:4px 8px; background:#00E5FF; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 5px rgba(0,229,255,0.3);">Auto-Route All</button>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <button class="btn-primary" onclick="setAllAgentsToStage('stage_1')" style="font-size:0.75rem; padding:4px 8px; background:#39ff14; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer;">St. 1</button>
+                  <button class="btn-primary" onclick="setAllAgentsToStage('stage_2')" style="font-size:0.75rem; padding:4px 8px; background:#00e5ff; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer;">St. 2</button>
+                  <button class="btn-primary" onclick="setAllAgentsToStage('stage_3')" style="font-size:0.75rem; padding:4px 8px; background:#ffa500; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer;">St. 3</button>
+                  <button class="btn-primary" onclick="setAllAgentsToStage('stage_4')" style="font-size:0.75rem; padding:4px 8px; background:#ff007f; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer;">St. 4</button>
+                  <span style="color:rgba(255,255,255,0.3); font-size:0.8rem; margin:0 4px;">|</span>
+                  <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.75rem; padding:4px 8px; background:#fff; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 5px rgba(255,255,255,0.2);">Auto-Route All</button>
+                </div>
               </div>
               <div id="llm-agents-list" style="margin-bottom:20px; max-height:400px; overflow-y:auto; padding-right:10px;">Loading Agents...</div>
               <div style="display:flex; gap:10px;">
@@ -4060,6 +4067,22 @@
       });
       document.getElementById('llm-keys-status').innerHTML = h || '<div style="color:var(--text-muted)">Keine Keys hinterlegt.</div>';
     }
+
+    window.setAllAgentsToStage = function(stage) {
+      const agents = window.llmAgentsListGlobal || [];
+      agents.forEach(a => {
+        const pSelect = document.getElementById(`prov-${a.name}`);
+        if (pSelect) {
+          pSelect.value = 'auto';
+          window.updateModels(a.name);
+          const mSelect = document.getElementById(`mod-${a.name}`);
+          if (mSelect) {
+            mSelect.value = stage;
+            window.updateAgentCaps(a.name);
+          }
+        }
+      });
+    };
 
     window.autoRouteAllAgents = function() {
       const agents = window.llmAgentsListGlobal || [];
