@@ -13,7 +13,13 @@ def get_agent_llm():
 
 @router.post("/api/llm/agents")
 async def save_agent_llm(req: Request):
-    SQLiteStateRepository().set_value("llm_agents", await req.json())
+    db = SQLiteStateRepository()
+    data = await req.json()
+    db.set_value("llm_agents", data)
+    preset = db.get_value("active_preset", "Web Development")
+    if isinstance(preset, str):
+        preset = preset.strip('"\'')
+    db.set_value(f"llm_preset_{preset}", data)
     return {"status": "ok"}
 
 @router.post("/api/llm/test_agent")
