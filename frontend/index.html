@@ -3975,7 +3975,10 @@
         globalKeys = Object.keys(keysRes).length > 0 ? Object.values(keysRes) : [];
         renderKeyStatus(globalKeys);
         if (globalKeys.length > 0 && globalKeys[0].key) {
-           document.getElementById('llm-keys-input').value = globalKeys.map(k => k.key).join('\n');
+           document.getElementById('llm-keys-input').value = globalKeys.map(k => {
+             const keyName = k.provider ? k.provider.toUpperCase() + "_API_KEY=" : "";
+             return keyName + maskKey(k.key);
+           }).join('\n');
         }
       }
 
@@ -4024,6 +4027,14 @@
       window.updateAgentCaps(aName);
     };
 
+    function maskKey(key) {
+      if (!key) return '';
+      if (key.length <= 12) return '••••••••';
+      const prefix = key.substring(0, 8);
+      const suffix = key.substring(key.length - 4);
+      return `${prefix}••••••••••••${suffix}`;
+    }
+
     function cleanKey(line) {
       let raw = line.trim();
       if (raw.startsWith("export ")) {
@@ -4066,18 +4077,29 @@
       let nextId = Date.now();
       
       for(let line of rawLines) {
+        let isMasked = line.includes('•') || line.includes('*') || line.includes('...');
         let k = cleanKey(line);
         if (!k) continue;
-        let p = detectProvider(line, k);
-        let res = await api('POST', '/llm/test', { key: k, provider: p });
-        testedKeys.push({
-          id: 'k_' + (nextId++),
-          key: k,
-          provider: res ? (res.provider || p || 'unknown') : (p || 'unknown'),
-          valid: res && res.valid,
-          info: res ? res.info : 'Error',
-          caps: res && res.caps ? res.caps : []
-        });
+        
+        let existing = null;
+        if (isMasked) {
+          existing = globalKeys.find(gk => maskKey(gk.key) === k);
+        }
+        
+        if (existing) {
+          testedKeys.push(existing);
+        } else {
+          let p = detectProvider(line, k);
+          let res = await api('POST', '/llm/test', { key: k, provider: p });
+          testedKeys.push({
+            id: 'k_' + (nextId++),
+            key: k,
+            provider: res ? (res.provider || p || 'unknown') : (p || 'unknown'),
+            valid: res && res.valid,
+            info: res ? res.info : 'Error',
+            caps: res && res.caps ? res.caps : []
+          });
+        }
       }
       
       let toSave = {};
@@ -4097,7 +4119,7 @@
       let h = '';
       keys.forEach((k, idx) => {
         let mainColor = k.valid ? '#39ff14' : '#ff3333';
-        let keyObscured = k.key ? k.key.substring(0, 8) + '...' + k.key.substring(k.key.length - 4) : 'Unknown';
+        let keyObscured = k.key ? maskKey(k.key) : 'Unknown';
         
         let capsHtml = '';
         const capConfig = [
@@ -4119,7 +4141,7 @@
         h += `
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:0.8rem; background:rgba(255,255,255,0.02); padding:6px; border-radius:4px; border:1px solid rgba(255,255,255,0.05);">
             <div style="width:12px; height:12px; border-radius:50%; background:${mainColor}; box-shadow:0 0 6px ${mainColor}; flex-shrink:0;" title="${k.valid ? 'Gültig' : 'Ungültig'}"></div>
-            <div style="flex-grow:1; font-family:monospace; overflow:hidden; text-overflow:ellipsis;" title="${k.key}">${keyObscured} (${getProviderDisplayName(k.provider) || 'Unbekannt'})</div>
+            <div style="flex-grow:1; font-family:monospace; overflow:hidden; text-overflow:ellipsis;" title="${keyObscured}">${keyObscured} (${getProviderDisplayName(k.provider) || 'Unbekannt'})</div>
             <div style="display:flex; gap:2px; align-items:center; flex-shrink:0;">${capsHtml}</div>
           </div>
         `;
@@ -4127,7 +4149,7 @@
       document.getElementById('llm-keys-status').innerHTML = h || '<div style="color:var(--text-muted)">Keine Keys hinterlegt.</div>';
     }
 
-    window.setAllAgentsToStage = function(stage) {
+    window.setAllAgentsToStage = async function(stage) {
       const agents = window.llmAgentsListGlobal || [];
       agents.forEach(a => {
         const pSelect = document.getElementById(`prov-${a.name}`);
@@ -4141,9 +4163,14 @@
           }
         }
       });
+      // Concurrently run tests
+      const testPromises = agents.map(a => testAgentLLM(a.name));
+      await Promise.all(testPromises);
+      // Auto-save settings
+      await saveAgentLLMs();
     };
 
-    window.autoRouteAllAgents = function() {
+    window.autoRouteAllAgents = async function() {
       const agents = window.llmAgentsListGlobal || [];
       agents.forEach(a => {
         const name = a.name.toLowerCase();
@@ -4159,6 +4186,11 @@
           }
         }
       });
+      // Concurrently run tests
+      const testPromises = agents.map(a => testAgentLLM(a.name));
+      await Promise.all(testPromises);
+      // Auto-save settings
+      await saveAgentLLMs();
     };
 
     async function saveAgentLLMs() {
@@ -4219,11 +4251,37 @@
         lamp.style.boxShadow = '0 0 10px #39ff14';
         let detail = (res.resolved_provider && res.resolved_model) ? ` (${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
         lamp.title = `Test erfolgreich${detail}`;
+        
+        if (p === 'auto' && res.resolved_provider && res.resolved_model) {
+          const provSelect = document.getElementById(`prov-${aName}`);
+          if (provSelect) {
+            provSelect.value = res.resolved_provider;
+            window.updateModels(aName);
+            const modSelect = document.getElementById(`mod-${aName}`);
+            if (modSelect) {
+              modSelect.value = res.resolved_model;
+              window.updateAgentCaps(aName);
+            }
+          }
+        }
       } else {
         lamp.style.background = '#ff3333';
         lamp.style.boxShadow = '0 0 10px #ff3333';
         let detail = (res && res.resolved_provider && res.resolved_model) ? ` (Tried ${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
         lamp.title = (res && res.info) ? `Fehler: ${res.info}${detail}` : `Test fehlgeschlagen${detail}`;
+        
+        if (p === 'auto' && res && res.resolved_provider && res.resolved_model) {
+          const provSelect = document.getElementById(`prov-${aName}`);
+          if (provSelect) {
+            provSelect.value = res.resolved_provider;
+            window.updateModels(aName);
+            const modSelect = document.getElementById(`mod-${aName}`);
+            if (modSelect) {
+              modSelect.value = res.resolved_model;
+              window.updateAgentCaps(aName);
+            }
+          }
+        }
       }
     }
   </script>
