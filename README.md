@@ -1,81 +1,81 @@
 # 🧠 GNOM-HUB — Multi-Agenten-Plattform
 
-Eine leichtgewichtige, modulare Multi-Agenten-Plattform basierend auf robusten Clean-Architecture-Prinzipien und einer radikalen Restriktion: **Jedes Backend-Modul ist auf maximal 40 Zeilen Python-Code begrenzt** (die 40-Zeilen-Regel). Die Steuerung des Agenten-Schwarms erfolgt über ein modernes Web-Dashboard namens **War Room**.
+Gnom-Hub ist eine modulare, asynchrone Multi-Agenten-Plattform, die auf robusten Clean-Architecture-Prinzipien basiert. Die Plattform zeichnet sich durch eine strikte Designregel aus: **Jedes interne Python-Backend-Modul ist auf maximal 40 Zeilen Code begrenzt** (die 40-Zeilen-Regel). Gnom-Hub orchestriert einen kooperativen Schwarm von Agenten und bietet ein visuell ansprechendes Web-Dashboard namens **War Room**.
+
+---
+
+## 🚀 Key Features
+
+* **Zentralisiertes Agenten-Register**: Vollständige Definition des Schwarms in der zentralen Datei `src/gnom_hub/agent_definitions.py`.
+* **Workflow-Preset-System**: 6 spezialisierte Preset-Modi direkt unter der Showbox im Dashboard steuerbar.
+* **Automatische Prompt- & Modell-Injektion**: SoulAG und der Preset-Service passen das Verhalten und die System-Prompts der Worker-Agenten dynamisch an das gewählte Preset an.
+* **Dynamisches Umschalten von LLM-Einstellungen**: Speichert individuelle Modellzuweisungen pro Preset und stellt diese beim Wechsel automatisch wieder her.
+* **Rollenbasierte Werkzeug-Rechte**: System-Agenten erhalten Vollzugriff, während Worker restriktiv und sicher im Workspace arbeiten (CoderAG erhält erweiterte Rechte via `godmode`).
+* **Relationaler SQLite-Speicher (WAL-Modus)**: Transaktionssichere und lock-freie Datenhaltung für parallele Agenten-Schreibzugriffe.
 
 ---
 
 ## 🤖 Die 8 Agenten
-Gnom-Hub orchestriert einen Schwarm von 8 Agenten, aufgeteilt in 4 koordinierende System-Agenten und 4 spezialisierte Worker-Agenten:
+Der Schwarm ist in 4 koordinierende System-Agenten und 4 spezialisierte Worker-Agenten unterteilt (zentral definiert in `agent_definitions.py`):
 
-### System-Agenten (Volle Werkzeug-Rechte)
-System-Agenten verwalten die Infrastruktur und besitzen umfassende Berechtigungen (`read`, `write`, `run`, `godmode`, `crawl`, `desktop`, `evolve`):
-* **SoulAG**: Das zentrale Gedächtnis des Schwarms. Lernt den Stil und die Vorlieben des Nutzers im Hintergrund und injiziert diese kontextbezogen in die Prompts.
-* **GeneralAG**: Der Hauptkoordinator. Analysiert komplexe Aufgaben, warnt vor Regelverstößen (z. B. Dateilängen) und delegiert präzise Teilaufgaben an die Worker.
-* **WatchdogAG**: Überwacht zyklisch die Integrität des Workspace und die Einhaltung der Systemgrenzen.
-* **SecurityAG**: Führt Risikoprüfungen und Sicherheitsüberwachungen durch.
+### System-Agenten (Vollzugriff)
+System-Agenten verwalten die Plattformsteuerung und besitzen umfassende Berechtigungen (`read`, `write`, `run`, `godmode`, `crawl`, `desktop`, `evolve`):
+* **SoulAG**: Das zentrale Gedächtnis des Schwarms. Analysiert Chat-Inhalte im Hintergrund und injiziert persönliche Nutzer-Präferenzen kontextbezogen in Agenten-Prompts.
+* **GeneralAG**: Der Hauptkoordinator. Analysiert komplexe Anfragen, delegiert Teilschritte an die Worker und synthetisiert die Ergebnisse.
+* **WatchdogAG**: Überwacht die Integrität des Workspace und die Einhaltung der Systemgrenzen.
+* **SecurityAG**: Führt Risikoprüfungen durch und signiert Workspace-Dateien kryptografisch.
 
-### Worker-Agenten (Eingeschränkte Werkzeug-Rechte)
-Worker-Agenten erledigen die eigentliche Arbeit im Workspace. Sie besitzen standardmäßig nur Workspace-Schreibrechte (`read`, `write`, `@job`):
-* **CoderAG**: Implementiert, debuggt und führt Code aus (erhält durch `godmode` zusätzlich Terminal- und Browserrechte).
-* **ResearcherAG**: Führt Recherchen durch, fragt Such-APIs ab und validiert Quellen.
-* **WriterAG**: Entwirft Dokumentationen, Tutorials, Berichte und kreative Texte.
-* **EditorAG**: Führt Korrekturlesen, Stilprüfungen und Qualitätskontrollen durch.
+### Worker-Agenten (Eingeschränkter Zugriff)
+Worker-Agenten erledigen die eigentliche Arbeit im Workspace. Sie besitzen standardmäßig Lese- und Schreibberechtigungen im Workspace (`read`, `write`, `@job`):
+* **CoderAG**: Entwickelt und debuggt Code (erhält durch `godmode` zusätzlich Terminal- und Browserrechte).
+* **ResearcherAG**: Führt Recherchen durch, fragt Such-APIs ab und prüft Quellen.
+* **WriterAG**: Erstellt Dokumentationen, Tutorials, Entwürfe und Texte.
+* **EditorAG**: Korrigiert und poliert Texte und sichert die Qualität.
 
 ---
 
-## 🎛️ Das Preset-System (6 Modi)
-Das Preset-System erlaubt es, den Fokus und die Modelle der Worker-Agenten mit einem Klick anzupassen. Das Dropdown-Menü befindet sich in der linken Seitenleiste direkt unter der Showbox:
+## 📖 Bedienungsanleitung für Presets
 
-1. 💻 **Web Development**: Fokus auf sauberen HTML, CSS, JavaScript-Code, Responsive Layouts, Barrierefreiheit (ARIA) und Web-APIs.
-2. 🎨 **Graphic Design**: Fokus auf visuelle Ästhetik, Typografie, Farbharmonien, Grids und inline SVG-Generierung.
-3. 🎵 **Audio Production**: Fokus auf Web Audio API, Sound-Synthese, DSP-Programmierung und Sounddesign.
-4. 🎬 **Video Production**: Fokus auf Canvas-Animationen, requestAnimationFrame-Schleifen und Videokonzepte.
-5. ✍️ **Marketing & Copy**: Fokus auf überzeugende Werbetexte, SEO-Optimierung und Conversion-Hooks (AIDA-Formel).
-6. 🔍 **Research & Analysis**: Fokus auf tiefgehende Recherche, Datenanalyse (Python-Skripte), Faktenprüfung und strukturierte Berichte.
+Das Preset-System erlaubt es Ihnen, den Fokus der Plattform mit einem einzigen Klick im Dashboard neu auszurichten.
 
-### Funktionsweise
-* **Auswahl & Feedback**: Der Nutzer wählt das Preset über das Dropdown-Menü aus. Die Showbox zeigt sofort den Schwerpunkt an, und im Chat erscheint eine Bestätigung vom System.
-* **Modell- & Prompt-Anpassung**: Der Preset-Service und der LLM-Router passen die 4 Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) automatisch an:
-  * **Modelle**: Optimale Standardmodelle werden geladen (z. B. spezialisierte Coder-Modelle für Web Dev).
-  * **System-Prompts**: Modifikatoren werden dynamisch in die LLM-Anfragen injiziert, um den Arbeitsstil anzupassen.
-* **Benutzerdefinierte Einstellungen**: Speichert der Nutzer eigene Modelle für die Worker in den Einstellungen, werden diese an das aktive Preset gebunden und beim nächsten Wechsel automatisch wiederhergestellt.
+### Die 6 Workflow-Modi
+1. 💻 **Web Development**: Richtet Worker auf sauberen HTML, CSS, JavaScript-Code, Responsive Design und moderne Web-APIs aus.
+2. 🎨 **Graphic Design**: Richtet Worker auf visuelle Ästhetik, Farbharmonien, Typografie und SVG-Generierung aus.
+3. 🎵 **Audio Production**: Richtet Worker auf Sound-Synthese, Web Audio API, Audio-Processing und Soundeffekte aus.
+4. 🎬 **Video Production**: Richtet Worker auf Video-Streaming, Canvas-Animationen, CSS-Transitions und visuelle Effekte aus.
+5. ✍️ **Marketing & Copy**: Richtet Worker auf Conversion-Hooks, Werbetexte, SEO-Optimierung und Kampagnen aus.
+6. 🔍 **Research & Analysis**: Richtet Worker auf tiefgehende Recherche, Datenanalyse, Faktenprüfung und strukturierte Berichte aus.
+
+### Automatische Modell- und Prompt-Steuerung
+* **Preset-Wechsel**: Wählen Sie ein Preset über das Dropdown-Menü unter der Showbox aus.
+* **SoulAG-Prompt-Injektion**: SoulAG und der Preset-Service fangen den Wechsel ab und injizieren automatisch die passenden Prompts und Fokus-Modifikatoren für die 4 Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`).
+* **Dynamische LLM-Einstellungen**: 
+  - Standardmäßig werden den Agenten optimale Routing-Stufen zugeteilt.
+  - Wenn Sie im Einstellungsmenü (**LLM-Settings**) den Agenten andere Modelle zuweisen und speichern, merkt sich Gnom-Hub diese Konfiguration **spezifisch für das aktive Preset**.
+  - Sobald Sie zu diesem Preset zurückwechseln, werden Ihre bevorzugten Modelle und Anbieter vollautomatisch geladen.
 
 ---
 
 ## 🚀 Schnellstart
-Stellen Sie sicher, dass Ihre API-Keys (z. B. OpenRouter oder DeepSeek) in `config/.env` eingetragen sind.
 
-1. **Server und Agenten starten**:
-   ```bash
-   chmod +x run.sh
-   ./run.sh
-   ```
-2. **Dashboard öffnen**:
-   Navigieren Sie im Browser zu: **[http://127.0.0.1:3002](http://127.0.0.1:3002)**
+Tragen Sie vor dem ersten Start Ihre API-Schlüssel in `config/.env` ein (z. B. DeepSeek oder OpenRouter).
 
----
+### 1. Server und Agenten starten
+Führen Sie das Startskript im Hauptverzeichnis aus:
+```bash
+chmod +x run.sh
+./run.sh
+```
+Das Skript startet den FastAPI-Hub sowie alle 8 Hintergrund-Agenten parallel.
 
-## 🔌 Wichtige API-Endpunkte
-Gnom-Hub bietet eine REST-API zur vollständigen Steuerung des Schwarms:
-
-* **Presets**:
-  * `GET /api/admin/preset` — Gibt das aktive Preset zurück.
-  * `POST /api/admin/preset` — Wechselt das aktive Preset. Body: `{"preset": "Name"}`
-* **Agenten**:
-  * `GET /api/agents` — Listet alle registrierten Agenten, deren PIDs und Status auf.
-  * `POST /api/agents/register` — Registriert oder aktualisiert einen Agenten im System.
-  * `POST /api/agents/{agent_id}/start` / `stop` — Startet oder stoppt Agentenprozesse.
-* **Chat**:
-  * `GET /api/chat?limit=50` — Ruft den Chatverlauf ab (mit bereinigten Showbox-Signaturen).
-  * `POST /api/chat` — Postet eine neue Nachricht.
-* **LLM-Verwaltung**:
-  * `POST /api/llm/agents` — Speichert benutzerdefinierte Modellzuweisungen für das aktive Preset.
+### 2. Dashboard öffnen
+Öffnen Sie Ihren Browser unter: **[http://127.0.0.1:3002](http://127.0.0.1:3002)**
 
 ---
 
 ## 🛠️ Technologie-Stack
-* **Core-Backend**: FastAPI & Uvicorn (Asynchroner Python-Webserver).
-* **Datenhaltung**: SQLite3 (WAL-Modus für lock-freie, transaktionssichere Schreibzugriffe).
-* **Prozess-Manager**: `psutil` (plattformunabhängiges Management der Agentenprozesse über PID-Dateien).
-* **Frontend**: HTML5, Vanilla CSS3 (Custom-Properties, HSL-Farben, Glassmorphismus, responsive Layouts), pure JavaScript (Fetch-API, Event-Handling).
-* **LLM-Integration**: Lokale Ollama-Instanzen & Cloud-Anbindung an OpenRouter / DeepSeek.
+* **Backend**: FastAPI, Uvicorn, asynchrones Python 3.9+.
+* **Datenhaltung**: SQLite3 (WAL-Modus für sicheren Concurrent-Schreibzugriff).
+* **Prozess-Manager**: `psutil` zur zuverlässigen Überwachung und Steuerung über PID-Dateien.
+* **Frontend**: Responsive HTML5, Vanilla CSS3 (HSL-Design, Glassmorphismus, CSS-Transitions) und pure JavaScript.
+* **LLM-Integration**: Lokale Ollama-Instanzen sowie Cloud-Provider (DeepSeek, OpenRouter).
