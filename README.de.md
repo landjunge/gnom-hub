@@ -101,7 +101,14 @@ Das System wurde in einem strukturierten Prozess um folgende Funktionen erweiter
 *   **Resilientes Offline-Retrieval**: Lokale semantische Ähnlichkeitssuche per `sentence-transformers` und `faiss` (falls installiert) mit persistentem Embedding-Cache (`data/emb_cache.pkl`) zur Latenzreduktion und nahtlosem Fallback auf TF-IDF-Kosinus-Ähnlichkeit bei fehlenden Bibliotheken.
 *   **Custom Preset System**: Dynamisches Einscannen und Einmischen von benutzerdefinierten Presets als JSON-Dateien aus `/config/presets/` in das bestehende Preset-System.
 *   **Strikte 40-Zeilen-Kompatibilität**: Konsequente Einhaltung der radikalen `40-Zeilen-Regel` im Backend für alle neuen Module (`capability_manager.py`, `embeddings.py`, `emb_faiss.py`, `emb_cache.py`, `preset_service.py`).
-*   **Performance Benchmarking**: Ein dediziertes Testskript [run_benchmarks.py](file:///Users/landjunge/Documents/AG-Flega/scratch/run_benchmarks.py) zur automatischen Messung der Latenzen. Die Benchmarks belegen eine **~1.960-fache Beschleunigung** beim Capability-Check (von 0.8ms auf 0.0004ms) und eine **~6.160-fache Beschleunigung** beim semantischen Retrieval (von 2.0ms auf 0.0003ms) durch die neuen In-Memory-Caches.
+*   **Performance Benchmarking**: Ein dediziertes Testskript [run_benchmarks.py](file:///Users/landjunge/Documents/AG-Flega/scratch/run_benchmarks.py) zur automatischen Messung der Latenzen. Die Benchmarks belegen die massive Beschleunigung durch Caching, die FAISS-Quantisierung (IndexIVFPQ) und den Modellwechsel auf `nli-MiniLM-L6-v2`:
+    
+    | Benchmark-Metrik | Kaltstart (Datenbank/FAISS) | Warmstart (In-Memory-Cache) | Speedup-Faktor |
+    | :--- | :--- | :--- | :--- |
+    | **🔐 Capability-Check** | ~0.70 ms | ~0.0004 ms | **~1.640x** |
+    | **🧠 Semantische Suche** | ~2.19 ms | ~0.0003 ms | **~6.370x** |
+    
+    *Hinweis zur Optimierung: Durch die Umstellung auf FAISS IndexIVFPQ verringert sich der Speicherbedarf des persistenten Index um **~75%**.*
 
 ---
 
