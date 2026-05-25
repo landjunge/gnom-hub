@@ -2745,15 +2745,15 @@
             }
           </style>
           <h2>Agent Health Dashboard</h2>
-          <div id="swarm-status-banner" style="display:none; margin-top:15px; padding:15px; background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2); border-radius:var(--radius); box-shadow:0 0 20px rgba(0,229,255,0.05); backdrop-filter:blur(10px);">
-            <div style="font-weight:bold; color:var(--accent); font-size:1.05rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-              <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); animation: pulse-glow 1.5s infinite;"></span>
+          <div id="swarm-status-banner" style="display:none; margin-top:8px; padding:8px; background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2); border-radius:var(--radius); box-shadow:0 0 10px rgba(0,229,255,0.05); backdrop-filter:blur(10px);">
+            <div style="font-weight:bold; color:var(--accent); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; display:flex; align-items:center; gap:4px;">
+              <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); animation: pulse-glow 1.5s infinite;"></span>
               Swarm Intelligence & Team Workflows
             </div>
-            <div id="swarm-workflow-text" style="font-size:0.95rem; color:#fff; font-weight:500; margin-bottom:6px;">None</div>
-            <div id="swarm-comms-text" style="font-size:0.85rem; color:var(--text-dim); line-height:1.4;"></div>
+            <div id="swarm-workflow-text" style="font-size:0.8rem; color:#fff; font-weight:500; margin-bottom:3px;">None</div>
+            <div id="swarm-comms-text" style="font-size:0.7rem; color:var(--text-dim); line-height:1.4;"></div>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 15px;" id="dashboard-grid">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px;" id="dashboard-grid">
             <div class="empty">Metriken werden geladen...</div>
           </div>
         </div>
@@ -2778,7 +2778,7 @@
           if (wfText) wfText.textContent = wf || 'Team-Workflow: Diskussions-Schwarm aktiv';
           if (commsText) {
             commsText.innerHTML = comms.map(c => `
-              <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+              <div style="display:flex; align-items:center; gap:6px; margin-top:2px; font-size: 0.72rem;">
                 <span style="color:var(--accent); font-weight:600;">${c.from}</span>
                 <span style="color:rgba(255,255,255,0.6);">💬 fragt/antwortet</span>
                 <span style="color:var(--accent); font-weight:600;">${c.to}</span>
@@ -2815,22 +2815,22 @@
         const lastSeenStr = m.last_seen > 0 ? new Date(m.last_seen * 1000).toLocaleTimeString() : 'nie';
         const agentColorHex = agentColor(n);
         return `
-          <div class="agent-health-card" style="background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; border-top: 4px solid \${agentColorHex}; transition: all 0.3s ease;">
+          <div class="agent-health-card" style="background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; border-top: 3px solid \${agentColorHex}; transition: all 0.3s ease;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h3 style="margin: 0; font-size: 1.15rem; color: #fff; text-transform: capitalize;">\${n.replace('ag', 'AG')}</h3>
-              <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: bold; color: \${color};">
-                <span style="width: 10px; height: 10px; border-radius: 50%; background: \${color}; display: inline-block; box-shadow: 0 0 8px \${color};"></span>
+              <h3 style="margin: 0; font-size: 0.85rem; color: #fff; text-transform: capitalize;">\${n.replace('ag', 'AG')}</h3>
+              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.65rem; font-weight: bold; color: \${color};">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: \${color}; display: inline-block; box-shadow: 0 0 6px \${color};"></span>
                 <span>\${statusLabel}</span>
               </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.7);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.72rem; color: rgba(255, 255, 255, 0.7);">
               <div>Requests: <strong style="color: #fff;">\${m.total}</strong></div>
               <div>Errors: <strong style="color: #fff;">\${m.failed}</strong></div>
               <div>Avg. Latenz: <strong style="color: #fff;">\${m.avg_time_ms.toFixed(0)} ms</strong></div>
               <div>Erfolg: <strong style="color: #fff;">\${successPercent}%</strong></div>
             </div>
-            <div style="font-size: 0.75rem; color: rgba(255,255,255,0.4); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 5px;">
-              Letzter Kontakt: \${lastSeenStr}
+            <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px; margin-top: 2px;">
+              Letzter kontakt: \${lastSeenStr}
             </div>
           </div>
         `;
