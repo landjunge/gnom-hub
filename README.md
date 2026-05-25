@@ -2,7 +2,7 @@
 
 Gnom-Hub ist ein **lokal-first** Multi-Agenten-System mit fester Topologie. Statt dynamischer, schwer kontrollierbarer Agenten-Schwärme besteht das System aus **genau 8 Agenten** (4 System-Agenten + 4 Worker-Agenten). 
 
-Jedes Backend-Modul unterliegt der strengen **40-Zeilen-Regel**. Dies erzwingt Klarheit, Wartbarkeit und verhindert monolithischen Code.
+Jedes Backend-Modul unterliegt der strengen **40-Zeilen-Regel** (unter `src/gnom_hub/`). Dies erzwingt Klarheit, einfache Testbarkeit und verhindert monolithischen Code.
 
 ---
 
@@ -100,6 +100,7 @@ Das Preset-System erlaubt das Umschalten des gesamten Schwarms auf ein bestimmte
    - active_preset: Web Development
    ```
    Dadurch wissen alle Worker-Agenten sofort über den aktuellen Kontext Bescheid, ohne dass dieser manuell im Chat wiederholt werden muss.
+5. **Preset-Interaktionen**: Auch Preset-Wechsel werden über `save_soul_fact("active_preset", preset)` als Fakt in `soul_memory` abgelegt, sodass nachfolgende Worker-Agenten über den Kontext-Injektor den aktuellen System-Fokus mitgeteilt bekommen.
 
 ---
 
@@ -124,7 +125,7 @@ Werkzeug-Zugriffe (z. B. Dateizugriffe, HTTP-Anfragen oder Terminalbefehle) werd
 ### Was in Arbeit / geplant ist:
 * [ ] **MCP-Erweiterung**: Dynamische Registrierung und Anbindung externer Model Context Protocol (MCP) Server ist noch rudimentär.
 * [ ] **Erweiterte Sandbox**: Derzeit sind Dateizugriffe außerhalb des Workspace selbst für den `godmode` des CoderAG stark eingeschränkt.
-* [ ] **Browser-Automation**: Die Playwright-Schnittstelle im Backend is vorbereitet, im Standard-Setup jedoch deaktiviert.
+* [ ] **Browser-Automation**: Die Playwright-Schnittstelle im Backend ist vorbereitet, im Standard-Setup jedoch deaktiviert.
 
 ---
 
