@@ -123,6 +123,8 @@ def init_db():
                     );
                     CREATE INDEX IF NOT EXISTS idx_agent_event ON audit_log(agent, event_type);
                     CREATE INDEX IF NOT EXISTS idx_timestamp ON audit_log(timestamp DESC);
+                    CREATE INDEX IF NOT EXISTS idx_soul_memory_key ON soul_memory(key);
+                    CREATE INDEX IF NOT EXISTS idx_soul_memory_timestamp ON soul_memory(timestamp DESC);
                 """)
                 try:
                     conn.execute("ALTER TABLE soul_memory ADD COLUMN priority TEXT DEFAULT 'medium'")
