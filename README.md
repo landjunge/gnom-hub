@@ -52,12 +52,52 @@ Das Preset-System dient dazu, den Fokus und die Modelle der Worker-Agenten mit e
 
 ---
 
-## 🧠 SoulAG: Gedächtnis & Kontext-Injektor
+## 🧠 SoulAG: Technisches Gedächtnis & Asynchroner Kontext-Injektor
 
-SoulAG arbeitet im Hintergrund und greift nicht aktiv in die Konversation ein:
-1. **Asynchrone Extraktion**: Jede Nachricht des Nutzers wird im Hintergrund analysiert. SoulAG extrahiert wichtige Fakten, Programmierpräferenzen oder Verhaltensregeln.
-2. **Relationale Speicherung**: Die extrahierten Daten werden in der Tabelle `soul_memory` abgelegt.
-3. **Kontext-Injektion**: Vor jedem Aufruf eines Workers fragt SoulAG relevante Fakten aus der Datenbank ab und hängt diese an das System-Prompt des aktiven Agenten an. So bleibt das System personalisiert, ohne den Chatverlauf unnötig zu belasten.
+SoulAG fungiert als passives, unsichtbares Kontrollzentrum für das Langzeitgedächtnis des Schwarms. Er nimmt nicht aktiv am Chat teil, sondern überwacht den Datenstrom, um den Swarm-Kontext permanent an die Präferenzen des Nutzers anzupassen.
+
+### 1. Das passive Überwachungs- und Extraktionsmodell
+* **Event-Trigger**: Jede eingehende Chat-Nachricht an den `/api/chat`-Endpoint mit dem Sender `"user"` wird von SoulAG über `on_message()` registriert.
+* **Asynchroner Worker**: Um die Antwortzeit des Dashboards nicht zu blockieren, startet SoulAG die Analyse in einem separaten Hintergrund-Thread (`threading.Thread`).
+* **LLM-Analyse & Regeln**: Über das Standard-LLM des Schwarms (z. B. `deepseek-chat`) wird ein spezialisierter Extraktions-Prompt ausgeführt. Das LLM erhält die Anweisung, die Nachricht nach expliziten oder impliziten Regeln, Vorlieben, Dateipfaden, bevorzugten Technologien oder Einschränkungen des Nutzers zu filtern.
+* **Strikte JSON-Strukturierung**: Die Antwort des LLMs wird auf ein valides JSON-Array erzwungen:
+  ```json
+  [
+    {"key": "user_name", "value": "Daniel"},
+    {"key": "preferred_language", "value": "Python 3.11"},
+    {"key": "code_rule", "value": "Nutze für DB-Zugriffe immer SQLite WAL"}
+  ]
+  ```
+
+### 2. Datenpersistenz im DB-Schema
+* **Tabelle `soul_memory`**: Speichert die extrahierten Fakten relational mit folgendem Schema:
+  ```sql
+  CREATE TABLE IF NOT EXISTS soul_memory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      UNIQUE(key)
+  );
+  ```
+  Die `UNIQUE(key)`-Einschränkung stellt sicher, dass Fakten bei erneuter Nennung überschrieben statt dupliziert werden (`INSERT OR REPLACE INTO soul_memory`).
+* **Tabelle `flexsoul`**: Diese Tabelle ist strukturell für die zusätzliche Haltung von Kurzzeitgedächtnissen (`short_term`) und einer Langzeit-Zusammenfassung (`long_term_summary`) pro Agenten-ID (`agent_id`) vorgesehen.
+* **Tabelle `chat`**: Die relationale Haupttabelle für Chat-Verläufe, aus der SoulAG bei Bedarf historische Kontexte liest.
+
+### 3. Der Injektions-Zyklus
+* Vor jedem LLM-Aufruf eines Worker-Agenten (`CoderAG`, `ResearcherAG`, etc.) wird der System-Prompt durch `soul_instance.inject_context(sys_prompt, msg_content)` modifiziert.
+* **Fakten-Retrieval**: Über `SQLiteSoulRepository.get_relevant_facts()` werden die bis zu 20 neuesten gelernten Fakten aus der Tabelle `soul_memory` (sortiert nach Timestamp) abgerufen.
+* **Prompt-Injektion**: Die Fakten werden strukturiert formatiert und als Anhang an den System-Prompt des ausführenden Agenten angefügt:
+  ```markdown
+  === RELEVANTE INFORMATIONEN ===
+  - preferred_language: Python 3.11
+  - code_rule: Nutze für DB-Zugriffe immer SQLite WAL
+  ```
+  Dadurch "erinnern" sich die Worker-Agenten bei jeder Aufgabe an zuvor getroffene Absprachen, ohne dass der Nutzer diese wiederholen muss.
+
+### 4. Interaktion mit Preset-Wechseln
+* Wechselt der Nutzer das Preset im Dropdown-Menü unter der Showbox, wird das neue Preset als Fakt (`active_preset`) in `soul_memory` hinterlegt.
+* Da die Preset-Modelle und Standard-Systemprompts (geladen aus `presets.json`) direkt im Router manipuliert werden, bleibt die Kontext-Injektion von SoulAG vollkommen unabhängig und ergänzt die Preset-Direktiven passgenau um das gelernte Nutzerprofil.
 
 ---
 
