@@ -962,6 +962,23 @@
       animation: card-busy-pulse 0.8s ease-in-out infinite alternate;
     }
 
+    .agent-card.paused {
+      animation: card-paused-pulse 1.2s ease-in-out infinite alternate;
+    }
+
+    @keyframes card-paused-pulse {
+      0% {
+        box-shadow: 0 0 2px rgba(255, 165, 0, 0.2);
+        border-left-color: rgba(255, 165, 0, 0.4);
+        border-right-color: rgba(255, 165, 0, 0.4);
+      }
+      100% {
+        box-shadow: 0 0 12px #ffa500;
+        border-left-color: #ffa500;
+        border-right-color: #ffa500;
+      }
+    }
+
     @keyframes card-busy-pulse {
       0% {
         box-shadow: 0 0 2px rgba(255, 255, 255, 0.05);
@@ -1094,6 +1111,12 @@
     .dot.busy {
       box-shadow: 0 0 8px var(--c, #ffaa00);
       animation: dot-pulse 0.6s ease-in-out infinite alternate;
+    }
+
+    .dot.paused {
+      box-shadow: 0 0 8px #ffa500;
+      background: #ffa500;
+      animation: dot-pulse 1.2s ease-in-out infinite alternate;
     }
 
     .dot.off {
@@ -2866,7 +2889,7 @@
         el.innerHTML = '<div class="empty">Keine Agenten.</div>';
       } else {
         const renderCard = (a) => {
-          const stClass = a.status === 'busy' ? 'busy' : (a.status === 'online' ? 'on' : 'off');
+          const stClass = a.status === 'busy' ? 'busy' : (a.status === 'paused' ? 'paused' : (a.status === 'online' ? 'on' : 'off'));
           const isCore = coreNames.includes(a.name.toLowerCase());
           const role = a.role && a.role !== 'normal' && !isCore ? a.role : '';
           const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
@@ -2893,20 +2916,35 @@
       if (!agent) return;
 
       const on = agent.status === 'online';
+      const isPaused = agent.status === 'paused';
+      const resumeBtn = isPaused ? `<button onclick="resumeAgent('${agent.id}')" style="background:#ffa500; color:#000; border:none; border-radius:4px; font-weight:bold; cursor:pointer; padding:4px 8px; box-shadow:0 0 10px rgba(255,165,0,0.5);">▶ Resume</button>` : '';
       const port = agent.port;
       const openUiBtn = port ? `<button onclick="openAgentUI('${agent.name}','${port}')">🖥 Open UI</button>` : '';
       const nudgeBtn = on ? `<button onclick="doNudge('${agent.id}')">📢 Nudge</button>` : '';
       const ls = agent.last_seen ? new Date(agent.last_seen).toLocaleString() : '–';
 
+      let statusDotClass = 'off';
+      let statusLabel = 'Offline';
+      if (on) {
+        statusDotClass = 'on';
+        statusLabel = 'Online';
+      } else if (agent.status === 'busy') {
+        statusDotClass = 'busy';
+        statusLabel = 'Busy';
+      } else if (isPaused) {
+        statusDotClass = 'paused';
+        statusLabel = 'Paused';
+      }
+
       document.getElementById('content').innerHTML = `
     <div class="panel">
       <h2>${agent.name} <div class="actions">
-        ${openUiBtn} ${nudgeBtn}
+        ${resumeBtn} ${openUiBtn} ${nudgeBtn}
         <button onclick="toggleStatus('${agent.id}','${agent.status}')">${on ? '⏹ Offline' : '▶ Online'}</button>
         <button class="btn-danger" onclick="deleteAgent('${agent.id}')">Delete</button>
       </div></h2>
       <div class="status-row">
-        <span class="dot ${on ? 'on' : 'off'}"></span><span class="label">${on ? 'Online' : 'Offline'}</span>
+        <span class="dot ${statusDotClass}"></span><span class="label">${statusLabel}</span>
         ${port ? `<span class="badge port">:${port}</span>` : ''}
         <span class="label">Last seen: ${ls}</span>
       </div>
@@ -3001,6 +3039,12 @@
     async function toggleStatus(id, current) {
       const next = current === 'online' ? 'offline' : 'online';
       await fetch(API + `/agents/${id}/status?status=${next}`, { method: 'PUT' });
+      await loadAgents();
+      selectAgent(id);
+    }
+
+    async function resumeAgent(id) {
+      await fetch(API + `/agents/${id}/status?status=busy`, { method: 'PUT' });
       await loadAgents();
       selectAgent(id);
     }
@@ -4343,12 +4387,8 @@
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
                 <h3 style="margin:0; font-size:0.9rem; flex-shrink:0;">Routing</h3>
                 <div style="display:flex; gap:4px; align-items:center; flex-shrink:0; flex-wrap:wrap;">
-                  <button onclick="setAllAgentsToStage('stage_1')" onmouseover="this.style.background='rgba(57,255,20,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #39ff14; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 1 (Lokal: Ollama)</button>
-                  <button onclick="setAllAgentsToStage('stage_2')" onmouseover="this.style.background='rgba(0,229,255,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #00e5ff; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 2 (Free Tier: OpenRouter)</button>
-                  <button onclick="setAllAgentsToStage('stage_3')" onmouseover="this.style.background='rgba(255,165,0,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #ffa500; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 3 (Balanced)</button>
-                  <button onclick="setAllAgentsToStage('stage_4')" onmouseover="this.style.background='rgba(255,0,127,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #ff007f; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 4 (Premium)</button>
-                  <span style="color:rgba(255,255,255,0.2); font-size:0.8rem; margin:0 2px;">|</span>
-                  <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.75rem; padding:4px 8px; background:#fff; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 4px rgba(255,255,255,0.2); white-space:nowrap;">Auto-Route</button>
+
+                  <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.75rem; padding:4px 8px; background:#fff; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 4px rgba(255,255,255,0.2); white-space:nowrap;">⚡ Auto-Route</button>
                   <button id="save-agents-btn" class="btn-primary" onclick="saveAgentLLMs()" style="font-size:0.75rem; padding:4px 8px; background:var(--cyan); border-color:var(--cyan); color:#000; font-weight:bold; border-radius:4px; cursor:pointer; box-shadow:0 0 4px rgba(0,255,255,0.2); white-space:nowrap;">Speichern</button>
                 </div>
               </div>
@@ -4368,8 +4408,7 @@
                 <button id="save-agents-btn-bottom" class="btn-primary" onclick="saveAgentLLMs()" style="width: 100%; padding: 8px 12px; font-size: 0.85rem; font-weight: bold; background: var(--cyan); border-color: var(--cyan); color: #000; border-radius: 6px; cursor: pointer; box-shadow: 0 0 8px rgba(0,255,255,0.3); transition: all 0.2s;">Routing Speichern</button>
               </div>
               
-              <!-- Intelligent Routing Insights Panel -->
-              <div id="routing-insights-panel" style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px; display:none;"></div>
+
             </div>
           </div>
         </div>
@@ -4474,15 +4513,6 @@
       return labels[p] || p;
     }
     function getModelDisplayName(p, m) {
-      if (p === 'auto') {
-        const labels = {
-          'stage_1': 'Stage 1: Local',
-          'stage_2': 'Stage 2: Free',
-          'stage_3': 'Stage 3: Balanced',
-          'stage_4': 'Stage 4: Premium'
-        };
-        return labels[m] || m;
-      }
       if (p === 'openrouter') {
         const labels = {
           'baidu/cobuddy:free': 'Baidu CoBuddy (Free)',
@@ -4519,6 +4549,23 @@
       return m;
     }
 
+    function getAgentCapsFromList(capsList) {
+      const capConfig = [
+        { name: 'text', color: '#39ff14', title: 'Text Chat', label: 'Text' },
+        { name: 'vision', color: '#00e5ff', title: 'Vision', label: 'Vision' },
+        { name: 'image', color: '#ff007f', title: 'Bildgenerierung', label: 'Image' },
+        { name: 'audio', color: '#ffa500', title: 'Audio', label: 'Audio' },
+        { name: 'tools', color: '#b026ff', title: 'Tools (Function Calling)', label: 'Tools' }
+      ];
+      if (!capsList || !capsList.length) return '';
+      return capConfig.filter(c => capsList.includes(c.name)).map(c => {
+        return `<span style="display:inline-flex; align-items:center; gap:3px; margin-right:4px; font-size:0.68rem; color:rgba(255,255,255,0.85); font-weight:500; padding:1px 4px; border-radius:3px; background:rgba(0,0,0,0.15); border:1px solid ${c.color}22;">
+          <span style="width:6px; height:6px; border-radius:50%; background:${c.color}; box-shadow:0 0 3px ${c.color}; display:inline-block; flex-shrink:0;"></span>
+          <span>${c.label}</span>
+        </span>`;
+      }).join('');
+    }
+
     function getAgentCapsHtml(pSel, mSel) {
       const capConfig = [
         { name: 'text', color: '#39ff14', title: 'Text Chat', label: 'Text' },
@@ -4528,34 +4575,7 @@
         { name: 'tools', color: '#b026ff', title: 'Tools (Function Calling)', label: 'Tools' }
       ];
       let activeCaps = [];
-      if (pSel === 'auto') {
-        let providersToCheck = [];
-        if (mSel === 'stage_1') {
-          activeCaps = ['text', 'vision', 'tools'];
-        } else if (mSel === 'stage_2') {
-          providersToCheck = ['openrouter', 'lokal'];
-        } else if (mSel === 'stage_3') {
-          providersToCheck = ['deepseek', 'gemini', 'openrouter', 'mistral', 'openai', 'lokal'];
-        } else {
-          providersToCheck = ['anthropic', 'openai', 'gemini', 'deepseek', 'openrouter', 'mistral', 'lokal'];
-        }
-        if (providersToCheck.length > 0) {
-          if (providersToCheck.includes('lokal')) {
-            activeCaps = ['text', 'vision', 'tools'];
-          }
-          (globalKeys || []).forEach(k => {
-            if (providersToCheck.includes(k.provider) && k.valid) {
-              if (k.caps && Array.isArray(k.caps)) {
-                k.caps.forEach(c => {
-                  if (!activeCaps.includes(c)) {
-                    activeCaps.push(c);
-                  }
-                });
-              }
-            }
-          });
-        }
-      } else if (pSel === 'lokal') {
+      if (pSel === 'lokal') {
         activeCaps = ['text', 'vision', 'tools'];
       } else {
         (globalKeys || []).forEach(k => {
@@ -4595,11 +4615,17 @@
            let lampBg = 'gray';
            let lampShadow = 'rgba(0,0,0,0.5)';
            let lampTitle = 'Nicht getestet';
+           let capsHtml = '';
            if (window.testedAgentStatus && window.testedAgentStatus[a.name]) {
              const st = window.testedAgentStatus[a.name];
-             lampBg = st.valid ? '#39ff14' : '#ff3333';
-             lampShadow = st.valid ? '#39ff14' : '#ff3333';
-             lampTitle = st.info || '';
+             if (st.provider === pSel && st.model === mSel) {
+               lampBg = st.valid ? '#39ff14' : '#ff3333';
+               lampShadow = st.valid ? '#39ff14' : '#ff3333';
+               lampTitle = st.info || '';
+               capsHtml = st.valid ? getAgentCapsFromList(st.caps) : '';
+             } else {
+               delete window.testedAgentStatus[a.name];
+             }
            }
            
            html += `<div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; padding:4px 8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:6px; font-size:0.8rem;">
@@ -4615,7 +4641,7 @@
                <span>Test</span>
              </button>
              <div id="caps-agent-${a.name}" style="display:flex; gap:3px; align-items:center; flex-shrink:0; margin-left:4px;">
-               ${getAgentCapsHtml(pSel, mSel)}
+               ${(window.testedAgentStatus && window.testedAgentStatus[a.name] && window.testedAgentStatus[a.name].caps) ? getAgentCapsFromList(window.testedAgentStatus[a.name].caps) : ''}
              </div>
            </div>`;
         });
@@ -4624,6 +4650,11 @@
       window.llmAgentsListGlobal = agentsRes;
     }
     async function loadLLMConfig() {
+      try {
+        window.testedAgentStatus = JSON.parse(localStorage.getItem('gnom_tested_agent_status') || '{}');
+      } catch (e) {
+        window.testedAgentStatus = {};
+      }
       await loadLanguageState();
       await loadSystemInfoState();
       await loadFtpAutoDeployState();
@@ -4646,17 +4677,17 @@
       const agentsRes = await api('GET', '/agents');
       const llmAgentsRes = await api('GET', '/llm/agents');
       
-      const providers = ['auto', 'deepseek', 'openrouter', 'openai', 'anthropic', 'gemini', 'mistral', 'lokal'];
+      const providers = ['deepseek', 'openrouter', 'openai', 'anthropic', 'gemini', 'mistral', 'lokal'];
       let models = {
-        'auto': ['stage_1', 'stage_2', 'stage_3', 'stage_4'],
         'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
         'openrouter': ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free'],
         'openai': ['gpt-4o', 'gpt-4o-mini', 'o1-mini', 'o1-preview'],
         'anthropic': ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
         'gemini': ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp'],
         'mistral': ['mistral-large-latest', 'pixtral-large-latest', 'codestral-latest'],
-        'lokal': ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
+        'lokal': ['llama3', 'mistral', 'qwen2', 'phi3', 'gemma2']
       };
+
       loadLLMAgentsListState(agentsRes, llmAgentsRes, models, providers);
       window.llmModelsMap = models;
 
@@ -4683,9 +4714,43 @@
                 } else if (mods.length > 0) {
                   modSelect.value = mods[0];
                 }
-                window.updateAgentCaps(a.name);
+
+                // Update lamp and caps based on testedAgentStatus consistency
+                const lamp = document.getElementById(`lamp-${a.name}`);
+                const capsDiv = document.getElementById(`caps-agent-${a.name}`);
+                const pVal = provSel.value;
+                const mVal = modSelect.value;
+                
+                if (window.testedAgentStatus && window.testedAgentStatus[a.name] && 
+                    window.testedAgentStatus[a.name].provider === pVal && 
+                    window.testedAgentStatus[a.name].model === mVal) {
+                  const st = window.testedAgentStatus[a.name];
+                  if (lamp) {
+                    lamp.style.background = st.valid ? '#39ff14' : '#ff3333';
+                    lamp.style.boxShadow = st.valid ? '0 0 10px #39ff14' : '0 0 10px #ff3333';
+                    lamp.title = st.info || '';
+                  }
+                  if (capsDiv) {
+                    capsDiv.innerHTML = st.valid ? getAgentCapsFromList(st.caps) : '';
+                  }
+                } else {
+                  if (lamp) {
+                    lamp.style.background = 'gray';
+                    lamp.style.boxShadow = '0 0 3px rgba(0,0,0,0.5)';
+                    lamp.title = 'Nicht getestet';
+                  }
+                  if (capsDiv) {
+                    capsDiv.innerHTML = '';
+                  }
+                  if (window.testedAgentStatus) {
+                    delete window.testedAgentStatus[a.name];
+                  }
+                }
               }
             });
+            if (window.testedAgentStatus) {
+              localStorage.setItem('gnom_tested_agent_status', JSON.stringify(window.testedAgentStatus));
+            }
           }
         }
       }).catch(e => {
@@ -4698,11 +4763,22 @@
     }
 
     window.updateAgentCaps = function(aName) {
-      const p = document.getElementById(`prov-${aName}`).value;
-      const m = document.getElementById(`mod-${aName}`).value;
+      // Clear tested status for this agent
+      if (window.testedAgentStatus) {
+        delete window.testedAgentStatus[aName];
+        localStorage.setItem('gnom_tested_agent_status', JSON.stringify(window.testedAgentStatus));
+      }
+      // Turn lamp gray
+      const lamp = document.getElementById(`lamp-${aName}`);
+      if (lamp) {
+        lamp.style.background = 'gray';
+        lamp.style.boxShadow = '0 0 3px rgba(0,0,0,0.5)';
+        lamp.title = 'Nicht getestet';
+      }
+      // Clear capability badges
       const capsContainer = document.getElementById(`caps-agent-${aName}`);
       if (capsContainer) {
-        capsContainer.innerHTML = getAgentCapsHtml(p, m);
+        capsContainer.innerHTML = '';
       }
     };
 
@@ -5045,24 +5121,52 @@
           
           try {
             let res = await api('POST', '/llm/test_agent', { agent: a.name, provider: p, model: m });
+            window.testedAgentStatus = window.testedAgentStatus || {};
+            const capsDiv = document.getElementById(`caps-agent-${a.name}`);
             if (lamp) {
               if (res && res.valid) {
                 lamp.style.background = '#39ff14';
                 lamp.style.boxShadow = '0 0 10px #39ff14';
                 let detail = (res.resolved_provider && res.resolved_model) ? ` (${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
                 lamp.title = `Test erfolgreich${detail}`;
+                window.testedAgentStatus[a.name] = { 
+                  valid: true, 
+                  info: `Test erfolgreich${detail}`, 
+                  caps: res.caps || [],
+                  provider: p,
+                  model: m
+                };
+                if (capsDiv) capsDiv.innerHTML = getAgentCapsFromList(res.caps || []);
               } else {
                 lamp.style.background = '#ff3333';
                 lamp.style.boxShadow = '0 0 10px #ff3333';
                 lamp.title = res ? (res.info || 'Test fehlgeschlagen') : 'Fehler';
+                window.testedAgentStatus[a.name] = { 
+                  valid: false, 
+                  info: res ? (res.info || 'Test fehlgeschlagen') : 'Fehler', 
+                  caps: [],
+                  provider: p,
+                  model: m
+                };
+                if (capsDiv) capsDiv.innerHTML = '';
               }
             }
           } catch (e) {
+            window.testedAgentStatus = window.testedAgentStatus || {};
+            window.testedAgentStatus[a.name] = { 
+              valid: false, 
+              info: 'Verbindungsfehler', 
+              caps: [],
+              provider: p,
+              model: m
+            };
             if (lamp) {
               lamp.style.background = '#ff3333';
               lamp.style.boxShadow = '0 0 10px #ff3333';
               lamp.title = 'Verbindungsfehler';
             }
+            const capsDiv = document.getElementById(`caps-agent-${a.name}`);
+            if (capsDiv) capsDiv.innerHTML = '';
           }
           
           completed++;
@@ -5073,6 +5177,9 @@
         });
         
         await Promise.all(testPromises);
+        if (window.testedAgentStatus) {
+          localStorage.setItem('gnom_tested_agent_status', JSON.stringify(window.testedAgentStatus));
+        }
         
         // 4. Update banner to success state
         if (banner) {
@@ -5113,27 +5220,135 @@
       }
     };
 
-    window.setAllAgentsToStage = async function(stage) {
+    window.assignFreeModels = async function() {
       const agents = window.llmAgentsListGlobal || [];
-      const overridePromise = (async () => {
-        let config = {};
-        agents.forEach(a => {
-          config[a.name.toLowerCase()] = {
-            provider: 'auto',
-            model: stage
-          };
-        });
-        await api('POST', '/llm/agents', config);
-      })();
-      
-      await window.runRoutingWithProgress(agents, overridePromise);
-      await loadLLMConfig();
+      if (!agents.length) return;
+
+      // Bereits getestete Free-Modelle aus dem Cache lesen (wurden beim Start getestet)
+      const availableModels = await api('GET', '/llm/available_models');
+      const workingModels = (availableModels && availableModels.openrouter) || [];
+
+      if (!workingModels.length) {
+        alert('Keine Free-Modelle verfügbar.');
+        return;
+      }
+
+      // Agent-Priorität nach Aufgabe:
+      // Niedrig = braucht großes Modell (Qualität)
+      // Hoch = braucht schnelles/kleines Modell (Speed)
+      const agentPriority = {
+        'coderag': 1,       // braucht fettes Modell - komplexe Aufgaben
+        'researcherag': 2,  // braucht großes Modell - Analyse
+        'writerag': 3,      // gute Textqualität
+        'editorag': 4,      // Bearbeitung
+        'generalag': 5,     // Allgemein
+        'securityag': 6,    // Checks
+        'soulag': 7,        // braucht schnelles/flash Modell - Orchestrierung
+        'watchdogag': 8     // braucht schnellstes Modell - Monitoring
+      };
+
+      // Modell-Qualität schätzen (größere Parameter = besser)
+      function modelScore(m) {
+        const ml = m.toLowerCase();
+        if (/405b/.test(ml)) return 900;
+        if (/120b/.test(ml)) return 800;
+        if (/80b/.test(ml)) return 750;
+        if (/70b/.test(ml)) return 700;
+        if (/31b|30b|26b/.test(ml)) return 600;
+        if (/24b/.test(ml)) return 550;
+        if (/20b/.test(ml)) return 500;
+        if (/12b/.test(ml)) return 400;
+        if (/9b/.test(ml)) return 350;
+        if (/7b|8b/.test(ml)) return 300;
+        if (/3b/.test(ml)) return 200;
+        if (/1\.2b|1b/.test(ml)) return 100;
+        return 350; // unbekannt → mittel
+      }
+
+      // Modelle nach Qualität sortieren (beste zuerst)
+      const sorted = [...workingModels].sort((a, b) => modelScore(b) - modelScore(a));
+
+      // Agenten nach Priorität sortieren
+      const sortedAgents = [...agents].sort((a, b) => {
+        const pa = agentPriority[a.name.toLowerCase()] || 99;
+        const pb = agentPriority[b.name.toLowerCase()] || 99;
+        return pa - pb;
+      });
+
+      // Intelligent zuweisen: bestes Modell → wichtigster Agent
+      let config = {};
+      sortedAgents.forEach((a, i) => {
+        const model = sorted[i % sorted.length];
+        config[a.name.toLowerCase()] = { provider: 'openrouter', model: model };
+      });
+      await window.runRoutingWithProgress(agents, api('POST', '/llm/agents', config));
+    };
+
+    window.assignLocalModels = async function() {
+      const agents = window.llmAgentsListGlobal || [];
+      if (!agents.length) return;
+
+      const workingLocalModels = ['mistral:latest', 'gemma2:2b', 'llama3:latest', 'qwen2:7b'];
+
+      const agentPriority = {
+        'coderag': 1,       // braucht fettes Modell - komplexe Aufgaben
+        'researcherag': 2,  // braucht großes Modell - Analyse
+        'writerag': 3,      // gute Textqualität
+        'editorag': 4,      // Bearbeitung
+        'generalag': 5,     // Allgemein
+        'securityag': 6,    // Checks
+        'soulag': 7,        // braucht schnelles/flash Modell - Orchestrierung
+        'watchdogag': 8     // braucht schnellstes Modell - Monitoring
+      };
+
+      function modelScore(m) {
+        const ml = m.toLowerCase();
+        if (/405b/.test(ml)) return 900;
+        if (/120b/.test(ml)) return 800;
+        if (/80b/.test(ml)) return 750;
+        if (/70b/.test(ml)) return 700;
+        if (/31b|30b|26b/.test(ml)) return 600;
+        if (/24b/.test(ml)) return 550;
+        if (/20b/.test(ml)) return 500;
+        if (/12b/.test(ml)) return 400;
+        if (/9b/.test(ml)) return 350;
+        if (/7b|8b/.test(ml)) return 300;
+        if (/3b/.test(ml)) return 200;
+        if (/1\.2b|1b/.test(ml)) return 100;
+        return 350;
+      }
+
+      // Modelle nach Qualität sortieren (beste zuerst)
+      const sorted = [...workingLocalModels].sort((a, b) => modelScore(b) - modelScore(a));
+
+      // Agenten nach Priorität sortieren
+      const sortedAgents = [...agents].sort((a, b) => {
+        const pa = agentPriority[a.name.toLowerCase()] || 99;
+        const pb = agentPriority[b.name.toLowerCase()] || 99;
+        return pa - pb;
+      });
+
+      // Intelligent zuweisen: bestes Modell → wichtigster Agent
+      let config = {};
+      sortedAgents.forEach((a, i) => {
+        const model = sorted[i % sorted.length];
+        config[a.name.toLowerCase()] = { provider: 'lokal', model: model };
+      });
+      await window.runRoutingWithProgress(agents, api('POST', '/llm/agents', config));
+    };
+
+    window.setAllAgentsToProvider = async function(provider, model) {
+      const agents = window.llmAgentsListGlobal || [];
+      let config = {};
+      agents.forEach(a => {
+        config[a.name.toLowerCase()] = { provider: provider, model: model };
+      });
+      await window.runRoutingWithProgress(agents, api('POST', '/llm/agents', config));
     };
 
     window.autoRouteAllAgents = async function() {
       const agents = window.llmAgentsListGlobal || [];
       await window.runRoutingWithProgress(agents, api('POST', '/llm/auto_assign'));
-      await loadLLMConfig();
     };
 
     window.loadRoutingInsights = async function() {
@@ -5304,7 +5519,13 @@
       window.testedAgentStatus = window.testedAgentStatus || {};
       if (res && res.valid) {
         let detail = (res.resolved_provider && res.resolved_model) ? ` (${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
-        window.testedAgentStatus[aName] = { valid: true, info: `Test erfolgreich${detail}` };
+        window.testedAgentStatus[aName] = { 
+          valid: true, 
+          info: `Test erfolgreich${detail}`, 
+          caps: res.caps || [],
+          provider: (p === 'auto') ? res.resolved_provider : p,
+          model: (p === 'auto') ? res.resolved_model : m
+        };
         lamp.style.background = '#39ff14';
         lamp.style.boxShadow = '0 0 10px #39ff14';
         lamp.title = `Test erfolgreich${detail}`;
@@ -5321,10 +5542,22 @@
             }
           }
         }
+        // Caps anzeigen
+        const capsDiv = document.getElementById(`caps-agent-${aName}`);
+        if (capsDiv) capsDiv.innerHTML = getAgentCapsFromList(res.caps || []);
       } else {
         let detail = (res && res.resolved_provider && res.resolved_model) ? ` (Tried ${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
-        window.testedAgentStatus[aName] = { valid: false, info: (res && res.info) ? `Fehler: ${res.info}${detail}` : `Test fehlgeschlagen${detail}` };
+        window.testedAgentStatus[aName] = { 
+          valid: false, 
+          info: (res && res.info) ? `Fehler: ${res.info}${detail}` : `Test fehlgeschlagen${detail}`, 
+          caps: [],
+          provider: (p === 'auto' && res) ? res.resolved_provider : p,
+          model: (p === 'auto' && res) ? res.resolved_model : m
+        };
         lamp.style.background = '#ff3333';
+        // Caps leeren bei Fehler
+        const capsDiv = document.getElementById(`caps-agent-${aName}`);
+        if (capsDiv) capsDiv.innerHTML = '';
         lamp.style.boxShadow = '0 0 10px #ff3333';
         lamp.title = (res && res.info) ? `Fehler: ${res.info}${detail}` : `Test fehlgeschlagen${detail}`;
         
@@ -5341,6 +5574,7 @@
           }
         }
       }
+      localStorage.setItem('gnom_tested_agent_status', JSON.stringify(window.testedAgentStatus));
     }
 
     // ── Showbox Fullscreen Overlay Management ──

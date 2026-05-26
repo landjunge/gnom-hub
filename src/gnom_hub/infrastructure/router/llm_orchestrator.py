@@ -14,16 +14,12 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     pvd, mdl = cfg.get("provider", "auto"), cfg.get("model", "stage_3")
     if pvd == "auto":
         from .router_stage import SmartRouter
-        resolved_pvd, resolved_mdl = SmartRouter.resolve_stage(mdl, kdb, n)
-        if resolved_pvd == "lokal":
-            candidates = [("lokal", resolved_mdl)]
-        else:
-            candidates = [(resolved_pvd, resolved_mdl), ("lokal", "llama3.2")]
+        candidates = SmartRouter.resolve_stage_candidates(mdl, kdb, n)
     else:
         if pvd == "lokal":
             candidates = [("lokal", mdl)]
         else:
-            candidates = [(pvd, mdl), ("lokal", "llama3.2")]
+            candidates = [(pvd, mdl), ("lokal", "llama3")]
     for p, m in candidates:
         ans = _try("lokal", m, "", msgs, agent_name) if p == "lokal" else _try_keys(p, m, kdb, msgs, agent_name)
         if ans:

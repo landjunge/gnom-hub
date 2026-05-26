@@ -8,6 +8,9 @@ def handle_shell(ans, ms, ag, perms, bs, wd):
         elif SHELL_BLOCK.search(c): ans = ans.replace(o, f"[System: BLOCKIERT — gefährlicher Befehl: {c[:60]}]")
         else:
             try:
+                from .soul_initializer import check_and_wait_breakpoint
+                check_and_wait_breakpoint(ag["name"], "before_shell", c)
+                
                 from .sandbox import run_in_sandbox
                 r = run_in_sandbox(c, agent=ag, timeout=30)
                 ans = ans.replace(o, f"[Shell ({c}):\n{(r.stdout+r.stderr)[:1500]}]")

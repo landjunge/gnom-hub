@@ -60,10 +60,9 @@ async def get_available_models():
             if r.status_code == 200:
                 local_models = [m["name"] for m in r.json().get("models", []) if m.get("name")]
     except Exception: pass
-    if not local_models: local_models = ['llama3', 'mistral', 'qwen2', 'phi3', 'llama3.2', 'gemma2']
+    if not local_models: local_models = ['llama3', 'mistral', 'qwen2', 'phi3', 'gemma2']
     
     return {
-        "auto": ["stage_1", "stage_2", "stage_3", "stage_4"],
         "deepseek": ["deepseek-chat", "deepseek-reasoner"], 
         "openrouter": or_models, 
         "lokal": local_models,
@@ -72,3 +71,9 @@ async def get_available_models():
         "gemini": ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash-exp"],
         "mistral": ["mistral-large-latest", "pixtral-large-latest", "codestral-latest"]
     }
+
+@router.post("/api/llm/check_free_models")
+async def check_free_models_endpoint():
+    """Testet alle OpenRouter Free-Modelle und gibt die funktionierenden zurück."""
+    working = await check_and_update_models()
+    return working

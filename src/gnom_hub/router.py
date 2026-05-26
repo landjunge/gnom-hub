@@ -26,9 +26,8 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     pvd, mdl = cfg.get("provider", "auto"), cfg.get("model", "stage_3")
     if pvd == "auto":
         from gnom_hub.infrastructure.router.router_stage import SmartRouter
-        rp, rm = SmartRouter.resolve_stage(mdl, kdb, n)
-        cands = [(rp, rm)] if rp == "lokal" else [(rp, rm), ("lokal", "llama3.2")]
-    else: cands = [("lokal", mdl)] if pvd == "lokal" else [(pvd, mdl), ("lokal", "llama3.2")]
+        cands = SmartRouter.resolve_stage_candidates(mdl, kdb, n)
+    else: cands = [("lokal", mdl)] if pvd == "lokal" else [(pvd, mdl), ("lokal", "llama3")]
     logger = AgentLogger(agent_name or "Unknown")
     for cp, cm in cands:
         ans = _try("lokal", cm, "", msgs, agent_name) if cp == "lokal" else _try_keys(cp, cm, kdb, msgs, agent_name)

@@ -2,6 +2,27 @@
 import os, re
 from .path_validator import _safe
 
+def _git_commit_file(wd, rel_path, agent_name):
+    import subprocess
+    from pathlib import Path
+    try:
+        git_dir = Path(wd) / ".git"
+        if not git_dir.exists():
+            subprocess.run(["git", "init"], cwd=wd, capture_output=True)
+            subprocess.run(["git", "config", "user.name", "Gnom-Hub Agents"], cwd=wd, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "agents@gnom-hub.local"], cwd=wd, capture_output=True)
+        
+        subprocess.run(["git", "add", rel_path], cwd=wd, capture_output=True)
+        diff_res = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=wd)
+        if diff_res.returncode != 0:
+            subprocess.run([
+                "git", "commit", 
+                "-m", f"Agent {agent_name} -> {rel_path}", 
+                f"--author={agent_name} <{agent_name.lower()}@gnom-hub.local>"
+            ], cwd=wd, capture_output=True)
+    except Exception as e:
+        print(f"Git auto-commit failed: {e}")
+
 def handle_write(answer, matches, agent, perms, bs_mode, wd):
     from agents.securityAG import seal_content
     for m in matches:
@@ -14,11 +35,18 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
             if not fpath: r = f"[System: Pfad '{fname}' blockiert — außerhalb des Workspace.]"
             else:
                 try:
+                    from .soul_initializer import check_and_wait_breakpoint
+                    check_and_wait_breakpoint(agent["name"], "before_write", fname)
+                    
                     os.makedirs(os.path.dirname(fpath), exist_ok=True)
                     if os.path.exists(fpath):
                         import shutil; shutil.copy2(fpath, fpath + ".bak")
                     with open(fpath, "w", encoding="utf-8") as f:
                         f.write(content)
+                    
+                    rel_path = os.path.relpath(fpath, wd)
+                    _git_commit_file(wd, rel_path, agent["name"])
+
                     from .zwc_soul import add_agent_metadata
                     r = f"[System: Datei '{fname}' gespeichert.]" + add_agent_metadata(agent["name"], "")
 

@@ -26,9 +26,34 @@ def handle_free(q):
     return {"status": "ok"}
 
 def handle_git(q, rb=False):
-    p = q.split(" ", 1); cmd = f"reset --hard {p[1]}" if rb else (p[1] if len(p) > 1 else "")
+    from gnom_hub.presentation.api.v1.workspace import get_workspace_dir
+    wd = get_workspace_dir()
+    p = q.split(" ", 1)
+    cmd = f"reset --hard {p[1]}" if rb else (p[1] if len(p) > 1 else "status")
     from pathlib import Path
-    if not (Path(".") / ".git").exists(): subprocess.run(["git", "init"], capture_output=True)
-    try: r = subprocess.run(["git"] + cmd.split(), capture_output=True, text=True, timeout=10).stdout.strip()
-    except Exception as e: r = f"Error: {e}"
+    if not (Path(wd) / ".git").exists(): 
+        subprocess.run(["git", "init"], cwd=wd, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Gnom-Hub Agents"], cwd=wd, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "agents@gnom-hub.local"], cwd=wd, capture_output=True)
+    try: 
+        r = subprocess.run(["git"] + cmd.split(), cwd=wd, capture_output=True, text=True, timeout=10).stdout.strip()
+    except Exception as e: 
+        r = f"Error: {e}"
     _post_chat("System", f"Git: {r[:300]}"); return {"status": "ok"}
+
+def handle_resume(q):
+    agent_name = q.strip().replace("@", "")
+    if not agent_name:
+        _post_chat("System", "Fehler: Bitte gib einen Agenten-Namen an (z.B. @@resume CoderAG)")
+        return {"status": "error", "message": "Missing agent name"}
+    
+    from .db import set_agent_status, get_all_agents
+    agents = get_all_agents()
+    agent = next((a for a in agents if a["name"].lower() == agent_name.lower()), None)
+    if not agent:
+        _post_chat("System", f"Fehler: Agent '{agent_name}' nicht gefunden.")
+        return {"status": "error", "message": "Agent not found"}
+        
+    set_agent_status(agent["name"], "busy")
+    _post_chat("System", f"Agent **{agent['name']}** wurde fortgesetzt.")
+    return {"status": "ok"}

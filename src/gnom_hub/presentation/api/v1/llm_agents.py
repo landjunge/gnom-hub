@@ -36,12 +36,23 @@ async def test_agent(req: Request):
     if not k:
         if p == "deepseek" and DS_KEY: k = DS_KEY
         elif p == "openrouter" and OR_KEY: k = OR_KEY
-    if not k and p != "lokal": return {"valid": False, "info": f"Kein gültiger Key für {p}", "resolved_provider": p, "resolved_model": m}
+    if not k and p != "lokal": return {"valid": False, "info": f"Kein gültiger Key für {p}", "resolved_provider": p, "resolved_model": m, "caps": []}
+    # Caps vom Key oder Provider bestimmen
+    key_caps = []
+    if p == "lokal":
+        key_caps = ["text", "vision", "tools"]
+    else:
+        for x in (kdb.values() if isinstance(kdb, dict) else kdb):
+            if x.get("provider") == p and x.get("valid") and x.get("caps"):
+                key_caps = x["caps"]
+                break
+    if not key_caps:
+        key_caps = ["text", "tools"]
     try:
         loop = asyncio.get_running_loop()
         ans = await loop.run_in_executor(None, _call, p, m, k or "", [{"role":"user", "content":"Ping. Reply OK."}], "Test")
-        return {"valid": bool(ans), "info": "OK" if ans else "Keine Antwort", "resolved_provider": p, "resolved_model": m}
-    except Exception as e: return {"valid": False, "info": str(e), "resolved_provider": p, "resolved_model": m}
+        return {"valid": bool(ans), "info": "OK" if ans else "Keine Antwort", "resolved_provider": p, "resolved_model": m, "caps": key_caps if ans else []}
+    except Exception as e: return {"valid": False, "info": str(e), "resolved_provider": p, "resolved_model": m, "caps": []}
 
 @router.get("/api/llm/routing_insights")
 async def get_routing_insights():

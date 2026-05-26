@@ -13,7 +13,7 @@ class OllamaClient:
 
     async def ask(self, prompt: str, model: Optional[str] = None) -> str:
         """Sendet eine einfache Prompt-Anfrage an Ollama."""
-        model = model or "llama3.2"  # Standard-Modell, falls keines angegeben
+        model = model or "llama3"  # Standard-Modell, falls keines angegeben
 
         payload = {
             "model": model,

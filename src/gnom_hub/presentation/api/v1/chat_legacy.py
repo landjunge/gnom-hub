@@ -2,11 +2,11 @@ from fastapi import APIRouter; from pydantic import BaseModel; from gnom_hub.zwc
 from gnom_hub.db import get_all_agents, get_active_project, add_chat_message, get_chat_history
 from gnom_hub.brainstorm import dispatch; from gnom_hub.soul import soul_instance
 from gnom_hub.showbox_validator import sanitize_showboxes; from .chat_helpers import _parse, _handle_sys
-from gnom_hub.chat_commands import handle_clear, handle_status, handle_job, handle_free, handle_git
+from gnom_hub.chat_commands import handle_clear, handle_status, handle_job, handle_free, handle_git, handle_resume
 router = APIRouter()
 class ChatMsg(BaseModel): content: str; sender: str = "user"
 def handle_bs(q): return {"status": "dispatched", "asked": dispatch(q, target=None), "mode": "brainstorm"}
-CMDS = {"clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs}
+CMDS = {"clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs, "resume": handle_resume}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     soul_instance.on_message(msg.content, msg.sender)

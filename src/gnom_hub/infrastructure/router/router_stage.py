@@ -57,9 +57,9 @@ class SmartRouter:
         preferred = {
             "stage_4": ["claude-3-5-sonnet-20241022", "claude-3.5-sonnet", "gpt-4o", "deepseek-reasoner", "gemini-1.5-pro"],
             "stage_3": ["deepseek-chat", "gemini-1.5-flash", "gpt-4o-mini", "mistral-large-latest", "llama-3.1-8b-instruct", "llama3.1"],
-            "stage_2": ["baidu/cobuddy:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "poolside/laguna-xs.2:free", "poolside/laguna-m.1:free", "deepseek/deepseek-v4-flash:free", "llama-3.3-70b-instruct:free", "qwen3-coder:free", "gemma-2-9b-it", "llama3.2", "gemma2"],
-            "stage_1": ["llama3", "llama3.2", "phi3", "mistral"]
-        }.get(stage, ["llama3.2"])
+            "stage_2": ["baidu/cobuddy:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "poolside/laguna-xs.2:free", "poolside/laguna-m.1:free", "deepseek/deepseek-v4-flash:free", "llama-3.3-70b-instruct:free", "qwen3-coder:free", "gemma-2-9b-it", "llama3", "gemma2"],
+            "stage_1": ["llama3", "phi3", "mistral"]
+        }.get(stage, ["llama3"])
 
         # Try finding stage preferred models
         for m in preferred:
@@ -75,7 +75,7 @@ class SmartRouter:
                     if model.lower() in am.lower():
                         return am
 
-        return available_models[0] if available_models else "llama3.2"
+        return available_models[0] if available_models else "llama3"
 
     @staticmethod
     def is_provider_valid(provider: str, kdb: dict) -> bool:
@@ -143,7 +143,7 @@ class SmartRouter:
                         return "openrouter", m
                 if working_models:
                     return "openrouter", working_models[0]
-            return "lokal", "llama3.2"
+            return "lokal", "llama3"
             
         # 2. RESEARCHER
         elif role == "researcher":
@@ -161,7 +161,7 @@ class SmartRouter:
                         return "openrouter", m
                 if working_models:
                     return "openrouter", working_models[0]
-            return "lokal", "llama3.2"
+            return "lokal", "llama3"
             
         # 3. WRITER / EDITOR
         elif role in ("writer", "editor"):
@@ -179,7 +179,7 @@ class SmartRouter:
                         return "openrouter", m
                 if working_models:
                     return "openrouter", working_models[0]
-            return "lokal", "llama3.2"
+            return "lokal", "llama3"
             
         # 4. SOUL
         elif role == "soul":
@@ -208,7 +208,7 @@ class SmartRouter:
             if has_openrouter:
                 if working_models:
                     return "openrouter", working_models[0]
-            return "lokal", "llama3.2"
+            return "lokal", "llama3"
 
     @staticmethod
     def get_stage_options(stage: str, role: str) -> list:
@@ -239,11 +239,11 @@ class SmartRouter:
             ("mistral", "mistral-large-latest")
         ]
         s2 = [
-            ("openrouter", or_model)
+            ("openrouter", or_model),
+            ("deepseek", "deepseek-chat")
         ]
         s1 = [
             ("lokal", "llama3"),
-            ("lokal", "llama3.2"),
             ("lokal", "mistral")
         ]
 
@@ -258,15 +258,25 @@ class SmartRouter:
 
     @staticmethod
     def resolve_stage(stage: str, kdb: dict, agent_name: str) -> tuple:
-        """Löst die Stufe in Provider + Modell auf."""
+        """Löst die Stufe in Provider + Modell auf (erster gültiger Kandidat)."""
+        cands = SmartRouter.resolve_stage_candidates(stage, kdb, agent_name)
+        return cands[0] if cands else ("lokal", "llama3")
+
+    @staticmethod
+    def resolve_stage_candidates(stage: str, kdb: dict, agent_name: str) -> list:
+        """Gibt ALLE gültigen Provider+Modell-Kandidaten zurück (für Fallback-Kette)."""
         role = SmartRouter.resolve_role_from_name(agent_name)
         options = SmartRouter.get_stage_options(stage, role)
-
+        seen = set()
+        candidates = []
         for pvd, mdl in options:
-            if pvd == "lokal" or SmartRouter.is_provider_valid(pvd, kdb):
-                return pvd, mdl
-
-        return "lokal", "llama3.2"
+            key = (pvd, mdl)
+            if key not in seen and (pvd == "lokal" or SmartRouter.is_provider_valid(pvd, kdb)):
+                seen.add(key)
+                candidates.append((pvd, mdl))
+        if not candidates:
+            candidates.append(("lokal", "llama3"))
+        return candidates
 
     @staticmethod
     def get_routing_insights(kdb: dict, current_agents: dict = None) -> list:
