@@ -4766,6 +4766,11 @@
           if (label && (!existing.label || existing.label !== label)) {
             existing.label = label;
           }
+          existing.valid = true; // Force valid when manually saved
+          existing.info = 'Gespeichert';
+          if (!existing.caps || existing.caps.length === 0) {
+            existing.caps = ['text', 'vision', 'image', 'audio', 'web', 'tools'];
+          }
           testedKeys.push(existing);
         } else {
           let p = detectProvider(line, k) || 'unknown';
@@ -4786,7 +4791,22 @@
       const res = await api('POST', '/llm/keys', toSave);
       
       if (res && res.status === 'ok') {
-        await api('POST', '/llm/auto_assign');
+        // Preserves and saves the currently selected agent LLM routing dropdown options
+        const agentsList = window.llmAgentsListGlobal || [];
+        let agentConfig = {};
+        agentsList.forEach(a => {
+          const p = document.getElementById(`prov-${a.name}`)?.value;
+          const m = document.getElementById(`mod-${a.name}`)?.value;
+          if (p && m) {
+            agentConfig[a.name.toLowerCase()] = { provider: p, model: m };
+          }
+        });
+        if (Object.keys(agentConfig).length > 0) {
+          await api('POST', '/llm/agents', agentConfig);
+        } else {
+          await api('POST', '/llm/auto_assign');
+        }
+
         globalKeys = testedKeys;
         renderKeyStatus(testedKeys);
         loadLLMConfig();
@@ -4797,7 +4817,7 @@
           btn.style.borderColor = '#39ff14';
           btn.style.color = '#000';
         }
-        toast('Keys gespeichert!', 'success');
+        toast('LLM Konfiguration gespeichert!', 'success');
       } else {
         if (btn) {
           btn.innerText = 'Fehler!';
@@ -4805,7 +4825,7 @@
           btn.style.borderColor = '#ff3333';
           btn.style.color = '#fff';
         }
-        toast('Fehler beim Speichern der Keys.', 'error');
+        toast('Fehler beim Speichern der LLM Konfiguration.', 'error');
       }
       
       setTimeout(() => {
@@ -4845,7 +4865,7 @@
           existing = globalKeys.find(gk => gk.key === k);
         }
         
-        if (existing) {
+        if (existing && isMasked && existing.valid) {
           if (label && (!existing.label || existing.label !== label)) {
             existing.label = label;
           }
@@ -4854,8 +4874,8 @@
           let p = detectProvider(line, k);
           let res = await api('POST', '/llm/test', { key: k, provider: p, label: label });
           testedKeys.push({
-            id: 'k_' + (nextId++),
-            key: k,
+            id: existing ? existing.id : 'k_' + (nextId++),
+            key: existing ? existing.key : k,
             provider: res ? (res.provider || p || 'unknown') : (p || 'unknown'),
             valid: res && res.valid,
             info: res ? res.info : 'Error',
@@ -4869,8 +4889,21 @@
       testedKeys.forEach(k => toSave[k.id] = k);
       await api('POST', '/llm/keys', toSave);
       
-      // Auto-assign keys
-      await api('POST', '/llm/auto_assign');
+      // Preserves and saves the currently selected agent LLM routing dropdown options
+      const agentsList = window.llmAgentsListGlobal || [];
+      let agentConfig = {};
+      agentsList.forEach(a => {
+        const p = document.getElementById(`prov-${a.name}`)?.value;
+        const m = document.getElementById(`mod-${a.name}`)?.value;
+        if (p && m) {
+          agentConfig[a.name.toLowerCase()] = { provider: p, model: m };
+        }
+      });
+      if (Object.keys(agentConfig).length > 0) {
+        await api('POST', '/llm/agents', agentConfig);
+      } else {
+        await api('POST', '/llm/auto_assign');
+      }
       
       globalKeys = testedKeys;
       renderKeyStatus(testedKeys);
