@@ -78,6 +78,26 @@ def _seed_chat_history(conn):
 
 
 
+def _seed_showboxes(conn):
+    """Initialisiert die standardmäßigen Showbox-Präsentationen."""
+    import uuid, json
+    from datetime import datetime, timezone
+    try:
+        now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        defaults = [
+            ("Standard", [
+                "<h1>Willkommen im Gnom-Hub</h1><p style='font-size:0.4em;color:var(--text-muted);'>Verwende den Editor, um eigene Folien zu erstellen.</p>"
+            ])
+        ]
+        for name, slides in defaults:
+            conn.execute("""
+                INSERT OR IGNORE INTO showbox_presentations (id, name, slides, sender, updated_at)
+                VALUES (?, ?, ?, 'System', ?)
+            """, (str(uuid.uuid4()), name, json.dumps(slides), now_str))
+        logger.info("[DB] Default showbox presentations seeded successfully.")
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Error seeding showboxes: {e}")
+
 def init_db():
     """Erstellt alle benötigten Tabellen idempotent und führt Seeding bei Bedarf aus."""
     try:
@@ -147,6 +167,13 @@ def init_db():
                         expires_at TEXT NOT NULL,
                         is_active INTEGER DEFAULT 1
                     );
+                    CREATE TABLE IF NOT EXISTS showbox_presentations (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL UNIQUE,
+                        slides TEXT NOT NULL,
+                        sender TEXT,
+                        updated_at TEXT NOT NULL
+                    );
                     CREATE INDEX IF NOT EXISTS idx_agent_event ON audit_log(agent, event_type);
                     CREATE INDEX IF NOT EXISTS idx_timestamp ON audit_log(timestamp DESC);
                     CREATE INDEX IF NOT EXISTS idx_soul_memory_key ON soul_memory(key);
@@ -162,6 +189,7 @@ def init_db():
                     pass
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('active_project', '\"default\"')")
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('language', '\"en\"')")
+                conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('active_showbox', '\"\"')")
                 
                 # Wenn agents Tabelle leer ist, führe Seeding aus
                 if not conn.execute("SELECT 1 FROM agents").fetchone():
@@ -174,6 +202,10 @@ def init_db():
                 # Wenn chat Tabelle leer ist, führe Seeding aus
                 if not conn.execute("SELECT 1 FROM chat").fetchone():
                     _seed_chat_history(conn)
+
+                # Wenn showbox_presentations Tabelle leer ist, führe Seeding aus
+                if not conn.execute("SELECT 1 FROM showbox_presentations").fetchone():
+                    _seed_showboxes(conn)
         logger.info("[DB] Database initialized successfully.")
     except sqlite3.Error as e:
         logger.error(f"[DB] Database initialization failed: {e}")
@@ -476,6 +508,14 @@ def clear_project_chat(project: str):
     except sqlite3.Error as e:
         logger.error(f"[DB] Failed to clear project chat: {e}")
 
+def delete_project_completely(project: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE project = ?", (project,))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete project completely: {e}")
+
 def clear_project_chat_by_sender(project: str, sender: str):
     try:
         with get_db_conn() as conn:
@@ -656,4 +696,89 @@ def cleanup_old_data(days_chat: int = 7, days_soul: int = 30):
         logger.info("[DB] Old chats and soul facts cleaned up successfully.")
     except Exception as e:
         logger.error(f"[DB] Cleanup failed: {e}")
+
+
+# =====================================================================
+# SHOWBOX DATABASE OPERATIONS
+# =====================================================================
+
+def save_showbox_presentation(name: str, slides: list, sender: str = None) -> dict:
+    """Erstellt oder aktualisiert eine Showbox-Präsentation."""
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                pid = str(uuid.uuid4())
+                ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                conn.execute("""
+                    INSERT INTO showbox_presentations (id, name, slides, sender, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(name) DO UPDATE SET
+                        slides = excluded.slides,
+                        sender = excluded.sender,
+                        updated_at = excluded.updated_at
+                """, (pid, name, json.dumps(slides), sender, ts))
+                return {"name": name, "slides": slides, "sender": sender, "updated_at": ts}
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to save showbox presentation: {e}")
+        return None
+
+def get_showbox_presentations() -> list:
+    """Gibt alle gespeicherten Showbox-Präsentationen zurück."""
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute("SELECT * FROM showbox_presentations ORDER BY name ASC").fetchall()
+            res = []
+            for r in rows:
+                d = dict(r)
+                d["slides"] = json.loads(d["slides"])
+                res.append(d)
+            return res
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to get showbox presentations: {e}")
+        return []
+
+def delete_showbox_presentation(name: str) -> bool:
+    """Löscht eine Showbox-Präsentation über ihren Namen."""
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM showbox_presentations WHERE name = ?", (name,))
+                return True
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete showbox presentation: {e}")
+        return False
+
+def get_showbox_presentation_by_name(name: str) -> dict:
+    """Gibt eine Showbox-Präsentation über ihren Namen zurück."""
+    try:
+        with get_db_conn() as conn:
+            row = conn.execute("SELECT * FROM showbox_presentations WHERE name = ?", (name,)).fetchone()
+            if row:
+                d = dict(row)
+                d["slides"] = json.loads(d["slides"])
+                return d
+            return None
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to get showbox presentation: {e}")
+        return None
+
+def get_active_showbox() -> str:
+    """Gibt den Namen der aktiven Showbox-Präsentation zurück."""
+    try:
+        with get_db_conn() as conn:
+            row = conn.execute("SELECT value FROM state WHERE key='active_showbox'").fetchone()
+            return json.loads(row["value"]) if row else ""
+    except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
+        logger.error(f"[DB] Failed to get active showbox: {e}")
+        return ""
+
+def set_active_showbox(name: str):
+    """Setzt den Namen der aktiven Showbox-Präsentation."""
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('active_showbox', ?)", (json.dumps(name.strip()),))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to set active showbox: {e}")
+
 
