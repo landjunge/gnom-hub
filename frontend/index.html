@@ -4358,6 +4358,9 @@
               </div>
               
               <div id="llm-agents-list" style="margin-bottom:0; max-height:280px; overflow-y:auto; padding-right:8px; --scrollbar-thumb:rgba(255,255,255,0.1); --scrollbar-track:transparent; scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width:thin;">Loading Agents...</div>
+              
+              <!-- Intelligent Routing Insights Panel -->
+              <div id="routing-insights-panel" style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px; display:none;"></div>
             </div>
           </div>
         </div>
@@ -4996,10 +4999,6 @@
           container.style.display = 'block';
           
           let html = `
-            <h3 style="margin-bottom:8px; font-size:0.85rem; color:#00e5ff; display:flex; align-items:center; gap:6px; font-weight:600;">
-              <svg style="width:14px; height:14px; fill:#00e5ff; filter: drop-shadow(0 0 3px rgba(0,229,255,0.6));" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-4h-2V7h2v2z"/></svg>
-              <span>Routing Insights & Empfehlungen</span>
-            </h3>
             <div style="display:flex; flex-direction:column; gap:6px;">
           `;
           
