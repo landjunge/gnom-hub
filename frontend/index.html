@@ -4560,6 +4560,16 @@
            if (models[pSel] && !models[pSel].includes(mSel)) {
              models[pSel].push(mSel);
            }
+
+           let lampBg = 'gray';
+           let lampShadow = 'rgba(0,0,0,0.5)';
+           let lampTitle = 'Nicht getestet';
+           if (window.testedAgentStatus && window.testedAgentStatus[a.name]) {
+             const st = window.testedAgentStatus[a.name];
+             lampBg = st.valid ? '#39ff14' : '#ff3333';
+             lampShadow = st.valid ? '#39ff14' : '#ff3333';
+             lampTitle = st.info || '';
+           }
            
            html += `<div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; padding:4px 8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:6px; font-size:0.8rem;">
              <div style="width:100px; font-weight:bold; overflow:hidden; text-overflow:ellipsis;">${a.name}</div>
@@ -4570,7 +4580,7 @@
                ${(models[pSel]||[]).map(m => `<option value="${m}" ${m === mSel ? 'selected':''}>${getModelDisplayName(pSel, m)}</option>`).join('')}
              </select>
              <button class="btn-primary" onclick="testAgentLLM('${a.name}')" style="padding:2px 6px; font-size:0.72rem; flex-shrink:0; display:flex; align-items:center; gap:4px;">
-               <span id="lamp-${a.name}" style="width:8px; height:8px; border-radius:50%; background:gray; display:inline-block; box-shadow:0 0 3px rgba(0,0,0,0.5); flex-shrink:0;"></span>
+               <span id="lamp-${a.name}" style="width:8px; height:8px; border-radius:50%; background:${lampBg}; display:inline-block; box-shadow:0 0 3px ${lampShadow}; flex-shrink:0;" title="${lampTitle}"></span>
                <span>Test</span>
              </button>
              <div id="caps-agent-${a.name}" style="display:flex; gap:3px; align-items:center; flex-shrink:0; margin-left:4px;">
@@ -5086,11 +5096,13 @@
       })();
       
       await window.runRoutingWithProgress(agents, overridePromise);
+      await loadLLMConfig();
     };
 
     window.autoRouteAllAgents = async function() {
       const agents = window.llmAgentsListGlobal || [];
       await window.runRoutingWithProgress(agents, api('POST', '/llm/auto_assign'));
+      await loadLLMConfig();
     };
 
     window.loadRoutingInsights = async function() {
@@ -5258,10 +5270,12 @@
       lamp.title = 'Test läuft...';
       
       let res = await api('POST', '/llm/test_agent', { agent: aName, provider: p, model: m });
+      window.testedAgentStatus = window.testedAgentStatus || {};
       if (res && res.valid) {
+        let detail = (res.resolved_provider && res.resolved_model) ? ` (${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
+        window.testedAgentStatus[aName] = { valid: true, info: `Test erfolgreich${detail}` };
         lamp.style.background = '#39ff14';
         lamp.style.boxShadow = '0 0 10px #39ff14';
-        let detail = (res.resolved_provider && res.resolved_model) ? ` (${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
         lamp.title = `Test erfolgreich${detail}`;
         
         if (p === 'auto' && res.resolved_provider && res.resolved_model) {
@@ -5277,9 +5291,10 @@
           }
         }
       } else {
+        let detail = (res && res.resolved_provider && res.resolved_model) ? ` (Tried ${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
+        window.testedAgentStatus[aName] = { valid: false, info: (res && res.info) ? `Fehler: ${res.info}${detail}` : `Test fehlgeschlagen${detail}` };
         lamp.style.background = '#ff3333';
         lamp.style.boxShadow = '0 0 10px #ff3333';
-        let detail = (res && res.resolved_provider && res.resolved_model) ? ` (Tried ${getProviderDisplayName(res.resolved_provider)} - ${res.resolved_model})` : '';
         lamp.title = (res && res.info) ? `Fehler: ${res.info}${detail}` : `Test fehlgeschlagen${detail}`;
         
         if (p === 'auto' && res && res.resolved_provider && res.resolved_model) {
