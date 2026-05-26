@@ -78,6 +78,13 @@
       cursor: pointer;
     }
 
+    .lamp.off {
+      background: rgba(255, 255, 255, 0.04) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: none !important;
+      opacity: 0.1;
+    }
+
     .lamp.on {
       opacity: 0.65;
       box-shadow: 0 0 6px currentColor;
@@ -951,6 +958,12 @@
 
     .agent-card.paused {
       animation: card-paused-pulse 1.2s ease-in-out infinite alternate;
+    }
+
+    .agent-card.off {
+      border-left-color: transparent !important;
+      border-right-color: transparent !important;
+      opacity: 0.3;
     }
 
     @keyframes card-paused-pulse {
@@ -3958,7 +3971,7 @@
         const key = l.dataset.ag;
         const agent = displayAgents.find(a => a.name === key);
         const st = agent?.status || 'offline';
-        l.className = st === 'busy' ? 'lamp busy' : st === 'online' ? 'lamp on' : 'lamp';
+        l.className = st === 'busy' ? 'lamp busy' : st === 'online' ? 'lamp on' : 'lamp off';
       });
     }
 
