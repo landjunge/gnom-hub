@@ -2915,14 +2915,10 @@
       selectedId = null;
       document.getElementById('content').innerHTML = `
         <div class="panel" id="dashboard-panel">
-          <style>
-            @keyframes pulse-glow {
-              0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); opacity: 0.6; }
-              70% { box-shadow: 0 0 0 10px rgba(0, 229, 255, 0); opacity: 1; }
-              100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); opacity: 0.6; }
-            }
-          </style>
-          <h2><button class="btn-primary" onclick="showWarRoom()" style="margin-right:15px; padding: 4px 10px; font-size:0.8rem; vertical-align: middle;">◀ Zurück</button>Agent Health Dashboard</h2>
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+            <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
+            <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Agent Health Dashboard</h2>
+          </div>
           <div id="swarm-status-banner" style="display:none; margin-top:15px; padding:15px; background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2); border-radius:var(--radius); box-shadow:0 0 20px rgba(0,229,255,0.05); backdrop-filter:blur(10px);">
             <div style="font-weight:bold; color:var(--accent); font-size:1.05rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
               <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); animation: pulse-glow 1.5s infinite;"></span>
@@ -2934,21 +2930,21 @@
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 15px;" id="dashboard-grid">
             <div class="empty">Metriken werden geladen...</div>
           </div>
-          <h2 style="margin-top: 30px; display:flex; align-items:center; gap:8px;">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#a855f7; box-shadow: 0 0 8px #a855f7;"></span>
+          <h2 style="margin-top: 24px; display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600;">
+            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#a855f7;"></span>
             Agent Evolution & Self-Improvement Log
           </h2>
-          <div id="evolution-log-section" style="margin-top: 15px; display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+          <div id="evolution-log-section" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
             <div class="empty" style="color:var(--text-dim); font-style:italic;">Keine Evolutions-Logs vorhanden.</div>
           </div>
-          <h2 style="margin-top: 30px; display:flex; align-items:center; gap:8px;">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 8px #10b981;"></span>
+          <h2 style="margin-top: 24px; display:flex; align-items:center; gap:8px; font-size:0.95rem; font-weight:600;">
+            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981;"></span>
             Submit Swarm Job Feedback
           </h2>
-          <div id="feedback-section" style="margin-top: 15px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: var(--radius); display: flex; flex-direction: column; gap: 10px;">
-            <div style="display:flex; gap:10px;">
-              <button class="btn-primary" onclick="submitFeedback('up')" style="flex:1; background:rgba(16, 185, 129, 0.1); border:1px solid #10b981; color:#10b981; padding:8px 0; border-radius:var(--radius-sm); font-size:1rem; cursor:pointer; transition:var(--transition);">👍 Daumen hoch</button>
-              <button class="btn-primary" onclick="submitFeedback('down')" style="flex:1; background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; color:#ef4444; padding:8px 0; border-radius:var(--radius-sm); font-size:1rem; cursor:pointer; transition:var(--transition);">👎 Daumen runter</button>
+          <div id="feedback-section" style="margin-top: 10px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: var(--radius); display: flex; flex-direction: column; gap: 8px;">
+            <div style="display:flex; gap:8px;">
+              <button class="btn-primary" onclick="submitFeedback('up')" style="flex:1; background:rgba(16, 185, 129, 0.1); border:1px solid #10b981; color:rgba(255,255,255,0.85); padding:6px 0; border-radius:var(--radius-sm); font-size:0.85rem; cursor:pointer; transition:var(--transition); font-weight:500;">👍 Daumen hoch</button>
+              <button class="btn-primary" onclick="submitFeedback('down')" style="flex:1; background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; color:rgba(255,255,255,0.85); padding:6px 0; border-radius:var(--radius-sm); font-size:0.85rem; cursor:pointer; transition:var(--transition); font-weight:500;">👎 Daumen runter</button>
             </div>
             <div style="display:flex; gap:10px; align-items:stretch;">
               <input type="text" id="feedback-comment" placeholder="Kommentar hinzufügen..." style="flex:1; background:var(--bg-input); border:1px solid var(--glass-border); border-radius:var(--radius-sm); color:var(--text); padding:8px 12px; font-size:0.9rem; outline:none;">
@@ -3046,14 +3042,14 @@
         const lastSeenStr = m.last_seen > 0 ? new Date(m.last_seen * 1000).toLocaleTimeString() : 'nie';
         const agentColorHex = agentColor(n);
         return `
-          <div class="agent-health-card" style="background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(8px); border: ${isActive ? '2px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.05)'}; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; border-top: 4px solid ${agentColorHex}; transition: all 0.3s ease; ${isActive ? 'animation: pulse-glow 1.5s infinite; box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);' : ''}">
+          <div class="agent-health-card" style="background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(8px); border: ${isActive ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.05)'}; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border-top: 3px solid ${agentColorHex}; transition: all 0.3s ease; ${isActive ? 'box-shadow: 0 4px 12px rgba(0, 229, 255, 0.05);' : ''}">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h3 style="margin: 0; font-size: 1.15rem; color: #fff; text-transform: capitalize; display: flex; align-items: center; gap: 8px;">
+              <h3 style="margin: 0; font-size: 1.05rem; color: #fff; text-transform: capitalize; display: flex; align-items: center; gap: 6px; font-weight: 600;">
                 ${n.replace('ag', 'AG')}
-                ${isActive ? `<span style="font-size:0.7rem; background:rgba(0,229,255,0.15); color:var(--accent); border:1px solid rgba(0,229,255,0.3); border-radius:4px; padding:2px 6px; font-weight:bold;">TEAM</span>` : ''}
+                ${isActive ? `<span style="font-size:0.65rem; background:rgba(0,229,255,0.15); color:var(--accent); border:1px solid rgba(0,229,255,0.3); border-radius:4px; padding:1px 4px; font-weight:bold;">TEAM</span>` : ''}
               </h3>
-              <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: bold; color: ${color};">
-                <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; display: inline-block; box-shadow: 0 0 8px ${color};"></span>
+              <div style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 500; color: ${color};">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; display: inline-block;"></span>
                 <span>${statusLabel}</span>
               </div>
             </div>
@@ -3096,8 +3092,14 @@
     async function showWorkspace() {
       selectedId = null;
       document.getElementById('content').innerHTML = `
-    <div class="panel" id="workspace-panel">
-      <h2><button class="btn-primary" onclick="showWarRoom()" style="margin-right:15px; padding: 4px 10px; font-size:0.8rem; vertical-align: middle;">◀ Zurück</button>Workspace <div class="actions"><button class="btn-primary" onclick="loadWorkspace()">Refresh</button></div></h2>
+    <div class="panel" id="workspace-panel" style="padding:12px 15px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; flex-wrap:nowrap;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
+          <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Workspace</h2>
+        </div>
+        <button class="btn-primary" onclick="loadWorkspace()" style="padding: 2px 8px; font-size:0.75rem; white-space:nowrap;">Refresh</button>
+      </div>
       <div id="workspace-list"><div class="empty">Loading files...</div></div>
     </div>
   `;
@@ -3118,7 +3120,7 @@
       }
       return `<div class="mem-item" style="display:flex; justify-content:space-between; align-items:center;">
         <div style="cursor:pointer; flex:1;" onclick="readWorkspaceFile('${f.name}')">
-          <strong style="color:#0096ff">${f.name}</strong> 
+          <strong style="color:rgba(255,255,255,0.95); font-weight:500;">${f.name}</strong> 
           <span style="font-size:0.8em;color:var(--text-dim);margin-left:10px;">${f.size} Bytes</span>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
@@ -3983,8 +3985,11 @@
 
     function buildShowboxHeaderHTML() {
       return `
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-          <h2><button class="btn-primary" onclick="showWarRoom()" style="margin-right:15px; padding: 4px 10px; font-size:0.8rem; vertical-align: middle;">◀ Zurück</button>🎬 Showbox Center</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
+            <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Showbox Center</h2>
+          </div>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <button class="btn-primary" onclick="togglePanelShowboxPlay()" id="sb-play-btn" style="min-width:80px;">▶ Play</button>
             <button class="btn-primary" onclick="prevPanelSlide()">◀ Back</button>
@@ -3995,7 +4000,7 @@
             <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
               <span style="font-size:0.8rem; color:var(--text-muted);">Speed:</span>
               <input type="range" id="sb-speed-slider" min="30" max="120" step="5" value="${window.showboxSpeed / 1000}" onchange="updatePanelShowboxSpeed(this.value)" style="width:70px; cursor:pointer;">
-              <span id="sb-speed-val" style="font-size:0.85rem; color:var(--cyan); min-width:25px;">${window.showboxSpeed >= 60000 ? Math.floor(window.showboxSpeed/60000) + 'm' : (window.showboxSpeed/1000) + 's'}</span>
+              <span id="sb-speed-val" style="font-size:0.85rem; color:rgba(255,255,255,0.85); min-width:25px;">${window.showboxSpeed >= 60000 ? Math.floor(window.showboxSpeed/60000) + 'm' : (window.showboxSpeed/1000) + 's'}</span>
             </div>
           </div>
         </div>
@@ -4350,8 +4355,11 @@
     async function showHelpPage() {
       selectedId = null;
       document.getElementById('content').innerHTML = `
-        <div class="panel" id="help-panel" style="display:flex; flex-direction:column; gap:15px; height:100%; box-sizing:border-box;">
-          <h2><button class="btn-primary" onclick="showWarRoom()" style="margin-right:15px; padding: 4px 10px; font-size:0.8rem; vertical-align: middle;">◀ Zurück</button>Help Center</h2>
+        <div class="panel" id="help-panel" style="display:flex; flex-direction:column; gap:12px; height:100%; box-sizing:border-box; padding:12px 15px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
+            <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
+            <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Help Center</h2>
+          </div>
           <iframe src="/static/help.html" style="width: 100%; flex-grow:1; border: 1px solid var(--glass-border); border-radius: var(--radius); background: rgba(10, 12, 20, 0.5); min-height: 60vh;"></iframe>
         </div>
       `;
