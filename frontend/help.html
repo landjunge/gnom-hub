@@ -337,6 +337,7 @@
 
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('commands')">💬 Chat-Befehle</button>
+      <button class="tab-btn" onclick="switchTab('ui')">🖥️ Benutzeroberfläche</button>
       <button class="tab-btn" onclick="switchTab('agents')">🤖 Soul-Hierarchie</button>
     </div>
 
@@ -440,6 +441,139 @@
           <li><strong>Quantisiertes Offline-Retrieval</strong>: Das SoulAG-Gedächtnis nutzt eine lokale Vektordatenbank (FAISS mit PQ-Quantisierung) für semantische Suchen, wodurch der RAM-Bedarf um <b>75%</b> reduziert wird. Ein TF-IDF-Fallback greift bei fehlenden Vektorbibliotheken.</li>
           <li><strong>Custom Preset System</strong>: Benutzerdefinierte Presets können als JSON-Dateien in <code>config/presets/</code> abgelegt und zur prompt-basierten Verhaltensanpassung des Schwarms geladen werden.</li>
         </ul>
+      </div>
+    </div>
+
+    <!-- ── Tab: UI (User Interface) ── -->
+    <div id="panel-ui" class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Dokumentation der Benutzeroberfläche (UI)</h2>
+      </div>
+      <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:15px; line-height:1.5;">
+        Diese Übersicht beschreibt alle Bedienelemente und Schaltflächen in Gnom-Hub. Sie dient sowohl Anwendern als auch den Agenten (z. B. ResearcherAG, CoderAG) als Referenz, um die Systemsteuerung und den Workflow des Schwarms zu verstehen.
+      </p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:15px; margin-top:10px;">
+        
+        <!-- Header Controls -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
+          <h3 style="font-size:0.9rem; color:var(--primary); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Logo & Hard Reset</h3>
+          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:8px; padding:0;">
+            <li>
+              <strong style="color:#fff;">Gnom-Hub Logo (Nuke-Button)</strong><br>
+              <span style="font-size:0.75rem;"><b>Interaktion:</b> Linksklick gedrückt halten (2 Sekunden).</span><br>
+              <span style="font-size:0.75rem;"><b>Funktion:</b> Führt ein hartes Zurücksetzen ("Nuke") aller Agenten-Hintergrundprozesse aus, killt verwaiste Tasks und startet den Hub-Server neu. Zu nutzen bei Blockaden oder Hängern.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
+          <h3 style="font-size:0.9rem; color:var(--primary); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Header-Navigation</h3>
+          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
+            <li>
+              <strong style="color:#fff;">Workspace Button</strong><br>
+              <span style="font-size:0.75rem;">Öffnet das Dateiverzeichnis des aktiven Projekts.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">Dashboard Button</strong><br>
+              <span style="font-size:0.75rem;">Zeigt Echtzeit-Metriken (Latenz, Tokens, Fehlerraten) und den Systemstatus an.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">Showbox Button</strong><br>
+              <span style="font-size:0.75rem;">Öffnet das Showbox Center zur Bearbeitung der Präsentations-Slides.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">LLM Button</strong><br>
+              <span style="font-size:0.75rem;">Zur Konfiguration der API-Keys, FTP-Autodeploy, Spracheinstellung und Modellzuweisungen.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">+ Agent Button</strong><br>
+              <span style="font-size:0.75rem;">Öffnet ein Modal, um einen neuen Custom-Agenten (Name, Port, Beschreibung) zu registrieren.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">Help Button</strong><br>
+              <span style="font-size:0.75rem;">Öffnet dieses Hilfe- und Dokumentationscenter direkt im Hauptbereich.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Sidebar Preset & Agent list -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
+          <h3 style="font-size:0.9rem; color:var(--primary); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Seitenleiste (Presets & Agenten)</h3>
+          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
+            <li>
+              <strong style="color:#fff;">Agent Gangs Dropdown</strong><br>
+              <span style="font-size:0.75rem;">Wechselt das aktive Team-Preset (z. B. Web Development, Graphic Design, Research). Lädt spezifische Prompt-Erweiterungen und Verhaltensregeln für den gesamten Schwarm aus <code>config/presets/</code>.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">Agenten-Suchfeld & Liste</strong><br>
+              <span style="font-size:0.75rem;">Filtert die Liste der aktiven Agenten. Die Liste zeigt den Zustand jedes Agenten (online/offline/busy) und seine aktuelle Rolle. Ein Klick auf eine Agentenkarte öffnet dessen Detail- und Erinnerungsansicht.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Showbox & Lamps -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
+          <h3 style="font-size:0.9rem; color:var(--primary); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Showbox & Steuerungs-Lampen</h3>
+          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
+            <li>
+              <strong style="color:#fff;">Showbox Screen</strong><br>
+              <span style="font-size:0.75rem;">Ein zentrales Ausgabefenster für Präsentationen, Meldungen, Uhren und Countdown-Timer. Wenn Agenten Ergebnisse dorthin streamen, leuchtet der Rahmen in der Farbe des jeweiligen Agenten auf. Bei System-Hinweisen erfolgt ein schneller Multicolor-Neon-Glow.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">7 Showbox-Lampen (Buttons)</strong><br>
+              <span style="font-size:0.75rem;">Die kreisförmigen Knöpfe direkt unter dem Showbox-Screen. Ein Klick darauf wechselt manuell zu den Inhalten der jeweiligen Showbox-Präsentation (Showbox 1 bis 7).</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Chat Input Controls -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
+          <h3 style="font-size:0.9rem; color:var(--primary); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Chat-Eingabebereich</h3>
+          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
+            <li>
+              <strong style="color:#fff;">@ Erwähnungen & Autovervollständigung</strong><br>
+              <span style="font-size:0.75rem;">Tippe <code>@</code> im Chatfeld, um ein Dropdown mit allen verfügbaren Befehlen und Agenten-Namen aufzurufen. Bestätige mit <code>Enter</code> oder <code>Tab</code>.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">Terminal-Pfeiltasten (Eingabeverlauf)</strong><br>
+              <span style="font-size:0.75rem;">Drücke im Chat-Eingabefeld <code>Pfeil-oben</code>, um vorherige Eingaben zu laden. Mit <code>Pfeil-unten</code> navigierst du zurück zu neueren Eingaben oder deinem Entwurf.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">Rec Button (Spracheingabe)</strong><br>
+              <span style="font-size:0.75rem;">Aktiviert Speech-to-Text über die Browser-Schnittstelle. Erlaubt freies Diktieren deiner Anweisungen.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">Stop-TTS Button</strong><br>
+              <span style="font-size:0.75rem;">Bricht die Sprachausgabe (Text-to-Speech) von Agenten-Meldungen sofort ab und leert die Sprachwarteschlange.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Workspace & Preview Inner view buttons -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
+          <h3 style="font-size:0.9rem; color:var(--primary); margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Workspace Inner Actions</h3>
+          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
+            <li>
+              <strong style="color:#fff;">🌐 Open Button</strong><br>
+              <span style="font-size:0.75rem;">Öffnet HTML-/CSS-/JS-Webdateien in einem neuen Browsertab.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">👁️ Preview Button</strong><br>
+              <span style="font-size:0.75rem;">Öffnet eine interaktive Live-Vorschau der Web-Datei im rechten Hauptbereich.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">▶ Run Button</strong><br>
+              <span style="font-size:0.75rem;">Führt Python-Dateien direkt im Hintergrund aus und fängt deren Standard-Ausgaben auf.</span>
+            </li>
+            <li>
+              <strong style="color:#fff;">◀ Zurück Button</strong><br>
+              <span style="font-size:0.75rem;">Schließt das aktuelle Untermenü und kehrt zurück zur War Room Chat-Hauptansicht.</span>
+            </li>
+          </ul>
+        </div>
+
       </div>
     </div>
 
