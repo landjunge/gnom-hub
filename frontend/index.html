@@ -4457,10 +4457,10 @@
     async function setSystemLanguage(lang) {
       try {
         await api('POST', '/admin/language', { language: lang });
-        document.getElementById('lang-btn-de').style.borderColor = lang === 'de' ? 'var(--primary)' : 'rgba(255,255,255,0.2)';
-        document.getElementById('lang-btn-de').style.background = lang === 'de' ? 'rgba(0,150,255,0.2)' : 'transparent';
-        document.getElementById('lang-btn-en').style.borderColor = lang === 'en' ? 'var(--primary)' : 'rgba(255,255,255,0.2)';
-        document.getElementById('lang-btn-en').style.background = lang === 'en' ? 'rgba(0,150,255,0.2)' : 'transparent';
+        document.getElementById('lang-btn-de').style.borderColor = lang === 'de' ? 'var(--primary)' : '';
+        document.getElementById('lang-btn-de').style.background = lang === 'de' ? 'rgba(0,150,255,0.2)' : '';
+        document.getElementById('lang-btn-en').style.borderColor = lang === 'en' ? 'var(--primary)' : '';
+        document.getElementById('lang-btn-en').style.background = lang === 'en' ? 'rgba(0,150,255,0.2)' : '';
       } catch (e) {
         console.error("Failed to set language", e);
       }
@@ -4470,10 +4470,10 @@
       try {
         const langRes = await api('GET', '/admin/language');
         const lang = langRes?.language || 'en';
-        document.getElementById('lang-btn-de').style.borderColor = lang === 'de' ? 'var(--primary)' : 'rgba(255,255,255,0.2)';
-        document.getElementById('lang-btn-de').style.background = lang === 'de' ? 'rgba(0,150,255,0.2)' : 'transparent';
-        document.getElementById('lang-btn-en').style.borderColor = lang === 'en' ? 'var(--primary)' : 'rgba(255,255,255,0.2)';
-        document.getElementById('lang-btn-en').style.background = lang === 'en' ? 'rgba(0,150,255,0.2)' : 'transparent';
+        document.getElementById('lang-btn-de').style.borderColor = lang === 'de' ? 'var(--primary)' : '';
+        document.getElementById('lang-btn-de').style.background = lang === 'de' ? 'rgba(0,150,255,0.2)' : '';
+        document.getElementById('lang-btn-en').style.borderColor = lang === 'en' ? 'var(--primary)' : '';
+        document.getElementById('lang-btn-en').style.background = lang === 'en' ? 'rgba(0,150,255,0.2)' : '';
       } catch (e) {
         console.error("Language loading error", e);
       }
