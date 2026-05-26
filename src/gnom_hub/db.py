@@ -51,6 +51,32 @@ def _seed_agents(conn):
         logger.error(f"[DB] Error seeding agents: {e}")
 
 
+def _seed_chat_history(conn):
+    """Initialisiert eine realistische Chat-Historie mit Showbox-Slides."""
+    import uuid
+    from datetime import datetime, timedelta, timezone
+    try:
+        now = datetime.now(timezone.utc)
+        def iso_time(offset_minutes):
+            t = now - timedelta(minutes=offset_minutes)
+            return t.isoformat().replace("+00:00", "Z")
+        messages = [
+            ("User", "generalag", "chat", "@GeneralAG Analysiere die Server-Performance und erstelle mir einen Report in Showbox 1.", iso_time(10), "{}"),
+            ("GeneralAG", "generalag", "chat", "@user Ich habe die Aufgabe erfasst und an CoderAG delegiert, um die System-Performance-Metriken live in Showbox 1 zu visualisieren.", iso_time(9), "{}"),
+            ("CoderAG", "coderag", "chat", "@user @GeneralAG Hier ist die Live-Statistik des Hub-Servers. Die Visualisierung wurde direkt in Showbox 1 geladen. <SHOWBOX:1>[\"<div style='padding: 20px; text-align: center;'><h2 style='color: #00FF88; font-weight: 500; font-size: 1.1rem;'>🚀 Gnom-Hub Status</h2><p style='color: #888; font-size: 0.8rem; margin-top: 10px;'>All systems operational. Low-latency polling active.</p><div style='margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;'><div style='background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;'><div style='color: #0066FF; font-size: 1.2rem; font-weight: 600;'>8</div><div style='color: #666; font-size: 0.65rem;'>Agents</div></div><div style='background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;'><div style='color: #39FF14; font-size: 1.2rem; font-weight: 600;'>0.18s</div><div style='color: #666; font-size: 0.65rem;'>Latency</div></div><div style='background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;'><div style='color: #cc33ff; font-size: 1.2rem; font-weight: 600;'>100%</div><div style='color: #666; font-size: 0.65rem;'>Local</div></div></div></div>\"]</SHOWBOX>", iso_time(8), "{}"),
+            ("User", "researcherag", "chat", "@ResearcherAG Finde heraus, wie quantisiertes Offline-Retrieval mit FAISS funktioniert und lade die Notizen in Showbox 2.", iso_time(5), "{}"),
+            ("ResearcherAG", "researcherag", "chat", "@user Ich habe die Vorteile von FAISS mit PQ-Quantisierung analysiert und in Showbox 2 geladen. <SHOWBOX:2>[\"<div style='padding: 20px;'><h3 style='color: #FFaa00; font-weight: 500; font-size: 1rem;'>🧠 Quantisiertes Offline-Retrieval (FAISS)</h3><p style='color: #9ca9be; font-size: 0.75rem; margin-top: 8px; line-height: 1.4;'>FAISS (Facebook AI Similarity Search) ermöglicht extrem schnelles Durchsuchen hochdimensionaler Vektoren direkt im lokalen RAM.</p><ul style='color: #bbb; font-size: 0.7rem; margin-top: 10px; padding-left: 15px;'><li style='margin-bottom: 5px;'><b>75% RAM-Reduktion</b> durch PQ</li><li style='margin-bottom: 5px;'><b>O(1) Latenz</b> für semantische Suchen</li><li><b>TF-IDF Fallback</b> bei fehlenden nativen Bibliotheken</li></ul></div>\"]</SHOWBOX>", iso_time(4), "{}")
+        ]
+        for msg in messages:
+            conn.execute("""
+                INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
+                VALUES (?, 'default', ?, ?, ?, ?, ?, ?)
+            """, (str(uuid.uuid4()), msg[0], msg[1], msg[2], msg[3], msg[4], msg[5]))
+        logger.info("[DB] Default chat history successfully seeded.")
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Error seeding chat history: {e}")
+
+
 
 def init_db():
     """Erstellt alle benötigten Tabellen idempotent und führt Seeding bei Bedarf aus."""
@@ -144,6 +170,10 @@ def init_db():
                     from .agent_definitions import AGENT_DEFINITIONS
                     for v in AGENT_DEFINITIONS.values():
                         conn.execute("UPDATE agents SET role = ? WHERE name = ?", (v["role"], v["name"]))
+
+                # Wenn chat Tabelle leer ist, führe Seeding aus
+                if not conn.execute("SELECT 1 FROM chat").fetchone():
+                    _seed_chat_history(conn)
         logger.info("[DB] Database initialized successfully.")
     except sqlite3.Error as e:
         logger.error(f"[DB] Database initialization failed: {e}")
