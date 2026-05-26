@@ -4538,7 +4538,7 @@
         });
       }
       return capConfig.filter(c => activeCaps.includes(c.name)).map(c => {
-        return `<span style="display:inline-flex; align-items:center; gap:3px; margin-right:4px; font-size:0.68rem; color:${c.color}; font-weight:600; padding:1px 4px; border-radius:3px; background:rgba(0,0,0,0.15); border:1px solid ${c.color}22;">
+        return `<span style="display:inline-flex; align-items:center; gap:3px; margin-right:4px; font-size:0.68rem; color:rgba(255,255,255,0.85); font-weight:500; padding:1px 4px; border-radius:3px; background:rgba(0,0,0,0.15); border:1px solid ${c.color}22;">
           <span style="width:6px; height:6px; border-radius:50%; background:${c.color}; box-shadow:0 0 3px ${c.color}; display:inline-block; flex-shrink:0;"></span>
           <span>${c.label}</span>
         </span>`;
@@ -4807,7 +4807,7 @@
         capConfig.forEach(c => {
           let hasCap = k.caps && k.caps.includes(c.name);
           if (hasCap) {
-            capsHtml += `<span style="display:inline-flex; align-items:center; gap:2px; margin-left:4px; font-size:0.6rem; color:${c.color}; font-weight:bold; background:rgba(0,0,0,0.15); border:1px solid ${c.color}22; padding:0 3px; border-radius:2px;">
+            capsHtml += `<span style="display:inline-flex; align-items:center; gap:2px; margin-left:4px; font-size:0.6rem; color:rgba(255,255,255,0.8); font-weight:bold; background:rgba(0,0,0,0.15); border:1px solid ${c.color}22; padding:0 3px; border-radius:2px;">
               <span style="width:4px; height:4px; border-radius:50%; background:${c.color}; box-shadow:0 0 2px ${c.color}; display:inline-block; flex-shrink:0;"></span>
               <span>${c.label}</span>
             </span>`;
