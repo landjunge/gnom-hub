@@ -11,7 +11,7 @@ def ask_llm(ag, q, ctx, bs_mode=False):
     soul = get_soul(ag["name"]) or {"role": ag.get('description', ''), "permissions": ["read"]}
     sys = format_tools_prompt(soul, ag["name"])
     from .soul import soul_instance
-    sys = soul_instance.inject_context(sys, q)
+    sys = soul_instance.inject_context(sys, q, agent_name=ag["name"])
     wd = get_workspace_dir(); fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
     sys += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
     if bs_mode: sys += "\n[MODUS: BRAINSTORM — Nur diskutieren! KEIN [WRITE:] erlaubt.]"

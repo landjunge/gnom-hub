@@ -2,7 +2,9 @@
 import json, threading, os, re, uuid; from .db import save_soul_fact, add_chat_message
 from .soul_retrieval import retrieve_relevant_facts; from .router import ask_router; from .config import WORKSPACE_DIR
 class SoulAG:
-    def __init__(self): self.name = "SoulAG"
+    def __init__(self):
+        self.name = "SoulAG"
+        self._injections = {}
     def on_message(self, m: str, s: str):
         if s.lower() == "user" or any(x in m.lower() for x in ["abschluss", "zusammenfassung", "[write:"]): threading.Thread(target=self._ex, args=(m,), daemon=True).start()
     def _val(self, k: str, v: str) -> int:
@@ -18,8 +20,17 @@ class SoulAG:
             s, e = res.find("["), res.rfind("]")
             if s != -1 and e != -1: [save_soul_fact(f.get("key",""), f.get("value",""), agent="SoulAG") for f in json.loads(res[s:e+1]) if self._val(f.get("key",""), f.get("value","")) >= 2]
         except Exception: pass
-    def inject_context(self, sys: str, msg: str) -> str:
-        facts = retrieve_relevant_facts(msg, top_k=8); ctx = sys + ("\n\n=== RELEVANTE INFORMATIONEN ===\n" + "\n".join(f"- {f}" for f in facts) if facts else "")
+    def inject_context(self, sys: str, msg: str, agent_name: str = None) -> str:
+        facts = retrieve_relevant_facts(msg, top_k=8)
+        if agent_name and facts:
+            for f in facts:
+                key = (agent_name.lower(), f)
+                self._injections[key] = self._injections.get(key, 0) + 1
+                if self._injections[key] == 2:
+                    try:
+                        add_chat_message("default", "SoulAG", "soulag", "chat", f"@user @{agent_name}: [HINWEIS] Ich habe die Information '{f}' bereits zum zweiten Mal im Hintergrund eingespeist. Bitte darauf achten!")
+                    except Exception: pass
+        ctx = sys + ("\n\n=== RELEVANTE INFORMATIONEN ===\n" + "\n".join(f"- {f}" for f in facts) if facts else "")
         m_ctx = [f"[Ref: @{d['name']} - Role: {d['role']} - {d['description']}]" for k, d in self.get_definitions().items() if k.lower() in [x.lower() for x in re.findall(r'@(\w+)', msg)]]
         return ctx + ("\n\n=== ERWÄHNTE AGENTEN ===\n" + "\n".join(m_ctx) if m_ctx else "")
     def get_definitions(self) -> dict: from .agent_definitions import AGENT_DEFINITIONS; return AGENT_DEFINITIONS
