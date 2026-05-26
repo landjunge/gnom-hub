@@ -3498,7 +3498,7 @@
       if (!window._spokenIds) window._spokenIds = new Set();
       sorted.filter(m => m.metadata?.sender !== 'user' && !window._spokenIds.has(m.id)).forEach(m => {
         window._spokenIds.add(m.id);
-        speak(`${m.metadata?.sender || 'System'} sagt: ${m.content}`);
+        speak(`${m.metadata?.sender || 'System'} sagt: ${m.content}`, m.metadata?.sender || 'System');
       });
     }
 
@@ -3528,6 +3528,20 @@
       refreshChat();
     }
 
+    function getVoiceForAgent(agentName, lang) {
+      if (typeof speechSynthesis === 'undefined') return null;
+      const voices = speechSynthesis.getVoices();
+      if (!voices.length) return null;
+      const langPrefix = lang.split('-')[0].toLowerCase();
+      let filtered = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
+      if (!filtered.length) filtered = voices;
+      let hash = 0;
+      for (let i = 0; i < agentName.length; i++) {
+        hash = agentName.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return filtered[Math.abs(hash) % filtered.length];
+    }
+
     async function speak(text, agentId = '') {
       if (!document.getElementById('tts-enabled')?.checked) return;
       _ttsQ.push({ text, agentId });
@@ -3547,6 +3561,8 @@
           }
         } catch { }
         const u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; u.rate = 1.0;
+        const voice = getVoiceForAgent(a || 'System', u.lang);
+        if (voice) u.voice = voice;
         await new Promise(ok => { u.onend = ok; u.onerror = ok; speechSynthesis.speak(u); });
       }
       _ttsBusy = false;
