@@ -14,9 +14,9 @@ async def get_keys():
 @router.post("/api/llm/keys")
 async def save_keys(req: Request):
     j = await req.json()
-    # Filter out invalid keys so they are not saved in database
-    valid_keys = {kid: v for kid, v in j.items() if isinstance(v, dict) and v.get("valid")}
-    SQLiteStateRepository().set_value("llm_keys", valid_keys)
+    # Speichere alle konfigurierten Keys, damit sie nicht verschwinden
+    keys_to_save = {kid: v for kid, v in j.items() if isinstance(v, dict) and v.get("key")}
+    SQLiteStateRepository().set_value("llm_keys", keys_to_save)
     write_keys_to_desktop(j)
     
     # Trigger model verification in background

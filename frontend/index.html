@@ -875,6 +875,40 @@
       font-size: 0.75rem;
     }
 
+    .think-block {
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 3px solid rgba(0, 229, 255, 0.5);
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin: 12px 0;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      font-family: 'Inter', sans-serif;
+      text-align: left;
+    }
+    .think-block summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: rgba(0, 229, 255, 0.85);
+      user-select: none;
+      outline: none;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .think-block summary::-webkit-details-marker {
+      color: var(--cyan);
+    }
+    .think-content {
+      margin-top: 8px;
+      line-height: 1.5;
+      opacity: 0.85;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 8px;
+      white-space: pre-wrap;
+    }
+
+
     .active-provider-logo svg {
       width: 50%;
       height: 50%;
@@ -2736,10 +2770,6 @@
         sb.classList.remove('glow-important', 'glow-agent');
         sb.style.setProperty('--showbox-glow-color', '');
         sb.innerHTML = `
-          <div id="showbox-hud" style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 20; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font-family: monospace; font-size: 0.75rem; font-weight: bold;">
-            <div id="showbox-clock" style="display: ${window.showboxTimeEnabled ? 'block' : 'none'}; background: rgba(0, 0, 0, 0.6); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.1); color: var(--cyan); text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);"></div>
-            <div id="showbox-timer" style="display: ${(window.showboxTimerRemaining && window.showboxTimerRemaining > 0) ? 'block' : 'none'}; background: rgba(255, 51, 102, 0.2); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 51, 102, 0.4); color: #ff3366; text-shadow: 0 0 5px rgba(255, 51, 102, 0.5); margin-left: auto;">${formatShowboxTimer(window.showboxTimerRemaining || 0)}</div>
-          </div>
           <div class="layer-content showbox-layer-content" id="showbox-text" style="opacity:0; transition: opacity 0.3s ease;">
             <div style="font-size: 1.2rem; margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 0 10px rgba(0,229,255,0.4);">${preset}</div>
             <div style="font-size: 0.95rem; font-weight: normal; line-height: 1.5; color: rgba(255,255,255,0.9); padding: 0 20px;">${info}</div>
@@ -3048,6 +3078,9 @@
         <span data-tooltip="Research: Start an autonomous research job.">@research</span>
         <span data-tooltip="Job Task: Distribute background tasks to agents.">@job</span>
         <span data-tooltip="Free: Clear active jobs from an agent.">@free</span>
+        <span data-tooltip="Worker: Query all non-system agents.">@worker</span>
+        <span data-tooltip="System: Query all system-level agents.">@system</span>
+        <span data-tooltip="All: Query all online agents.">@all</span>
         <span data-tooltip="Project: (e.g. @@project netzwerkpunkt, @@project delete netzwerkpunkt)">@@project</span>
         <span data-tooltip="Clear: (@@clear chat, @@clear @project, @@clear all agents)">@@clear</span>
         <span data-tooltip="Status: Get system and agent status.">@@status</span>
@@ -3430,7 +3463,7 @@
     }
 
     // ── Autocomplete ──
-    const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'showbox', 'showbox time on', 'showbox time off', 'showbox timer'];
+    const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'showbox', 'showbox time on', 'showbox time off', 'showbox timer', 'worker', 'system', 'all'];
     let acIdx = -1;
 
     function onChatInput(ta) {
@@ -3698,6 +3731,12 @@
       
       handleShowboxTrigger(showData, name);
 
+      safe = safe.replace(/&lt;think&gt;([\s\S]*?)&lt;\/think&gt;/gi, function(match, p1) {
+          return `<details class="think-block" open>
+            <summary>Denkprozess anzeigen...</summary>
+            <div class="think-content">${p1.trim()}</div>
+          </details>`;
+      });
       safe = safe.replace(/\[SOUL:\s*([\s\S]*?)\]/g, '<div style="font-size:0.6rem; color:var(--bg-surface); opacity:0.5; margin-top:4px;">[SOUL: $1]</div>');
       safe = safe.replace(/\n/g, '<br>');
       return `<div class="chat-msg ${isUser ? 'user' : 'agent'}" style="border-left-color:${c};">
@@ -4154,10 +4193,6 @@
       const renderSlide = () => {
         const content = showboxSteps[step];
         sb.innerHTML = `
-          <div id="showbox-hud" style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 20; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font-family: monospace; font-size: 0.75rem; font-weight: bold;">
-            <div id="showbox-clock" style="display: ${window.showboxTimeEnabled ? 'block' : 'none'}; background: rgba(0, 0, 0, 0.6); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.1); color: var(--cyan); text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);"></div>
-            <div id="showbox-timer" style="display: ${(window.showboxTimerRemaining && window.showboxTimerRemaining > 0) ? 'block' : 'none'}; background: rgba(255, 51, 102, 0.2); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 51, 102, 0.4); color: #ff3366; text-shadow: 0 0 5px rgba(255, 51, 102, 0.5); margin-left: auto;">${formatShowboxTimer(window.showboxTimerRemaining || 0)}</div>
-          </div>
           <div class="layer-content showbox-layer-content" id="showbox-text" style="opacity:0; transition: opacity 0.3s ease;">${content}</div>
           <div class="showbox-hints">
             <span>🎙️ @tts on/off</span>

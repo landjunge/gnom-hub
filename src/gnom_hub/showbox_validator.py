@@ -20,4 +20,4 @@ def sanitize_showboxes(content):
             return f"<SHOWBOX{idx_str}>{json.dumps(data)}</SHOWBOX>"
         except Exception:
             return "[Blockiert: Manipulierte Showbox entfernt]"
-    return re.sub(r"<SHOWBOX(?::(\d+))?>(.+?)</SHOWBOX>", repl, content, flags=re.DOTALL)
+    return re.sub(r"<SHOWBOX(?::([a-zA-Z0-9_\-]+))?>(.+?)</SHOWBOX>", repl, content, flags=re.DOTALL)

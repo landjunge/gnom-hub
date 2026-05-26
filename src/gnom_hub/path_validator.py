@@ -13,6 +13,11 @@ def is_worker_blocked(agent, f, wd, perms):
     role = (agent or {}).get("role", "")
     if role in ["soul", "general", "watchdog", "security"]: return False
     p = _safe(wd, f, perms)
+    if p:
+        real_wd = os.path.realpath(wd)
+        real_p = os.path.realpath(p)
+        if real_p == real_wd or real_p.startswith(real_wd + os.sep):
+            return False
     check = p or os.path.join(wd, f)
     path_str = os.path.realpath(check).replace("\\", "/").lower()
     if any(part in path_str for part in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]):

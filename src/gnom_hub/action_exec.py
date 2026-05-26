@@ -26,12 +26,31 @@ def handle_crawl(ans, ms, ag, perms):
 def handle_showbox(ans, ms):
     from .json_sanitizer import _sanitize_json
     from agents.securityAG import generate_signature
+    from .db import save_showbox_presentation, set_active_showbox
     for full, idx, raw in ms:
         try:
             d = _sanitize_json(raw.strip())
-            if isinstance(d, list): d = {"slides": d}
-            else: d.pop("sig", None)
+            if isinstance(d, list):
+                slides = d
+                d = {"slides": d}
+            else:
+                d.pop("sig", None)
+                slides = d.get("slides", [])
+            
             d["sig"] = generate_signature("Gnom", json.dumps(d, separators=(',', ':'), sort_keys=True))
+            
+            # Map index/name
+            presentation_name = idx.strip() if idx else ""
+            if presentation_name.isdigit() and 1 <= int(presentation_name) <= 7:
+                presentation_name = f"Showbox {presentation_name}"
+            elif not presentation_name:
+                presentation_name = "Latest Update"
+                
+            # Save to SQLite database
+            save_showbox_presentation(presentation_name, slides, sender="Agent")
+            set_active_showbox(presentation_name)
+            
             ans = ans.replace(full, f"<SHOWBOX{':'+idx if idx else ''}>{json.dumps(d)}</SHOWBOX>")
         except Exception as e: ans = ans.replace(full, f"[Showbox-Fehler: {e}]")
     return ans
+

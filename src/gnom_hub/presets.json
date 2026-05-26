@@ -24,11 +24,11 @@
       "writerag": "SYSTEM-ROLLE: VIDEO WRITER. Write screenplays, video descriptions, YouTube scripts, and editing instructions.",
       "editorag": "SYSTEM-ROLLE: VIDEO EDITOR. Review storyboard flow, script timing, subtitle formatting, and canvas rendering efficiency."
     },
-    "Marketing & Copy": {
-      "coderag": "SYSTEM-ROLLE: CONVERSION CODER. Write high-converting landing page templates, email sign-up forms, call-to-action buttons, and analytics tracking code.",
-      "researcherag": "SYSTEM-ROLLE: SEO & MARKET RESEARCHER. Research high-traffic keywords, competitor strategies, user demographics, and SEO requirements.",
-      "writerag": "SYSTEM-ROLLE: COPYWRITER. Write high-converting ad copy, landing page texts, social media hooks, and sales copy. Use persuasive language (AIDA formula).",
-      "editorag": "SYSTEM-ROLLE: COPY EDITOR. Review readability, grammatical perfection, tone of voice alignment, and conversion call-to-action placements."
+    "Content Creation": {
+      "coderag": "SYSTEM-ROLLE: CONTENT CODER. Write clean code for blog posts, newsletter templates, interactive widgets, embeds, and social sharing links.",
+      "researcherag": "SYSTEM-ROLLE: TREND & SEO RESEARCHER. Research hot topics, keywords, viral trends, competitor strategies, and target audience needs.",
+      "writerag": "SYSTEM-ROLLE: CONTENT CREATOR & WRITER. Write engaging articles, social media hooks, ad copies, newsletters, and creative scripts.",
+      "editorag": "SYSTEM-ROLLE: CONTENT EDITOR. Review tone of voice alignment, formatting structure, logical flow, readability, and engagement optimization."
     },
     "Research & Analysis": {
       "coderag": "SYSTEM-ROLLE: DATA ANALYSIS CODER. Write Python data-processing scripts, parsing logic, chart generators, and clean JSON/CSV exporters.",
@@ -42,13 +42,13 @@
     "Graphic Design": "Fokus auf visuelle Ästhetik, Farbharmonien, Typografie, UI/UX Layouts, SVG-Generierung und Grafik-Design-Prinzipien.",
     "Audio Production": "Fokus auf Sound-Synthese, Web Audio API, Audio-Processing, Soundeffekte, Musiktheorie und akustische Gestaltung.",
     "Video Production": "Fokus auf Video-Streaming, Canvas-Animationen, CSS-Transitions, Video-Editing-Konzepte und visuelle Effekte.",
-    "Marketing & Copy": "Fokus auf überzeugende Texte, SEO-Optimierung, Conversion-Rates, Social Media Strategien und zielgruppengerechte Ansprache.",
+    "Content Creation": "Fokus auf überzeugende Texte, SEO-Optimierung, Content-Erstellung, Social Media Strategien und zielgruppengerechte Ansprache.",
     "Research & Analysis": "Fokus auf tiefgehende Recherche, Datenanalyse, Faktenprüfung, strukturierte Berichte und wissenschaftliche Genauigkeit."
   },
   "targets": {
     "Web Development": ["coderag", "qwen/qwen3-coder:free"],
     "Graphic Design": ["coderag", "meta-llama/llama-3.3-70b-instruct:free"],
-    "Marketing & Copy": ["writerag", "meta-llama/llama-3.3-70b-instruct:free"],
+    "Content Creation": ["writerag", "meta-llama/llama-3.3-70b-instruct:free"],
     "Research & Analysis": ["researcherag", "meta-llama/llama-3.3-70b-instruct:free"]
   }
 }

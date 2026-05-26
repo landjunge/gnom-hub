@@ -28,7 +28,12 @@ def _call(pvd, mdl, key, msgs, n):
         if pvd == "anthropic": ans = res_json.get("content", [{}])[0].get("text")
         elif pvd == "lokal" and not res_json: ans = "".join(json.loads(l).get("message", {}).get("content", "") for l in r.text.strip().split("\n") if l).strip()
         elif pvd == "lokal": ans = res_json.get("message", {}).get("content", "")
-        else: ans = res_json.get("choices", [{}])[0].get("message", {}).get("content", "")
+        else:
+            msg_obj = res_json.get("choices", [{}])[0].get("message", {})
+            ans = msg_obj.get("content", "")
+            reasoning = msg_obj.get("reasoning_content") or msg_obj.get("reasoning")
+            if reasoning:
+                ans = f"<think>\n{reasoning}\n</think>\n\n{ans}"
         if ans: _track(pvd, mdl, n, res_json, msgs, ans); return ans
     if r.status_code == 429: time.sleep(2)
 def _try_keys(pvd, mdl, kdb, msgs, an):

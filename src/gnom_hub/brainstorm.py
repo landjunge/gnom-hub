@@ -12,7 +12,16 @@ def _collect_worker_responses(worker_names):
 def dispatch(q, target=None):
     from .db import get_all_agents; ao = [a for a in get_all_agents() if a.get("status") == "online"]
     if target:
-        s = [a for a in ao if a["name"].lower() == target.lower()]
+        t_low = target.lower()
+        sys_names = {"soulag", "generalag", "securityag", "watchdogag"}
+        if t_low == "worker":
+            s = [a for a in ao if a["name"].lower() not in sys_names]
+        elif t_low == "system":
+            s = [a for a in ao if a["name"].lower() in sys_names]
+        elif t_low == "all":
+            s = ao
+        else:
+            s = [a for a in ao if a["name"].lower() == t_low]
         for a in s: threading.Thread(target=ask_llm, args=(a, q, get_ctx(), False), daemon=True).start()
         return [a["name"] for a in s]
     w = [a for a in ao if a["name"].lower() not in ("soulag", "generalag", "securityag", "watchdogag")]

@@ -508,17 +508,17 @@
           </ul>
         </div>
 
-        <!-- Showbox & Lamps -->
+        <!-- Showbox & Steuerung -->
         <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Showbox & Steuerungs-Lampen</h3>
+          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Showbox &amp; Steuerung</h3>
           <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
             <li>
               <strong style="color:#fff;">Showbox Screen</strong><br>
               <span style="font-size:0.75rem;">Ein zentrales Ausgabefenster für Präsentationen, Meldungen, Uhren und Countdown-Timer. Wenn Agenten Ergebnisse dorthin streamen, leuchtet der Rahmen in der Farbe des jeweiligen Agenten auf. Bei System-Hinweisen erfolgt ein schneller Multicolor-Neon-Glow.</span>
             </li>
             <li>
-              <strong style="color:#fff;">7 Showbox-Lampen (Buttons)</strong><br>
-              <span style="font-size:0.75rem;">Die kreisförmigen Knöpfe direkt unter dem Showbox-Screen. Ein Klick darauf wechselt manuell zu den Inhalten der jeweiligen Showbox-Präsentation (Showbox 1 bis 7).</span>
+              <strong style="color:#fff;">Showbox Center Steuerung</strong><br>
+              <span style="font-size:0.75rem;">Präsentationen werden vollständig im Showbox Center (Schaltfläche "Showbox" in der Kopfzeile) verwaltet. Dort können Präsentationen gestartet, editiert, neu erstellt, gelöscht oder in den Standby-Modus versetzt werden.</span>
             </li>
           </ul>
         </div>
@@ -624,8 +624,8 @@
 
           <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
             <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎬 Showbox-Steuerung (SHOWBOX)</div>
-            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">&lt;SHOWBOX:lampen_index&gt;JSON_SLIDES&lt;/SHOWBOX&gt;</div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">Aktualisiert den Inhalt des Showbox-Screens (Lampen-Index 1 bis 7) mit HTML-Folien.</div>
+            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">&lt;SHOWBOX:name&gt;JSON_SLIDES&lt;/SHOWBOX&gt;</div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">Aktualisiert oder erstellt eine Präsentation mit dem angegebenen alphanumerischen Namen in der SQLite-Datenbank und schaltet sie aktiv. Unterstützt auch legacy Indizes (1-7).</div>
           </div>
 
         </div>

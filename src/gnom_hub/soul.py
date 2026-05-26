@@ -7,7 +7,7 @@ class SoulAG:
         if s.lower() == "user" or any(x in m.lower() for x in ["abschluss", "zusammenfassung", "[write:"]): threading.Thread(target=self._ex, args=(m,), daemon=True).start()
     def _val(self, k: str, v: str) -> int:
         kl = k.lower()
-        if k == "active_preset": return 2 if str(v) in ["Web Development", "Graphic Design", "Audio Production", "Video Production", "Marketing & Copy", "Research & Analysis"] else 0
+        if k == "active_preset": return 2 if str(v) in ["Web Development", "Graphic Design", "Audio Production", "Video Production", "Marketing & Copy", "Content Creation", "Research & Analysis"] else 0
         if "path" in kl or "file" in kl:
             p = os.path.realpath(os.path.join(str(WORKSPACE_DIR), str(v)) if not os.path.isabs(str(v)) else str(v))
             return 0 if not p.startswith(os.path.realpath(str(WORKSPACE_DIR))) else (1 if any(x in p.replace("\\", "/").lower() for x in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]) else 2)

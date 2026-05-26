@@ -151,7 +151,7 @@ Das Preset-System erlaubt das Umschalten des gesamten Schwarms auf ein bestimmte
 2. 🎨 **Graphic Design**: Fokus auf SVGs, Layout-Grids, Typografie und harmonische Farbpaletten (HSL).
 3. 🎵 **Audio Production**: Fokus auf Web Audio API, DSP-Algorithmen und Sound-Synthese.
 4. 🎬 **Video Production**: Fokus auf Canvas-Animationen, CSS-Transitions und Render-Pipelines.
-5. ✍️ **Marketing & Copy**: Fokus auf SEO-Keywords, AIDA-Modelle und zielgruppengerechte Tonalität.
+5. ✍️ **Content Creation**: Fokus auf Blogs, Social-Media-Inhalte, Newsletter, Storytelling, SEO und zielgruppengerechte Ansprache.
 6. 🔍 **Research & Analysis**: Fokus auf Faktenprüfung, akademische Quellen und statistische Datenanalyse.
 
 ### Technische Umsetzung:

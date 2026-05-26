@@ -32,6 +32,8 @@ async def test_agent(req: Request):
         p, m = SmartRouter.resolve_stage(m, kdb, j.get("agent", "Test"))
     k = next((x.get("key") for x in (kdb.values() if isinstance(kdb, dict) else kdb) if x.get("provider") == p and x.get("valid")), None)
     if not k:
+        k = next((x.get("key") for x in (kdb.values() if isinstance(kdb, dict) else kdb) if x.get("provider") == p), None)
+    if not k:
         if p == "deepseek" and DS_KEY: k = DS_KEY
         elif p == "openrouter" and OR_KEY: k = OR_KEY
     if not k and p != "lokal": return {"valid": False, "info": f"Kein gültiger Key für {p}", "resolved_provider": p, "resolved_model": m}

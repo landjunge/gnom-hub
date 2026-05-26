@@ -103,8 +103,8 @@ Die Agenten führen Aktionen aus, indem sie spezielle Markup-Tags in ihre Chat-A
     *   *Berechtigung:* Benötigt `run` Permission (nur `CoderAG`). Gefährliche Befehle (z.B. `rm -rf /`) werden blockiert. Läuft in einer Sandbox mit Timeout.
 *   **Webseiten crawlen:** `[CRAWL: url]`
     *   *Berechtigung:* Benötigt `crawl` Permission (`ResearcherAG`). Nutzt `crawler_engine.py` zum Auslesen von Webinhalten.
-*   **Showbox-Slides aktualisieren:** `<SHOWBOX:lamp_index>["HTML Slide 1", "HTML Slide 2"]</SHOWBOX>`
-    *   *Berechtigung:* Alle Agenten. Aktualisiert die interaktiven Präsentations-Slides in den Lampen des Dashboards (1 bis 7).
+*   **Showbox-Slides aktualisieren:** `<SHOWBOX:presentation_name>["HTML Slide 1", "HTML Slide 2"]</SHOWBOX>`
+    *   *Berechtigung:* Alle Agenten. Aktualisiert die interaktiven Präsentations-Slides in der SQLite-Datenbank des Hubs. Alphanumerische Namen werden als neue Präsentationen gespeichert; Zahlen (1 bis 7) und leere Namen werden abwärtskompatibel zugeordnet.
 
 ### 5.2 Pfad-Sicherheit (`path_validator.py`)
 Das System sperrt Agenten standardmäßig in das Workspace-Verzeichnis (`gnom_workspace/`).

@@ -24,6 +24,6 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     ans = handle_read(ans, r_ms, wd, perms)
     ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
     ans = handle_crawl(ans, list(re.finditer(r"\[CRAWL:\s*(.*?)\]", ans)), agent, perms)
-    show_ms = [(m.group(0), m.group(1) or "", m.group(2)) for t in ("SHOWBOX", "showbox") for rx in (rf"<{t}(?::(\d+))?>([\s\S]*?)<\/{t}>", rf"\[{t}(?::(\d+))?\]([\s\S]*?)\[\/{t}\]") for m in re.finditer(rx, ans)] + [(m.group(0), "", m.group(1)) for t in ("SHOWBOX", "showbox") for m in re.finditer(rf"\[{t}:\s*(.*?)\]", ans, re.DOTALL)]
+    show_ms = [(m.group(0), m.group(1) or "", m.group(2)) for t in ("SHOWBOX", "showbox") for rx in (rf"<{t}(?::([a-zA-Z0-9_\-]+))?>([\s\S]*?)<\/{t}>", rf"\[{t}(?::([a-zA-Z0-9_\-]+))?\]([\s\S]*?)\[\/{t}\]") for m in re.finditer(rx, ans)] + [(m.group(0), "", m.group(1)) for t in ("SHOWBOX", "showbox") for m in re.finditer(rf"\[{t}:\s*(.*?)\]", ans, re.DOTALL)]
     ans = handle_showbox(ans, show_ms)
     return handle_browser(ans, list(re.finditer(r"\[BROWSER:\s*(.*?)\]", ans, re.DOTALL)), agent, perms, wd)
