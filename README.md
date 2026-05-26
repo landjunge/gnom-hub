@@ -4,6 +4,12 @@ Gnom-Hub ist ein **lokal-first** Multi-Agenten-System mit fester Topologie. Stat
 
 Jedes Backend-Modul unterliegt der strengen **40-Zeilen-Regel** (unter `src/gnom_hub/`). Dies erzwingt Klarheit, einfache Testbarkeit und verhindert monolithischen Code.
 
+> 🇩🇪 **Read this in [German (README.de.md)](README.de.md)**
+
+---
+
+<img src="docs/warroom_real_full.png" alt="War Room Overview" width="100%">
+
 ---
 
 ## 🎯 Philosophie
