@@ -4294,27 +4294,6 @@
                 <textarea id="llm-keys-input" rows="1" style="width:100%; margin-bottom:6px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:4px 6px; border-radius:4px; font-size:0.8rem; height:28px; line-height:1.4; resize:none; overflow-y:hidden;" placeholder="Einfügen per Cmd+V"></textarea>
                 <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.8rem; padding:4px 6px;">Save, Test & Assign</button>
                 <div id="llm-keys-status" style="margin-top:6px; font-size:0.8rem; max-height:65px; overflow-y:auto; display:flex; flex-direction:column; gap:3px;"></div>
-                
-                <div id="llm-keys-legend" style="margin-top:8px; font-size:0.65rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px; color:var(--text-muted);">
-                  <div style="font-weight:bold; color:white; margin-bottom:4px;">Legende:</div>
-                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px;">
-                    <div style="display:flex; align-items:center; gap:4px;"><span style="width:6px; height:6px; border-radius:50%; background:#39ff14; display:inline-block; box-shadow:0 0 4px #39ff14;"></span><span>Text Chat</span></div>
-                    <div style="display:flex; align-items:center; gap:4px;"><span style="width:6px; height:6px; border-radius:50%; background:#00e5ff; display:inline-block; box-shadow:0 0 4px #00e5ff;"></span><span>Vision</span></div>
-                    <div style="display:flex; align-items:center; gap:4px;"><span style="width:6px; height:6px; border-radius:50%; background:#ff007f; display:inline-block; box-shadow:0 0 4px #ff007f;"></span><span>Image Gen</span></div>
-                    <div style="display:flex; align-items:center; gap:4px;"><span style="width:6px; height:6px; border-radius:50%; background:#ffa500; display:inline-block; box-shadow:0 0 4px #ffa500;"></span><span>Audio</span></div>
-                    <div style="display:flex; align-items:center; gap:4px; grid-column: span 2;"><span style="width:6px; height:6px; border-radius:50%; background:#b026ff; display:inline-block; box-shadow:0 0 4px #b026ff;"></span><span>Tools (Files, Function Calling)</span></div>
-                  </div>
-                </div>
-
-                <div id="llm-stages-legend" style="margin-top:6px; font-size:0.65rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px; color:var(--text-muted);">
-                  <div style="font-weight:bold; color:white; margin-bottom:4px;">Stages:</div>
-                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 8px;">
-                    <div><strong style="color:#39ff14;">St.1 (Local):</strong> Ollama</div>
-                    <div><strong style="color:#00e5ff;">St.2 (Free):</strong> Free OR</div>
-                    <div><strong style="color:#ffa500;">St.3 (Balanced):</strong> Cheapest Paid</div>
-                    <div><strong style="color:#ff007f;">St.4 (Premium):</strong> Frontier</div>
-                  </div>
-                </div>
               </div>
               
               <div style="display:flex; flex-direction:column; gap:8px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
@@ -4338,10 +4317,10 @@
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
                 <h3 style="margin:0; font-size:0.95rem;">Agent Assignment</h3>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                  <button onclick="setAllAgentsToStage('stage_1')" onmouseover="this.style.background='rgba(57,255,20,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.75rem; padding:3px 8px; background:transparent; border:1px solid #39ff14; color:#39ff14; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">Stage 1</button>
-                  <button onclick="setAllAgentsToStage('stage_2')" onmouseover="this.style.background='rgba(0,229,255,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.75rem; padding:3px 8px; background:transparent; border:1px solid #00e5ff; color:#00e5ff; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">Stage 2</button>
-                  <button onclick="setAllAgentsToStage('stage_3')" onmouseover="this.style.background='rgba(255,165,0,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.75rem; padding:3px 8px; background:transparent; border:1px solid #ffa500; color:#ffa500; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">Stage 3</button>
-                  <button onclick="setAllAgentsToStage('stage_4')" onmouseover="this.style.background='rgba(255,0,127,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.75rem; padding:3px 8px; background:transparent; border:1px solid #ff007f; color:#ff007f; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">Stage 4</button>
+                  <button onclick="setAllAgentsToStage('stage_1')" onmouseover="this.style.background='rgba(57,255,20,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.72rem; padding:2px 6px; background:transparent; border:1px solid #39ff14; color:#39ff14; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">St.1 (Ollama)</button>
+                  <button onclick="setAllAgentsToStage('stage_2')" onmouseover="this.style.background='rgba(0,229,255,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.72rem; padding:2px 6px; background:transparent; border:1px solid #00e5ff; color:#00e5ff; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">St.2 (Free OR)</button>
+                  <button onclick="setAllAgentsToStage('stage_3')" onmouseover="this.style.background='rgba(255,165,0,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.72rem; padding:2px 6px; background:transparent; border:1px solid #ffa500; color:#ffa500; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">St.3 (Balanced)</button>
+                  <button onclick="setAllAgentsToStage('stage_4')" onmouseover="this.style.background='rgba(255,0,127,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.72rem; padding:2px 6px; background:transparent; border:1px solid #ff007f; color:#ff007f; font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s;">St.4 (Premium)</button>
                   <span style="color:rgba(255,255,255,0.3); font-size:0.8rem; margin:0 4px;">|</span>
                   <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.75rem; padding:4px 8px; background:#fff; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 5px rgba(255,255,255,0.2);">Auto-Route All</button>
                   <button id="save-agents-btn" class="btn-primary" onclick="saveAgentLLMs()" style="font-size:0.75rem; padding:4px 8px; background:var(--cyan); border-color:var(--cyan); color:#000; font-weight:bold; border-radius:4px; cursor:pointer; box-shadow:0 0 5px rgba(0,255,255,0.2);">Save Assignments</button>
@@ -4509,11 +4488,11 @@
 
     function getAgentCapsHtml(pSel, mSel) {
       const capConfig = [
-        { name: 'text', color: '#39ff14', title: 'Text Chat' },
-        { name: 'vision', color: '#00e5ff', title: 'Vision' },
-        { name: 'image', color: '#ff007f', title: 'Bildgenerierung' },
-        { name: 'audio', color: '#ffa500', title: 'Audio' },
-        { name: 'tools', color: '#b026ff', title: 'Tools (Function Calling)' }
+        { name: 'text', color: '#39ff14', title: 'Text Chat', label: 'Text' },
+        { name: 'vision', color: '#00e5ff', title: 'Vision', label: 'Vision' },
+        { name: 'image', color: '#ff007f', title: 'Bildgenerierung', label: 'Image' },
+        { name: 'audio', color: '#ffa500', title: 'Audio', label: 'Audio' },
+        { name: 'tools', color: '#b026ff', title: 'Tools (Function Calling)', label: 'Tools' }
       ];
       let activeCaps = [];
       if (pSel === 'auto') {
@@ -4558,12 +4537,11 @@
           }
         });
       }
-      return capConfig.map(c => {
-        let hasCap = activeCaps.includes(c.name);
-        let bg = hasCap ? c.color : '#222';
-        let border = hasCap ? `1px solid ${c.color}` : '1px solid rgba(255,255,255,0.1)';
-        let boxS = hasCap ? `0 0 4px ${c.color}` : 'none';
-        return `<span style="width:8px; height:8px; border-radius:50%; background:${bg}; border:${border}; box-shadow:${boxS}; display:inline-block; flex-shrink:0;" title="${c.title}: ${hasCap ? 'Ja' : 'Nein'}"></span>`;
+      return capConfig.filter(c => activeCaps.includes(c.name)).map(c => {
+        return `<span style="display:inline-flex; align-items:center; gap:3px; margin-right:4px; font-size:0.68rem; color:${c.color}; font-weight:600; padding:1px 4px; border-radius:3px; background:rgba(0,0,0,0.15); border:1px solid ${c.color}22;">
+          <span style="width:6px; height:6px; border-radius:50%; background:${c.color}; box-shadow:0 0 3px ${c.color}; display:inline-block; flex-shrink:0;"></span>
+          <span>${c.label}</span>
+        </span>`;
       }).join('');
     }
 
@@ -4818,20 +4796,22 @@
         
         let capsHtml = '';
         const capConfig = [
-          { name: 'text', color: '#39ff14', title: 'Text Chat' },
-          { name: 'vision', color: '#00e5ff', title: 'Vision' },
-          { name: 'image', color: '#ff007f', title: 'Bildgenerierung' },
-          { name: 'audio', color: '#ffa500', title: 'Audio (TTS)' },
-          { name: 'web', color: '#00ffcc', title: 'Web Suche' },
-          { name: 'tools', color: '#b026ff', title: 'Tools (Function Calling)' }
+          { name: 'text', color: '#39ff14', label: 'TXT' },
+          { name: 'vision', color: '#00e5ff', label: 'VIS' },
+          { name: 'image', color: '#ff007f', label: 'IMG' },
+          { name: 'audio', color: '#ffa500', label: 'AUD' },
+          { name: 'web', color: '#00ffcc', label: 'WEB' },
+          { name: 'tools', color: '#b026ff', label: 'TLS' }
         ];
         
         capConfig.forEach(c => {
           let hasCap = k.caps && k.caps.includes(c.name);
-          let bg = hasCap ? c.color : '#222';
-          let border = hasCap ? `1px solid ${c.color}` : '1px solid rgba(255,255,255,0.1)';
-          let boxS = hasCap ? `0 0 4px ${c.color}` : 'none';
-          capsHtml += `<span style="width:6px; height:6px; border-radius:50%; background:${bg}; border:${border}; box-shadow:${boxS}; display:inline-block; margin-left:3px; flex-shrink:0;" title="${c.title}: ${hasCap ? 'Ja' : 'Nein'}"></span>`;
+          if (hasCap) {
+            capsHtml += `<span style="display:inline-flex; align-items:center; gap:2px; margin-left:4px; font-size:0.6rem; color:${c.color}; font-weight:bold; background:rgba(0,0,0,0.15); border:1px solid ${c.color}22; padding:0 3px; border-radius:2px;">
+              <span style="width:4px; height:4px; border-radius:50%; background:${c.color}; box-shadow:0 0 2px ${c.color}; display:inline-block; flex-shrink:0;"></span>
+              <span>${c.label}</span>
+            </span>`;
+          }
         });
 
         h += `
