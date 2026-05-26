@@ -2,7 +2,7 @@
 <html lang="de">
 
 <head>
-  <script src="/static/themes.js?v=2"></script>
+  <script src="/api/showbox/themes"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gnom-Hub</title>
@@ -660,7 +660,7 @@
       padding: 8px;
       gap: 6px;
       position: relative;
-      top: -65px;
+      top: -170px;
     }
 
     @keyframes showbox-important-glow {
@@ -733,7 +733,66 @@
       animation: showbox-agent-glow 1.5s ease-in-out infinite;
     }
 
+    @keyframes standbyPulse {
+      0% {
+        opacity: 0.4;
+        transform: scale(0.98);
+      }
+      100% {
+        opacity: 0.95;
+        transform: scale(1.02);
+      }
+    }
+
+    .standby-layer-1 {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: calc(100% - 8px);
+      height: calc(100% - 8px);
+      border: 1px solid rgba(0, 229, 255, 0.15);
+      border-radius: calc(var(--radius) - 2px);
+      background: radial-gradient(circle at center, rgba(0, 229, 255, 0.02) 0%, transparent 80%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .standby-layer-2 {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: calc(100% - 16px);
+      height: calc(100% - 16px);
+      border: 1px solid rgba(255, 0, 127, 0.12);
+      border-radius: calc(var(--radius) - 4px);
+      animation: standbyPulse 4s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .standby-layer-3 {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: calc(100% - 24px);
+      height: calc(100% - 24px);
+      border: 1px solid rgba(57, 255, 20, 0.1);
+      border-radius: calc(var(--radius) - 6px);
+      pointer-events: none;
+      z-index: 3;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
     #preset-select {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 0.82rem;
+      outline: none;
+      cursor: pointer;
+      font-weight: 500;
       background: rgba(12, 16, 28, 0.85) !important;
       color: #fff !important;
       border: 1px solid rgba(0, 150, 255, 0.3) !important;
@@ -767,7 +826,7 @@
       margin-bottom: 4px;
     }
 
-    .layer-container {
+    .showbox-screen {
       width: 100%;
       aspect-ratio: 1 / 1;
       margin: 0;
@@ -777,58 +836,19 @@
       box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
       position: relative;
       overflow: hidden;
-    }
-
-    .layer {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      opacity: 0;
-      transition: opacity 1.5s ease-in-out;
       display: flex;
       justify-content: center;
       align-items: center;
       text-align: center;
-      z-index: 1;
-    }
-
-    .layer.active {
-      opacity: 1;
-      z-index: 2;
-    }
-
-    .showbox-lamps-container,
-    .showbox-buttons-container,
-    .info-lamps-container {
-      position: absolute;
-      bottom: -18px;
-      left: 8px;
-      right: 8px;
-      display: flex;
-      justify-content: space-between;
-      gap: 3px;
-    }
-
-    .showbox-lamp,
-    .showbox-button,
-    .info-lamp {
-      flex: 1;
-      height: 8px;
-      background: var(--c, rgba(0, 255, 255, 0.3));
-      opacity: 0.2;
-      border: 1px solid var(--c, rgba(0, 255, 255, 0.3));
-      border-radius: 2px;
-      box-shadow: 0 0 10px var(--c, rgba(0, 255, 255, 0.3)), inset 0 0 5px var(--c, rgba(0, 255, 255, 0.3));
       cursor: pointer;
-      transition: all 0.2s ease;
     }
 
-    .showbox-lamp:hover,
-    .showbox-button:hover,
-    .info-lamp:hover {
-      opacity: 0.8;
-      box-shadow: 0 0 20px var(--c, rgba(0, 255, 255, 0.5)), inset 0 0 10px var(--c, rgba(0, 255, 255, 0.5));
+    .active-presentation {
+      background: rgba(10, 12, 20, 0.65) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
     }
-    
+
     #showbox-text {
       transition: opacity 0.3s ease;
       cursor: pointer;
@@ -1706,7 +1726,15 @@
       opacity: 0.15;
       transition: opacity 0.3s ease, color 0.3s ease;
     }
-    #layer-showbox:hover .showbox-hints {
+    .showbox-layer-content {
+      color: var(--text);
+      font-weight: bold;
+      width: 100%;
+      text-align: center;
+      word-break: break-word;
+      line-height: 1.2;
+    }
+    #showbox.active-presentation:hover .showbox-hints {
       opacity: 0.85;
       color: rgba(255, 255, 255, 0.75);
     }
@@ -1743,30 +1771,210 @@
         background: var(--scrollbar-track);
       }
     }
-    #sb-screen-content *, #showbox-text * {
+    #sb-screen-content *, #showbox-text *, .showbox-overlay-content * {
       max-width: 100% !important;
       box-sizing: border-box !important;
     }
     /* Ensure standard typography is visible/readable in dark background themes */
     #sb-screen-content h1, #sb-screen-content h2, #sb-screen-content h3, #sb-screen-content h4, #sb-screen-content h5, #sb-screen-content h6,
-    #showbox-text h1, #showbox-text h2, #showbox-text h3, #showbox-text h4, #showbox-text h5, #showbox-text h6 {
+    #showbox-text h1, #showbox-text h2, #showbox-text h3, #showbox-text h4, #showbox-text h5, #showbox-text h6,
+    .showbox-overlay-content h1, .showbox-overlay-content h2, .showbox-overlay-content h3, .showbox-overlay-content h4, .showbox-overlay-content h5, .showbox-overlay-content h6 {
       color: #fff !important;
       margin-top: 0.4em;
       margin-bottom: 0.4em;
     }
-    #sb-screen-content p, #showbox-text p {
+    #sb-screen-content p, #showbox-text p, .showbox-overlay-content p {
       color: #e0e8f0 !important;
       line-height: 1.4;
     }
-    #sb-screen-content ul, #sb-screen-content ol, #showbox-text ul, #showbox-text ol {
+    #sb-screen-content ul, #sb-screen-content ol, #showbox-text ul, #showbox-text ol, .showbox-overlay-content ul, .showbox-overlay-content ol {
       text-align: left;
       display: inline-block;
       margin: 8px auto;
       padding-left: 20px;
     }
-    #sb-screen-content li, #showbox-text li {
+    #sb-screen-content li, #showbox-text li, .showbox-overlay-content li {
       color: #e0e8f0 !important;
       margin-bottom: 4px;
+    }
+
+    /* ── Showbox Fullscreen Overlay ── */
+    .showbox-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(5, 5, 10, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 10000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .showbox-overlay.show {
+      display: flex;
+      opacity: 1;
+    }
+
+    .showbox-overlay-card {
+      background: rgba(16, 20, 32, 0.7);
+      border: 1px solid rgba(0, 150, 255, 0.25);
+      box-shadow: 0 0 50px rgba(0, 150, 255, 0.15), inset 0 0 30px rgba(0, 150, 255, 0.05);
+      width: 90%;
+      max-width: 1000px;
+      height: 80%;
+      border-radius: 20px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      animation: overlayZoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes overlayZoomIn {
+      from {
+        transform: scale(0.9) translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .showbox-overlay-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 1.5rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 10002;
+    }
+
+    .showbox-overlay-close:hover {
+      background: rgba(255, 51, 102, 0.2);
+      border-color: #ff3366;
+      color: #ff3366;
+      box-shadow: 0 0 10px rgba(255, 51, 102, 0.4);
+      transform: rotate(90deg);
+    }
+
+    .showbox-overlay-screen {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle, #0e1222 0%, #05070f 100%);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 40px;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+    }
+
+    .showbox-overlay-content {
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      font-size: 44px;
+      line-height: 1.4;
+      max-width: 90%;
+      word-break: break-word;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .showbox-overlay-header {
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-right: 50px;
+    }
+
+    .showbox-overlay-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--cyan);
+      text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+    }
+
+    .showbox-overlay-sender {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    .showbox-overlay-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 1.5rem;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 10001;
+      user-select: none;
+    }
+
+    .showbox-overlay-nav:hover {
+      background: rgba(0, 150, 255, 0.2);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 150, 255, 0.4);
+    }
+
+    .showbox-overlay-nav-prev {
+      left: -25px;
+    }
+
+    .showbox-overlay-nav-next {
+      right: -25px;
+    }
+
+    .showbox-overlay-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .showbox-overlay-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .showbox-overlay-dot.active {
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      width: 20px;
+      border-radius: 4px;
     }
   </style>
 </head>
@@ -1792,7 +2000,6 @@
       </div>
       <button class="btn-primary" onclick="showWorkspace()">Workspace</button>
       <button class="btn-primary" onclick="showDashboard()">Dashboard</button>
-      <button class="btn-primary" onclick="showShowboxPanel()">Showbox</button>
       <button class="btn-primary" onclick="showLLMConfig()">LLM</button>
       <button class="btn-primary" onclick="showHelpPage()">Help</button>
     </div>
@@ -1844,63 +2051,18 @@
         <input type="text" id="agent-search" placeholder="Agenten suchen…" oninput="filterAgents(this.value)">
       </div>
       <div class="agent-list" id="agent-list"></div>
-      <div class="sidebar-square showbox showbox-container" id="showbox" data-name="showbox">
-        <div class="layer-container showbox-screen" id="layer-container">
-          <div class="layer active" id="layer-0"><img src="/static/assets/grok.png" alt="Gnom-Hub" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);"></div>
-          <div class="layer" id="layer-1"><div class="layer-content">SYSTEM<br>ONLINE</div></div>
-          <div class="layer" id="layer-2">
-            <svg viewBox="0 0 130 40" style="width:90%; height:90%; filter: drop-shadow(0 0 5px #10a37f) drop-shadow(0 0 15px #10a37f);">
-              <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="900" font-size="32">OpenAI</text>
-            </svg>
-          </div>
-          <div class="layer" id="layer-3"><div class="layer-content"><span id="layer-tfree" style="color:var(--green)">118K</span><br>FREE TKN</div></div>
-          <div class="layer" id="layer-4">
-            <svg viewBox="0 0 160 40" style="width:95%; height:95%; filter: drop-shadow(0 0 5px #d4a373) drop-shadow(0 0 15px #d4a373);">
-              <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="Georgia, serif" font-weight="900" font-size="32">Anthropic</text>
-            </svg>
-          </div>
-          <div class="layer" id="layer-5"><div class="layer-content"><span id="layer-tpay" style="color:var(--red)">24K</span><br>PAY TKN</div></div>
-          <div class="layer" id="layer-6">
-            <svg viewBox="0 0 150 40" style="width:95%; height:95%; filter: drop-shadow(0 0 5px #4d90fe) drop-shadow(0 0 15px #4d90fe);">
-              <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="monospace" font-weight="900" font-size="30">DeepSeek</text>
-            </svg>
-          </div>
-          <div class="layer" id="layer-7"><div class="layer-content" style="color:#0f0;">GRAVID<br>READY</div></div>
-          <div class="layer" id="layer-8">
-            <svg viewBox="0 0 120 40" style="width:90%; height:90%; filter: drop-shadow(0 0 5px #4285f4) drop-shadow(0 0 15px #ea4335);">
-              <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="900" font-size="32">Gemini</text>
-            </svg>
-          </div>
-          <div class="layer" id="layer-9"><div class="layer-content">AG-Flega<br>v2.0</div></div>
-          <div class="layer showbox-layer" id="layer-showbox" onclick="closeShowbox()" style="background: rgba(10,12,20,0.9); z-index:10; cursor:pointer; padding: 3px; box-sizing: border-box; display: flex; justify-content: center; align-items: center; position: relative;">
-            <div class="layer-content showbox-layer-content" id="showbox-text" style="color:var(--text); font-weight:bold; width: 100%; text-align: center; word-break: break-word; line-height: 1.2;"></div>
-            <div class="showbox-hints">
-              <span>🎙️ @tts on/off</span>
-              <span>🕒 @showbox time on/off</span>
-              <span>⏰ @showbox timer [x] min/off</span>
-            </div>
-          </div>
+      
+
+
+      <div class="sidebar-square showbox showbox-screen" id="showbox" data-name="showbox" onclick="openShowboxOverlay()">
+        <!-- Layer 1: Outer Hologram Frame (Cyan) -->
+        <div class="standby-layer-1"></div>
+        <!-- Layer 2: Middle Hologram Frame (Magenta, Pulsing) -->
+        <div class="standby-layer-2"></div>
+        <!-- Layer 3: Inner Hologram Frame (Green) -->
+        <div class="standby-layer-3">
+          <div style="color: var(--text-dim); font-size: 0.72rem; font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px rgba(0,229,255,0.4); pointer-events: none;">STANDBY</div>
         </div>
-        <div class="showbox-lamps-container showbox-buttons-container info-lamps-container">
-          <div class="showbox-lamp showbox-button info-lamp" id="showbox-button-1" style="--c: #FF69B4;" onclick="triggerShowbox(0)" title="Showbox Button 1" data-showbox-index="0"></div>
-          <div class="showbox-lamp showbox-button info-lamp" id="showbox-button-2" style="--c: #FFFF00;" onclick="triggerShowbox(1)" title="Showbox Button 2" data-showbox-index="1"></div>
-          <div class="showbox-lamp showbox-button info-lamp" id="showbox-button-3" style="--c: #00FF00;" onclick="triggerShowbox(2)" title="Showbox Button 3" data-showbox-index="2"></div>
-          <div class="showbox-lamp showbox-button info-lamp" id="showbox-button-4" style="--c: #FFA500;" onclick="triggerShowbox(3)" title="Showbox Button 4" data-showbox-index="3"></div>
-          <div class="showbox-lamp showbox-button info-lamp" id="showbox-button-5" style="--c: #FF0000;" onclick="triggerShowbox(4)" title="Showbox Button 5" data-showbox-index="4"></div>
-          <div class="showbox-lamp showbox-button info-lamp" id="showbox-button-6" style="--c: #FF00FF;" onclick="triggerShowbox(5)" title="Showbox Button 6" data-showbox-index="5"></div>
-          <div class="showbox-lamp showbox-button info-lamp" id="showbox-button-7" style="--c: #00FFFF;" onclick="triggerShowbox(6)" title="Showbox Button 7" data-showbox-index="6"></div>
-        </div>
-      </div>
-      <div class="preset-container" style="padding: 0 10px 15px 10px; flex-shrink: 0; position: relative; top: -30px; text-align: center;">
-        <div style="font-size:0.62rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px; font-weight: 700;">Agent Gangs</div>
-        <select id="preset-select" onchange="changePreset(this.value)" style="width: 100%; border-radius: var(--radius-sm); padding: 8px 10px; font-size: 0.82rem; outline: none; cursor: pointer; transition: var(--transition); font-weight: 500;">
-          <option value="Web Development">💻 Web Development</option>
-          <option value="Graphic Design">🎨 Graphic Design</option>
-          <option value="Audio Production">🎵 Audio Production</option>
-          <option value="Video Production">🎬 Video Production</option>
-          <option value="Marketing & Copy">✍️ Marketing & Copy</option>
-          <option value="Research & Analysis">🔍 Research & Analysis</option>
-        </select>
       </div>
     </div>
 
@@ -2560,6 +2722,7 @@
         "Audio Production": "Fokus auf Sound-Synthese, Web Audio API, Audio-Processing, Soundeffekte, Musiktheorie und akustische Gestaltung.",
         "Video Production": "Fokus auf Video-Streaming, Canvas-Animationen, CSS-Transitions, Video-Editing-Konzepte und visuelle Effekte.",
         "Marketing & Copy": "Fokus auf überzeugende Texte, SEO-Optimierung, Conversion-Rates, Social Media Strategien und zielgruppengerechte Ansprache.",
+        "Content Creation": "Fokus auf überzeugende Texte, SEO-Optimierung, Content-Erstellung, Social Media Strategien und zielgruppengerechte Ansprache.",
         "Research & Analysis": "Fokus auf tiefgehende Recherche, Datenanalyse, Faktenprüfung, strukturierte Berichte und wissenschaftliche Genauigkeit."
       };
       const info = focusMap[preset] || "Allgemeine Unterstützung des Schwarms.";
@@ -2567,15 +2730,33 @@
       if(showboxTimeout) clearTimeout(showboxTimeout);
       window.activeShowboxIndex = 99;
       window.showboxActive = true;
-      document.getElementById('showbox')?.classList.remove('glow-important');
-      document.querySelectorAll('[id^="layer-"]').forEach(l => l.classList.remove('active'));
-      const sbLayer = document.getElementById('layer-showbox');
-      const sbText = document.getElementById('showbox-text');
-      if (sbLayer && sbText) {
-        sbText.innerHTML = `<div style="font-size: 1.2rem; margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 0 10px rgba(0,229,255,0.4);">${preset}</div><div style="font-size: 0.95rem; font-weight: normal; line-height: 1.5; color: rgba(255,255,255,0.9); padding: 0 20px;">${info}</div>`;
-        resizeShowboxText(sbText, sbLayer);
-        sbText.style.opacity = 1;
-        sbLayer.classList.add('active');
+      
+      const sb = document.getElementById('showbox');
+      if (sb) {
+        sb.classList.remove('glow-important', 'glow-agent');
+        sb.style.setProperty('--showbox-glow-color', '');
+        sb.innerHTML = `
+          <div id="showbox-hud" style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 20; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font-family: monospace; font-size: 0.75rem; font-weight: bold;">
+            <div id="showbox-clock" style="display: ${window.showboxTimeEnabled ? 'block' : 'none'}; background: rgba(0, 0, 0, 0.6); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.1); color: var(--cyan); text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);"></div>
+            <div id="showbox-timer" style="display: ${(window.showboxTimerRemaining && window.showboxTimerRemaining > 0) ? 'block' : 'none'}; background: rgba(255, 51, 102, 0.2); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 51, 102, 0.4); color: #ff3366; text-shadow: 0 0 5px rgba(255, 51, 102, 0.5); margin-left: auto;">${formatShowboxTimer(window.showboxTimerRemaining || 0)}</div>
+          </div>
+          <div class="layer-content showbox-layer-content" id="showbox-text" style="opacity:0; transition: opacity 0.3s ease;">
+            <div style="font-size: 1.2rem; margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 0 10px rgba(0,229,255,0.4);">${preset}</div>
+            <div style="font-size: 0.95rem; font-weight: normal; line-height: 1.5; color: rgba(255,255,255,0.9); padding: 0 20px;">${info}</div>
+          </div>
+          <div class="showbox-hints">
+            <span>🎙️ @tts on/off</span>
+            <span>🕒 @showbox time on/off</span>
+            <span>⏰ @showbox timer [x] min/off</span>
+          </div>
+        `;
+        sb.classList.add('active-presentation');
+        const sbText = document.getElementById('showbox-text');
+        if (sbText) {
+          resizeShowboxText(sbText, sb);
+          setTimeout(() => { sbText.style.opacity = 1; }, 50);
+        }
+        updateShowboxClocks();
       }
     }
 
@@ -3239,6 +3420,11 @@
     }
 
     function showWarRoom() {
+      if (panelShowboxInterval) {
+        clearInterval(panelShowboxInterval);
+        panelShowboxInterval = null;
+        panelShowboxPlaying = false;
+      }
       selectedId = null;
       window._lastChatData = '';
       renderAgentList(document.getElementById('agent-search').value);
@@ -3765,7 +3951,7 @@
       if (window.showboxTimerRemaining === 0) {
         clearInterval(window.showboxTimerInterval);
         window.showboxTimerInterval = null;
-        document.getElementById('layer-showbox')?.classList.add('timer-timeout-pulse');
+        document.getElementById('showbox')?.classList.add('timer-timeout-pulse');
         document.getElementById('sb-screen')?.classList.add('timer-timeout-pulse');
       }
     }
@@ -3840,6 +4026,7 @@
         await loadActivePreset();
         updateLamps(agents);
         showWarRoom();
+        await loadShowboxList();
       _trackInterval(async () => {
         const res = await api('GET', '/agents');
         agents = Array.isArray(res) ? res : (res?.agents || []);
@@ -3847,15 +4034,13 @@
         renderAgentList(searchInput ? searchInput.value : '');
         updateStats();
         updateLamps(agents);
+        await loadShowboxList();
       }, 3000);
       _trackInterval(refreshChat, 5000);
       } catch (err) {
         document.getElementById('content').innerHTML = `<div class="empty" style="padding:80px 20px"><h2 style="color:red">UI Error</h2><p>${err.message}</p></div>`;
       }
 
-      // Layer Animation
-      let currentLayer = 0;
-      const totalLayers = 10;
       window.showboxActive = false;
       let showboxInterval = null;
       let showboxTimeout = null;
@@ -3910,372 +4095,166 @@
         }
       }
     }
-    window.triggerShowbox = (showboxIndex, sender) => {
-        if (document.getElementById('showbox-panel')) { selectPanelShowbox(showboxIndex); return; }
-        if (window.showboxActive && window.activeShowboxIndex === showboxIndex) { window.closeShowbox(); return; }
-        if(showboxInterval) clearInterval(showboxInterval);
-        if(showboxTimeout) clearTimeout(showboxTimeout);
-        
-        window.activeShowboxIndex = showboxIndex;
-        window.activeShowboxSender = sender || '';
-        if (!window.showboxes) window.showboxes = [["<span style='color:red;'>Keine themes.js gefunden!</span>"]];
-        const showboxSteps = window.showboxes[showboxIndex] || window.showboxes[0];
-        window.showboxActive = true;
-        let step = 0;
-        
-        document.querySelectorAll('[id^="layer-"]').forEach(l => l.classList.remove('active'));
-        const sbLayer = document.getElementById('layer-showbox');
-        const sbText = document.getElementById('showbox-text');
-
-        const clock = document.getElementById('showbox-clock');
-        if (clock) clock.style.display = window.showboxTimeEnabled ? 'block' : 'none';
-        updateShowboxClocks();
-
-        const updateText = () => updateShowboxText(sbText, sbLayer, showboxSteps, step);
-        sbText.style.opacity = 0;
-        showboxTimeout = setTimeout(updateText, 100);
-        sbLayer.classList.add('active');
-
-        showboxInterval = setInterval(() => {
-          step++;
-          if (step >= showboxSteps.length) { window.closeShowbox(); return; }
-          sbText.style.opacity = 0;
-          showboxTimeout = setTimeout(updateText, 300);
-        }, window.showboxSpeed);
-      };
-
-      window.closeShowbox = () => {
-        if(showboxInterval) {
-          clearInterval(showboxInterval);
-          showboxInterval = null;
-        }
-        if(showboxTimeout) {
-          clearTimeout(showboxTimeout);
-          showboxTimeout = null;
-        }
-        window.activeShowboxIndex = -1;
-        window.showboxActive = false;
-        const showboxEl = document.getElementById('showbox');
-        if (showboxEl) {
-          showboxEl.classList.remove('glow-important', 'glow-agent');
-          showboxEl.style.setProperty('--showbox-glow-color', '');
-        }
-        const sbLayer = document.getElementById('layer-showbox');
-        if(sbLayer) sbLayer.classList.remove('active');
-        const curr = document.getElementById(`layer-${currentLayer}`);
-        if(curr) curr.classList.add('active');
-      };
-
-      _trackInterval(() => {
-        if (window.showboxActive) return;
-        const oldL = document.getElementById(`layer-${currentLayer}`);
-        if(oldL) oldL.classList.remove('active');
-        currentLayer = (currentLayer + 1) % totalLayers;
-        const newL = document.getElementById(`layer-${currentLayer}`);
-        if(newL) newL.classList.add('active');
-      }, 5000);
-    })();
-
-    // ── Showbox Center ──
-    let panelShowboxPlaying = false;
-    let panelShowboxMesseModus = false;
-    let panelShowboxInterval = null;
-    let activePanelShowboxIndex = 0;
-    let activePanelSlideIndex = 0;
-
-    function buildShowboxHeaderHTML() {
-      return `
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
-            <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Showbox Center</h2>
-          </div>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <button class="btn-primary" onclick="togglePanelShowboxPlay()" id="sb-play-btn" style="min-width:80px;">▶ Play</button>
-            <button class="btn-primary" onclick="prevPanelSlide()">◀ Back</button>
-            <button class="btn-primary btn-next-pulse" onclick="nextPanelSlide()">Next ▶</button>
-            <label style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
-              <input type="checkbox" id="sb-messe-modus" onchange="toggleMesseModus(this.checked)"> Exhibition Mode
-            </label>
-            <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
-              <span style="font-size:0.8rem; color:var(--text-muted);">Speed:</span>
-              <input type="range" id="sb-speed-slider" min="30" max="120" step="5" value="${window.showboxSpeed / 1000}" onchange="updatePanelShowboxSpeed(this.value)" style="width:70px; cursor:pointer;">
-              <span id="sb-speed-val" style="font-size:0.85rem; color:rgba(255,255,255,0.85); min-width:25px;">${window.showboxSpeed >= 60000 ? Math.floor(window.showboxSpeed/60000) + 'm' : (window.showboxSpeed/1000) + 's'}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    function buildShowboxScreenColHTML() {
-      const showClock = window.showboxTimeEnabled ? 'block' : 'none';
-      const showTimer = (window.showboxTimerRemaining && window.showboxTimerRemaining > 0) ? 'block' : 'none';
-      return `
-        <div style="display:flex; flex-direction:column; gap:10px;">
-          <div id="sb-screen" style="flex:1; background:radial-gradient(circle, #101424 0%, #070912 100%); border:1px solid rgba(0, 150, 255, 0.15); border-radius:12px; display:flex; justify-content:center; align-items:center; padding:20px; box-shadow:inset 0 0 40px rgba(0, 150, 255, 0.1); position:relative; overflow:hidden;">
-            <div id="sb-screen-content" style="color:white; text-align:center; font-weight:bold; font-size:40px; line-height:1.3; transition: opacity 0.3s ease, transform 0.3s ease; word-break:break-word; max-width:90%;">
-              Loading presentation...
-            </div>
-            <div id="sb-slide-indicator" style="position:absolute; bottom:15px; font-size:0.8rem; color:var(--text-muted); background:rgba(0,0,0,0.4); padding:4px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
-              Slide 1 / 1
-            </div>
-          </div>
-          <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:5px;">
-            ${[0, 1, 2, 3, 4, 5, 6].map(i => `
-              <button class="btn-primary" id="sb-group-${i}" onclick="selectPanelShowbox(${i})" style="flex:1; white-space:nowrap; padding:8px 12px; font-size:0.85rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">
-                Showbox ${i+1}
-              </button>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }
-    function buildShowboxEditorColHTML() {
-      return `
-        <div style="background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius); padding:15px; display:flex; flex-direction:column; gap:15px; min-height:0; overflow-y:auto;">
-          <div>
-            <h3 style="margin-bottom:5px;">Showbox-Editor</h3>
-            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Passe die Slides für die gewählte Showbox an (HTML erlaubt):</p>
-            <textarea id="sb-editor" style="width:100%; height:180px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:10px; border-radius:6px; font-family:monospace; font-size:0.85rem; resize:vertical;"></textarea>
-          </div>
-          <div style="display:flex; gap:10px;">
-            <button id="save-showbox-btn" class="btn-primary" onclick="savePanelShowboxContent()" style="flex:1;">Speichern</button>
-            <button class="btn-primary" onclick="resetPanelShowboxDefault()" style="background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.1);">Reset</button>
-          </div>
-          <div style="flex:1; min-height:0; display:flex; flex-direction:column;">
-            <h4 style="margin-bottom:8px; color:var(--text-muted);">Folien-Übersicht</h4>
-            <div id="sb-slides-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
-          </div>
-        </div>
-      `;
-    }
-    function buildShowboxPanelHTML() {
-      return `
-        <div class="panel" id="showbox-panel" style="display:flex; flex-direction:column; gap:20px; height:100%; box-sizing:border-box;">
-          ${buildShowboxHeaderHTML()}
-          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; flex:1; min-height:0;">
-            ${buildShowboxScreenColHTML()}
-            ${buildShowboxEditorColHTML()}
-          </div>
-        </div>
-      `;
-    }
-    async function showShowboxPanel() {
-      selectedId = null;
-      if (panelShowboxInterval) {
-        clearInterval(panelShowboxInterval);
-        panelShowboxInterval = null;
-        panelShowboxPlaying = false;
-      }
-      document.getElementById('content').innerHTML = buildShowboxPanelHTML();
-      const speedSec = Math.round(window.showboxSpeed / 1000);
-      document.getElementById('sb-speed-slider').value = speedSec;
-      document.getElementById('sb-speed-val').innerText = speedSec + 's';
-      document.getElementById('sb-messe-modus').checked = panelShowboxMesseModus;
-      selectPanelShowbox(activePanelShowboxIndex);
-    }
-
-    function selectPanelShowbox(idx) {
-      if (panelShowboxInterval) {
-        clearInterval(panelShowboxInterval);
-        panelShowboxInterval = null;
-        panelShowboxPlaying = false;
-        const btn = document.getElementById('sb-play-btn');
-        if (btn) {
-          btn.innerText = '▶ Play';
-          btn.style.background = 'var(--primary)';
-        }
-      }
-      activePanelShowboxIndex = idx;
-      activePanelSlideIndex = 0;
-      for (let i = 0; i < 7; i++) {
-        const btn = document.getElementById(`sb-group-${i}`);
-        if (btn) {
-          if (i === idx) {
-            btn.style.background = 'rgba(0, 150, 255, 0.2)';
-            btn.style.borderColor = 'var(--cyan)';
-            btn.style.color = 'var(--cyan)';
-          } else {
-            btn.style.background = 'rgba(255,255,255,0.05)';
-            btn.style.borderColor = 'rgba(255,255,255,0.1)';
-            btn.style.color = 'white';
-          }
-        }
-      }
-      const currentSlides = window.showboxes[idx] || [];
-      document.getElementById('sb-editor').value = JSON.stringify(currentSlides, null, 2);
-      renderPanelSlide();
-      renderPanelSlidesList();
-    }
-
-    function renderPanelSlide() {
-      const screenContent = document.getElementById('sb-screen-content');
-      const indicator = document.getElementById('sb-slide-indicator');
-      if (!screenContent) return;
-      const currentSlides = window.showboxes[activePanelShowboxIndex] || [];
-      if (currentSlides.length === 0) {
-        screenContent.innerHTML = "<span style='color:red;'>Keine Slides vorhanden.</span>";
-        indicator.innerText = "0 / 0";
-        return;
-      }
-      if (activePanelSlideIndex >= currentSlides.length) activePanelSlideIndex = 0;
-      if (activePanelSlideIndex < 0) activePanelSlideIndex = currentSlides.length - 1;
-      screenContent.style.opacity = 0;
-      screenContent.style.transform = 'scale(0.95)';
-      setTimeout(() => {
-        screenContent.innerHTML = currentSlides[activePanelSlideIndex];
-        const screen = document.getElementById('sb-screen');
-        let size = 40;
-        screenContent.style.fontSize = size + 'px';
-        while ((screenContent.scrollHeight > screen.clientHeight - 40 || screenContent.scrollWidth > screen.clientWidth - 40) && size > 16) {
-          size -= 2;
-          screenContent.style.fontSize = size + 'px';
-        }
-        screenContent.style.opacity = 1;
-        screenContent.style.transform = 'scale(1)';
-        indicator.innerText = `Folie ${activePanelSlideIndex + 1} / ${currentSlides.length}`;
-      }, 200);
-      const items = document.querySelectorAll('.sb-slide-item');
-      items.forEach((item, i) => {
-        if (i === activePanelSlideIndex) {
-          item.style.background = 'rgba(0, 150, 255, 0.15)';
-          item.style.borderColor = 'var(--cyan)';
-        } else {
-          item.style.background = 'rgba(255,255,255,0.02)';
-          item.style.borderColor = 'rgba(255,255,255,0.05)';
-        }
-      });
-    }
-
-    function renderPanelSlidesList() {
-      const list = document.getElementById('sb-slides-list');
-      if (!list) return;
-      const currentSlides = window.showboxes[activePanelShowboxIndex] || [];
-      list.innerHTML = currentSlides.map((slide, i) => `
-        <div class="sb-slide-item" onclick="jumpToPanelSlide(${i})" style="padding:6px 10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:6px; font-size:0.72rem; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all 0.2s;">
-          <strong>Folie ${i+1}:</strong> ${esc(slide.replace(/<[^>]*>/g, ''))}
-        </div>
-      `).join('');
-      const items = list.querySelectorAll('.sb-slide-item');
-      if (items[activePanelSlideIndex]) {
-        items[activePanelSlideIndex].style.background = 'rgba(0, 150, 255, 0.15)';
-        items[activePanelSlideIndex].style.borderColor = 'var(--cyan)';
-      }
-    }
-
-    function jumpToPanelSlide(idx) {
-      activePanelSlideIndex = idx;
-      renderPanelSlide();
-    }
-
-    function prevPanelSlide() {
-      activePanelSlideIndex--;
-      renderPanelSlide();
-    }
-
-    function nextPanelSlide() {
-      const currentSlides = window.showboxes[activePanelShowboxIndex] || [];
-      activePanelSlideIndex++;
-      if (activePanelSlideIndex >= currentSlides.length) {
-        if (panelShowboxMesseModus) {
-          activePanelShowboxIndex = (activePanelShowboxIndex + 1) % 7;
-          selectPanelShowbox(activePanelShowboxIndex);
-          return;
-        } else {
-          activePanelSlideIndex = 0;
-        }
-      }
-      renderPanelSlide();
-    }
-
-    function togglePanelShowboxPlay() {
-      const btn = document.getElementById('sb-play-btn');
-      if (panelShowboxPlaying) {
-        clearInterval(panelShowboxInterval);
-        panelShowboxInterval = null;
-        panelShowboxPlaying = false;
-        btn.innerText = '▶ Play';
-        btn.style.background = 'var(--primary)';
-      } else {
-        panelShowboxPlaying = true;
-        btn.innerText = '⏸ Pause';
-        btn.style.background = '#ffaa00';
-        panelShowboxInterval = setInterval(() => {
-          nextPanelSlide();
-        }, window.showboxSpeed);
-      }
-    }
-
-    function toggleMesseModus(val) {
-      panelShowboxMesseModus = val;
-    }
-
-    function updatePanelShowboxSpeed(val) {
-      window.showboxSpeed = val * 1000;
-      let display = val + 's';
-      if (val >= 60) {
-        const m = Math.floor(val / 60);
-        const s = val % 60;
-        display = s > 0 ? `${m}m ${s}s` : `${m}min`;
-      }
-      document.getElementById('sb-speed-val').innerText = display;
-      if (panelShowboxPlaying) {
-        clearInterval(panelShowboxInterval);
-        panelShowboxInterval = setInterval(() => {
-          nextPanelSlide();
-        }, window.showboxSpeed);
-      }
-    }
-
-    async function savePanelShowboxContent() {
-      const btn = document.getElementById('save-showbox-btn');
-      const origText = btn ? btn.innerText : 'Speichern';
-      const origBg = btn ? btn.style.background : '';
-      
+    // ── Database-Backed Showbox List & Active Sync ──
+    window.showboxPresentations = [];
+    async function loadShowboxList() {
       try {
-        const text = document.getElementById('sb-editor').value;
-        const parsed = JSON.parse(text);
-        if (!Array.isArray(parsed)) throw new Error("JSON muss ein Array sein.");
-        window.showboxes[activePanelShowboxIndex] = parsed;
-        renderPanelSlide();
-        renderPanelSlidesList();
-        const themesRes = await api('GET', '/showbox/themes');
-        if (themesRes) {
-          const cleanJs = `window.showboxes = ${JSON.stringify(window.showboxes, null, 2)};`;
-          await api('POST', '/showbox/themes', { content: cleanJs });
-          if (btn) {
-            btn.innerText = 'Gespeichert! ✓';
-            btn.style.background = '#39ff14';
-            btn.style.color = '#000';
+        const res = await api('GET', '/showbox/presentations');
+        if (res && Array.isArray(res)) {
+          window.showboxPresentations = res;
+          window.showboxes = res.map(p => p.slides);
+          
+        }
+        
+        // Fetch active showbox state from DB
+        const activeRes = await api('GET', '/showbox/active');
+        if (activeRes && activeRes.active !== undefined) {
+          if (activeRes.active) {
+            const idx = window.showboxPresentations.findIndex(p => p.name === activeRes.active);
+            if (idx >= 0) {
+              if (window.activeShowboxIndex !== idx || !window.showboxActive) {
+                triggerShowboxDirect(idx);
+              }
+            }
+          } else {
+            closeShowboxDirect();
           }
-          toast("Erfolgreich auf Server und Client gespeichert!", "success");
-        } else {
-          if (btn) {
-            btn.innerText = 'Server Offline!';
-            btn.style.background = '#ffa500';
-          }
-          toast("Clientseitig aktualisiert, Server konnte nicht erreicht werden.", "warning");
         }
       } catch (err) {
-        if (btn) {
-          btn.innerText = 'Fehler!';
-          btn.style.background = '#ff3333';
-        }
-        toast("Fehler beim Speichern: " + err.message, "error");
+        console.error("Failed to load showbox list:", err);
       }
-      if (btn) {
-        setTimeout(() => {
-          btn.innerText = origText;
-          btn.style.background = origBg;
-          btn.style.color = '';
-        }, 1500);
+    }
+    window.loadShowboxList = loadShowboxList;
+
+    async function selectShowboxByName(name) {
+      if (!name) {
+        await api('POST', '/showbox/active', { name: "" });
+        closeShowboxDirect();
+        return;
+      }
+      const idx = window.showboxPresentations.findIndex(p => p.name === name);
+      if (idx >= 0) {
+        await api('POST', '/showbox/active', { name: name });
+        triggerShowboxDirect(idx);
+      }
+    }
+    window.selectShowboxByName = selectShowboxByName;
+
+    function triggerShowboxDirect(showboxIndex, sender) {
+      if (document.getElementById('showbox-panel')) { selectPanelShowbox(showboxIndex); return; }
+      if (showboxInterval) clearInterval(showboxInterval);
+      if (showboxTimeout) clearTimeout(showboxTimeout);
+      
+      window.activeShowboxIndex = showboxIndex;
+      window.activeShowboxSender = sender || '';
+      const showboxSteps = window.showboxes[showboxIndex] || [["<span style='color:red;'>Keine Slides gefunden!</span>"]];
+      window.showboxActive = true;
+      let step = 0;
+      
+      const sb = document.getElementById('showbox');
+      if (!sb) return;
+
+      const renderSlide = () => {
+        const content = showboxSteps[step];
+        sb.innerHTML = `
+          <div id="showbox-hud" style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 20; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font-family: monospace; font-size: 0.75rem; font-weight: bold;">
+            <div id="showbox-clock" style="display: ${window.showboxTimeEnabled ? 'block' : 'none'}; background: rgba(0, 0, 0, 0.6); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.1); color: var(--cyan); text-shadow: 0 0 5px rgba(0, 229, 255, 0.5);"></div>
+            <div id="showbox-timer" style="display: ${(window.showboxTimerRemaining && window.showboxTimerRemaining > 0) ? 'block' : 'none'}; background: rgba(255, 51, 102, 0.2); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255, 51, 102, 0.4); color: #ff3366; text-shadow: 0 0 5px rgba(255, 51, 102, 0.5); margin-left: auto;">${formatShowboxTimer(window.showboxTimerRemaining || 0)}</div>
+          </div>
+          <div class="layer-content showbox-layer-content" id="showbox-text" style="opacity:0; transition: opacity 0.3s ease;">${content}</div>
+          <div class="showbox-hints">
+            <span>🎙️ @tts on/off</span>
+            <span>🕒 @showbox time on/off</span>
+            <span>⏰ @showbox timer [x] min/off</span>
+          </div>
+        `;
+        sb.classList.add('active-presentation');
+        
+        sb.classList.remove('glow-important', 'glow-agent');
+        sb.style.setProperty('--showbox-glow-color', '');
+        if (isImportantShowboxContent(content)) {
+          const sysNames = ['system', 'generalag', 'soulag', 'securityag', 'watchdogag', ''];
+          const isAgent = window.activeShowboxSender && !sysNames.includes(window.activeShowboxSender.toLowerCase());
+          if (isAgent) {
+            const color = agentColor(window.activeShowboxSender);
+            sb.style.setProperty('--showbox-glow-color', color);
+            sb.classList.add('glow-agent');
+          } else {
+            sb.classList.add('glow-important');
+          }
+        }
+        
+        const sbText = document.getElementById('showbox-text');
+        if (sbText) {
+          resizeShowboxText(sbText, sb);
+          setTimeout(() => { sbText.style.opacity = 1; }, 50);
+        }
+        updateShowboxClocks();
+      };
+
+      renderSlide();
+
+      showboxInterval = setInterval(() => {
+        if (showboxSteps.length > 1) {
+          step = (step + 1) % showboxSteps.length;
+          const sbText = document.getElementById('showbox-text');
+          if (sbText) {
+            sbText.style.opacity = 0;
+            showboxTimeout = setTimeout(renderSlide, 300);
+          } else {
+            renderSlide();
+          }
+        }
+      }, window.showboxSpeed);
+    }
+
+    function closeShowboxDirect() {
+      if (showboxInterval) {
+        clearInterval(showboxInterval);
+        showboxInterval = null;
+      }
+      if (showboxTimeout) {
+        clearTimeout(showboxTimeout);
+        showboxTimeout = null;
+      }
+      window.activeShowboxIndex = -1;
+      window.showboxActive = false;
+      const showboxEl = document.getElementById('showbox');
+      if (showboxEl) {
+        showboxEl.classList.remove('active-presentation', 'glow-important', 'glow-agent');
+        showboxEl.style.setProperty('--showbox-glow-color', '');
+        showboxEl.innerHTML = `
+          <!-- Layer 1: Outer Hologram Frame (Cyan) -->
+          <div class="standby-layer-1"></div>
+          <!-- Layer 2: Middle Hologram Frame (Magenta, Pulsing) -->
+          <div class="standby-layer-2"></div>
+          <!-- Layer 3: Inner Hologram Frame (Green) -->
+          <div class="standby-layer-3">
+            <div style="color: var(--text-dim); font-size: 0.72rem; font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px rgba(0,229,255,0.4); pointer-events: none;">STANDBY</div>
+          </div>
+        `;
       }
     }
 
-    async function resetPanelShowboxDefault() {
-      if (confirm("Möchtest du diese Showbox wirklich auf die Werkseinstellungen zurücksetzen?")) {
-        window.location.reload();
+    window.triggerShowbox = (idx, sender) => {
+      if (typeof idx === 'number') {
+        const p = window.showboxPresentations[idx];
+        if (p) {
+          selectShowboxByName(p.name);
+          return;
+        }
       }
-    }
+      triggerShowboxDirect(idx, sender);
+    };
+
+    window.closeShowbox = () => {
+      api('POST', '/showbox/active', { name: "" });
+      closeShowboxDirect();
+    };
+  })();
+
+  // ── Showbox Center (Entfernt: Wird jetzt rein von Agenten gesteuert) ──
+
 
     async function showLLMConfig() {
       selectedId = null;
@@ -4297,12 +4276,26 @@
                 </div>
                 <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Füge alle API-Keys ein (ein Key pro Zeile)</p>
                 <textarea id="llm-keys-input" rows="1" style="width:100%; margin-bottom:6px; background:var(--bg); border:1px solid rgba(255,255,255,0.2); color:white; padding:4px 6px; border-radius:4px; font-size:0.8rem; height:28px; line-height:1.4; resize:none; overflow-y:hidden;" placeholder="Einfügen per Cmd+V"></textarea>
-                <button class="btn-primary" onclick="saveAndTestKeys()" style="width:100%; font-size:0.8rem; padding:4px 6px;">Save, Test & Assign</button>
+                <div style="display:flex; gap:6px; margin-bottom:6px;">
+                  <button class="btn-primary" id="save-keys-only-btn" onclick="saveKeysOnly()" style="flex:1; font-size:0.85rem; padding:8px 10px; font-weight:bold; background:var(--cyan); border-color:var(--cyan); color:#000; border-radius:6px; box-shadow:0 0 8px rgba(0,255,255,0.2); cursor:pointer;">Speichern</button>
+                  <button class="btn-primary" id="save-keys-btn" onclick="saveAndTestKeys()" style="flex:1.5; font-size:0.85rem; padding:8px 10px; font-weight:bold; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:6px; cursor:pointer;">Testen & Speichern</button>
+                </div>
                 <div id="llm-keys-status" style="margin-top:6px; font-size:0.8rem; max-height:65px; overflow-y:auto; display:flex; flex-direction:column; gap:3px;"></div>
               </div>
               
               <div style="display:flex; flex-direction:column; gap:8px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:4px;">
+                  <h3 style="margin:0; font-size:0.9rem;">Agent Gang (Preset)</h3>
+                  <select id="preset-select" onchange="changePreset(this.value)" style="width:100%; background:rgba(0,0,0,0.3); color:var(--text); border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-size:0.8rem; outline:none; cursor:pointer;">
+                    <option value="Web Development">💻 Web Development</option>
+                    <option value="Graphic Design">🎨 Graphic Design</option>
+                    <option value="Audio Production">🎵 Audio Production</option>
+                    <option value="Video Production">🎬 Video Production</option>
+                    <option value="Content Creation">✍️ Content Creation</option>
+                    <option value="Research & Analysis">🔍 Research & Analysis</option>
+                  </select>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(255,255,255,0.05); padding-top:6px;">
                   <h3 style="margin:0; font-size:0.9rem;">Language</h3>
                   <div style="display:flex; gap:6px;">
                     <button class="btn-primary" id="lang-btn-de" onclick="setSystemLanguage('de')" style="padding:3px 8px; font-size:0.75rem;">DE</button>
@@ -4319,16 +4312,16 @@
               </div>
             </div>
             <div style="flex:2; min-width: 400px; background:var(--bg-card); padding:15px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.1);">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:nowrap;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
                 <h3 style="margin:0; font-size:0.9rem; flex-shrink:0;">Routing</h3>
-                <div style="display:flex; gap:4px; align-items:center; flex-shrink:0; flex-wrap:nowrap;">
+                <div style="display:flex; gap:4px; align-items:center; flex-shrink:0; flex-wrap:wrap;">
                   <button onclick="setAllAgentsToStage('stage_1')" onmouseover="this.style.background='rgba(57,255,20,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #39ff14; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 1 (Lokal: Ollama)</button>
                   <button onclick="setAllAgentsToStage('stage_2')" onmouseover="this.style.background='rgba(0,229,255,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #00e5ff; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 2 (Free Tier: OpenRouter)</button>
                   <button onclick="setAllAgentsToStage('stage_3')" onmouseover="this.style.background='rgba(255,165,0,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #ffa500; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 3 (Balanced)</button>
                   <button onclick="setAllAgentsToStage('stage_4')" onmouseover="this.style.background='rgba(255,0,127,0.1)'" onmouseout="this.style.background='transparent'" style="font-size:0.7rem; padding:2px 4px; background:transparent; border:1px solid #ff007f; color:rgba(255,255,255,0.85); font-weight:bold; border-radius:4px; cursor:pointer; transition:all 0.2s; white-space:nowrap;">St. 4 (Premium)</button>
                   <span style="color:rgba(255,255,255,0.2); font-size:0.8rem; margin:0 2px;">|</span>
                   <button class="btn-primary" onclick="autoRouteAllAgents()" style="font-size:0.7rem; padding:3px 6px; background:#fff; color:#000; font-weight:bold; border-radius:4px; border:none; cursor:pointer; box-shadow:0 0 4px rgba(255,255,255,0.2); white-space:nowrap;">Auto-Route</button>
-                  <button id="save-agents-btn" class="btn-primary" onclick="saveAgentLLMs()" style="font-size:0.7rem; padding:3px 6px; background:var(--cyan); border-color:var(--cyan); color:#000; font-weight:bold; border-radius:4px; cursor:pointer; box-shadow:0 0 4px rgba(0,255,255,0.2); white-space:nowrap;">Save</button>
+                  <button id="save-agents-btn" class="btn-primary" onclick="saveAgentLLMs()" style="font-size:0.7rem; padding:3px 6px; background:var(--cyan); border-color:var(--cyan); color:#000; font-weight:bold; border-radius:4px; cursor:pointer; box-shadow:0 0 4px rgba(0,255,255,0.2); white-space:nowrap;">Speichern</button>
                 </div>
               </div>
               
@@ -4341,7 +4334,11 @@
                 <div id="routing-progress-percentage" style="color:rgba(255,255,255,0.7); font-family:monospace; font-weight:bold;">0%</div>
               </div>
               
-              <div id="llm-agents-list" style="margin-bottom:0; max-height:280px; overflow-y:auto; padding-right:8px; --scrollbar-thumb:rgba(255,255,255,0.1); --scrollbar-track:transparent; scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width:thin;">Loading Agents...</div>
+              <div id="llm-agents-list" style="margin-bottom:0; max-height:250px; overflow-y:auto; padding-right:8px; --scrollbar-thumb:rgba(255,255,255,0.1); --scrollbar-track:transparent; scrollbar-color:var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width:thin;">Loading Agents...</div>
+
+              <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+                <button id="save-agents-btn-bottom" class="btn-primary" onclick="saveAgentLLMs()" style="width: 100%; padding: 8px 12px; font-size: 0.85rem; font-weight: bold; background: var(--cyan); border-color: var(--cyan); color: #000; border-radius: 6px; cursor: pointer; box-shadow: 0 0 8px rgba(0,255,255,0.3); transition: all 0.2s;">Routing Speichern</button>
+              </div>
               
               <!-- Intelligent Routing Insights Panel -->
               <div id="routing-insights-panel" style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px; display:none;"></div>
@@ -4592,6 +4589,7 @@
       await loadLanguageState();
       await loadSystemInfoState();
       await loadFtpAutoDeployState();
+      await loadActivePreset();
 
       const keysRes = await api('GET', '/llm/keys');
       if (keysRes) {
@@ -4734,6 +4732,94 @@
       if (cleanedKey.startsWith("BS-")) return "brave";
       if (/^[0-9a-fA-F]{32}$/.test(cleanedKey)) return "elevenlabs";
       return null;
+    }
+
+    async function saveKeysOnly() {
+      const btn = document.getElementById('save-keys-only-btn');
+      const origText = btn ? btn.innerText : 'Speichern';
+      const origBg = btn ? btn.style.background : '';
+      const origColor = btn ? btn.style.color : '';
+
+      const input = document.getElementById('llm-keys-input').value;
+      const rawLines = input.split('\n').map(k => k.trim()).filter(k => k);
+      
+      document.getElementById('llm-keys-status').innerHTML = 'Speichere Keys...';
+      
+      let testedKeys = [];
+      let nextId = Date.now();
+      
+      for(let line of rawLines) {
+        let isMasked = line.includes('•') || line.includes('*') || line.includes('...');
+        let k = cleanKey(line);
+        if (!k) continue;
+        
+        let label = '';
+        if (line.includes('=')) {
+          label = line.split('=')[0].trim();
+          label = label.replace(/^#\s*UNGÜLTIG:\s*/i, '').replace(/^#\s*/, '').trim();
+        }
+        
+        let existing = null;
+        if (isMasked) {
+          existing = globalKeys.find(gk => maskKey(gk.key) === k);
+        } else {
+          existing = globalKeys.find(gk => gk.key === k);
+        }
+        
+        if (existing) {
+          if (label && (!existing.label || existing.label !== label)) {
+            existing.label = label;
+          }
+          testedKeys.push(existing);
+        } else {
+          let p = detectProvider(line, k) || 'unknown';
+          testedKeys.push({
+            id: 'k_' + (nextId++),
+            key: k,
+            provider: p,
+            valid: true,
+            info: 'Gespeichert (Nicht getestet)',
+            caps: ['text', 'vision', 'image', 'audio', 'web', 'tools'],
+            label: label || (p ? p.toUpperCase() + '_API_KEY' : 'API_KEY')
+          });
+        }
+      }
+      
+      let toSave = {};
+      testedKeys.forEach(k => toSave[k.id] = k);
+      const res = await api('POST', '/llm/keys', toSave);
+      
+      if (res && res.status === 'ok') {
+        await api('POST', '/llm/auto_assign');
+        globalKeys = testedKeys;
+        renderKeyStatus(testedKeys);
+        loadLLMConfig();
+        
+        if (btn) {
+          btn.innerText = 'Gespeichert! ✓';
+          btn.style.background = '#39ff14';
+          btn.style.borderColor = '#39ff14';
+          btn.style.color = '#000';
+        }
+        toast('Keys gespeichert!', 'success');
+      } else {
+        if (btn) {
+          btn.innerText = 'Fehler!';
+          btn.style.background = '#ff3333';
+          btn.style.borderColor = '#ff3333';
+          btn.style.color = '#fff';
+        }
+        toast('Fehler beim Speichern der Keys.', 'error');
+      }
+      
+      setTimeout(() => {
+        if (btn) {
+          btn.innerText = origText;
+          btn.style.background = origBg;
+          btn.style.borderColor = origBg;
+          btn.style.color = origColor;
+        }
+      }, 1500);
     }
 
     async function saveAndTestKeys() {
@@ -5071,8 +5157,11 @@
 
     async function saveAgentLLMs() {
       const btn = document.getElementById('save-agents-btn');
-      const origText = btn ? btn.innerText : 'Save Agent Settings';
+      const btnBottom = document.getElementById('save-agents-btn-bottom');
+      const origText = btn ? btn.innerText : 'Save';
+      const origTextBottom = btnBottom ? btnBottom.innerText : 'Routing Speichern';
       const origBg = btn ? btn.style.background : '';
+      const origBgBottom = btnBottom ? btnBottom.style.background : '';
       
       const agentsRes = await api('GET', '/agents');
       let config = {};
@@ -5095,21 +5184,38 @@
           btn.style.background = '#39ff14';
           btn.style.color = '#000';
         }
+        if (btnBottom) {
+          btnBottom.innerText = 'Gespeichert! ✓';
+          btnBottom.style.background = '#39ff14';
+          btnBottom.style.borderColor = '#39ff14';
+          btnBottom.style.color = '#000';
+        }
         toast('Agent settings saved successfully!', 'success');
       } else {
         if (btn) {
-          btn.innerText = 'Error saving';
+          btn.innerText = 'Error';
           btn.style.background = '#ff3333';
+        }
+        if (btnBottom) {
+          btnBottom.innerText = 'Fehler beim Speichern';
+          btnBottom.style.background = '#ff3333';
+          btnBottom.style.borderColor = '#ff3333';
         }
         toast('Failed to save agent settings.', 'error');
       }
-      if (btn) {
-        setTimeout(() => {
+      setTimeout(() => {
+        if (btn) {
           btn.innerText = origText;
           btn.style.background = origBg;
           btn.style.color = '';
-        }, 1500);
-      }
+        }
+        if (btnBottom) {
+          btnBottom.innerText = origTextBottom;
+          btnBottom.style.background = origBgBottom;
+          btnBottom.style.borderColor = origBgBottom;
+          btnBottom.style.color = '';
+        }
+      }, 1500);
     }
 
     async function testAgentLLM(aName) {
@@ -5160,7 +5266,149 @@
         }
       }
     }
+
+    // ── Showbox Fullscreen Overlay Management ──
+    let overlaySlideIndex = 0;
+    let overlaySlides = [];
+
+    window.openShowboxOverlay = function() {
+      if (window.activeShowboxIndex === -1 || !window.showboxActive) {
+        toast("Standby: Warten auf Präsentation von Agenten...", "info");
+        return;
+      }
+      
+      const p = window.showboxPresentations[window.activeShowboxIndex];
+      if (!p) return;
+      
+      overlaySlides = p.slides || [];
+      overlaySlideIndex = 0;
+      
+      document.getElementById('showbox-overlay-title').innerText = p.name || 'Präsentation';
+      document.getElementById('showbox-overlay-sender').innerText = p.sender ? `Gesendet von: ${p.sender}` : 'System-Präsentation';
+      
+      const overlay = document.getElementById('showbox-overlay');
+      overlay.style.display = 'flex';
+      overlay.offsetHeight; // Force reflow
+      overlay.classList.add('show');
+      
+      renderOverlaySlide();
+    };
+
+    window.closeShowboxOverlay = function(e) {
+      if (e) e.stopPropagation();
+      const overlay = document.getElementById('showbox-overlay');
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        overlay.style.display = 'none';
+      }, 300);
+    };
+
+    function renderOverlaySlide() {
+      const contentEl = document.getElementById('showbox-overlay-content');
+      const dotsEl = document.getElementById('showbox-overlay-dots');
+      const prevBtn = document.getElementById('showbox-overlay-prev-btn');
+      const nextBtn = document.getElementById('showbox-overlay-next-btn');
+      
+      if (!contentEl) return;
+      
+      if (overlaySlides.length === 0) {
+        contentEl.innerHTML = "<span style='color:red;'>Keine Slides vorhanden.</span>";
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (dotsEl) dotsEl.innerHTML = '';
+        return;
+      }
+      
+      if (overlaySlideIndex >= overlaySlides.length) overlaySlideIndex = 0;
+      if (overlaySlideIndex < 0) overlaySlideIndex = overlaySlides.length - 1;
+      
+      contentEl.style.opacity = 0;
+      contentEl.style.transform = 'scale(0.95)';
+      
+      setTimeout(() => {
+        contentEl.innerHTML = overlaySlides[overlaySlideIndex];
+        
+        // Font-Größen-Anpassung
+        const screen = contentEl.parentElement;
+        let size = 44;
+        contentEl.style.fontSize = size + 'px';
+        if (screen) {
+          while ((contentEl.scrollHeight > screen.clientHeight - 80 || contentEl.scrollWidth > screen.clientWidth - 80) && size > 16) {
+            size -= 2;
+            contentEl.style.fontSize = size + 'px';
+          }
+        }
+        
+        contentEl.style.opacity = 1;
+        contentEl.style.transform = 'scale(1)';
+        
+        // Navigation-Elemente updaten
+        if (overlaySlides.length > 1) {
+          if (prevBtn) prevBtn.style.display = 'flex';
+          if (nextBtn) nextBtn.style.display = 'flex';
+          
+          if (dotsEl) {
+            dotsEl.innerHTML = overlaySlides.map((_, i) => `
+              <div class="showbox-overlay-dot ${i === overlaySlideIndex ? 'active' : ''}" onclick="jumpToOverlaySlide(${i})"></div>
+            `).join('');
+          }
+        } else {
+          if (prevBtn) prevBtn.style.display = 'none';
+          if (nextBtn) nextBtn.style.display = 'none';
+          if (dotsEl) dotsEl.innerHTML = '';
+        }
+      }, 150);
+    }
+
+    window.prevOverlaySlide = function() {
+      overlaySlideIndex--;
+      renderOverlaySlide();
+    };
+
+    window.nextOverlaySlide = function() {
+      overlaySlideIndex++;
+      renderOverlaySlide();
+    };
+
+    window.jumpToOverlaySlide = function(idx) {
+      overlaySlideIndex = idx;
+      renderOverlaySlide();
+    };
+
+    // Schließen auf Escape und Navigation über Pfeiltasten
+    document.addEventListener('keydown', (e) => {
+      const overlay = document.getElementById('showbox-overlay');
+      if (overlay && overlay.classList.contains('show')) {
+        if (e.key === 'Escape') {
+          closeShowboxOverlay();
+        } else if (e.key === 'ArrowRight' && overlaySlides.length > 1) {
+          nextOverlaySlide();
+        } else if (e.key === 'ArrowLeft' && overlaySlides.length > 1) {
+          prevOverlaySlide();
+        }
+      }
+    });
   </script>
+
+  <!-- Showbox Fullscreen Overlay Modal -->
+  <div id="showbox-overlay" class="showbox-overlay" onclick="closeShowboxOverlay(event)">
+    <div class="showbox-overlay-card" onclick="event.stopPropagation()">
+      <button class="showbox-overlay-close" onclick="closeShowboxOverlay(event)">&times;</button>
+      <div class="showbox-overlay-header">
+        <div class="showbox-overlay-title" id="showbox-overlay-title">Präsentation</div>
+        <div class="showbox-overlay-sender" id="showbox-overlay-sender">Vom Agenten: System</div>
+      </div>
+      <div class="showbox-overlay-screen" style="position: relative;">
+        <!-- Navigation Arrows inside screen -->
+        <button class="showbox-overlay-nav showbox-overlay-nav-prev" id="showbox-overlay-prev-btn" onclick="prevOverlaySlide()">&lsaquo;</button>
+        <div class="showbox-overlay-content" id="showbox-overlay-content">
+          Lade Inhalt...
+        </div>
+        <button class="showbox-overlay-nav showbox-overlay-nav-next" id="showbox-overlay-next-btn" onclick="nextOverlaySlide()">&rsaquo;</button>
+      </div>
+      <div class="showbox-overlay-dots" id="showbox-overlay-dots"></div>
+    </div>
+  </div>
 </body>
 
 </html>
