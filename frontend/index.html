@@ -75,7 +75,7 @@
       transition: all 0.3s ease-in-out;
       position: relative;
       flex-shrink: 0;
-      cursor: help;
+      cursor: pointer;
     }
 
     .lamp.on {
@@ -941,7 +941,8 @@
 
     .agent-card.active {
       background: rgba(61, 220, 132, 0.04);
-      border-color: var(--glass-border);
+      border-top-color: var(--glass-border);
+      border-bottom-color: var(--glass-border);
     }
 
     .agent-card.busy {
@@ -2880,7 +2881,7 @@
           const role = a.role && a.role !== 'normal' && !isCore ? a.role : '';
           const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
           const c = agentColor(a.name);
-          return `<div class="agent-card ${stClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" style="--agent-color:${c};">
+          return `<div class="agent-card ${stClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="selectAgent('${a.id}')" ondblclick="toggleStatus('${a.id}', '${a.status}')" style="--agent-color:${c};">
         <h3><span>${a.name}</span>${roleIcon}</h3>
         <div class="desc">${a.description || '–'}</div>
         <div class="meta">${a.port ? `<span class="badge port">:${a.port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}</div>
@@ -3023,10 +3024,33 @@
 
     // ── Agent Actions ──
     async function toggleStatus(id, current) {
-      const next = current === 'online' ? 'offline' : 'online';
+      const agent = agents.find(a => a.id === id);
+      const curr = agent ? agent.status : current;
+      const isOff = curr === 'offline' || curr === 'sleeping';
+      const next = isOff ? 'online' : 'offline';
       await fetch(API + `/agents/${id}/status?status=${next}`, { method: 'PUT' });
       await loadAgents();
-      selectAgent(id);
+      if (selectedId === id) {
+        selectAgent(id);
+      }
+    }
+
+    function findAgentByName(name) {
+      return agents.find(a => a.name.toLowerCase() === name.toLowerCase());
+    }
+
+    function handleAgentClick(name) {
+      const agent = findAgentByName(name);
+      if (agent) {
+        selectAgent(agent.id);
+      }
+    }
+
+    async function handleAgentDblClick(name) {
+      const agent = findAgentByName(name);
+      if (agent) {
+        await toggleStatus(agent.id, agent.status);
+      }
     }
 
     async function resumeAgent(id) {
@@ -3925,7 +3949,7 @@
           const dur = (2.5 + Math.random() * 2.0).toFixed(2);   // 2.5s – 4.5s
           const dly = (-(Math.random() * 6.0)).toFixed(2);       // -0 … -6s offset
           const col = agentColor(a.name);
-          return `<div class="lamp" data-ag="${a.name}" title="${a.name}" style="color:${col};background:${col};--dur:${dur}s;--delay:${dly}s"></div>`;
+          return `<div class="lamp" data-ag="${a.name}" title="${a.name}" onclick="handleAgentClick('${a.name}')" ondblclick="handleAgentDblClick('${a.name}')" style="color:${col};background:${col};--dur:${dur}s;--delay:${dly}s"></div>`;
         }).join('');
         _lastInternals = names;
       }
