@@ -592,6 +592,57 @@
 
       <div style="display:flex; flex-direction:column; gap:20px;">
         
+        <!-- Agenten-Skills & Syntax-Referenz -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(0, 102, 255, 0.2); padding:16px; border-radius:var(--radius-sm);">
+          <h3 style="font-family:'Outfit', sans-serif; font-size:0.95rem; color:#00e5ff; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#00e5ff; box-shadow:0 0 6px #00e5ff;"></span>
+            Agenten-Skills &amp; Syntax-Referenz (Tools)
+          </h3>
+          <p style="font-size:0.8rem; color:var(--text-dim); line-height:1.6; margin-bottom:12px;">
+            Die Agenten des Schwarms besitzen spezielle Fähigkeiten (Skills), die sie durch Formatierungs-Tags in ihren Antworten aktivieren können. Du kannst die Agenten im Chat direkt anweisen, diese Skills für dich einzusetzen.
+          </p>
+          
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
+            
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+              <div style="font-weight:bold; font-size:0.8rem; color:#fff; margin-bottom:4px;">📂 Datei lesen (READ)</div>
+              <div style="font-family:monospace; font-size:0.7rem; color:var(--green); margin-bottom:4px;">[READ: dateipfad]</div>
+              <div style="font-size:0.75rem; color:var(--text-dim);">Liest den Inhalt einer Datei aus dem Projektverzeichnis (bzw. beliebigem Pfad im Godmode).</div>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+              <div style="font-weight:bold; font-size:0.8rem; color:#fff; margin-bottom:4px;">💾 Datei schreiben (WRITE)</div>
+              <div style="font-family:monospace; font-size:0.7rem; color:var(--green); margin-bottom:4px;">[WRITE: dateipfad]inhalt[/WRITE]</div>
+              <div style="font-size:0.75rem; color:var(--text-dim);">Erstellt eine neue Datei oder überschreibt den Inhalt einer bestehenden Datei.</div>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+              <div style="font-weight:bold; font-size:0.8rem; color:#fff; margin-bottom:4px;">💻 Terminal ausführen (SHELL)</div>
+              <div style="font-family:monospace; font-size:0.7rem; color:var(--green); margin-bottom:4px;">[SHELL: terminal_befehl]</div>
+              <div style="font-size:0.75rem; color:var(--text-dim);">Führt Systembefehle auf dem Mac aus (z. B. <code>git status</code>, <code>npm run dev</code>, Programme installieren).</div>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+              <div style="font-weight:bold; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎨 Bild generieren (IMAGE)</div>
+              <div style="font-family:monospace; font-size:0.7rem; color:var(--green); margin-bottom:4px;">[IMAGE: bild_beschreibung]</div>
+              <div style="font-size:0.75rem; color:var(--text-dim);">Erzeugt ein neues Bild auf Basis deiner Textbeschreibung und speichert es ab.</div>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+              <div style="font-weight:bold; font-size:0.8rem; color:#fff; margin-bottom:4px;">🌐 Browsersteuerung (BROWSER)</div>
+              <div style="font-family:monospace; font-size:0.7rem; color:var(--green); margin-bottom:4px;">[BROWSER: python_playwright_code]</div>
+              <div style="font-size:0.75rem; color:var(--text-dim);">Führt echten Browser-Code in Docker aus. Ermöglicht Webseiten-Analysen und Screenshots.</div>
+            </div>
+
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
+              <div style="font-weight:bold; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎬 Showbox-Steuerung (SHOWBOX)</div>
+              <div style="font-family:monospace; font-size:0.7rem; color:var(--green); margin-bottom:4px;">&lt;SHOWBOX:lampen_index&gt;JSON_SLIDES&lt;/SHOWBOX&gt;</div>
+              <div style="font-size:0.75rem; color:var(--text-dim);">Aktualisiert den Inhalt des Showbox-Screens (Lampen-Index 1 bis 7) mit HTML-Folien.</div>
+            </div>
+
+          </div>
+        </div>
+        
         <!-- Browsersteuerung -->
         <div style="background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:16px; border-radius:var(--radius-sm);">
           <h3 style="font-family:'Outfit', sans-serif; font-size:0.95rem; color:var(--green); margin-bottom:10px; display:flex; align-items:center; gap:8px;">
