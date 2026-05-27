@@ -1,6 +1,6 @@
 # action_browser.py — Playwright Browser automation execution in Docker
 import os, uuid, re
-from gnom_hub.gatekeeper_browser import verify_browser
+from gnom_hub.security.gatekeeper_browser import verify_browser
 from gnom_hub.process.sandbox import is_docker_running, run_browser_in_sandbox
 
 def handle_browser(ans, ms, agent, perms, wd) -> str:

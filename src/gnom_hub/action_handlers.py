@@ -1,8 +1,8 @@
 # action_handlers.py — Dispatcher für alle Action-Tags
 import re; from .action_write import handle_write, handle_read
 from .action_exec import handle_shell, handle_crawl, handle_showbox
-from .path_validator import is_worker_blocked
-from .gatekeeper import verify_write, verify_cmd
+from gnom_hub.security.path_validator import is_worker_blocked
+from gnom_hub.security.gatekeeper import verify_write, verify_cmd
 from .action_browser import handle_browser
 
 def process_actions(ans, agent, perms, bs_mode, wd):

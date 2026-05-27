@@ -1,7 +1,7 @@
 from fastapi import APIRouter; from pydantic import BaseModel; from gnom_hub.soul.zwc_soul import add_agent_metadata
 from gnom_hub.database.legacy_db import get_all_agents, get_active_project, add_chat_message, get_chat_history
 from gnom_hub.chat.brainstorm.brainstorm import dispatch; from gnom_hub.soul import soul_instance
-from gnom_hub.showbox_validator import sanitize_showboxes; from .chat_helpers import _parse, _handle_sys
+from gnom_hub.security.showbox_validator import sanitize_showboxes; from .chat_helpers import _parse, _handle_sys
 from gnom_hub.chat.chat_commands import handle_clear, handle_status, handle_job, handle_free, handle_git, handle_resume, handle_approve_decision, handle_reject_decision
 router = APIRouter()
 class ChatMsg(BaseModel): content: str; sender: str = "user"

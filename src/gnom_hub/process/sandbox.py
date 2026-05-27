@@ -9,7 +9,7 @@ def is_docker_running():
 
 def run_in_sandbox(command: str, agent=None, timeout: int = 30):
     if agent:
-        from gnom_hub.gatekeeper import verify_cmd
+        from gnom_hub.security.gatekeeper import verify_cmd
         if not verify_cmd(agent, command): raise PermissionError("Befehlsausführung verweigert.")
     wd = os.path.abspath(str(WORKSPACE_DIR))
     if is_docker_running():

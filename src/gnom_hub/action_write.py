@@ -1,6 +1,6 @@
 # action_write.py — [WRITE:] und [READ:] Handler
 import os, re
-from .path_validator import _safe
+from gnom_hub.security.path_validator import _safe
 
 def _git_commit_file(wd, rel_path, agent_name):
     import subprocess
