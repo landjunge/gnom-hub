@@ -1,4 +1,4 @@
-import asyncio, os, requests; from gnom_hub.soul_initializer import get_soul; from gnom_hub.router import ask_router
+import asyncio, os, requests; from gnom_hub.soul import get_soul; from gnom_hub.router import ask_router
 HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):

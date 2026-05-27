@@ -24,10 +24,10 @@ def get_agent(a_id: str):
 
 @router.get("/api/stats")
 def get_system_stats():
-    from gnom_hub.soul_initializer import SOULS
+    from gnom_hub.soul import SOULS
     from gnom_hub.infrastructure.database.chat_repo import SQLiteChatRepository
     from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository
-    from gnom_hub.smr_stats import get_memory_stats
+    from gnom_hub.memory.smr.smr_stats import get_memory_stats
     sys_set = {k for k, v in SOULS.items() if v.get("role") not in ("writer","coder","researcher","editor")}
     d = json.load(open(str(TOKENS_FILE))) if os.path.exists(str(TOKENS_FILE)) else {}
     ags = list_agents()

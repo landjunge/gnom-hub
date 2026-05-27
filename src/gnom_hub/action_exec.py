@@ -8,7 +8,7 @@ def handle_shell(ans, ms, ag, perms, bs, wd):
         elif SHELL_BLOCK.search(c): ans = ans.replace(o, f"[System: BLOCKIERT — gefährlicher Befehl: {c[:60]}]")
         else:
             try:
-                from .soul_initializer import check_and_wait_breakpoint
+                from gnom_hub.soul import check_and_wait_breakpoint
                 check_and_wait_breakpoint(ag["name"], "before_shell", c)
                 
                 from gnom_hub.process.sandbox import run_in_sandbox

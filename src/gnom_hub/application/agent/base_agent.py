@@ -1,5 +1,5 @@
 import asyncio, os, requests
-from gnom_hub.soul_initializer import get_soul
+from gnom_hub.soul import get_soul
 from gnom_hub.infrastructure.router.llm_orchestrator import ask_router
 
 HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
