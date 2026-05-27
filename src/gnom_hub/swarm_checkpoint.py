@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 import glob
-from .config import PROJECT_ROOT
+from gnom_hub.core.config import PROJECT_ROOT
 
 BACKUP_DIR = PROJECT_ROOT / ".backups" / "swarm"
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
