@@ -195,7 +195,7 @@ def init_db():
                 if not conn.execute("SELECT 1 FROM agents").fetchone():
                     _seed_agents(conn)
                 else:
-                    from gnom_hub.agent_definitions import AGENT_DEFINITIONS
+                    from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
                     for v in AGENT_DEFINITIONS.values():
                         conn.execute("UPDATE agents SET role = ? WHERE name = ?", (v["role"], v["name"]))
 
@@ -665,7 +665,7 @@ def add_to_soul_memory(fact: str, priority: str = "medium", agent: str = "System
 
 def get_relevant_facts(user_message: str) -> list:
     try:
-        from gnom_hub.soul_retrieval import retrieve_relevant_facts
+        from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
         return retrieve_relevant_facts(user_message)
     except Exception as e:
         logger.error(f"[DB] Failed to get relevant facts: {e}")
