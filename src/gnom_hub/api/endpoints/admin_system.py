@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.db.chat_repo import SQLiteChatRepository
 from gnom_hub.db.state_repo import SQLiteStateRepository
-from gnom_hub.infrastructure.security.hmac_signer import _get_or_create_secret
+from gnom_hub.core.security.hmac_signer import _get_or_create_secret
 from gnom_hub.infrastructure.process.psutil_mgr import _kill_proc, restart_hub
 
 router = APIRouter(prefix="/api/admin")

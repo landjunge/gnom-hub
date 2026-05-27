@@ -1,6 +1,6 @@
 import os, sys, subprocess, platform, psutil
 from fastapi import APIRouter, Request
-from gnom_hub.infrastructure.security.hmac_signer import _get_or_create_secret
+from gnom_hub.core.security.hmac_signer import _get_or_create_secret
 
 router = APIRouter()
 
