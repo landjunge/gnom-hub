@@ -1,1 +1,1 @@
-from gnom_hub.soul.soul_retrieval import *
+from gnom_hub.memory.soul_retrieval import *
