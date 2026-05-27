@@ -8,7 +8,7 @@ from gnom_hub.agents.commands import AgentCommands as AC
 from gnom_hub.agents.queries import AgentQueries as AQ
 from gnom_hub.chat.service import ChatService as CS
 from gnom_hub.chat.send_message import SendMessageUseCase as SM
-from gnom_hub.chat.brainstorm.brainstorm import BrainstormUseCase as BS
+from gnom_hub.chat.brainstorm import BrainstormUseCase as BS
 
 # Singletons & Services
 def get_agent_repo(): return AR()
