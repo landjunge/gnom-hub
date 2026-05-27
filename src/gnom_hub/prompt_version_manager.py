@@ -1,1 +1,1 @@
-from gnom_hub.evolution.prompt_version_manager import *
+from gnom_hub.core.utils.prompt_version_manager import *

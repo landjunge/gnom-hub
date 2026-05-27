@@ -1,1 +1,1 @@
-from gnom_hub.project.project_planner import *
+from gnom_hub.core.utils.project_planner import *

@@ -1,1 +1,1 @@
-from gnom_hub.resilience.gd_online import *
+from gnom_hub.core.utils.gd_online import *

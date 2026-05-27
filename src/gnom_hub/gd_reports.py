@@ -1,1 +1,1 @@
-from gnom_hub.resilience.gd_reports import *
+from gnom_hub.core.utils.gd_reports import *

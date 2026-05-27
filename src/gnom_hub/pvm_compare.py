@@ -1,1 +1,1 @@
-from gnom_hub.evolution.pvm_compare import *
+from gnom_hub.core.utils.pvm_compare import *

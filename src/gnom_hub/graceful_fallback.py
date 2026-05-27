@@ -1,1 +1,1 @@
-from gnom_hub.resilience.graceful_fallback import *
+from gnom_hub.core.utils.graceful_fallback import *
