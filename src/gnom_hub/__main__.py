@@ -19,9 +19,9 @@ def main():
         api_p = _free(3002)
         os.environ["GNOM_HUB_PORT"] = str(api_p)
         print(BANNER); print(INFO.format(api=api_p))
-        api = subprocess.Popen([sys.executable, "-c", "from gnom_hub.presentation.hub_app import main; main()"])
+        api = subprocess.Popen([sys.executable, "-c", "from gnom_hub.infrastructure.hub_app import main; main()"])
         time.sleep(1)
-        from gnom_hub.presentation.hub_pulse import start_pulse; start_pulse()
+        from gnom_hub.infrastructure.pulse import start_pulse; start_pulse()
         try:
             ret = api.wait()
             if ret == 42: print("\n\033[33m[Gnom-Hub] Restarting...\033[0m"); continue

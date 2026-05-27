@@ -1,1 +1,1 @@
-from gnom_hub.presentation.hub_app import *
+from gnom_hub.infrastructure.hub_app import *

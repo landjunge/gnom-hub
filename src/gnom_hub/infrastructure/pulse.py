@@ -1,5 +1,5 @@
 import time, threading
-from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.infrastructure.process.psutil_mgr import AGENTS, _get_proc
 
 def pulse_janitor():
