@@ -3,9 +3,9 @@ from typing import Optional
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
-from gnom_hub.domain.agent.entities import Agent
-from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository
-from gnom_hub.infrastructure.database.chat_repo import SQLiteChatRepository
+from gnom_hub.agents.entities import Agent
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.chat_repo import SQLiteChatRepository
 
 router = APIRouter()
 

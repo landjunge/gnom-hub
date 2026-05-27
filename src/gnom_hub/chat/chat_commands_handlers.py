@@ -1,13 +1,13 @@
 # chat_commands_handlers.py — Handlers for clear, status, and job command
 import uuid, re
 from datetime import datetime
-from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository
-from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository
-from gnom_hub.infrastructure.database.chat_repo import SQLiteChatRepository
-from gnom_hub.domain.chat.entities import ChatMessage
+from gnom_hub.db.state_repo import SQLiteStateRepository
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.chat_repo import SQLiteChatRepository
+from gnom_hub.chat.entities import ChatMessage
 
 def _post_chat(s, c):
-    from gnom_hub.database.legacy_db import add_chat_message, get_active_project
+    from gnom_hub.db.legacy_db import add_chat_message, get_active_project
     add_chat_message(get_active_project(), s, "war-room", "role_response", c)
 
 def handle_clear(q=""):
@@ -33,6 +33,6 @@ def handle_job(task):
         agent_repo.update_active_job(a.name, aj)
         if aj:
             import time; time.sleep(1.5); workers.append(a.name); dispatch(aj, target=a.name)
-    from gnom_hub.swarm_coordinator import start_coordinator
+    from gnom_hub.agents.swarm.swarm_coordinator import start_coordinator
     start_coordinator(task, workers)
     return {"status": "job_created"}

@@ -1,7 +1,13 @@
+from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import List
-from gnom_hub.domain.soul.repository import SoulRepository
 from .connection import get_db_conn
+
+class SoulRepository(ABC):
+    @abstractmethod
+    def save_fact(self, key: str, value: str) -> None: pass
+    @abstractmethod
+    def get_relevant_facts(self, query: str) -> List[str]: pass
 
 class SQLiteSoulRepository(SoulRepository):
     def save_fact(self, key: str, value: str) -> None:

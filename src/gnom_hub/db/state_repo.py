@@ -1,7 +1,21 @@
+from abc import ABC, abstractmethod
 import json
 from typing import Any
-from gnom_hub.domain.state.repository import StateRepository
 from .connection import get_db_conn
+
+class StateRepository(ABC):
+    @abstractmethod
+    def get_value(self, key: str, default: Any = None) -> Any: pass
+    @abstractmethod
+    def set_value(self, key: str, value: Any) -> None: pass
+    @abstractmethod
+    def get_active_project(self) -> str: pass
+    @abstractmethod
+    def set_active_project(self, name: str) -> None: pass
+    @abstractmethod
+    def get_language(self) -> str: pass
+    @abstractmethod
+    def set_language(self, lang: str) -> None: pass
 
 class SQLiteStateRepository(StateRepository):
     def get_value(self, key: str, default: Any = None) -> Any:

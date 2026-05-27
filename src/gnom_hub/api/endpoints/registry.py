@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from fastapi import APIRouter
 from pydantic import BaseModel
-from gnom_hub.domain.agent.entities import Agent
-from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository
+from gnom_hub.agents.entities import Agent
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
 
 router = APIRouter()
 
