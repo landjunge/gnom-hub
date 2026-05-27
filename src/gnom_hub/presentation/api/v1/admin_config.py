@@ -14,7 +14,7 @@ def set_role(agent_id: str, role: str):
     if not a: return {"error": "Agent not found"}
     c = ROLES[SR().get_language()].get(role)
     update_agent_role_memory(a["id"], c)
-    from gnom_hub.role_prompt import implant
+    from gnom_hub.agents.role_prompt import implant
     return {"agent": a["name"], "role": role, "file": implant(a["name"], c) if c else None}
 
 @router.get("/language")
