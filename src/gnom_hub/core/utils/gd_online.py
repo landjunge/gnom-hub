@@ -1,5 +1,5 @@
 # gd_online.py
-from gnom_hub.monitoring.monitoring import get_agent_metrics
+from gnom_hub.infrastructure.monitoring import get_agent_metrics
 
 def is_online(mgr, agent: str) -> bool:
     clean_name = agent.split("(")[0].strip().lower()
