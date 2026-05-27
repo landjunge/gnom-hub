@@ -11,7 +11,7 @@ def handle_shell(ans, ms, ag, perms, bs, wd):
                 from .soul_initializer import check_and_wait_breakpoint
                 check_and_wait_breakpoint(ag["name"], "before_shell", c)
                 
-                from .sandbox import run_in_sandbox
+                from gnom_hub.process.sandbox import run_in_sandbox
                 r = run_in_sandbox(c, agent=ag, timeout=30)
                 ans = ans.replace(o, f"[Shell ({c}):\n{(r.stdout+r.stderr)[:1500]}]")
             except Exception as e: ans = ans.replace(o, f"[Shell-Fehler: {str(e)[:80]}]")

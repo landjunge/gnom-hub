@@ -1,7 +1,7 @@
 # sandbox.py — Hybrid Docker & macOS Sandbox Executor
 import subprocess, os
-from .config import WORKSPACE_DIR
-from .sandbox_exec import run_sandboxed
+from gnom_hub.core.config import WORKSPACE_DIR
+from gnom_hub.process.sandbox_exec import run_sandboxed
 
 def is_docker_running():
     try: return subprocess.run(["docker", "ps"], capture_output=True, timeout=2).returncode == 0
@@ -9,7 +9,7 @@ def is_docker_running():
 
 def run_in_sandbox(command: str, agent=None, timeout: int = 30):
     if agent:
-        from .gatekeeper import verify_cmd
+        from gnom_hub.gatekeeper import verify_cmd
         if not verify_cmd(agent, command): raise PermissionError("Befehlsausführung verweigert.")
     wd = os.path.abspath(str(WORKSPACE_DIR))
     if is_docker_running():
