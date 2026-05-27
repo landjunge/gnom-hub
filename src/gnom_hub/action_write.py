@@ -47,7 +47,7 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                     rel_path = os.path.relpath(fpath, wd)
                     _git_commit_file(wd, rel_path, agent["name"])
 
-                    from .zwc_soul import add_agent_metadata
+                    from gnom_hub.soul.zwc_soul import add_agent_metadata
                     r = f"[System: Datei '{fname}' gespeichert.]" + add_agent_metadata(agent["name"], "")
 
                 except Exception as e: r = f"[System-Fehler: {fname}: {e}]"

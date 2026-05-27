@@ -1,4 +1,4 @@
-import threading; from .zwc_soul import strip_zwc; from .brainstorm_helpers import ask_llm, get_ctx
+import threading; from gnom_hub.soul.zwc_soul import strip_zwc; from .brainstorm_helpers import ask_llm, get_ctx
 def _run_phase(ags, q, ctx, bs=False):
     ts = [threading.Thread(target=ask_llm, args=(a, q, ctx, bs), daemon=True) for a in ags]
     [t.start() for t in ts]; [t.join(timeout=200) for t in ts]

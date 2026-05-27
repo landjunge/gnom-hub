@@ -4,7 +4,7 @@ def get_workspace_dir():
 def post(sender, content):
     add_chat_message(get_active_project(), sender, "war-room", "brainstorm", content, {"type": "brainstorm", "status": "open", "sender": sender})
 def get_ctx():
-    from .zwc_soul import strip_zwc; c = list(reversed(get_chat_history(get_active_project(), limit=8)))
+    from gnom_hub.soul.zwc_soul import strip_zwc; c = list(reversed(get_chat_history(get_active_project(), limit=8)))
     return "\n".join(f"[{m.get('sender','?')}] {strip_zwc(m['content'])[:1000]}" for m in c)
 def ask_llm(ag, q, ctx, bs_mode=False):
     from .tool_registry import format_tools_prompt; from .soul_initializer import get_soul; from .action_handlers import process_actions; from .db import set_agent_status, update_agent_active_job

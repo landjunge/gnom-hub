@@ -1,4 +1,4 @@
-from fastapi import APIRouter; from pydantic import BaseModel; from gnom_hub.zwc_soul import add_agent_metadata
+from fastapi import APIRouter; from pydantic import BaseModel; from gnom_hub.soul.zwc_soul import add_agent_metadata
 from gnom_hub.db import get_all_agents, get_active_project, add_chat_message, get_chat_history
 from gnom_hub.brainstorm import dispatch; from gnom_hub.soul import soul_instance
 from gnom_hub.showbox_validator import sanitize_showboxes; from .chat_helpers import _parse, _handle_sys
