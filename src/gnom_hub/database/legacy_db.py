@@ -4,8 +4,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from contextlib import contextmanager
-from .config import DATA_DIR
-from .log import get_logger
+from gnom_hub.core.config import DATA_DIR
+from gnom_hub.core.logger import get_logger
 
 # =====================================================================
 # CONFIGURATION & CONSTANTS
@@ -38,7 +38,7 @@ def get_db_conn():
 
 def _seed_agents(conn):
     """Initialisiert die 8 Standard-Agenten direkt in der übergebenen Verbindung."""
-    from .soul import soul_instance
+    from gnom_hub.soul import soul_instance
     try:
         for k, v in soul_instance.get_definitions().items():
             conn.execute("""
@@ -195,7 +195,7 @@ def init_db():
                 if not conn.execute("SELECT 1 FROM agents").fetchone():
                     _seed_agents(conn)
                 else:
-                    from .agent_definitions import AGENT_DEFINITIONS
+                    from gnom_hub.agent_definitions import AGENT_DEFINITIONS
                     for v in AGENT_DEFINITIONS.values():
                         conn.execute("UPDATE agents SET role = ? WHERE name = ?", (v["role"], v["name"]))
 
@@ -644,7 +644,7 @@ def save_soul_fact(key: str, value: str, agent: str = "System", priority: str = 
                              (key, value, datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), priority or "medium", ag))
                 row_id = cursor.lastrowid
         try:
-            from .embeddings import get_embedder
+            from gnom_hub.embeddings import get_embedder
             get_embedder().add_fact(str(row_id), key, value)
         except Exception as e:
             logger.warning(f"[DB] Failed to add fact to FAISS index: {e}")
@@ -665,7 +665,7 @@ def add_to_soul_memory(fact: str, priority: str = "medium", agent: str = "System
 
 def get_relevant_facts(user_message: str) -> list:
     try:
-        from .soul_retrieval import retrieve_relevant_facts
+        from gnom_hub.soul_retrieval import retrieve_relevant_facts
         return retrieve_relevant_facts(user_message)
     except Exception as e:
         logger.error(f"[DB] Failed to get relevant facts: {e}")
