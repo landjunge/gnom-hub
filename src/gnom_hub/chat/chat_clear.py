@@ -9,7 +9,7 @@ def handle_clear(q=""):
     from gnom_hub.database.legacy_db import get_active_project; p = get_active_project()
     if q == "@projekt":
         from gnom_hub.database.legacy_db import clear_project_chat; clear_project_chat(p)
-        import os, shutil; from .core.config import Config; wd = os.path.join(str(Config.WORKSPACE_DIR), p)
+        import os, shutil; from gnom_hub.core.config import Config; wd = os.path.join(str(Config.WORKSPACE_DIR), p)
         for f in os.listdir(wd):
             fp = os.path.join(wd, f)
             if os.path.isfile(fp): os.unlink(fp)

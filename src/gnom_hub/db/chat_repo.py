@@ -1,4 +1,18 @@
-import json; from datetime import datetime; from uuid import UUID; from typing import List, Optional; from gnom_hub.domain.chat.entities import ChatMessage, FlexSoul; from gnom_hub.domain.chat.repository import ChatRepository
+import json; from datetime import datetime; from uuid import UUID; from typing import List, Optional
+from abc import ABC, abstractmethod
+from gnom_hub.chat.entities import ChatMessage, FlexSoul
+
+class ChatRepository(ABC):
+    @abstractmethod
+    def get_messages(self, agent_id: UUID, limit: int = 50) -> List[ChatMessage]: pass
+    @abstractmethod
+    def save_message(self, message: ChatMessage) -> ChatMessage: pass
+    @abstractmethod
+    def get_flexsoul(self, agent_id: UUID) -> Optional[FlexSoul]: pass
+    @abstractmethod
+    def save_flexsoul(self, flexsoul: FlexSoul) -> FlexSoul: pass
+    @abstractmethod
+    def clear_history(self, agent_id: UUID) -> bool: pass
 from .connection import get_db_connection, Await, parse_dt
 def _row_to_msg(r) -> ChatMessage:
     role = "user" if r["sender"] == "user" else "assistant"

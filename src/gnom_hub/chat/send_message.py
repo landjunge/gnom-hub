@@ -1,9 +1,9 @@
 from uuid import UUID
-from ...domain.chat.entities import ChatMessage
-from ...domain.chat.repository import ChatRepository
-from ...domain.agent.repository import AgentRepository
-from ...infrastructure.llm.orchestrator import LLMOrchestrator
-from ...common.exceptions import ValidationError
+from gnom_hub.chat.entities import ChatMessage
+from gnom_hub.db.chat_repo import ChatRepository
+from gnom_hub.db.agent_repo import AgentRepository
+from gnom_hub.infrastructure.llm.orchestrator import LLMOrchestrator
+from gnom_hub.core.exceptions import ValidationError
 
 class SendMessageUseCase:
     """Use Case: Nachricht an einen Agenten senden mit intelligentem Auto-Routing."""

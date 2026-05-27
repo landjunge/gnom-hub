@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import List
-from ...domain.chat.entities import ChatMessage
+from gnom_hub.chat.entities import ChatMessage
 from .send_message import SendMessageUseCase
 from .brainstorm import BrainstormUseCase
 
