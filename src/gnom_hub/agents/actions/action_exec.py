@@ -21,7 +21,7 @@ def handle_crawl(ans, ms, ag, perms):
         u, o = m.group(1).strip(), m.group(0)
         if "@job" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine CRAWL-Berechtigung.]"); continue
         try:
-            from .crawler_engine import crawl_smart, crawl_data
+            from gnom_hub.infrastructure.utils.crawler_engine import crawl_smart, crawl_data
             t = crawl_data(u) if "data" in ag["name"].lower() else crawl_smart(u)
             ans = ans.replace(o, f"[Crawl-Ergebnis ({u[:60]}):\n{t[:3000]}]")
         except Exception as e: ans = ans.replace(o, f"[Crawl-Fehler: {str(e)[:80]}]")
