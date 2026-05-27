@@ -21,7 +21,9 @@ class StatusUpdate(BaseModel):
 def get_agent_status(a_id: str):
     repo = SQLiteAgentRepository()
     a = repo.get_by_id(a_id)
-    return {"status": a.status if a else "offline"}
+    st = a.status if a else "offline"
+    if st == "running": st = "online"
+    return {"status": st}
 
 @router.api_route("/api/agents/{a_id}/status", methods=["PUT", "POST"])
 async def set_status(a_id: str, request: Request, update: Optional[StatusUpdate] = None, status: Optional[str] = Query(None)):

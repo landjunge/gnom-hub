@@ -3,6 +3,8 @@
 
 <head>
   <script src="/api/showbox/themes"></script>
+  <link rel="stylesheet" href="/static/showbox.css">
+  <script src="/static/showbox.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gnom-Hub</title>
@@ -371,7 +373,7 @@
       border-right: 1px solid var(--glass-border);
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow-y: auto;
     }
 
     .sidebar-search {
@@ -626,8 +628,7 @@
     }
 
     .agent-list {
-      flex: 1 1 auto;
-      overflow-y: hidden;
+      flex: 0 0 auto;
       padding: 6px 8px;
     }
 
@@ -656,127 +657,7 @@
       top: -170px;
     }
 
-    @keyframes showbox-important-glow {
-      0% {
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.95);
-        border-color: rgba(255, 255, 255, 0.95);
-      }
-      10% {
-        box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.9);
-        border-color: rgba(0, 255, 255, 0.9);
-      }
-      20% {
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.95);
-        border-color: rgba(255, 255, 255, 0.95);
-      }
-      30% {
-        box-shadow: inset 0 0 30px rgba(255, 0, 255, 0.9);
-        border-color: rgba(255, 0, 255, 0.9);
-      }
-      40% {
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.95);
-        border-color: rgba(255, 255, 255, 0.95);
-      }
-      50% {
-        box-shadow: inset 0 0 30px rgba(255, 255, 0, 0.9);
-        border-color: rgba(255, 255, 0, 0.9);
-      }
-      60% {
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.95);
-        border-color: rgba(255, 255, 255, 0.95);
-      }
-      70% {
-        box-shadow: inset 0 0 30px rgba(0, 255, 0, 0.9);
-        border-color: rgba(0, 255, 0, 0.9);
-      }
-      80% {
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.95);
-        border-color: rgba(255, 255, 255, 0.95);
-      }
-      90% {
-        box-shadow: inset 0 0 30px rgba(255, 0, 0, 0.9);
-        border-color: rgba(255, 0, 0, 0.9);
-      }
-      100% {
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.95);
-        border-color: rgba(255, 255, 255, 0.95);
-      }
-    }
 
-    .showbox.glow-important {
-      animation: showbox-important-glow 1.2s linear infinite;
-    }
-
-    @keyframes showbox-agent-glow {
-      0% {
-        box-shadow: inset 0 0 20px var(--showbox-glow-color, rgba(255, 255, 255, 0.5));
-        border-color: var(--showbox-glow-color, rgba(255, 255, 255, 0.8));
-      }
-      50% {
-        box-shadow: inset 0 0 30px var(--showbox-glow-color, rgba(255, 255, 255, 0.8));
-        border-color: rgba(255, 255, 255, 0.95);
-      }
-      100% {
-        box-shadow: inset 0 0 20px var(--showbox-glow-color, rgba(255, 255, 255, 0.5));
-        border-color: var(--showbox-glow-color, rgba(255, 255, 255, 0.8));
-      }
-    }
-
-    .showbox.glow-agent {
-      animation: showbox-agent-glow 1.5s ease-in-out infinite;
-    }
-
-    @keyframes standbyPulse {
-      0% {
-        opacity: 0.4;
-        transform: scale(0.98);
-      }
-      100% {
-        opacity: 0.95;
-        transform: scale(1.02);
-      }
-    }
-
-    .standby-layer-1 {
-      position: absolute;
-      top: 4px;
-      left: 4px;
-      width: calc(100% - 8px);
-      height: calc(100% - 8px);
-      border: 1px solid rgba(0, 229, 255, 0.15);
-      border-radius: calc(var(--radius) - 2px);
-      background: radial-gradient(circle at center, rgba(0, 229, 255, 0.02) 0%, transparent 80%);
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .standby-layer-2 {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      width: calc(100% - 16px);
-      height: calc(100% - 16px);
-      border: 1px solid rgba(255, 0, 127, 0.12);
-      border-radius: calc(var(--radius) - 4px);
-      animation: standbyPulse 4s ease-in-out infinite alternate;
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    .standby-layer-3 {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      width: calc(100% - 24px);
-      height: calc(100% - 24px);
-      border: 1px solid rgba(57, 255, 20, 0.1);
-      border-radius: calc(var(--radius) - 6px);
-      pointer-events: none;
-      z-index: 3;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
 
     #preset-select {
       width: 100%;
@@ -819,42 +700,7 @@
       margin-bottom: 4px;
     }
 
-    .showbox-screen {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      margin: 0;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(0, 255, 255, 0.3);
-      border-radius: var(--radius);
-      box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      cursor: pointer;
-    }
 
-    .active-presentation {
-      background: rgba(10, 12, 20, 0.65) !important;
-      backdrop-filter: blur(12px) !important;
-      -webkit-backdrop-filter: blur(12px) !important;
-    }
-
-    #showbox-text {
-      transition: opacity 0.3s ease;
-      cursor: pointer;
-    }
-    #showbox-text img, 
-    #showbox-text video, 
-    #showbox-text iframe, 
-    #showbox-text audio {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      border-radius: 4px;
-    }
 
     .layer-content {
       font-size: 0.85rem;
@@ -1762,98 +1608,7 @@
     .timer-timeout-pulse {
       animation: timer-timeout-glow 0.3s ease-in-out infinite alternate !important;
     }
-    .showbox-hints {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 20px;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(10px);
-      padding: 6px 16px;
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      pointer-events: none;
-      z-index: 30;
-      font-size: 0.75rem;
-      font-family: monospace;
-      color: rgba(255, 255, 255, 0.4);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-      opacity: 0.15;
-      transition: opacity 0.3s ease, color 0.3s ease;
-    }
-    .showbox-layer-content {
-      color: var(--text);
-      font-weight: bold;
-      width: 100%;
-      text-align: center;
-      word-break: break-word;
-      line-height: 1.2;
-    }
-    #showbox.active-presentation:hover .showbox-hints {
-      opacity: 0.85;
-      color: rgba(255, 255, 255, 0.75);
-    }
-    .showbox-hints span {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
 
-    /* Showbox Responsive & Legibility Overrides */
-    #sb-screen-content, #showbox-text {
-      width: 100% !important;
-      max-width: 100% !important;
-      max-height: 100% !important;
-      overflow-y: auto !important;
-      box-sizing: border-box !important;
-      --scrollbar-thumb: rgba(0, 150, 255, 0.3);
-      --scrollbar-track: rgba(0, 0, 0, 0.2);
-      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-      scrollbar-width: thin;
-    }
-    @supports not (scrollbar-color: auto) {
-      #sb-screen-content::-webkit-scrollbar,
-      #showbox-text::-webkit-scrollbar {
-        width: 4px;
-      }
-      #sb-screen-content::-webkit-scrollbar-thumb,
-      #showbox-text::-webkit-scrollbar-thumb {
-        background: var(--scrollbar-thumb);
-        border-radius: 2px;
-      }
-      #sb-screen-content::-webkit-scrollbar-track,
-      #showbox-text::-webkit-scrollbar-track {
-        background: var(--scrollbar-track);
-      }
-    }
-    #sb-screen-content *, #showbox-text *, .showbox-overlay-content * {
-      max-width: 100% !important;
-      box-sizing: border-box !important;
-    }
-    /* Ensure standard typography is visible/readable in dark background themes */
-    #sb-screen-content h1, #sb-screen-content h2, #sb-screen-content h3, #sb-screen-content h4, #sb-screen-content h5, #sb-screen-content h6,
-    #showbox-text h1, #showbox-text h2, #showbox-text h3, #showbox-text h4, #showbox-text h5, #showbox-text h6,
-    .showbox-overlay-content h1, .showbox-overlay-content h2, .showbox-overlay-content h3, .showbox-overlay-content h4, .showbox-overlay-content h5, .showbox-overlay-content h6 {
-      color: #fff !important;
-      margin-top: 0.4em;
-      margin-bottom: 0.4em;
-    }
-    #sb-screen-content p, #showbox-text p, .showbox-overlay-content p {
-      color: #e0e8f0 !important;
-      line-height: 1.4;
-    }
-    #sb-screen-content ul, #sb-screen-content ol, #showbox-text ul, #showbox-text ol, .showbox-overlay-content ul, .showbox-overlay-content ol {
-      text-align: left;
-      display: inline-block;
-      margin: 8px auto;
-      padding-left: 20px;
-    }
-    #sb-screen-content li, #showbox-text li, .showbox-overlay-content li {
-      color: #e0e8f0 !important;
-      margin-bottom: 4px;
-    }
 
     /* ── Showbox Fullscreen Overlay ── */
     .showbox-overlay {
@@ -2104,23 +1859,14 @@
     </div>
 
     <div class="sidebar">
-      <div class="sidebar-search">
-        <input type="text" id="agent-search" placeholder="Agenten suchen…" oninput="filterAgents(this.value)">
+      <div class="sidebar-search" style="height: 60px; padding: 0; box-sizing: border-box; display: flex; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04);">
+        <input type="text" id="agent-search" style="display: none;" value="">
       </div>
       <div class="agent-list" id="agent-list"></div>
       
 
 
-      <div class="sidebar-square showbox showbox-screen" id="showbox" data-name="showbox" onclick="openShowboxOverlay()">
-        <!-- Layer 1: Outer Hologram Frame (Cyan) -->
-        <div class="standby-layer-1"></div>
-        <!-- Layer 2: Middle Hologram Frame (Magenta, Pulsing) -->
-        <div class="standby-layer-2"></div>
-        <!-- Layer 3: Inner Hologram Frame (Green) -->
-        <div class="standby-layer-3">
-          <div style="color: var(--text-dim); font-size: 0.72rem; font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px rgba(0,229,255,0.4); pointer-events: none;">STANDBY</div>
-        </div>
-      </div>
+      <div id="modular-showbox-container"></div>
     </div>
 
     <div class="content" id="content">
@@ -2771,6 +2517,7 @@
         return text ? JSON.parse(text) : null;
       } catch (e) { console.error('API:', path, e); return null; }
     }
+    window.api = api;
 
     function showPresetInShowbox(preset) {
       const focusMap = {
@@ -2796,9 +2543,6 @@
           <div class="layer-content showbox-layer-content" id="showbox-text" style="opacity:0; transition: opacity 0.3s ease;">
             <div style="font-size: 1.2rem; margin-bottom: 12px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 0 10px rgba(0,229,255,0.4);">${preset}</div>
             <div style="font-size: 0.95rem; font-weight: normal; line-height: 1.5; color: rgba(255,255,255,0.9); padding: 0 20px;">${info}</div>
-          </div>
-          <div class="showbox-hints">
-            <span>🎙️ @tts on/off</span>
           </div>
         `;
         sb.classList.add('active-presentation');
@@ -3125,8 +2869,6 @@
           const tFree = s.tokens_free ?? 0;
           const tPay = s.tokens_pay ?? 0;
           document.getElementById('s-tokens').textContent = `Free: ${tFree} | Pay: ${tPay}`;
-          if (document.getElementById('layer-tfree')) document.getElementById('layer-tfree').textContent = (tFree / 1000).toFixed(1) + 'K';
-          if (document.getElementById('layer-tpay')) document.getElementById('layer-tpay').textContent = (tPay / 1000).toFixed(1) + 'K';
         }
       }
     }
@@ -3644,36 +3386,6 @@
       }
       ta.value = '';
     }
-    function handleShowboxTimeCommand(m, ta, enable) {
-      window.showboxTimeEnabled = enable;
-      const c1 = document.getElementById('showbox-clock');
-      const c2 = document.getElementById('sb-panel-clock');
-      if (c1) c1.style.display = enable ? 'block' : 'none';
-      if (c2) c2.style.display = enable ? 'block' : 'none';
-      if (enable) updateShowboxClocks();
-      ta.value = '';
-      toast(enable ? '🕒 Showbox Clock Enabled' : '🕒 Showbox Clock Disabled', enable ? 'success' : 'info');
-      return true;
-    }
-    function handleShowboxTimerCommand(m, ta) {
-      if (m === '@showbox timer off') {
-        stopShowboxTimer();
-        ta.value = '';
-        toast('🕒 Showbox Timer Disabled', 'info');
-        return true;
-      }
-      const parts = m.substring(15).trim().split(/\s+/);
-      const val = parseFloat(parts[0]);
-      if (!isNaN(val)) {
-        const unit = parts[1] || 'min';
-        const secs = unit.startsWith('min') ? Math.round(val * 60) : Math.round(val);
-        startShowboxTimer(secs);
-        ta.value = '';
-        toast(`🕒 Showbox Timer set for ${val} ${unit}`, 'success');
-        return true;
-      }
-      return false;
-    }
     function handleChatCommands(msg, ta) {
       const m = msg.toLowerCase();
       if (m === '@tts on') { const cb = document.getElementById('tts-enabled'); if (cb) cb.checked = true; ta.value = ''; toast('🗣️ TTS Aktiviert', 'success'); return true; }
@@ -3682,9 +3394,6 @@
       if (m === '/ufo') { if (window.showUfoAttack) window.showUfoAttack(); return true; }
       if (m === '/ghost') { if (window.showGhost) window.showGhost(); return true; }
       if (m === '/coffee') { if (window.showCoffeeBreak) window.showCoffeeBreak(); return true; }
-      if (m === '@showbox time on') return handleShowboxTimeCommand(m, ta, true);
-      if (m === '@showbox time off') return handleShowboxTimeCommand(m, ta, false);
-      if (m.startsWith('@showbox timer')) return handleShowboxTimerCommand(m, ta);
       if (m.startsWith('@showbox speed ')) {
         handleShowboxSpeedCommand(m, ta);
         return true;
@@ -4009,63 +3718,7 @@
 
     _trackInterval(checkTimers, 60000); // Check every minute
 
-    window.showboxTimeEnabled = false;
-    function updateShowboxClocks() {
-      if (!window.showboxTimeEnabled) return;
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString();
-      const clock1 = document.getElementById('showbox-clock');
-      const clock2 = document.getElementById('sb-panel-clock');
-      if (clock1) clock1.innerText = timeStr;
-      if (clock2) clock2.innerText = timeStr;
-    }
-    _trackInterval(updateShowboxClocks, 1000);
 
-    window.showboxTimerInterval = null;
-    window.showboxTimerRemaining = 0;
-    function stopShowboxTimer() {
-      if (window.showboxTimerInterval) {
-        clearInterval(window.showboxTimerInterval);
-        window.showboxTimerInterval = null;
-      }
-      const t1 = document.getElementById('showbox-timer');
-      const t2 = document.getElementById('sb-panel-timer');
-      if (t1) t1.style.display = 'none';
-      if (t2) t2.style.display = 'none';
-      document.getElementById('layer-showbox')?.classList.remove('timer-timeout-pulse');
-      document.getElementById('sb-screen')?.classList.remove('timer-timeout-pulse');
-    }
-    function formatShowboxTimer(s) {
-      const min = Math.floor(s / 60).toString().padStart(2, '0');
-      const sec = (s % 60).toString().padStart(2, '0');
-      return `${min}:${sec}`;
-    }
-    function tickShowboxTimer() {
-      if (window.showboxTimerRemaining > 0) {
-        window.showboxTimerRemaining--;
-        const timeStr = formatShowboxTimer(window.showboxTimerRemaining);
-        const t1 = document.getElementById('showbox-timer');
-        const t2 = document.getElementById('sb-panel-timer');
-        if (t1) { t1.innerText = timeStr; t1.style.display = 'block'; }
-        if (t2) { t2.innerText = timeStr; t2.style.display = 'block'; }
-      }
-      if (window.showboxTimerRemaining === 0) {
-        clearInterval(window.showboxTimerInterval);
-        window.showboxTimerInterval = null;
-        document.getElementById('showbox')?.classList.add('timer-timeout-pulse');
-        document.getElementById('sb-screen')?.classList.add('timer-timeout-pulse');
-      }
-    }
-    function startShowboxTimer(secs) {
-      stopShowboxTimer();
-      window.showboxTimerRemaining = secs;
-      const timeStr = formatShowboxTimer(secs);
-      const t1 = document.getElementById('showbox-timer');
-      const t2 = document.getElementById('sb-panel-timer');
-      if (t1) { t1.innerText = timeStr; t1.style.display = 'block'; }
-      if (t2) { t2.innerText = timeStr; t2.style.display = 'block'; }
-      window.showboxTimerInterval = setInterval(tickShowboxTimer, 1000);
-    }
 
     window.coffeeTimer = null;
     window.coffeeFleeCount = 0;
@@ -4141,212 +3794,7 @@
       } catch (err) {
         document.getElementById('content').innerHTML = `<div class="empty" style="padding:80px 20px"><h2 style="color:red">UI Error</h2><p>${err.message}</p></div>`;
       }
-
-      window.showboxActive = false;
-      let showboxInterval = null;
-      let showboxTimeout = null;
-      window.activeShowboxIndex = -1;
-      window.showboxSpeed = window.showboxSpeed || 30000;
-
-    function resizeShowboxText(sbText, sbLayer) {
-      let size = 32;
-      sbText.style.fontSize = size + 'px';
-      while((sbText.scrollHeight > sbLayer.clientHeight - 10 || sbText.scrollWidth > sbLayer.clientWidth - 10) && size > 12) {
-        size--;
-        sbText.style.fontSize = size + 'px';
-      }
-    }
-    function isImportantShowboxContent(content) {
-      if (!content) return false;
-      if (Array.isArray(content)) {
-        return content.some(slide => isImportantShowboxContent(slide));
-      }
-      if (typeof content === 'object') {
-        if (content.important || content.priority === 'high' || content.priority === 'critical') return true;
-        if (content.slides) return isImportantShowboxContent(content.slides);
-        return isImportantShowboxContent(JSON.stringify(content));
-      }
-      const text = String(content).toLowerCase();
-      const importantKeywords = ['error', 'fehler', 'warn', 'wichtig', 'alarm', 'critical', 'achtung', 'fail', 'alert', 'success', 'erfolg', 'priorität', 'urgent', 'dringend', '!', 'warning', 'danger', 'gefahr', 'sicherheits', 'security'];
-      return importantKeywords.some(kw => text.includes(kw));
-    }
-    function updateShowboxText(sbText, sbLayer, showboxSteps, step) {
-      const content = showboxSteps[step];
-      sbText.innerHTML = content;
-      resizeShowboxText(sbText, sbLayer);
-      sbText.style.opacity = 1;
-
-      const showboxEl = document.getElementById('showbox');
-      if (showboxEl) {
-        showboxEl.style.setProperty('--showbox-glow-color', '');
-        showboxEl.classList.remove('glow-important', 'glow-agent');
-        
-        if (isImportantShowboxContent(content)) {
-          const sender = window.activeShowboxSender || '';
-          const sysNames = ['system', 'generalag', 'soulag', 'securityag', 'watchdogag', ''];
-          const isAgent = sender && !sysNames.includes(sender.toLowerCase());
-          
-          if (isAgent) {
-            const color = agentColor(sender);
-            showboxEl.style.setProperty('--showbox-glow-color', color);
-            showboxEl.classList.add('glow-agent');
-          } else {
-            showboxEl.classList.add('glow-important');
-          }
-        }
-      }
-    }
-    // ── Database-Backed Showbox List & Active Sync ──
-    window.showboxPresentations = [];
-    async function loadShowboxList() {
-      try {
-        const res = await api('GET', '/showbox/presentations');
-        if (res && Array.isArray(res)) {
-          window.showboxPresentations = res;
-          window.showboxes = res.map(p => p.slides);
-          
-        }
-        
-        // Fetch active showbox state from DB
-        const activeRes = await api('GET', '/showbox/active');
-        if (activeRes && activeRes.active !== undefined) {
-          if (activeRes.active) {
-            const idx = window.showboxPresentations.findIndex(p => p.name === activeRes.active);
-            if (idx >= 0) {
-              if (window.activeShowboxIndex !== idx || !window.showboxActive) {
-                triggerShowboxDirect(idx);
-              }
-            }
-          } else {
-            closeShowboxDirect();
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load showbox list:", err);
-      }
-    }
-    window.loadShowboxList = loadShowboxList;
-
-    async function selectShowboxByName(name) {
-      if (!name) {
-        await api('POST', '/showbox/active', { name: "" });
-        closeShowboxDirect();
-        return;
-      }
-      const idx = window.showboxPresentations.findIndex(p => p.name === name);
-      if (idx >= 0) {
-        await api('POST', '/showbox/active', { name: name });
-        triggerShowboxDirect(idx);
-      }
-    }
-    window.selectShowboxByName = selectShowboxByName;
-
-    function triggerShowboxDirect(showboxIndex, sender) {
-      if (document.getElementById('showbox-panel')) { selectPanelShowbox(showboxIndex); return; }
-      if (showboxInterval) clearInterval(showboxInterval);
-      if (showboxTimeout) clearTimeout(showboxTimeout);
-      
-      window.activeShowboxIndex = showboxIndex;
-      window.activeShowboxSender = sender || '';
-      const showboxSteps = window.showboxes[showboxIndex] || [["<span style='color:red;'>Keine Slides gefunden!</span>"]];
-      window.showboxActive = true;
-      let step = 0;
-      
-      const sb = document.getElementById('showbox');
-      if (!sb) return;
-
-      const renderSlide = () => {
-        const content = showboxSteps[step];
-        sb.innerHTML = `
-          <div class="layer-content showbox-layer-content" id="showbox-text" style="opacity:0; transition: opacity 0.3s ease;">${content}</div>
-          <div class="showbox-hints">
-            <span>🎙️ @tts on/off</span>
-          </div>
-        `;
-        sb.classList.add('active-presentation');
-        
-        sb.classList.remove('glow-important', 'glow-agent');
-        sb.style.setProperty('--showbox-glow-color', '');
-        if (isImportantShowboxContent(content)) {
-          const sysNames = ['system', 'generalag', 'soulag', 'securityag', 'watchdogag', ''];
-          const isAgent = window.activeShowboxSender && !sysNames.includes(window.activeShowboxSender.toLowerCase());
-          if (isAgent) {
-            const color = agentColor(window.activeShowboxSender);
-            sb.style.setProperty('--showbox-glow-color', color);
-            sb.classList.add('glow-agent');
-          } else {
-            sb.classList.add('glow-important');
-          }
-        }
-        
-        const sbText = document.getElementById('showbox-text');
-        if (sbText) {
-          resizeShowboxText(sbText, sb);
-          setTimeout(() => { sbText.style.opacity = 1; }, 50);
-        }
-        updateShowboxClocks();
-      };
-
-      renderSlide();
-
-      showboxInterval = setInterval(() => {
-        if (showboxSteps.length > 1) {
-          step = (step + 1) % showboxSteps.length;
-          const sbText = document.getElementById('showbox-text');
-          if (sbText) {
-            sbText.style.opacity = 0;
-            showboxTimeout = setTimeout(renderSlide, 300);
-          } else {
-            renderSlide();
-          }
-        }
-      }, window.showboxSpeed);
-    }
-
-    function closeShowboxDirect() {
-      if (showboxInterval) {
-        clearInterval(showboxInterval);
-        showboxInterval = null;
-      }
-      if (showboxTimeout) {
-        clearTimeout(showboxTimeout);
-        showboxTimeout = null;
-      }
-      window.activeShowboxIndex = -1;
-      window.showboxActive = false;
-      const showboxEl = document.getElementById('showbox');
-      if (showboxEl) {
-        showboxEl.classList.remove('active-presentation', 'glow-important', 'glow-agent');
-        showboxEl.style.setProperty('--showbox-glow-color', '');
-        showboxEl.innerHTML = `
-          <!-- Layer 1: Outer Hologram Frame (Cyan) -->
-          <div class="standby-layer-1"></div>
-          <!-- Layer 2: Middle Hologram Frame (Magenta, Pulsing) -->
-          <div class="standby-layer-2"></div>
-          <!-- Layer 3: Inner Hologram Frame (Green) -->
-          <div class="standby-layer-3">
-            <div style="color: var(--text-dim); font-size: 0.72rem; font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px rgba(0,229,255,0.4); pointer-events: none;">STANDBY</div>
-          </div>
-        `;
-      }
-    }
-
-    window.triggerShowbox = (idx, sender) => {
-      if (typeof idx === 'number') {
-        const p = window.showboxPresentations[idx];
-        if (p) {
-          selectShowboxByName(p.name);
-          return;
-        }
-      }
-      triggerShowboxDirect(idx, sender);
-    };
-
-    window.closeShowbox = () => {
-      api('POST', '/showbox/active', { name: "" });
-      closeShowboxDirect();
-    };
-  })();
+    })();
 
   // ── Showbox Center (Entfernt: Wird jetzt rein von Agenten gesteuert) ──
 

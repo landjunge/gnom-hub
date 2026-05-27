@@ -24,13 +24,28 @@ class BaseAgent:
         while True:
             c = self._req("get", "/api/chat?limit=10")
             if c is None: print(f"⚠️ {self.n}: Hub offline. Reconnect..."); await asyncio.sleep(5); continue
-            new = [m for m in c if m.get("id") not in self.seen and m.get("metadata",{}).get("sender","") == "user" and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
+            new = [m for m in c if m.get("id") not in self.seen and m.get("metadata",{}).get("sender","") in ("user", "GeneralAG") and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
             for m in c: self.seen.add(m.get("id"))
-            for m in new:
+            if new:
+                self._req("put", f"/api/agents/{self.n}/status?status=busy")
                 try:
-                    from gnom_hub.soul import soul_instance
-                    sys = soul_instance.inject_context(self.sys, m["content"], agent_name=self.n)
-                    r = ask_router(m["content"], sys, agent_name=self.n)
-                    if r.content and not r.content.startswith("[ROUTER-FEHLER]"): self._req("post", "/api/chat", {"content": str(r), "sender": self.n})
-                except Exception as e: print(f"[{self.n}] Error: {e}")
+                    for m in new:
+                        try:
+                            from gnom_hub.soul import soul_instance
+                            sys = soul_instance.inject_context(self.sys, m["content"], agent_name=self.n)
+                            r = ask_router(m["content"], sys, agent_name=self.n)
+                            if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
+                                from gnom_hub.action_handlers import process_actions
+                                from gnom_hub.brainstorm_helpers import get_workspace_dir
+                                wd = get_workspace_dir()
+                                soul = get_soul(self.n) or {"permissions": ["read"]}
+                                perms = soul.get("permissions", [])
+                                processed = process_actions(r.content, {"name": self.n}, perms, False, wd)
+                                import re
+                                think_match = re.search(r'(<think>[\s\S]*?</think>)', r.answer)
+                                think_prefix = think_match.group(1) + "\n\n" if think_match else ""
+                                self._req("post", "/api/chat", {"content": think_prefix + processed, "sender": self.n})
+                        except Exception as e: print(f"[{self.n}] Error: {e}")
+                finally:
+                    self._req("put", f"/api/agents/{self.n}/status?status=online")
             await asyncio.sleep(self.p)

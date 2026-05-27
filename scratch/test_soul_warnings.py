@@ -15,23 +15,23 @@ def test_soul_warnings():
     gnom_hub.db.init_db()
     
     # Save a test fact
-    save_soul_fact("test_warn_key", "Nutze immer tab als indentation.", agent="SoulAG")
+    save_soul_fact("test_warn_key", "Always use tab for indentation.", agent="SoulAG")
     
     # Reset/clear injections tracking
     soul_instance._injections.clear()
     
     # First injection (no warning)
     sys_prompt = "You are CoderAG."
-    res1 = soul_instance.inject_context(sys_prompt, "indentation", agent_name="CoderAG")
+    res1 = soul_instance.inject_context(sys_prompt, "What indentation style should I use for this project? Should I use tabs?", agent_name="CoderAG")
     print("First injection output:\n", res1)
     
     # Verify that the fact was injected
-    assert "Nutze immer tab" in res1
+    assert "Always use tab" in res1
     
     # Second injection (should trigger warning)
-    res2 = soul_instance.inject_context(sys_prompt, "indentation", agent_name="CoderAG")
+    res2 = soul_instance.inject_context(sys_prompt, "What indentation style should I use for this project? Should I use tabs?", agent_name="CoderAG")
     print("\nSecond injection output:\n", res2)
-    assert "Nutze immer tab" in res2
+    assert "Always use tab" in res2
     
     # Verify that a warning message was posted to the chat database
     hist_after = get_chat_history("default", limit=5)
@@ -43,7 +43,7 @@ def test_soul_warnings():
         
     assert len(warning_msgs) > 0, "No warning message was posted by SoulAG!"
     assert "@CoderAG" in warning_msgs[0]["content"], "Warning didn't target CoderAG!"
-    assert "Nutze immer tab" in warning_msgs[0]["content"], "Warning didn't mention the injected fact!"
+    assert "Always use tab" in warning_msgs[0]["content"], "Warning didn't mention the injected fact!"
     
     print("============================================================")
     print(" 🎉 SOULAG WARNING TEST PASSED SUCCESSFULLY!")

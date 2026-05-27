@@ -21,7 +21,11 @@ class ExplainableOutput:
     @property
     def content(self) -> str:
         """Roher LLM-Antworttext für interne/machine-parsed Calls."""
-        return self.answer
+        import re
+        if not self.answer:
+            return ""
+        cleaned = re.sub(r'<think>[\s\S]*?</think>', '', self.answer)
+        return cleaned.strip()
 
     def __str__(self) -> str:
         """Formatiertes Markdown mit Reasoning Chain, Confidence, Quellen."""

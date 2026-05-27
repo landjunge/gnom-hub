@@ -11,6 +11,7 @@ def list_agents():
     ags = [dict(a.__dict__) for a in repo.get_all()]
     for a in ags:
         if a.get("active_job"): a["status"] = "busy"
+        elif a.get("status") == "running": a["status"] = "online"
     return ags
 
 @router.get("/api/agents/search")

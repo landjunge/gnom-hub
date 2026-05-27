@@ -57,3 +57,41 @@ def handle_resume(q):
     set_agent_status(agent["name"], "busy")
     _post_chat("System", f"Agent **{agent['name']}** wurde fortgesetzt.")
     return {"status": "ok"}
+
+def handle_approve_decision(q):
+    decision_id = q.strip()
+    from .db import get_state_value, set_state_value, set_agent_status
+    pending = get_state_value("pending_decisions", {})
+    if decision_id in pending:
+        d = pending[decision_id]
+        d["status"] = "approved"
+        set_state_value("pending_decisions", pending)
+        if d["action_type"] == "WRITE":
+            writes = get_state_value("approved_security_writes", [])
+            writes.append(d["detail"])
+            set_state_value("approved_security_writes", writes)
+        elif d["action_type"] == "SHELL":
+            cmds = get_state_value("approved_security_commands", [])
+            cmds.append(d["detail"])
+            set_state_value("approved_security_commands", cmds)
+        set_agent_status(d["agent_name"], "busy")
+        _post_chat("System", f"Entscheidung '{decision_id}': Aktion von **{d['agent_name']}** wurde **erlaubt**.")
+        return {"status": "ok"}
+    else:
+        _post_chat("System", f"Fehler: Entscheidung '{decision_id}' nicht gefunden.")
+        return {"status": "error", "message": "Decision not found"}
+
+def handle_reject_decision(q):
+    decision_id = q.strip()
+    from .db import get_state_value, set_state_value, set_agent_status
+    pending = get_state_value("pending_decisions", {})
+    if decision_id in pending:
+        d = pending[decision_id]
+        d["status"] = "rejected"
+        set_state_value("pending_decisions", pending)
+        set_agent_status(d["agent_name"], "busy")
+        _post_chat("System", f"Entscheidung '{decision_id}': Aktion von **{d['agent_name']}** wurde **abgelehnt**.")
+        return {"status": "ok"}
+    else:
+        _post_chat("System", f"Fehler: Entscheidung '{decision_id}' nicht gefunden.")
+        return {"status": "error", "message": "Decision not found"}

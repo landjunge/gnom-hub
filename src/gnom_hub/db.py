@@ -625,7 +625,7 @@ def update_agent_role_memory(agent_id: str, role_content: str = None):
 # SOUL AG
 # =====================================================================
 
-def save_soul_fact(key: str, value: str, agent: str = "System"):
+def save_soul_fact(key: str, value: str, agent: str = "System", priority: str = "medium"):
     ag = (agent or "System").strip()
     limits = {
         "active_preset": ["GeneralAG", "SoulAG", "System"],
@@ -640,13 +640,14 @@ def save_soul_fact(key: str, value: str, agent: str = "System"):
     try:
         with get_db_conn() as conn:
             with conn:
-                cursor = conn.execute("INSERT OR REPLACE INTO soul_memory (key, value, timestamp) VALUES (?, ?, ?)", 
-                             (key, value, datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")))
+                cursor = conn.execute("INSERT OR REPLACE INTO soul_memory (key, value, timestamp, priority, agent) VALUES (?, ?, ?, ?, ?)", 
+                             (key, value, datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), priority or "medium", ag))
                 row_id = cursor.lastrowid
         try:
-            from .embeddings import SoulEmbedder
-            SoulEmbedder().add_fact(str(row_id), key, value)
-        except Exception: pass
+            from .embeddings import get_embedder
+            get_embedder().add_fact(str(row_id), key, value)
+        except Exception as e:
+            logger.warning(f"[DB] Failed to add fact to FAISS index: {e}")
     except sqlite3.Error as e:
         logger.error(f"[DB] Failed to save soul fact: {e}")
 
@@ -775,6 +776,12 @@ def get_active_showbox() -> str:
 def set_active_showbox(name: str):
     """Setzt den Namen der aktiven Showbox-Präsentation."""
     try:
+        if not name.startswith("Blockade:"):
+            pending = get_state_value("pending_decisions", {})
+            has_pending = any(d.get("status") == "pending" for d in pending.values())
+            if has_pending:
+                logger.info(f"[DB] Override active showbox to '{name}' blocked: pending decision in progress.")
+                return
         with get_db_conn() as conn:
             with conn:
                 conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('active_showbox', ?)", (json.dumps(name.strip()),))

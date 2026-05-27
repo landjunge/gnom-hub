@@ -1,17 +1,30 @@
 # soul_retrieval.py — Semantic Retrieval via local embeddings / fallbacks
 from .db import get_db_conn
-from .embeddings import SoulEmbedder
+from .embeddings import get_embedder
 
 def retrieve_relevant_facts(query: str, top_k: int = 5) -> list:
+    q_clean = query.strip()
+    if len(q_clean) < 25 or len(q_clean.split()) < 4:
+        return []
     try:
-        facts = SoulEmbedder().search_sync(query, top_k)
-        if facts: return facts
-    except Exception: pass
-    return _fetch_recent(top_k)
+        return get_embedder().search_sync(query, top_k)
+    except Exception:
+        return []
 
 def _fetch_recent(limit: int) -> list:
     try:
         with get_db_conn() as conn:
-            rows = conn.execute("SELECT key, value FROM soul_memory ORDER BY timestamp DESC LIMIT ?", (limit,)).fetchall()
+            rows = conn.execute("""
+                SELECT key, value FROM soul_memory 
+                ORDER BY 
+                    CASE priority
+                        WHEN 'high' THEN 1
+                        WHEN 'medium' THEN 2
+                        WHEN 'low' THEN 3
+                        ELSE 2
+                    END ASC,
+                    timestamp DESC 
+                LIMIT ?
+            """, (limit,)).fetchall()
             return [f"{r['key']}: {r['value']}" for r in rows]
     except Exception: return []

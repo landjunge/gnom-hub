@@ -1,4 +1,6 @@
 def get_tools_for_agent(soul: dict):
+    if soul.get("role") == "general":
+        return {}
     p, tm = soul.get("permissions", []), {
         "read_file": "Read files (also outside workspace with godmode)",
         "write_file": "Write files",
@@ -22,7 +24,8 @@ def get_tools_for_agent(soul: dict):
 def format_tools_prompt(soul: dict, name: str):
     t = get_tools_for_agent(soul)
     lines = [f"- {n}: {d}" for n, d in t.items()]
-    syn = "\nCommand Syntax:\n  [READ: filename] — Read file (godmode: any absolute path)"
+    syn = "\nCommand Syntax:"
+    if "read_file" in t: syn += "\n  [READ: filename] — Read file (godmode: any absolute path)"
     if "write_file" in t: syn += "\n  [WRITE: filename]content[/WRITE] — Write file"
     if "run_command" in t: syn += "\n  [SHELL: command] — Terminal (pip install, brew, system commands)"
     if "generate_image" in t: syn += "\n  [IMAGE: prompt] — Generate image"

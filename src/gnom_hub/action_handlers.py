@@ -14,7 +14,9 @@ def process_actions(ans, agent, perms, bs_mode, wd):
         if verify_write(agent, fn, content, wd, perms): w_ms.append(m)
         else: ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
     for m in re.finditer(r"\[READ:\s*(.*?)\]", ans):
-        if is_worker_blocked(agent, m.group(1).strip(), wd, perms): ans = ans.replace(m.group(0), f"[WatchdogAG: Lesezugriff blockiert.]")
+        name = (agent or {}).get("name", "Unknown")
+        role = (agent or {}).get("role", "")
+        if name.lower() == "generalag" or role == "general" or is_worker_blocked(agent, m.group(1).strip(), wd, perms): ans = ans.replace(m.group(0), f"[WatchdogAG: Lesezugriff blockiert.]")
         else: r_ms.append(m)
     for m in re.finditer(r"\[SHELL:\s*(.*?)\]", ans):
         cmd = m.group(1).strip()

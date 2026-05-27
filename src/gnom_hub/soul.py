@@ -1,12 +1,17 @@
 # soul.py — SoulAG Gedächtnis & Automatische Lerneinheit
-import json, threading, os, re, uuid; from .db import save_soul_fact, add_chat_message
+import json, threading, os, re, uuid, logging; from .db import save_soul_fact, add_chat_message
 from .soul_retrieval import retrieve_relevant_facts; from .router import ask_router; from .config import WORKSPACE_DIR
+_log = logging.getLogger("soul")
 class SoulAG:
     def __init__(self):
         self.name = "SoulAG"
         self._injections = {}
     def on_message(self, m: str, s: str):
-        if s.lower() == "user" or any(x in m.lower() for x in ["abschluss", "zusammenfassung", "[write:"]): threading.Thread(target=self._ex, args=(m,), daemon=True).start()
+        m_lower = m.lower()
+        if (s.lower() == "user" or 
+            any(x in m_lower for x in ["abschluss", "zusammenfassung", "[write:", "blockiert", "fehlt", "fehler", "berechtigung", "verweigert", "schreibrechte"]) or
+            ("kann" in m_lower and "nicht" in m_lower)):
+            threading.Thread(target=self._ex, args=(m,), daemon=True).start()
     def _val(self, k: str, v: str) -> int:
         kl = k.lower()
         if k == "active_preset": return 2 if str(v) in ["Web Development", "Graphic Design", "Audio Production", "Video Production", "Marketing & Copy", "Content Creation", "Research & Analysis"] else 0
@@ -14,12 +19,55 @@ class SoulAG:
             p = os.path.realpath(os.path.join(str(WORKSPACE_DIR), str(v)) if not os.path.isabs(str(v)) else str(v))
             return 0 if not p.startswith(os.path.realpath(str(WORKSPACE_DIR))) else (1 if any(x in p.replace("\\", "/").lower() for x in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]) else 2)
         return 2
+    def _is_dup(self, v: str) -> bool:
+        try:
+            from .embeddings import get_embedder
+            return get_embedder().has_similar(v, threshold=0.92)
+        except Exception: return False
     def _ex(self, m: str):
         try:
-            res = ask_router(f"Extrahiere Fakten.\nNachricht:\n{m}\nAntworte NUR mit JSON [{{\"key\": \"x\", \"value\": \"y\"}}]", sys="Du bist Lerneffekt-Extraktor.", agent_name="SoulAG").content
+            prompt = (
+                f"Nachricht des Users oder Agenten:\n\"\"\"\n{m}\n\"\"\"\n\n"
+                "Extrahiere alle relevanten, langfristig nützlichen Fakten, Präferenzen und Projekt-Einstellungen.\n"
+                "Antworte AUSSCHLIESSLICH im folgenden JSON-Format:\n"
+                "[\n"
+                "  {\n"
+                "    \"key\": \"ein_beschreibender_schluessel\",\n"
+                "    \"value\": \"Der präzise, eigenständige Fakt (z.B. 'Der User bevorzugt Python 3.11 und SQLite als Datenbank.')\",\n"
+                "    \"priority\": \"high\" // 'high' für Präferenzen, Projekt-Settings, Pfade, wiederholt Erwähntes; 'medium' für normale Fakten; 'low' für flüchtige/sekundäre Fakten\n"
+                "  }\n"
+                "]\n"
+                "Falls keine neuen Fakten enthalten sind, antworte mit einem leeren Array: []"
+            )
+            res = ask_router(
+                prompt,
+                sys=(
+                    "Du bist der SoulAG Lerneffekt-Extraktor von Gnom-Hub. Deine Aufgabe ist es, Nachrichten zu analysieren "
+                    "und qualitativ hochwertige, präzise und kategorisierte Fakten zu extrahieren. "
+                    "Befolge diese Regeln:\n"
+                    "1. Schlüssel (key) müssen deskriptiv, kleingeschrieben und mit Unterstrichen sein (z.B. user_pref_language, project_backend).\n"
+                    "2. Werte (value) müssen vollständig, grammatikalisch korrekt und im Kontext verständlich sein. Vermeide Pronomen.\n"
+                    "3. Weise eine Priorität ('high', 'medium', 'low') basierend auf der Wichtigkeit zu:\n"
+                    "   - 'high': Explizite Wünsche des Users, Präferenzen, Projekt-Einstellungen, Pfade, wiederholte Aussagen, oder ehrliche Ablehnungen/Einschränkungen von Agenten.\n"
+                    "   - 'medium': Allgemeine nützliche Fakten, Kontextinformationen, Workflow-Details.\n"
+                    "   - 'low': Flüchtige Details, Beispieldaten, untergeordnete Beobachtungen.\n"
+                    "4. Extrahiere keine flüchtigen Programmierfehler, Begrüßungen oder reinen Code-Spam.\n"
+                    "5. Antworte AUSSCHLIESSLICH mit dem JSON-Array. Kein Markdown, kein Einleitungstext."
+                ),
+                agent_name="SoulAG"
+            ).content
             s, e = res.find("["), res.rfind("]")
-            if s != -1 and e != -1: [save_soul_fact(f.get("key",""), f.get("value",""), agent="SoulAG") for f in json.loads(res[s:e+1]) if self._val(f.get("key",""), f.get("value","")) >= 2]
-        except Exception: pass
+            if s == -1 or e == -1: _log.debug("[Soul] LLM returned no JSON array for fact extraction"); return
+            for f in json.loads(res[s:e+1]):
+                k, v = f.get("key",""), f.get("value","")
+                p = f.get("priority", "medium").lower()
+                if p not in ["high", "medium", "low"]: p = "medium"
+                if self._val(k, v) < 2: _log.debug("[Soul] Fact rejected by validator: %s", k); continue
+                if self._is_dup(f"{k}: {v}"): _log.info("[Soul] Duplicate skipped: %s", k); continue
+                save_soul_fact(k, v, agent="SoulAG", priority=p)
+                _log.info("[Soul] Fact saved: %s (priority: %s)", k, p)
+        except json.JSONDecodeError as e: _log.warning("[Soul] JSON parse error in fact extraction: %s", e)
+        except Exception as e: _log.error("[Soul] Fact extraction failed: %s", e, exc_info=True)
     def inject_context(self, sys: str, msg: str, agent_name: str = None) -> str:
         facts = retrieve_relevant_facts(msg, top_k=8)
         if agent_name and facts:

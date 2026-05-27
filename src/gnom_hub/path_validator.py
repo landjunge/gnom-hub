@@ -10,8 +10,10 @@ def _safe(wd, f, perms):
     return p if p.startswith(os.path.realpath(wd)) else None
 
 def is_worker_blocked(agent, f, wd, perms):
+    name = (agent or {}).get("name", "Unknown")
     role = (agent or {}).get("role", "")
-    if role in ["soul", "general", "watchdog", "security"]: return False
+    if name.lower() == "generalag" or role == "general": return True
+    if role in ["soul", "watchdog", "security"]: return False
     p = _safe(wd, f, perms)
     if p:
         real_wd = os.path.realpath(wd)
@@ -28,8 +30,10 @@ def is_worker_blocked(agent, f, wd, perms):
     return False
 
 def is_security_block(agent, f, content, wd, perms):
+    name = (agent or {}).get("name", "Unknown")
     role = (agent or {}).get("role", "")
-    if role in ["soul", "general", "watchdog", "security"]: return False
+    if name.lower() == "generalag" or role == "general": return True
+    if role in ["soul", "watchdog", "security"]: return False
     if any(p in content for p in ["rm -rf", "eval(", "os.system(", "subprocess.", "exec(", "pickle.load", "chmod 777", "shutil.rmtree"]):
         from .db import get_state_value, add_chat_message
         approved = [os.path.realpath(os.path.join(wd, a)) for a in (get_state_value("approved_security_writes", []) or [])]
