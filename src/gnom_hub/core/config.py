@@ -1,6 +1,7 @@
 import os; from pathlib import Path; from dotenv import load_dotenv; load_dotenv()
 
 HOME = Path(os.getenv("GNOM_HUB_HOME", Path.home() / ".gnom-hub"))
+GNOM_HUB_HOME = HOME
 DATA_DIR, RUN_DIR = HOME / "data", HOME / "run"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 WORKSPACE_DIR, FRONTEND_DIR, CONFIG_DIR = PROJECT_ROOT / "gnom_workspace", PROJECT_ROOT / "frontend", PROJECT_ROOT / "config"
