@@ -27,7 +27,6 @@ async function showDashboard() {
   document.getElementById('content').innerHTML = `
     <div class="panel" id="dashboard-panel">
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
-        <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
         <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Agent Health Dashboard</h2>
       </div>
       <div id="swarm-status-banner" style="display:none; margin-top:15px; padding:15px; background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2); border-radius:var(--radius); box-shadow:0 0 20px rgba(0,229,255,0.05); backdrop-filter:blur(10px);">
@@ -207,14 +206,7 @@ async function showLLMConfig() {
   selectedId = null;
   document.getElementById('content').innerHTML = `
     <div class="panel" id="llm-panel" style="height:calc(100vh - 91px); box-sizing:border-box; display:flex; flex-direction:column; padding:15px 20px; background:rgba(10, 15, 30, 0.4); border:1px solid var(--glass-border); margin-bottom:0; overflow:hidden;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px; flex-shrink:0;">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <button class="btn-primary" onclick="showWarRoom()">◀ Zurück</button>
-          <h2 style="margin:0; font-size:1.1rem; font-weight:700; border:none; letter-spacing:0.5px; color:#fff; display:flex; align-items:center; gap:8px;">
-            <span>🤖 Swarm Intelligence & LLM Console</span>
-          </h2>
-        </div>
-      </div>
+
       
       <div class="llm-container" style="flex:1; min-height:0; display:grid; grid-template-columns:1fr 1.5fr; gap:20px; overflow:hidden;">
         <!-- Left Column: Settings Modules -->
@@ -320,7 +312,6 @@ async function showHelpPage() {
   document.getElementById('content').innerHTML = `
     <div class="panel" id="help-panel" style="display:flex; flex-direction:column; gap:12px; height:100%; box-sizing:border-box; padding:12px 15px;">
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
-        <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
         <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Help Center</h2>
       </div>
       <iframe src="/static/help.html" style="width: 100%; flex-grow:1; border: 1px solid var(--glass-border); border-radius: var(--radius); background: rgba(10, 12, 20, 0.5); min-height: 60vh;"></iframe>

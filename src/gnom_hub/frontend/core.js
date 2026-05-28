@@ -790,39 +790,23 @@ window.showGhost = () => {
 };
 
 window.trackView = (viewName) => {
-  if (window.currentView !== viewName) {
-    window.viewHistory.push(window.currentView);
-    window.currentView = viewName;
-  }
+  window.currentView = viewName;
   window.updateBackButtonState();
 };
 
 window.updateBackButtonState = () => {
   const btn = document.getElementById('btn-back');
   if (btn) {
-    const hasHistory = window.viewHistory.length > 0;
-    btn.disabled = !hasHistory;
-    btn.style.opacity = hasHistory ? '1' : '0.4';
-    btn.style.pointerEvents = hasHistory ? 'auto' : 'none';
+    const isNotChat = window.currentView !== 'war-room';
+    btn.disabled = !isNotChat;
+    btn.style.opacity = isNotChat ? '1' : '0.4';
+    btn.style.pointerEvents = isNotChat ? 'auto' : 'none';
   }
 };
 
 window.goBackView = () => {
-  if (window.viewHistory.length > 0) {
-    const prev = window.viewHistory.pop();
-    window.currentView = prev;
-    if (prev === 'war-room') {
-      if (typeof showWarRoom === 'function') showWarRoom();
-    } else if (prev === 'workspace') {
-      if (typeof showWorkspace === 'function') showWorkspace();
-    } else if (prev === 'dashboard') {
-      if (typeof showDashboard === 'function') showDashboard();
-    } else if (prev === 'llm') {
-      if (typeof showLLMConfig === 'function') showLLMConfig();
-    } else if (prev === 'help') {
-      if (typeof showHelpPage === 'function') showHelpPage();
-    }
-    window.updateBackButtonState();
+  if (window.currentView !== 'war-room') {
+    if (typeof showWarRoom === 'function') showWarRoom();
   }
 };
 

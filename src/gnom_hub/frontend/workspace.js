@@ -8,10 +8,7 @@ async function showWorkspace() {
   document.getElementById('content').innerHTML = `
     <div class="panel" id="workspace-panel" style="padding:12px 15px;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; flex-wrap:nowrap;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <button class="btn-primary" onclick="showWarRoom()" style="padding: 2px 6px; font-size:0.75rem;">◀ Zurück</button>
-          <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Workspace</h2>
-        </div>
+        <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Workspace</h2>
         <button class="btn-primary" onclick="loadWorkspace()" style="padding: 2px 8px; font-size:0.75rem; white-space:nowrap;">Refresh</button>
       </div>
       <div id="workspace-list"><div class="empty">Loading files...</div></div>

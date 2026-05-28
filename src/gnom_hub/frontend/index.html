@@ -377,7 +377,37 @@
       /* Keep dark */
       border-color: rgba(0, 150, 255, 0.8);
       transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 6px 24px rgba(0, 150, 255, 0.7);
+      box-shadow: 0 6px 17px rgba(0, 150, 255, 0.49);
+    }
+
+    #btn-back:not(:disabled) {
+      color: var(--green) !important;
+      border-color: rgba(57, 255, 20, 0.4) !important;
+    }
+
+    #btn-back:not(:disabled):hover {
+      border-color: rgba(57, 255, 20, 0.8) !important;
+      background: rgba(57, 255, 20, 0.15) !important;
+      box-shadow: 0 6px 17px rgba(57, 255, 20, 0.49) !important;
+    }
+
+    #btn-save:not(:disabled) {
+      color: #ffa500 !important;
+      border-color: rgba(255, 165, 0, 0.4) !important;
+    }
+
+    #btn-save:not(:disabled):hover {
+      border-color: rgba(255, 165, 0, 0.8) !important;
+      background: rgba(255, 165, 0, 0.15) !important;
+      box-shadow: 0 6px 17px rgba(255, 165, 0, 0.49) !important;
+    }
+
+    #btn-back:disabled,
+    #btn-save:disabled {
+      color: var(--text-dim) !important;
+      border-color: var(--glass-border) !important;
+      box-shadow: none !important;
+      opacity: 0.4 !important;
     }
 
     .btn-speaker {
@@ -401,7 +431,7 @@
       background: linear-gradient(135deg, #0A1128, #050814);
       border-color: rgba(0, 150, 255, 0.8);
       transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 6px 24px rgba(0, 150, 255, 0.7);
+      box-shadow: 0 6px 17px rgba(0, 150, 255, 0.49);
     }
 
     .btn-mic {
@@ -426,7 +456,7 @@
       background: linear-gradient(135deg, #0A1128, #050814);
       border-color: rgba(255, 51, 102, 0.8);
       transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 6px 24px rgba(255, 51, 102, 0.7);
+      box-shadow: 0 6px 17px rgba(255, 51, 102, 0.49);
     }
 
     .btn-speaker input {
