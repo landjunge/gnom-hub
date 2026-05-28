@@ -2011,11 +2011,6 @@
     </div>
     <div class="status-lamps" id="status-lamps"></div>
     <div class="header-right">
-      <div class="header-stats">
-        <div class="stat-badge">Tokens: <span id="s-tokens">0</span></div>
-        <div class="stat-badge">Agents: <span id="s-agents">0</span></div>
-        <div class="stat-badge">Memory: <span id="s-memory">0</span></div>
-      </div>
       <button class="btn-primary" onclick="showWorkspace()">Workspace</button>
       <button class="btn-primary" onclick="showDashboard()">Dashboard</button>
       <button class="btn-primary" onclick="showLLMConfig()">LLM</button>
@@ -2065,8 +2060,20 @@
     </div>
 
     <div class="sidebar">
-      <div class="sidebar-search" style="height: 60px; padding: 0; box-sizing: border-box; display: flex; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04);">
+      <div class="sidebar-search" style="height: 60px; padding: 6px 15px !important; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-family: 'Inter', sans-serif; font-weight: 100 !important; font-size: 0.65rem; color: rgba(255,255,255,0.6); letter-spacing: 0.3px;">
         <input type="text" id="agent-search" style="display: none;" value="">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 100 !important;">
+          <span style="font-weight: 100 !important;">Tokens:</span>
+          <span id="s-tokens" style="font-weight: 100 !important; color: rgba(255,255,255,0.95);">0</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 100 !important;">
+          <span style="font-weight: 100 !important;">Agents:</span>
+          <span id="s-agents" style="font-weight: 100 !important; color: rgba(255,255,255,0.95);">0</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 100 !important;">
+          <span style="font-weight: 100 !important;">Memory:</span>
+          <span id="s-memory" style="font-weight: 100 !important; color: rgba(255,255,255,0.95);">0</span>
+        </div>
       </div>
       <div class="agent-list" id="agent-list"></div>
       
