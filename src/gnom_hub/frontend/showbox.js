@@ -78,17 +78,17 @@
     container.innerHTML = `
       <div class="showbox-layers-container" id="sb-layers-container">
         <div class="sb-layer active" id="sb-layer-1" data-layer="1">
-          <span class="sb-layer-label">System-Agenten</span>
+          <span class="sb-layer-label"><span class="sb-layer-id">#1001</span>System-Agenten</span>
           <span class="sb-layer-description">Aktivität & System-Status</span>
           <div class="sb-layer-body" id="sb-layer-body-1">STANDBY</div>
         </div>
         <div class="sb-layer" id="sb-layer-2" data-layer="2">
-          <span class="sb-layer-label">Worker</span>
+          <span class="sb-layer-label"><span class="sb-layer-id">#1002</span>Worker</span>
           <span class="sb-layer-description">Arbeitsberichte & Entwürfe</span>
           <div class="sb-layer-body" id="sb-layer-body-2">STANDBY</div>
         </div>
         <div class="sb-layer" id="sb-layer-3" data-layer="3">
-          <span class="sb-layer-label">User / Entscheidung</span>
+          <span class="sb-layer-label"><span class="sb-layer-id">#1003</span>User / Entscheidung</span>
           <span class="sb-layer-description">Freigaben & Blockaden</span>
           <div class="sb-layer-body" id="sb-layer-body-3">STANDBY</div>
         </div>
