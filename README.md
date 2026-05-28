@@ -114,6 +114,22 @@ Gnom-Hub has been developed through a structured hardening process:
 *   **Agent Limit Enforcement**: Restricts active agent counts to exactly 4 worker and 4 system agents (with automatic test-mode bypasses) to prevent uncontrolled swarm growth.
 *   **Console Performance Tuning**: Rewrote sequential configuration fetches into parallel `Promise.all` requests and added a 30s TTL cache with 0.5s timeout for model availability checks, eliminating UI lag.
 
+### 🔄 Phase 17: Swarm Stability & Loop Prevention
+*   **Mention Depth Restrictions**: Automatically limits cascading agent-to-agent mentions to a maximum depth of 3 to prevent recursive infinite loops.
+*   **Active Job Reset Watcher**: A background cleaner (`pulse_janitor`) monitors agent statuses and automatically resets hanging "busy" agents back to "online" after 5 minutes of inactivity.
+*   **Preset Transaction Locks**: Encapsulates DB writes during preset switching in an atomic SQLite transaction (`BEGIN IMMEDIATE TRANSACTION`) to prevent lock collisions.
+
+### 🎨 Phase 18: Sidebar Placeholders & Header Layout
+*   **Sidebar Metrics Relocation**: Moved global stats (Tokens, Agents, Memory) from the header back to the sidebar in a thin font layout.
+*   **Fixed Dimension Spacers**: Added two fixed 30px height placeholders (exactly 50% of the original search box height) flanking the stats module.
+*   **Symmetric Header Buttons**: Reverted the left header stats module to keep a clean logo, and styled the right header buttons with a uniform width of 86px (based on the `Workspace` button template) with centered text.
+
+### 💾 Phase 19: Global Header Actions & Clean UI Navigation
+*   **Header Navigation buttons**: Added two half-width buttons (43px) to the header navigation panel:
+    *   **Back Button (`↩`)**: Restores the previous view using a dynamic history stack (`window.viewHistory`), disabling itself when no history exists.
+    *   **Save Button (`💾`)**: Saves settings contextually (LLM keys/routings if in the LLM config panel, or agent optimizer settings if an agent is selected in the sidebar).
+*   **Clean UI Form Overhauls**: Operates out all redundant local "Speichern" and "Apply & Save" buttons from the settings console and the sidebar agent inspector, providing a streamlined, unified save experience.
+
 ---
 
 ## 📐 The 40-Line Rule

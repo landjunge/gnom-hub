@@ -143,6 +143,22 @@ Das System wurde in einem strukturierten Prozess um folgende Funktionen erweiter
 *   **Agenten-Limitierung (4/4-Regel)**: Begrenzung des Schwarms auf exakt 4 Worker- und 4 System-Agenten (mit automatischer Test-Bypass-Regel im Integrationsmodus), um unkontrolliertes Spawnen neuer Agenten zu blockieren.
 *   **Performance-Optimierung der LLM-Konsole**: Umstellung sequentieller API-Anfragen im Frontend auf parallele `Promise.all`-Abfragen sowie Integration eines 30-Sekunden-Arbeitsspeicher-Caches mit 0,5s-Timeout für die Modell-Verfügbarkeit, um jegliche UI-Verzögerungen zu eliminieren.
 
+### 🔄 Phase 17: Swarm-Stabilität & Loop-Prävention
+*   **Mention-Tiefe begrenzen**: Reduzierung automatischer Kaskaden von Agenten-Erwähnungen auf ein Maximum von 3, um rekursive Endlosschleifen zu unterbinden.
+*   **Hängende Jobs bereinigen**: Watcher-Erweiterung (`pulse_janitor`), der blockierte Worker-Agenten (Status busy über 5 Minuten) automatisch wieder auf online setzt.
+*   **Transaktionssichere Preset-Wechsel**: Ausführen aller DB-Schreibzugriffe bei Preset-Änderungen in einer SQLite `BEGIN IMMEDIATE TRANSACTION`, um Race-Conditions mit parallel laufenden Agenten-Jobs zu verhindern.
+
+### 🎨 Phase 18: Sidebar-Platzhalter & Header-Layout
+*   **Sidebar Metriken-Verlagerung**: Verschieben der globalen Metriken (Tokens, Agents, Memory) zurück in die linke Sidebar in feinem Schriftdesign.
+*   **Feste Platzhalter-Abstände**: Zwei Platzhalter mit einer festen Höhe von exakt 30px (50% der ursprünglichen Suchbox-Größe) umschließen das Metriken-Modul oben und unten.
+*   **Symmetrische Navigationsleiste**: Zurücksetzen des linken Header-Bereichs auf das saubere Logo und Festlegen einer einheitlichen Breite von 86px (Vorlage: Workspace-Button) für alle Header-Navigations-Buttons mit zentriertem Text.
+
+### 💾 Phase 19: Globale Header-Aktionen & Bereinigung lokaler Speicher-Buttons
+*   **Navigations-Buttons im Header**: Hinzufügen von zwei 43px breiten (halb so breiten) Buttons in die Navigationsleiste:
+    *   **Zurück (`↩`)**: Blättert die Seitenverläufe dynamisch rückwärts durch (`goBackView()` über `window.viewHistory`) und deaktiviert sich selbst, wenn kein Verlauf vorliegt.
+    *   **Speichern (`💾`)**: Löst kontextbezogen den Speichern-Vorgang aus (die LLM-Keys/Routings im LLM-Panel, oder die Einstellungen im Agenten-Inspector in der Sidebar).
+*   **Radikale Button-Bereinigung**: Vollständiges Entfernen aller redundanten lokalen "Speichern"- und "Apply & Save"-Buttons aus dem Dashboard und dem Agent-Inspector für ein sauberes, einheitliches Bedienkonzept.
+
 ---
 
 ## 🏗️ Kern-Architektur
