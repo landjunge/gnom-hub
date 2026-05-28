@@ -28,6 +28,25 @@ Unlike heavy, auto-spawning agent frameworks that suffer from token-burn and unc
 
 ---
 
+## 🚀 Key Features
+
+Gnom-Hub combines robust multi-process orchestration with an interactive web interface. Key features include:
+
+*   **Intelligent & Flexible Agent Routing**:
+    The central LLM router dynamically routes queries to the most suitable model (e.g., DeepSeek-Reasoner, Claude, GPT). In case of API outages or network limits, it falls back transparently to configured local models (like offline Llama via Ollama) to keep the swarm moving.
+*   **Layer-Based Visual Showbox System**:
+    The dashboard's Showbox displays work results, text drafts, and UI mockups in real-time across interactive layers. Each layer has a distinct color code and triggers a temporary flash effect (highlighting borders) on the corresponding agent group (Worker sidebar or System top-bar) upon switching, providing immediate visual feedback on the source of the data.
+*   **Fully Modularized Frontend**:
+    The glassmorphic web dashboard has been refactored from a massive monolithic file into 7 specialized JavaScript modules. This guarantees a clean separation of concerns (decoupling chat, workspace, bento metrics, and status LEDs) and simplifies codebase maintenance.
+*   **Shared Semantic Long-Term Memory**:
+    All agents share a persistent SQLite database. SoulAG monitors chats, extracts relevant facts, and dynamically injects the top 8 most relevant entries into worker prompts via FAISS semantic search (falling back to TF-IDF cosine-similarity math if libraries are missing) to prevent repetitive mistakes.
+*   **Structured Brainstorming Mode (`@bs`)**:
+    The `@bs [topic]` command triggers a coordinated swarm debate. All worker agents analyze the problem in parallel brainstorm states, while GeneralAG consolidates and filters the answers into a single, structured action plan.
+*   **Bento-Grid Live Status Dashboard**:
+    Provides real-time visibility into swarm health. The glassmorphic Bento-Grid displays active daemon statuses (heartbeats polled via `/api/metrics`), latency charts, token expenditure, and incorporates an interactive user feedback panel.
+
+---
+
 ## 🏗️ Architecture & Core Components
 
 Gnom-Hub is split into a **modular frontend dashboard** and a **structured backend service**:

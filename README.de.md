@@ -28,6 +28,25 @@ Im Gegensatz zu komplexen, autonom-spawnenden Agenten-Frameworks, die oft unkont
 
 ---
 
+## 🚀 Features (Funktionsumfang)
+
+Gnom-Hub kombiniert eine robuste Multi-Prozess-Orchestrierung mit einem interaktiven Web-Interface. Die wichtigsten Features umfassen:
+
+*   **Intelligentes & flexibles Agenten-Routing**:
+    Der zentrale LLM-Router leitet Anfragen dynamisch an das am besten geeignete Modell (z. B. DeepSeek-Reasoner, Claude, GPT) weiter. Bei API-Ausfällen oder Netzwerksperren greift das System vollautomatisch auf konfigurierte lokale Fallbacks (wie eine Offline-Llama-Instanz über Ollama) zurück, um Blockaden im Swarm zu verhindern.
+*   **Layer-basiertes visuelles System in der Showbox**:
+    Die Showbox im Web-Dashboard stellt Arbeitsergebnisse, Textentwürfe und UI-Mockups in Echtzeit auf interaktiven Informationsebenen (Layern) dar. Jeder Layer besitzt eine feste farbliche Kennzeichnung und erzeugt beim Wechsel einen visuellen Highlight-Effekt (Blinken) an der zugehörigen Agenten-Gruppe (Worker oder System-Agenten), um dem Nutzer sofort die Herkunft der Information anzuzeigen.
+*   **Vollständig modularisiertes Frontend**:
+    Das glassmorphe Web-Dashboard wurde vollständig refaktoriert: Anstelle einer riesigen, monolithischen JavaScript-Datei im HTML-Code ist das UI nun in 7 hochgradig spezialisierte JavaScript-Module aufgeteilt. Dies gewährleistet eine saubere Trennung der Zuständigkeiten (Trennung von Chat, Workspace, Bento-Metriken und System-LEDs) und vereinfacht zukünftige Anpassungen.
+*   **Gemeinsames, semantisches Langzeitgedächtnis**:
+    Alle Agenten teilen sich eine persistente SQLite-Wissensbasis. SoulAG analysiert Chats und Interaktionen, speichert relevante Erkenntnisse ab und injiziert diese kontextabhängig via FAISS-Vektorsuche (oder mathematischem TF-IDF-Fallback bei fehlenden Bibliotheken) vor jedem LLM-Call direkt in den Systemprompt der Worker, um wiederholte Fehler zu vermeiden.
+*   **Strukturierter Brainstorming-Modus (`@bs`)**:
+    Über den Befehl `@bs [Thema]` wird eine koordinierte Agenten-Diskussion angesoßen. Alle Worker-Agenten analysieren das Problem parallel im Brainstorm-Modus, während GeneralAG anschließend die Ergebnisse konsolidiert, filtert und dem Nutzer in einem strukturierten Aktionsplan präsentiert.
+*   **Bento-Grid Dashboard mit Live-Status**:
+    Das Dashboard bietet Echtzeit-Observability für den gesamten Schwarm. Über ein glassmorphes Bento-Grid-Layout werden der Live-Status jedes Daemons (Heartbeat-Überwachung via `/api/metrics`), durchschnittliche Latenzen, Erfolgsraten, Tokenverbräuche sowie das Benutzer-Feedback-Panel direkt angezeigt.
+
+---
+
 ## 🏗️ Architektur & Kern-Komponenten
 
 Gnom-Hub teilt sich in ein **modularisiertes Frontend-Dashboard** und einen **strukturierten Backend-Service**:
