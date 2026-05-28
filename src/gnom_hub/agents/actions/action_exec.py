@@ -29,7 +29,7 @@ def handle_crawl(ans, ms, ag, perms):
 def handle_showbox(ans, ms):
     from gnom_hub.core.json_sanitizer import _sanitize_json
     from agents.securityAG import generate_signature
-    from .db import save_showbox_presentation, set_active_showbox
+    from gnom_hub.db.legacy_db import save_showbox_presentation, set_active_showbox
     for full, idx, raw in ms:
         try:
             d = _sanitize_json(raw.strip())

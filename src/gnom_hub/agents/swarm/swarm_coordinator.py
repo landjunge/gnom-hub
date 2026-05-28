@@ -3,7 +3,7 @@ import time, threading, re
 from .infrastructure.database.agent_repo import SQLiteAgentRepository as AR
 from .infrastructure.database.state_repo import SQLiteStateRepository as SR
 from gnom_hub.agents.role_tools import _llm; from gnom_hub.chat.brainstorm.brainstorm import _collect_worker_responses, dispatch
-from gnom_hub.chat.brainstorm.brainstorm_helpers import post, get_workspace_dir; from gnom_hub.action_handlers import process_actions; from gnom_hub.soul import get_soul
+from gnom_hub.chat.brainstorm.brainstorm_helpers import post, get_workspace_dir; from gnom_hub.agents.actions.action_handlers import process_actions; from gnom_hub.soul import get_soul
 def _wait(ar, workers, timeout=40):
     t0 = time.time()
     while time.time() - t0 < timeout and any(a.active_job for a in ar.get_all() if a.name in workers): time.sleep(2)

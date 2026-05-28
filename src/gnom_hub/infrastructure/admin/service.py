@@ -1,10 +1,10 @@
 from ...core.config import Config
-from ..database.schema import create_tables
+from ..database.schema import init_database
 
 class AdminService:
     def nuke(self):
         Config.DB_PATH.unlink(missing_ok=True)
-        create_tables()
+        init_database()
 
     def clean(self):
         for p in Config.LOG_DIR.glob("**/*"):

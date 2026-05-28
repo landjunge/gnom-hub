@@ -1,85 +1,61 @@
-# 🧠 Gnom-Hub – Projektstruktur & Architektur
+# 🧠 Gnom-Hub – Reale Projektstruktur & Architektur
 
-Dieses Dokument beschreibt die finale Ordnerstruktur und Architektur von **Gnom-Hub**. Das Projekt folgt den Prinzipien der **Clean Architecture**, sodass die Abhängigkeiten strikt von außen nach innen verlaufen.
-
----
-
-### Abhängigkeitsregel (The Dependency Rule)
-
-**Äußere Schichten dürfen innere Schichten kennen – umgekehrt nie.**
-
-Die `domain` ist das Herzstück des Systems und enthält keinerlei technische Abhängigkeiten.
+Dieses Dokument beschreibt die tatsächliche Ordnerstruktur und die Kern-Komponenten von **Gnom-Hub**.
 
 ---
 
-### Ordnerstruktur
+## Wurzelverzeichnis (Root)
+
+Im Projekt-Root befinden sich die administrativen und betrieblichen Verzeichnisse:
 
 ```text
-src/gnom_hub/
-├── core/                    # Globale Konfiguration & Utilities
-│   ├── config.py
-│   └── logger.py
+/
+├── agents/             # Minimalistische Start-Skripte für die 8 Hintergrund-Agenten
+├── config/             # Konfigurationsdateien (.env, Presets, Token-Budgets)
+├── data/               # Lokale FAISS-Indizes, Vektor-Datenbank und Cache
+├── docs/               # Technische Berichte und Entwickler-Dokumentationen
+├── gnom_workspace/     # Das Arbeitsverzeichnis, in dem Worker-Agenten agieren
+├── logs/               # Logdateien der Hintergrundprozesse und des Servers
+├── scratch/            # Testskripte, Demos und temporäre Skripte
+├── scripts/            # Installations- und Setup-Skripte
+├── src/                # Quellcode-Paket
+│   └── gnom_hub/       # Kernpaket von Gnom-Hub (siehe unten)
 │
-├── common/                  # Schichtenübergreifende Komponenten
-│   └── exceptions.py
-│
-├── domain/                  # Geschäftsregeln & Datenmodelle
-│   ├── agent/
-│   │   ├── entities.py
-│   │   └── repository.py
-│   ├── chat/
-│   │   ├── entities.py
-│   │   └── repository.py
-│   └── workspace/
-│       ├── entities.py
-│       └── rules.py
-│
-├── application/             # Anwendungsfälle (Use Cases)
-│   ├── agent/
-│   │   ├── commands.py
-│   │   └── queries.py
-│   ├── chat/
-│   │   ├── send_message.py
-│   │   ├── brainstorm.py
-│   │   └── service.py
-│   ├── security/
-│   │   ├── verify_files.py
-│   │   └── policy.py
-│   └── workspace/
-│       └── validation.py
-│
-├── infrastructure/          # Technische Implementierungen
-│   ├── database/
-│   │   ├── connection.py
-│   │   ├── schema.py
-│   │   ├── agent_repo.py
-│   │   └── chat_repo.py
-│   ├── process/
-│   │   └── manager.py
-│   └── llm/
-│       ├── openrouter.py
-│       ├── ollama.py
-│       └── orchestrator.py
-│
-├── presentation/            # API-Schicht
-│   ├── api/
-│   │   ├── v1/
-│   │   │   ├── agents.py
-│   │   │   ├── chat.py
-│   │   │   └── admin.py
-│   │   └── router.py
-│   └── app.py
-│
-└── __main__.py
+├── gnomhub.db          # Inaktive 0-Byte SQLite-Datei (Live-DB liegt unter ~/.gnom-hub/)
+├── pyproject.toml      # Paket-Konfiguration und Python-Abhängigkeiten
+└── run.sh              # Start-Skript für Server und Hintergrund-Agenten
 ```
 
 ---
 
-### Schicht-Beschreibungen
+## Das Kernpaket (`src/gnom_hub/`)
 
-- **`domain/`** – Reine Geschäftslogik und Entitäten. Keine Abhängigkeiten zu externen Frameworks oder Datenbanken.
-- **`application/`** – Use Cases, Orchestrierung und Anwendungslogik. Koordiniert den Fluss zwischen Domain und Infrastructure.
-- **`infrastructure/`** – Konkrete Implementierungen (Datenbank, LLM-Clients, Prozessmanagement).
-- **`presentation/`** – FastAPI-Router und Web-Schnittstelle.
-- **`common/`** – Systemweit genutzte Exceptions und Utilities.
-- **`core/`** – Konfiguration, Logging und globale Hilfsmittel.
+Die Anwendungslogik ist in **9 funktionale Module** gegliedert. Das Projekt folgt einer pragmatischen Struktur nach technischen Zuständigkeiten:
+
+```text
+src/gnom_hub/
+├── agents/             # BaseAgent-Klasse, Rollen-Prompts, Tool-Registry und Actions-Parser
+│   ├── actions/        # Handhabung von Worker-Aktionen ([WRITE:], [SHELL:], etc.)
+│   ├── swarm/          # Swarm-Koordination und Agent-zu-Agent-Kommunikation
+│   └── explainability/ # Strukturierung und Formatierung von LLM-Gedankengängen (<think>)
+│
+├── api/                # FastAPI Server-Konfiguration, Router und API-Endpunkte
+│
+├── chat/               # Chat-Services, Systembefehle und Brainstorm-Koordinierung
+│
+├── core/               # Globale Konfiguration, Logging-Definitionen und Exceptions
+│   └── security/       # Gatekeeper (Double Approval), Whitelists und Pfad-Validierung
+│
+├── db/                 # Datenbankzugriff (SQLite), Schema-Definition und Repositories
+│
+├── frontend/           # Das visuelle Dashboard (War Room index.html, JS, CSS, Assets)
+│
+├── infrastructure/     # Daemon-Heartbeat (Pulse), Sandboxen und LLM-Key-Verwaltung
+│   ├── process/        # Prozess- und Sandboxing-Management (Playwright)
+│   ├── router/         # Modell-Routing und Multi-Provider-Ketten (Ollama/OpenRouter)
+│   └── tokens/         # Token-Budget-Management und Latenz-Analysen
+│
+├── memory/             # Lokale FAISS-Indizierung, Embeddings und semantische Suche
+│
+└── soul/               # Steganographisches ZWC-Gedächtnis (Zero-Width Characters)
+```

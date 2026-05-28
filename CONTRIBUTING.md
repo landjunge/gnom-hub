@@ -2,21 +2,30 @@
 
 ## 🏗️ Projekt-Struktur
 
-```
-AG-Flega/
-├── src/gnom_hub/     # Python-Backend (FastAPI)
-│   ├── config.py     # Zentrale Pfad-Konfiguration
-│   ├── db.py         # JSON-Datenbank mit File-Locking
-│   ├── hub_app.py    # FastAPI App & Router-Mounting
-│   ├── router.py     # LLM-Routing (DeepSeek → OpenRouter → Ollama)
-│   ├── routes_*.py   # API-Endpunkte
-│   ├── agent_base.py # Agent-Basisklasse
-│   └── log.py        # Logging-Framework
-├── agents/           # Agent-Definitionen (je ~8 Zeilen)
-├── frontend/         # Vanilla HTML/CSS/JS
-├── config/           # .env Dateien (NICHT committen!)
-├── scripts/          # Setup & Utility-Scripts
-└── docs/             # Dokumentation & Postmortems
+```text
+gnom-hub/
+├── agents/             # Minimalistische Start-Skripte für die 8 Hintergrund-Agenten
+├── config/             # Konfigurationsdateien (.env, Presets, Token-Budgets)
+├── data/               # Lokale FAISS-Indizes, Vektor-Datenbank und Cache
+├── docs/               # Technische Berichte und Entwickler-Dokumentationen
+├── gnom_workspace/     # Das Arbeitsverzeichnis, in dem Worker-Agenten agieren
+├── logs/               # Logdateien der Hintergrundprozesse und des Servers
+├── scratch/            # Testskripte, Demos und temporäre Skripte
+├── scripts/            # Installations- und Setup-Skripte
+├── src/                # Quellcode-Paket
+│   └── gnom_hub/       # Kernpaket von Gnom-Hub mit 9 funktionalen Modulen:
+│       ├── agents/     # BaseAgent, Actions-Handler, Swarm-Koordination
+│       ├── api/        # FastAPI Server, Router und Endpunkte
+│       ├── chat/       # Chat-Services und Brainstorming
+│       ├── core/       # Globale Konfiguration, Logging, Security Gatekeeper
+│       ├── db/         # SQLite-Datenbankschnittstelle und Schema
+│       ├── frontend/   # Visuelles Bento-Grid Dashboard (War Room index.html, JS, CSS)
+│       ├── infrastructure/ # Heartbeat (Pulse), Playwright Sandbox, LLM Routing
+│       ├── memory/     # Lokale FAISS-Indizierung und semantische Suche
+│       └── soul/       # Steganographisches ZWC-Gedächtnis (Zero-Width Characters)
+├── gnomhub.db          # Inaktive 0-Byte SQLite-Datei (Live-DB liegt unter ~/.gnom-hub/)
+├── pyproject.toml      # Paket-Konfiguration und Python-Abhängigkeiten
+└── run.sh              # Start-Skript für Server und Hintergrund-Agenten
 ```
 
 ## 🚀 Setup für Entwickler
@@ -43,10 +52,10 @@ python -m gnom_hub
 
 ## 📏 Code-Konventionen
 
-### Die 40-Zeilen-Regel
-- Jede Python-Datei sollte **maximal ~40 Zeilen** haben
-- Wenn eine Datei zu groß wird, aufteilen in logische Module
-- **Aber:** Lesbarkeit geht vor Kürze. Keine kryptischen Einzeiler!
+### Code-Struktur & Lesbarkeit
+- Versuche Dateien klein und fokussiert zu halten, wo es sinnvoll ist.
+- Wenn das Aufteilen einer Datei jedoch die Übersicht oder Lesbarkeit verschlechtert, belasse die Logik in einer Datei. Eine Datei darf dann auch deutlich länger als 40 Zeilen sein.
+- Die oberste Priorität ist guter, wartbarer und verständlicher Code — nicht das Einhalten einer willkürlichen Zeilenzahl.
 
 ### Namenskonventionen
 - Agent-Namen: **immer lowercase** in Code (`coderag`, `generalag`)

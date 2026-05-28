@@ -20,6 +20,7 @@ class BaseAgent:
         while True:
             c = self._req("get", "/api/chat?limit=10")
             if c is None: print(f"⚠️ {self.n}: Hub offline. Versuche Reconnect..."); await asyncio.sleep(5); continue
+            self._req("post", f"/api/agents/{self.n}/heartbeat")
             new = [m for m in c if m.get("id") not in self.seen and m.get("metadata",{}).get("sender","") in ("user", "GeneralAG") and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
             for m in c: self.seen.add(m.get("id"))
             if new:
@@ -31,8 +32,8 @@ class BaseAgent:
                             sys = soul_instance.inject_context(self.sys, m["content"], agent_name=self.n)
                             r = ask_router(m["content"], sys, agent_name=self.n)
                             if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
-                                from gnom_hub.action_handlers import process_actions
-                                from gnom_hub.brainstorm_helpers import get_workspace_dir
+                                from gnom_hub.agents.actions.action_handlers import process_actions
+                                from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
                                 wd = get_workspace_dir()
                                 soul = get_soul(self.n) or {"permissions": ["read"]}
                                 perms = soul.get("permissions", [])

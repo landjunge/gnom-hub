@@ -92,12 +92,12 @@ Gnom-Hub has been developed through a structured hardening process:
 
 ---
 
-## 📐 The 40-Line Rule
+## 📐 Code Structure & Readability
 
-Gnom-Hub keeps structural complexity low by keeping code focused.
-*   **Objective**: Originally, all Python files under `src/gnom_hub/` were targeted to be under 40 lines.
-*   **Current Compliance**: Over 80% of our 176 Python modules strictly respect this limit. To maintain readability for complex features (e.g., SQLite WAL operations in `db.py`, security audits in `gatekeeper.py`, and multi-tier routing in `router_stage.py`), 35 files have been allowed to grow.
-*   **Worker Simplicity**: Background workers remain extremely compact (e.g., CoderAG requires only ~10 lines of code to handle polling, processing, and executing actions).
+Gnom-Hub keeps structural complexity low by keeping code focused and modular.
+*   **File Size**: We aim to keep files small and cohesive where it makes sense.
+*   **Readability First**: If splitting a file would decrease clarity or readability, we keep the logic within a single file. Thus, files are allowed to be significantly longer than 40 lines.
+*   **Top Priority**: Clean, maintainable code is our highest priority, rather than adhering to an arbitrary line count limit.
 
 ---
 
@@ -116,6 +116,36 @@ All agent configurations, system prompts, and permissions are configured central
 *   **ResearcherAG**: Gathers facts, parses documentations, and executes web search requests.
 *   **WriterAG**: Drafts manuals, Handbooks, reports, and article texts.
 *   **EditorAG**: Performs proofreading, styling, code refactoring, and quality assurance.
+
+---
+
+## 📁 Project Structure
+
+```text
+gnom-hub/
+├── agents/             # Minimalist startup scripts for the 8 background agents
+├── config/             # Configuration files (.env, presets, token budgets)
+├── data/               # Local FAISS indices, vector database, and cache
+├── docs/               # Technical reports and developer documentation
+├── gnom_workspace/     # The working directory where worker agents operate
+├── logs/               # Log files of background processes and the server
+├── scratch/            # Test scripts, demos, and temporary scripts
+├── scripts/            # Installation and setup scripts
+├── src/                # Source code package
+│   └── gnom_hub/       # Core package of Gnom-Hub with 9 functional modules:
+│       ├── agents/     # BaseAgent, actions handling, swarm coordination
+│       ├── api/        # FastAPI server, routers, and endpoints
+│       ├── chat/       # Chat services and brainstorming
+│       ├── core/       # Global configuration, logging, security gatekeeper
+│       ├── db/         # SQLite database interface and schema
+│       ├── frontend/   # Visual Bento-Grid dashboard (War Room index.html, JS, CSS)
+│       ├── infrastructure/ # Heartbeat (Pulse), Playwright sandbox, LLM routing
+│       ├── memory/     # Local FAISS indexing and semantic search
+│       └── soul/       # Steganographic ZWC memory (Zero-Width Characters)
+├── gnomhub.db          # Inactive 0-byte SQLite file (live DB is under ~/.gnom-hub/)
+├── pyproject.toml      # Package configuration and Python dependencies
+└── run.sh              # Startup script for server and background agents
+```
 
 ---
 

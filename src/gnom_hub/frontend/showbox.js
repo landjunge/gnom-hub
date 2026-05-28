@@ -110,6 +110,21 @@
 
     // Sync button disabled states initially
     updateButtonStates();
+
+    // Make layers clickable to switch directly
+    for (let i = 1; i <= 3; i++) {
+      const layerEl = document.getElementById(`sb-layer-${i}`);
+      if (layerEl) {
+        layerEl.addEventListener('click', (e) => {
+          // If the user clicks on links or buttons inside the body, don't switch layer
+          if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.showbox-controls')) return;
+          switchLayer(i);
+        });
+      }
+    }
+
+    // Set initial body classes
+    switchLayer(state.activeLayer, true);
   }
 
   // Determine which of the 3 layers a presentation belongs to
@@ -134,7 +149,7 @@
   }
 
   // Switch the active layer in the DOM and trigger the frame flash animation
-  function switchLayer(layerIdx) {
+  function switchLayer(layerIdx, skipFlash = false) {
     if (![1, 2, 3].includes(layerIdx)) return;
 
     state.activeLayer = layerIdx;
@@ -151,12 +166,39 @@
       }
     }
 
+    // Toggle body active layer classes
+    document.body.classList.remove('sb-active-layer-1', 'sb-active-layer-2', 'sb-active-layer-3');
+    document.body.classList.add(`sb-active-layer-${layerIdx}`);
+
     // Trigger frame flash/glow animation
     const container = document.getElementById('sb-layers-container');
-    if (container) {
+    if (container && !skipFlash) {
       container.classList.remove('flash-1', 'flash-2', 'flash-3');
       void container.offsetWidth; // Force CSS reflow
       container.classList.add(`flash-${layerIdx}`);
+    }
+
+    // Add flash classes on borders based on the new active layer
+    const agentList = document.getElementById('agent-list');
+    const statusLamps = document.getElementById('status-lamps');
+    
+    if (agentList) {
+      agentList.classList.remove('flash-active');
+    }
+    if (statusLamps) {
+      statusLamps.classList.remove('flash-active');
+    }
+
+    if (!skipFlash) {
+      // Force CSS reflow to restart the animation if it was already running
+      if (agentList) void agentList.offsetWidth;
+      if (statusLamps) void statusLamps.offsetWidth;
+      
+      if (layerIdx === 1 && statusLamps) {
+        statusLamps.classList.add('flash-active');
+      } else if (layerIdx === 2 && agentList) {
+        agentList.classList.add('flash-active');
+      }
     }
 
     updateButtonStates();

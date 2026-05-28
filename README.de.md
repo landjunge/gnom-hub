@@ -140,16 +140,12 @@ Die Datenbank-Initialisierung (`init_db()`), das Seeding der Standard-Agenten un
 
 ---
 
-## 📐 Die 40-Zeilen-Regel
+## 📐 Code-Struktur & Lesbarkeit
 
-```
-Modularität und Fokus: Die 40-Zeilen-Zielsetzung.
-```
-
-Gnom-Hub löst strukturelle Komplexität, indem es seine Codebasis extrem fokussiert und modular hält.
-* **Zielsetzung:** Um unübersichtlichen Code und Monolithen zu vermeiden, war das Ziel ursprünglich, jedes interne Python-Modul in `src/gnom_hub/` auf maximal 40 Zeilen zu begrenzen.
-* **Aktueller Stand:** Über 80 % aller 176 Python-Module halten sich weiterhin strikt an dieses Limit. Einige wenige komplexe Steuerungsdateien (insgesamt 35 Module, darunter `db.py` für die relationale SQLite-Schnittstelle, `gatekeeper.py` für die Sicherheitsprüfungen und `router_stage.py` für das LLM-Routing) sind im Zuge der Härtungsphasen angewachsen, um zusammengehörige Logik lesbar und wartbar in einer Datei zu belassen.
-* **Worker-Einfachheit:** Worker wie `CoderAG` benötigen nach wie vor lediglich ein kurzes Python-Skript von ca. 8–10 Zeilen für ihre Registrierung und Polling-Schleife.
+Gnom-Hub löst strukturelle Komplexität, indem es seine Codebasis fokussiert und modular hält.
+* **Dateigröße:** Es wird versucht, Dateien klein und überschaubar zu halten, wo es sinnvoll ist.
+* **Lesbarkeit vor Limit:** Wenn das Aufteilen einer Datei jedoch die Übersicht oder Lesbarkeit verschlechtern würde, bleibt die Logik in einer gemeinsamen Datei. Eine Datei darf somit auch deutlich länger als 40 Zeilen sein.
+* **Oberste Priorität:** Guter, wartbarer Code steht über einer willkürlichen Zeilenbegrenzung.
 
 ---
 
@@ -269,23 +265,30 @@ Starte den FastAPI-Server:
 
 ## 📁 Projektstruktur
 
-```
+```text
 gnom-hub/
-├── src/gnom_hub/        # 55 Python-Module (Backend)
-│   ├── hub_app.py       # FastAPI App & Lifespan-Orchestrierung
-│   ├── db.py            # SQLite3-Datenbank (WAL-Modus)
-│   ├── proc_mgr.py      # Prozess-Manager (psutil & PID-Dateien)
-│   ├── path_validator.py# Workspace-basierte Pfadvalidierung
-│   ├── log.py           # Zentrales Logging-Framework
-│   ├── router*.py       # LLM-Routing (Multi-Provider)
-│   └── routes_*.py      # API-Endpunkte
-├── agents/              # 8 Agenten-Definitionen (ca. 8 Zeilen pro Agent)
-├── frontend/            # Vanilla HTML/CSS/JS (War Room Dashboard)
-├── config/              # Lokale Umgebungskonfigurationen (NICHT committen!)
-├── scripts/             # Setup- & Hilfs-Skripte
-├── docs/                # Berichte und Dokumentation
-├── CONTRIBUTING.md      # Richtlinien für Entwickler
-├── pyproject.toml       # Ruff-Konfiguration & Abhängigkeiten
+├── agents/             # Minimalistische Start-Skripte für die 8 Hintergrund-Agenten
+├── config/             # Konfigurationsdateien (.env, Presets, Token-Budgets)
+├── data/               # Lokale FAISS-Indizes, Vektor-Datenbank und Cache
+├── docs/               # Technische Berichte und Entwickler-Dokumentationen
+├── gnom_workspace/     # Das Arbeitsverzeichnis, in dem Worker-Agenten agieren
+├── logs/               # Logdateien der Hintergrundprozesse und des Servers
+├── scratch/            # Testskripte, Demos und temporäre Skripte
+├── scripts/            # Installations- und Setup-Skripte
+├── src/                # Quellcode-Paket
+│   └── gnom_hub/       # Kernpaket von Gnom-Hub mit 9 funktionalen Modulen:
+│       ├── agents/     # BaseAgent, Actions-Handler, Swarm-Koordination
+│       ├── api/        # FastAPI Server, Router und Endpunkte
+│       ├── chat/       # Chat-Services und Brainstorming
+│       ├── core/       # Globale Konfiguration, Logging, Security Gatekeeper
+│       ├── db/         # SQLite-Datenbankschnittstelle und Schema
+│       ├── frontend/   # Visuelles Bento-Grid Dashboard (War Room index.html, JS, CSS)
+│       ├── infrastructure/ # Heartbeat (Pulse), Playwright Sandbox, LLM-Routing
+│       ├── memory/     # Lokale FAISS-Indizierung und semantische Suche
+│       └── soul/       # Steganographisches ZWC-Gedächtnis (Zero-Width Characters)
+├── gnomhub.db          # Inaktive 0-Byte SQLite-Datei (Live-DB liegt unter ~/.gnom-hub/)
+├── pyproject.toml      # Paket-Konfiguration und Python-Abhängigkeiten
+└── run.sh              # Start-Skript für Server und Hintergrund-Agenten
 ```
 
 ---

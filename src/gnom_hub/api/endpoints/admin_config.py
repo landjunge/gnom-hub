@@ -32,6 +32,6 @@ def get_preset(): return {"preset": (SR().get_value("active_preset", "Web Develo
 
 @router.post("/preset")
 def set_preset(p: PresetPayload):
-    from gnom_hub.preset.preset_service import handle_preset_change
+    from gnom_hub.core.utils.preset_service import handle_preset_change
     handle_preset_change(p.preset)
     return {"status": "ok", "preset": p.preset}
