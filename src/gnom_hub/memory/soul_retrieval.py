@@ -4,8 +4,10 @@ from gnom_hub.memory.embeddings import get_embedder
 
 def retrieve_relevant_facts(query: str, top_k: int = 5) -> list:
     q_clean = query.strip()
-    if len(q_clean) < 25 or len(q_clean.split()) < 4:
+    if len(q_clean) < 10:
         return []
+    if len(q_clean) < 25 or len(q_clean.split()) < 4:
+        return _fetch_recent(top_k)
     try:
         return get_embedder().search_sync(query, top_k)
     except Exception:

@@ -3,9 +3,9 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 import gnom_hub.db
-import gnom_hub.gatekeeper
-import gnom_hub.router
-from gnom_hub.capability_manager import request_capability, check_capability, cleanup_expired
+import gnom_hub.core.security.gatekeeper as gatekeeper
+import gnom_hub.infrastructure.router.router as router
+from gnom_hub.agents.capability_manager import request_capability, check_capability, cleanup_expired
 
 def test_capabilities():
     print("--- STARTING CAPABILITIES UNIT TESTS ---")
@@ -35,20 +35,36 @@ def test_capabilities():
     def mock_ask_router(*args, **kwargs):
         nonlocal called
         called = True
-        return "APPROVED"
-    original_ask_router = gnom_hub.router.ask_router
-    gnom_hub.router.ask_router = mock_ask_router
+        class MockResponse:
+            content = "APPROVED"
+        return MockResponse()
+        
+    original_ask_router = router.ask_router
+    router.ask_router = mock_ask_router
+
+    # Mock get_state_value to automatically set pending_decisions to approved
+    original_get_state_value = gatekeeper.get_state_value
+    
+    def mock_get_state_value(key, default=None):
+        val = original_get_state_value(key, default)
+        if key == "pending_decisions" and val:
+            for d_id in val:
+                val[d_id]["status"] = "approved"
+        return val
+        
+    gatekeeper.get_state_value = mock_get_state_value
 
     try:
         # First verification should bypass router because capability exists
-        assert gnom_hub.gatekeeper.verify_write(agent, res, "print('hello')", "/tmp", []) is True
+        assert gatekeeper.verify_write(agent, res, "print('hello')", "/tmp", []) is True
         assert not called, "Router was incorrectly called even though capability was active!"
 
-        # Verification on a new resource should call the router
-        assert gnom_hub.gatekeeper.verify_write(agent, "new_script.py", "print('world')", "/tmp", []) is True
+        # Verification on a new resource with a blocked pattern (rm -rf) should call the router
+        assert gatekeeper.verify_write(agent, "new_script.py", "rm -rf", "/tmp", []) is True
         assert called, "Router should have been called for a new resource!"
     finally:
-        gnom_hub.router.ask_router = original_ask_router
+        router.ask_router = original_ask_router
+        gatekeeper.get_state_value = original_get_state_value
 
     print("Capabilities system verified successfully!")
 

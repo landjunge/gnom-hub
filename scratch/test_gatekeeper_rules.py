@@ -6,7 +6,7 @@ from pathlib import Path
 # Set up project root on path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from gnom_hub.gatekeeper import is_command_safe_and_whitelisted
+from gnom_hub.core.security.gatekeeper import is_command_safe_and_whitelisted
 
 def run_tests():
     print("🧪 Running Gatekeeper Rule Verification Tests...")

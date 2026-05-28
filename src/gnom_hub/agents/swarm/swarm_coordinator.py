@@ -1,7 +1,7 @@
 # swarm_coordinator.py — Coordinates team workflows and gathers results
 import time, threading, re
-from .infrastructure.database.agent_repo import SQLiteAgentRepository as AR
-from .infrastructure.database.state_repo import SQLiteStateRepository as SR
+from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository as AR
+from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository as SR
 from gnom_hub.agents.role_tools import _llm; from gnom_hub.chat.brainstorm.brainstorm import _collect_worker_responses, dispatch
 from gnom_hub.chat.brainstorm.brainstorm_helpers import post, get_workspace_dir; from gnom_hub.agents.actions.action_handlers import process_actions; from gnom_hub.soul import get_soul
 def _wait(ar, workers, timeout=40):

@@ -31,9 +31,9 @@ def run_system_level_permission_tests():
     sys.path.insert(0, project_root)
     sys.path.insert(0, os.path.join(project_root, "src"))
     try:
-        from gnom_hub.gatekeeper import verify_write, verify_cmd
-        from gnom_hub.path_validator import is_worker_blocked, is_security_block
-        from gnom_hub.tool_registry import get_tools_for_agent
+        from gnom_hub.core.security.gatekeeper import verify_write, verify_cmd
+        from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block
+        from gnom_hub.agents.tool_registry import get_tools_for_agent
         
         mock_general = {"name": "GeneralAG", "role": "general"}
         
@@ -58,7 +58,7 @@ def run_system_level_permission_tests():
         print("✅ System Test 4 Passed: GeneralAG blocked in path validation.")
         
         # Test 5: process_actions must allow Showbox but block Write/Read/Shell
-        from gnom_hub.action_handlers import process_actions
+        from gnom_hub.agents.actions.action_handlers import process_actions
         ans = "Hello [WRITE: test.py]print('bad')[/WRITE] [READ: test.py] [SHELL: ls] <SHOWBOX:1>['Slide 1']</SHOWBOX>"
         processed = process_actions(ans, mock_general, [], False, "/tmp")
         assert "[Gatekeeper: Schreibzugriff" in processed or "verweigert" in processed, f"Write should be blocked: {processed}"

@@ -5,8 +5,8 @@ import threading
 
 sys.path.insert(0, os.path.abspath("/Users/landjunge/Documents/AG-Flega/src"))
 
-from gnom_hub.db import get_state_value, set_state_value, set_agent_status, get_all_agents
-from gnom_hub.gatekeeper import verify_write
+from gnom_hub.db.legacy_db import get_state_value, set_state_value, set_agent_status, get_all_agents
+from gnom_hub.core.security.gatekeeper import verify_write
 
 def wait_and_act(action_type):
     print(f"    [Mock User] Thread started, waiting for a pending decision to act ({action_type})...")
@@ -27,17 +27,17 @@ def wait_and_act(action_type):
         
     print(f"    [Mock User] Found decision {decision_id}. Simulating choice: {action_type}")
     if action_type == "approve":
-        from gnom_hub.chat_commands import handle_approve_decision
+        from gnom_hub.chat.chat_commands import handle_approve_decision
         res = handle_approve_decision(decision_id)
     else:
-        from gnom_hub.chat_commands import handle_reject_decision
+        from gnom_hub.chat.chat_commands import handle_reject_decision
         res = handle_reject_decision(decision_id)
     print(f"    [Mock User] Action result: {res}")
 
 def main():
     print("=== STARTING SHOWBOX DECISION SYSTEM TEST ===")
     
-    from gnom_hub.db import create_agent_record
+    from gnom_hub.db.legacy_db import create_agent_record
     agents = get_all_agents()
     if not any(a["name"] == "CoderAG" for a in agents):
         create_agent_record("CoderAG", role="coder", status="online")
@@ -95,7 +95,7 @@ def main():
     print("\n[5] Testing Showbox persistence (preventing overrides during pending decision)...")
     set_state_value("pending_decisions", {"test_id": {"status": "pending"}})
     
-    from gnom_hub.db import set_active_showbox, get_active_showbox
+    from gnom_hub.db.legacy_db import set_active_showbox, get_active_showbox
     set_active_showbox("Latest Update")
     active = get_active_showbox()
     print(f"    Active Showbox (should NOT be 'Latest Update'): '{active}'")

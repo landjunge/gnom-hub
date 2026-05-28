@@ -3,7 +3,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from gnom_hub.db import get_db_conn, init_db
-from gnom_hub.context_manager import ContextBudget, count_tokens
+from gnom_hub.memory.context_manager import ContextBudget, count_tokens
 
 def test_context_manager():
     print("--- TESTING CONTEXT BUDGET & EVICTION ---")

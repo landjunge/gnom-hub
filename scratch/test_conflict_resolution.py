@@ -3,30 +3,34 @@ import sys, os
 import asyncio
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-import gnom_hub.router
-from gnom_hub.conflict_resolver import ConflictResolution
+import gnom_hub.infrastructure.router.router as router
+from gnom_hub.agents.swarm.conflict_resolver import ConflictResolution
 
 async def test_conflict_resolution():
     print("--- TESTING CONFLICT RESOLUTION ---")
 
     # Mock ask_router calls to guide the debate and final voting
-    import gnom_hub.conflict_resolver
-    original_ask_router = gnom_hub.router.ask_router
+    import gnom_hub.agents.swarm.conflict_resolver
+    original_ask_router = router.ask_router
     call_sequence = []
+
+    class MockExplainableOutput:
+        def __init__(self, content):
+            self.content = content
+            self.answer = content
 
     def mock_ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
         call_sequence.append((agent_name, p))
         if "Analysiere diese zwei Outputs" in p:
-            return "Difference: Agent 1 uses camelCase, Agent 2 uses snake_case."
+            val = "Difference: Agent 1 uses camelCase, Agent 2 uses snake_case."
         elif "Warum divergieren diese Outputs" in p:
-            return "Drift: CoderAG got a python-centric prompt, WriterAG got a JS-centric prompt."
+            val = "Drift: CoderAG got a python-centric prompt, WriterAG got a JS-centric prompt."
         elif "repräsentierst Agent 1" in p:
-            return "Agent 1 Argument: camelCase is standard in JS/TS frontend code."
+            val = "Agent 1 Argument: camelCase is standard in JS/TS frontend code."
         elif "repräsentierst Agent 2" in p:
-            return "Agent 2 Argument: snake_case is standard in Python backend code."
+            val = "Agent 2 Argument: snake_case is standard in Python backend code."
         elif "neutraler Richter" in p:
-            # Return valid JSON representation matching requested winner
-            return """
+            val = """
             {
                 "winner": "CoderAG",
                 "confidence": 0.95,
@@ -34,10 +38,12 @@ async def test_conflict_resolution():
                 "consensus_output": "const userName = 'Gnom';"
             }
             """
-        return "Mock default response"
+        else:
+            val = "Mock default response"
+        return MockExplainableOutput(val)
 
-    gnom_hub.router.ask_router = mock_ask_router
-    gnom_hub.conflict_resolver.ask_router = mock_ask_router
+    router.ask_router = mock_ask_router
+    gnom_hub.agents.swarm.conflict_resolver.ask_router = mock_ask_router
 
     try:
         resolver = ConflictResolution()
@@ -59,8 +65,8 @@ async def test_conflict_resolution():
         print("\nAll 5 steps in divergence resolution flow executed successfully!")
         
     finally:
-        gnom_hub.router.ask_router = original_ask_router
-        gnom_hub.conflict_resolver.ask_router = original_ask_router
+        router.ask_router = original_ask_router
+        gnom_hub.agents.swarm.conflict_resolver.ask_router = original_ask_router
 
 if __name__ == "__main__":
     asyncio.run(test_conflict_resolution())
