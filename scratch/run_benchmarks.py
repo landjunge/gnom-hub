@@ -6,8 +6,8 @@ sys.path.insert(0, project_root)
 sys.path.insert(0, os.path.join(project_root, "src"))
 
 import gnom_hub.db
-from gnom_hub.embeddings import SoulEmbedder
-from gnom_hub.capability_manager import request_capability, check_capability, cleanup_expired, _cache
+from gnom_hub.memory.embeddings import SoulEmbedder
+from gnom_hub.agents.capability_manager import request_capability, check_capability, cleanup_expired, _cache
 
 def run_benchmarks():
     print("============================================================")
@@ -49,7 +49,7 @@ def run_benchmarks():
     
     # Cold search (first time, might generate embedding/query)
     # We clear the search cache to simulate first lookup
-    from gnom_hub.embeddings import _search_cache
+    from gnom_hub.memory.embeddings import _search_cache
     _search_cache.clear()
     
     t0 = time.perf_counter()

@@ -21,7 +21,7 @@ def _build_sys(n, sys, agent_name):
         f"Sprich und antworte ausschließlich als {agent_name}! Schreibe deinen Beitrag direkt unter deiner eigenen Persona."
     )
     try:
-        from gnom_hub.evolution.evolution_v2 import get_active_version
+        from gnom_hub.core.utils.evolution_v2 import get_active_version
         av = get_active_version(agent_name)
         r = av.modifications if av else [row["value"] for row in get_db_conn().execute("SELECT value FROM soul_memory WHERE key LIKE ?", (f"evolution_{agent_name}_%",)).fetchall()]
         if r: sys += "\n\n=== SELBSTVERBESSERTE REGELN ===\n" + "\n".join(f"- {x}" for x in r)

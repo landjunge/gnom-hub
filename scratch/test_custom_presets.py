@@ -3,8 +3,8 @@ import sys, os, json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 import gnom_hub.db
-from gnom_hub.config import CONFIG_DIR
-from gnom_hub.preset_service import load_presets, handle_preset_change
+from gnom_hub.core.config import CONFIG_DIR
+from gnom_hub.core.utils.preset_service import load_presets, handle_preset_change
 
 def test_custom_presets():
     print("--- STARTING CUSTOM PRESETS UNIT TESTS ---")

@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 
 import uuid
 from gnom_hub.soul import handle_user_feedback
-import gnom_hub.router
+import gnom_hub.infrastructure.router.router as router
 from gnom_hub.db import get_db_conn
 
 def test_feedback():
@@ -16,8 +16,8 @@ def test_feedback():
             conn.execute("DELETE FROM soul_memory WHERE key LIKE 'evolution_%'")
             
     # 2. Mock router to capture LLM invocation details
-    original_call = gnom_hub.router._call
-    original_try_keys = gnom_hub.router._try_keys
+    original_call = router._call
+    original_try_keys = router._try_keys
     called_sys = None
     called_p = None
     
@@ -33,8 +33,8 @@ def test_feedback():
         called_p = msgs[1]["content"]
         return '[{"agent": "WriterAG", "rule": "Verwende emotionaleres Copywriting."}]'
         
-    gnom_hub.router._call = mock_call
-    gnom_hub.router._try_keys = mock_try_keys
+    router._call = mock_call
+    router._try_keys = mock_try_keys
     
     try:
         # 3. Simulate user submitting feedback
@@ -64,8 +64,8 @@ def test_feedback():
         print("\nFeedback-Lernschleife erfolgreich verifiziert!")
         
     finally:
-        gnom_hub.router._call = original_call
-        gnom_hub.router._try_keys = original_try_keys
+        router._call = original_call
+        router._try_keys = original_try_keys
         
     print("\nFeedback-Test erfolgreich abgeschlossen!")
 

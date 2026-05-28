@@ -1,6 +1,6 @@
 # pvm_history.py
 from gnom_hub.db.legacy_db import get_db_conn
-from gnom_hub.evolution.evolution_v2 import _row_to_version
+from gnom_hub.core.utils.evolution_v2 import _row_to_version
 
 def get_version_by_id(version_id: str):
     try:

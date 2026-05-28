@@ -4,17 +4,17 @@ import asyncio
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 import gnom_hub.db
-import gnom_hub.router
-import gnom_hub.graceful_fallback
-import gnom_hub.token_economy
+import gnom_hub.infrastructure.router.router as router
+import gnom_hub.core.utils.graceful_fallback as graceful_fallback
+import gnom_hub.infrastructure.tokens.token_economy as token_economy
 
 # Imports of new classes
-from gnom_hub.project_planner import ProjectPlan, Step
-from gnom_hub.explainability import ExplainableOutput
-from gnom_hub.specialization_monitor import monitor_drift
-from gnom_hub.graceful_fallback import execute_with_fallback, FallbackAgent, AgentUnavailableError, AllAgentsFailedError
-from gnom_hub.token_economy import TokenBudget
-from gnom_hub.team_velocity import VelocityMetric
+from gnom_hub.core.utils.project_planner import ProjectPlan, Step
+from gnom_hub.agents.explainability.explainability import ExplainableOutput
+from gnom_hub.agents.specialization_monitor import monitor_drift
+from gnom_hub.core.utils.graceful_fallback import execute_with_fallback, FallbackAgent, AgentUnavailableError, AllAgentsFailedError
+from gnom_hub.infrastructure.tokens.token_economy import TokenBudget
+from gnom_hub.agents.team_velocity import VelocityMetric
 
 async def test_project_planner():
     print("\n--- TESTING PROJECT PLANNER ---")
@@ -91,13 +91,17 @@ async def test_specialization_drift():
 async def test_graceful_fallback():
     print("\n--- TESTING GRACEFUL FALLBACK ---")
     # Mock estimate_quality to return high confidence
-    original_ask_router = gnom_hub.router.ask_router
+    class MockResponse:
+        def __init__(self, content):
+            self.content = content
+
+    original_ask_router = router.ask_router
     def mock_ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
         if "Qualität" in p:
-            return "0.85"
-        return "Mock execution result"
-    gnom_hub.router.ask_router = mock_ask_router
-    gnom_hub.graceful_fallback.ask_router = mock_ask_router
+            return MockResponse("0.85")
+        return MockResponse("Mock execution result")
+    router.ask_router = mock_ask_router
+    graceful_fallback.ask_router = mock_ask_router
 
     try:
         # Create an offline agent CoderAG
@@ -106,8 +110,8 @@ async def test_graceful_fallback():
         # Verify it raises AgentUnavailableError if we call execute directly
         # since it resolves to offline in mock metrics or status is offline
         # Let's simulate offline status in get_agent_metrics
-        original_metrics = gnom_hub.graceful_fallback.get_agent_metrics
-        gnom_hub.graceful_fallback.get_agent_metrics = lambda: {"coderag": {"status": "offline"}}
+        original_metrics = graceful_fallback.get_agent_metrics
+        graceful_fallback.get_agent_metrics = lambda: {"coderag": {"status": "offline"}}
         
         try:
             await offline_coder.execute("Build web app")
@@ -116,7 +120,7 @@ async def test_graceful_fallback():
             pass
 
         # Now test fallback. GeneralAG is online.
-        gnom_hub.graceful_fallback.get_agent_metrics = lambda: {
+        graceful_fallback.get_agent_metrics = lambda: {
             "coderag": {"status": "offline"},
             "generalag": {"status": "online"},
             "writerag": {"status": "online"}
@@ -131,17 +135,21 @@ async def test_graceful_fallback():
 
         print("Graceful fallback verified successfully!")
     finally:
-        gnom_hub.router.ask_router = original_ask_router
-        gnom_hub.graceful_fallback.ask_router = original_ask_router
+        router.ask_router = original_ask_router
+        graceful_fallback.ask_router = original_ask_router
 
 async def test_token_economy():
     print("\n--- TESTING TOKEN ECONOMY ---")
     # Mock ask_router to return simple prompt execution
-    original_ask_router = gnom_hub.router.ask_router
+    class MockResponse:
+        def __init__(self, content):
+            self.content = content
+
+    original_ask_router = router.ask_router
     def mock_ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
-        return "Skript abgeschlossen."
-    gnom_hub.router.ask_router = mock_ask_router
-    gnom_hub.token_economy.ask_router = mock_ask_router
+        return MockResponse("Skript abgeschlossen.")
+    router.ask_router = mock_ask_router
+    token_economy.ask_router = mock_ask_router
 
     try:
         # 1. Initialize budget with a low daily limit (in cost)
@@ -160,8 +168,8 @@ async def test_token_economy():
         
         print("Token economy budget tracking verified successfully!")
     finally:
-        gnom_hub.router.ask_router = original_ask_router
-        gnom_hub.token_economy.ask_router = original_ask_router
+        router.ask_router = original_ask_router
+        token_economy.ask_router = original_ask_router
 
 def test_team_velocity():
     print("\n--- TESTING TEAM VELOCITY METRIC ---")

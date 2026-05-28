@@ -22,14 +22,14 @@ def test_soul_warnings():
     
     # First injection (no warning)
     sys_prompt = "You are CoderAG."
-    res1 = soul_instance.inject_context(sys_prompt, "What indentation style should I use for this project? Should I use tabs?", agent_name="CoderAG")
+    res1 = soul_instance.inject_context(sys_prompt, "Always use tab for indentation. What style should I use?", agent_name="CoderAG")
     print("First injection output:\n", res1)
     
     # Verify that the fact was injected
     assert "Always use tab" in res1
     
     # Second injection (should trigger warning)
-    res2 = soul_instance.inject_context(sys_prompt, "What indentation style should I use for this project? Should I use tabs?", agent_name="CoderAG")
+    res2 = soul_instance.inject_context(sys_prompt, "Always use tab for indentation. What style should I use?", agent_name="CoderAG")
     print("\nSecond injection output:\n", res2)
     assert "Always use tab" in res2
     

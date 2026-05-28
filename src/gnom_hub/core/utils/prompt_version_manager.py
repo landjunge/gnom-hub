@@ -1,12 +1,12 @@
 # prompt_version_manager.py — Version control for agent prompts
 from typing import List, Optional
-from gnom_hub.evolution.evolution_v2 import PromptVersion
-import gnom_hub.evolution.pvm_create as pc
-import gnom_hub.evolution.pvm_activate as pa
-import gnom_hub.evolution.pvm_history as ph
-import gnom_hub.evolution.pvm_rollback as pr
-import gnom_hub.evolution.pvm_compare as pcomp
-import gnom_hub.evolution.pvm_test as pt
+from gnom_hub.core.utils.evolution_v2 import PromptVersion
+import gnom_hub.core.utils.pvm_create as pc
+import gnom_hub.core.utils.pvm_activate as pa
+import gnom_hub.core.utils.pvm_history as ph
+import gnom_hub.core.utils.pvm_rollback as pr
+import gnom_hub.core.utils.pvm_compare as pcomp
+import gnom_hub.core.utils.pvm_test as pt
 
 class PromptVersionManager:
     def __init__(self, db=None): self.db = db

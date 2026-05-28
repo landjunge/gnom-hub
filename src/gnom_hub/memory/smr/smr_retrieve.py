@@ -30,4 +30,10 @@ async def retrieve_similar(query: str, top_k: int = 8, raw: bool = False) -> lis
     return retrieve_similar_sync(query, top_k, raw=raw)
 
 async def retrieve_with_fallback(query: str, top_k: int = 8) -> list:
-    return await retrieve_similar(query, top_k)
+    similar = await retrieve_similar(query, top_k)
+    if similar: return similar
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute("SELECT key, value FROM soul_memory ORDER BY timestamp DESC LIMIT ?", (top_k,)).fetchall()
+            return [f"{r['key']}: {r['value']}" for r in rows]
+    except Exception: return []

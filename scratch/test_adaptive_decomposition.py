@@ -3,22 +3,26 @@ import sys, os
 import asyncio
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-import gnom_hub.router
-import gnom_hub.adaptive_decomposition
-from gnom_hub.adaptive_decomposition import decompose_job
+import gnom_hub.infrastructure.router.router as router
+import gnom_hub.agents.actions.adaptive_decomposition as adaptive_decomposition
+from gnom_hub.agents.actions.adaptive_decomposition import decompose_job
 
 async def test_adaptive_decomposition():
     print("--- TESTING ADAPTIVE DECOMPOSITION ---")
 
     # Mock ask_router to return a specific complexity (e.g., "8")
-    original_ask_router = gnom_hub.router.ask_router
+    class MockResponse:
+        def __init__(self, content):
+            self.content = content
+
+    original_ask_router = router.ask_router
     def mock_ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
         if "Komplexität" in p:
-            return "8"
-        return "Mock response"
+            return MockResponse("8")
+        return MockResponse("Mock response")
 
-    gnom_hub.router.ask_router = mock_ask_router
-    gnom_hub.adaptive_decomposition.ask_router = mock_ask_router
+    router.ask_router = mock_ask_router
+    adaptive_decomposition.ask_router = mock_ask_router
 
     try:
         # Test code task (should resolve to Parallel Route A)
@@ -38,8 +42,8 @@ async def test_adaptive_decomposition():
         print("\nAdaptive decomposition and routing successfully verified!")
 
     finally:
-        gnom_hub.router.ask_router = original_ask_router
-        gnom_hub.adaptive_decomposition.ask_router = original_ask_router
+        router.ask_router = original_ask_router
+        adaptive_decomposition.ask_router = original_ask_router
 
 if __name__ == "__main__":
     asyncio.run(test_adaptive_decomposition())

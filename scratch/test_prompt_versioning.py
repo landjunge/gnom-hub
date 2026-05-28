@@ -3,7 +3,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 from gnom_hub.db import get_db_conn, init_db
-from gnom_hub.evolution_v2 import (
+from gnom_hub.core.utils.evolution_v2 import (
     create_version,
     get_active_version,
     update_version_score,

@@ -3,8 +3,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 
 import sqlite3
 from gnom_hub.soul import run_evolution
-from gnom_hub.router import ask_router
-import gnom_hub.router
+from gnom_hub.infrastructure.router.router import ask_router
+import gnom_hub.infrastructure.router.router as router
 from gnom_hub.db import get_db_conn
 
 def test_evolution():
@@ -38,8 +38,8 @@ def test_evolution():
     assert len(rows) > 0, "Es wurden keine Evolution-Regeln gelernt!"
     
     # 4. Check if the rules are injected in router prompt
-    original_call = gnom_hub.router._call
-    original_try_keys = gnom_hub.router._try_keys
+    original_call = router._call
+    original_try_keys = router._try_keys
     called_sys = None
     
     def mock_call(pvd, mdl, key, msgs, n):
@@ -52,8 +52,8 @@ def test_evolution():
         called_sys = msgs[0]["content"]
         return "Mock Response"
         
-    gnom_hub.router._call = mock_call
-    gnom_hub.router._try_keys = mock_try_keys
+    router._call = mock_call
+    router._try_keys = mock_try_keys
     
     try:
         ask_router("Erstelle Landingpage", agent_name="CoderAG")
@@ -64,8 +64,8 @@ def test_evolution():
         assert any("CSS" in line or "Landingpage" in line for line in called_sys.split("\n")), "CoderAG Regel fehlt im Prompt!"
         print("\nPrompt Injection erfolgreich verifiziert!")
     finally:
-        gnom_hub.router._call = original_call
-        gnom_hub.router._try_keys = original_try_keys
+        router._call = original_call
+        router._try_keys = original_try_keys
     
     print("\nEvolution-Test erfolgreich abgeschlossen!")
 

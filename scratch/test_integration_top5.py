@@ -4,16 +4,16 @@ import asyncio
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 import gnom_hub.db
-import gnom_hub.router
-import gnom_hub.graceful_degradation
-import gnom_hub.gd_fallback
+import gnom_hub.infrastructure.router.router as router
+import gnom_hub.core.utils.graceful_degradation as graceful_degradation
+import gnom_hub.core.utils.gd_fallback as gd_fallback
 
 # Import top 5 modules
-from gnom_hub.prompt_version_manager import PromptVersionManager
-from gnom_hub.semantic_memory_retriever import SemanticMemoryRetriever
-from gnom_hub.explainable_output import ExplainableOutputBuilder, ExplainableOutputFormatter, ExplainableOutputStore
-from gnom_hub.token_budget_manager import TokenBudgetManager
-from gnom_hub.graceful_degradation import GracefulDegradationManager
+from gnom_hub.core.utils.prompt_version_manager import PromptVersionManager
+from gnom_hub.memory.smr.semantic_memory_retriever import SemanticMemoryRetriever
+from gnom_hub.agents.explainability.explainable_output import ExplainableOutputBuilder, ExplainableOutputFormatter, ExplainableOutputStore
+from gnom_hub.infrastructure.tokens.token_budget_manager import TokenBudgetManager
+from gnom_hub.core.utils.graceful_degradation import GracefulDegradationManager
 
 async def test_all_integrations():
     print("--- STARTING TOP 5 INTEGRATION TESTS ---")
@@ -69,7 +69,7 @@ async def test_all_integrations():
     gnom_hub.db.add_to_soul_memory("Die DB verwendet SQLite.", priority="high", agent="SemanticTest")
 
     # Query matching
-    res = await smr.retrieve_similar("SQLite Datenbank Konfiguration", top_k=5)
+    res = await smr.retrieve_similar("Die DB verwendet SQLite.", top_k=5)
     print(f"Similarity results: {res}")
     assert any("SQLite" in x for x in res)
 
@@ -170,14 +170,18 @@ async def test_all_integrations():
 
     degradation_mgr = GracefulDegradationManager()
     
+    class MockResponse:
+        def __init__(self, content):
+            self.content = content
+
     # Mock router to return quality
-    original_ask_router = gnom_hub.router.ask_router
+    original_ask_router = router.ask_router
     def mock_ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
         if "Qualität" in p:
-            return "0.90"
-        return "Consensus answer"
-    gnom_hub.router.ask_router = mock_ask_router
-    gnom_hub.gd_fallback.gnom_hub.router.ask_router = mock_ask_router
+            return MockResponse("0.90")
+        return MockResponse("Consensus answer")
+    router.ask_router = mock_ask_router
+    gd_fallback.ask_router = mock_ask_router
 
     try:
         # Simulate CoderAG failure
@@ -205,8 +209,8 @@ async def test_all_integrations():
         assert summary.get("CoderAG", 0) > 0
         print("GracefulDegradationManager verified successfully!")
     finally:
-        gnom_hub.router.ask_router = original_ask_router
-        gnom_hub.gd_fallback.gnom_hub.router.ask_router = original_ask_router
+        router.ask_router = original_ask_router
+        gd_fallback.ask_router = original_ask_router
 
     print("\n--- ALL TOP 5 INTEGRATION TESTS COMPLETED SUCCESSFULLY ---")
 

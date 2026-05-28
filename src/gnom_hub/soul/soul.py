@@ -95,7 +95,7 @@ def _save_rules(res: str, prefix=""):
                     save_soul_fact(f"evolution_{agent_name}_{uuid.uuid4().hex[:6]}", rule_text, agent="GeneralAG")
                     add_chat_message("default", "GeneralAG", "generalag", "chat", f"@user @SoulAG: Regel für {agent_name} gelernt: '{f['rule']}'")
                     try:
-                        from gnom_hub.evolution.evolution_v2 import create_version
+                        from gnom_hub.core.utils.evolution_v2 import create_version
                         create_version(agent_name, rule_text)
                     except Exception as ex:
                         import logging
@@ -113,7 +113,7 @@ def handle_user_feedback(vote: str, comment: str):
     add_chat_message("default", "System", "system", "chat", f"@user Feedback: {vote} | {comment}")
     
     try:
-        from gnom_hub.evolution.evolution_v2 import update_version_score
+        from gnom_hub.core.utils.evolution_v2 import update_version_score
         from gnom_hub.db.legacy_db import get_chat_history
         
         active_agents = set()
