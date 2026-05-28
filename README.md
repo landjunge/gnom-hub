@@ -61,74 +61,53 @@ Gnom-Hub combines robust multi-process orchestration with an interactive web int
 
 ## ✅ Completed Milestones
 
-Gnom-Hub has been developed through a structured hardening process:
+Gnom-Hub development phases:
 
-### 🛡️ Phase 1: Security & Gatekeeper
-*   **Double Approval**: Every file write and command execution by worker agents requires an explicit `APPROVED` from `WatchdogAG` (code integrity & 40-line rule) **and** `SecurityAG` (malware & pattern scans).
-*   **Protected System Files**: Core system files (`index.html`, `run.sh`, `.env`, `src/gnom_hub/*`, `config/*`) are strictly off-limits for worker agents.
-*   **Escalation Routing**: Ambiguous security scans trigger a manual approval prompt in the dashboard for the user.
-
-### 📊 Phase 2: Observability & Health Dashboard
-*   **Structured Auditing**: Every system event and LLM call (latency, tokens, cost) is logged as JSON in an indexed SQLite `audit_log` table.
-*   **Health Bento Grid**: A real-time, glassmorphic status grid in the dashboard displays agent health (Green = Alive, Yellow = Heartbeat delay, Red = Offline) along with performance metrics.
-
-### 🧠 Phase 3 & 6: SoulAG Memory & Context Injection
-*   **Semantic & Jaccard Retrieval**: Replaced static history limits with an intelligent retrieval system. It weights matching keys twice as high as values.
-*   **Dynamic Prompt Injection**: Prior to worker executions, the top 8 most relevant facts from the SQLite memory are automatically injected into the agent system prompt.
-
-### 🔄 Phase 4: Error Recovery & DB Cleanup
-*   **Failover & Rotation**: Auto-rotation of LLM keys and graceful degradation fallback to local/alternative models (e.g., offline Llama via Ollama).
-*   **Automated Maintenance**: Auto-deletes old chat histories (>7 days) and expired facts (>30 days) while preserving critical settings and rules.
-
-### 🌐 Phase 5: Browser Automation (Playwright Sandbox)
-*   **Isolate & Sandboxing**: Workers execute web browser actions inside an isolated Docker container.
-*   **Zero-Network by Default**: The container runs offline (`--network=none`) and only switches to bridged network access if the target URL is explicitly whitelisted in `approved_external_urls`.
-
-### 🔄 Phase 7 & 8: Collaboration & Full Swarm Hardening
-*   **@mentions Support**: GeneralAG coordinates worker agents using `@AgentName -> task` syntax.
-*   **E2E Validation**: Completed end-to-end stress-testing of all features simultaneously (preset switching, capability caching, sandbox operations).
-
-### 🔗 Phase 9 & 10: Swarm Intelligence & A2A Communication
-*   **Agent-to-Agent Chats**: Agents can directly address each other via `@mentions` to solve multi-step problems asynchronously.
-*   **Git Automation**: Automatically stages and commits workspace changes after successful swarm tasks.
-
-### 🧠 Phase 11, 12 & 13: Continuous Learning & Feedback
-*   **Agent Evolution**: GeneralAG reviews job histories to dynamically append self-improvement rules (stored as `evolution_{agent}_{hex}`) to worker prompts.
-*   **User Feedback Loop**: Prompts the user to rate jobs via the dashboard panel, modifying agent behaviors based on user ratings and comments.
-
-### ⚡ Phase 14: Version Control & Graceful Degradation
-*   **Prompt Version Manager**: Automatic versioning of agent system prompts during evolution, tracking scores and supporting rollbacks if degradation is detected.
-*   **Active Fallback Routing**: Reroutes blocked or offline worker tasks dynamically to alternative agents to prevent workflow stalls.
-
-### 🛡️ Phase 15: Zero-Trust Capabilities & FAISS Embeddings
-*   **Capability Leases**: An in-memory cache system (TTL-based) that bypasses repeated LLM verification checks for verified files, commands, or browser actions.
-*   **Local FAISS Indexing**: Local semantic similarity search using `sentence-transformers` and `faiss-cpu`, falling back to TF-IDF cosine matching if libraries are missing.
-*   **Custom Presets**: Dynamically loads custom workspace presets from JSON files in `config/presets/`.
-
-### 🛡️ Phase 16: System Hardening, SoulAG Precision & Guard Autonomy
-*   **GeneralAG Orchestration Guard**: Strictly restricts GeneralAG to coordination, completely blocking it from executing shell commands or direct file writes.
-*   **Over-Association Prevention**: Implements query length guards and value-only embeddings to stop unrelated facts from injecting on short inputs (like "test" or "neu").
-*   **Automated Gatekeeper Approvals**: Automatically approves safe writes within the workspace and whitelisted shell commands (`python3`, `pytest`, `git status`) to speed up execution.
-*   **Dynamic PyPI Verification**: Performs real-time validation checks against the PyPI JSON API during package installations to check package legitimacy and active vulnerabilities.
-*   **Reasoning Block Filtering**: Automatically strips DeepSeek R1 `<think>...</think>` blocks from machine-parsed outputs to prevent gatekeeper bypasses while keeping the styled details widget in the chat UI.
-*   **Agent Limit Enforcement**: Restricts active agent counts to exactly 4 worker and 4 system agents (with automatic test-mode bypasses) to prevent uncontrolled swarm growth.
-*   **Console Performance Tuning**: Rewrote sequential configuration fetches into parallel `Promise.all` requests and added a 30s TTL cache with 0.5s timeout for model availability checks, eliminating UI lag.
-
-### 🔄 Phase 17: Swarm Stability & Loop Prevention
-*   **Mention Depth Restrictions**: Automatically limits cascading agent-to-agent mentions to a maximum depth of 3 to prevent recursive infinite loops.
-*   **Active Job Reset Watcher**: A background cleaner (`pulse_janitor`) monitors agent statuses and automatically resets hanging "busy" agents back to "online" after 5 minutes of inactivity.
-*   **Preset Transaction Locks**: Encapsulates DB writes during preset switching in an atomic SQLite transaction (`BEGIN IMMEDIATE TRANSACTION`) to prevent lock collisions.
-
-### 🎨 Phase 18: Sidebar Placeholders & Header Layout
-*   **Sidebar Metrics Relocation**: Moved global stats (Tokens, Agents, Memory) from the header back to the sidebar in a thin font layout.
-*   **Fixed Dimension Spacers**: Added two fixed 30px height placeholders (exactly 50% of the original search box height) flanking the stats module.
-*   **Symmetric Header Buttons**: Reverted the left header stats module to keep a clean logo, and styled the right header buttons with a uniform width of 86px (based on the `Workspace` button template) with centered text.
-
-### 💾 Phase 19: Global Header Actions & Clean UI Navigation
-*   **Header Navigation buttons**: Added two half-width buttons (43px) to the header navigation panel:
-    *   **Back Button (`↩`)**: Restores the previous view using a dynamic history stack (`window.viewHistory`), disabling itself when no history exists.
-    *   **Save Button (`💾`)**: Saves settings contextually (LLM keys/routings if in the LLM config panel, or agent optimizer settings if an agent is selected in the sidebar).
-*   **Clean UI Form Overhauls**: Operates out all redundant local "Speichern" and "Apply & Save" buttons from the settings console and the sidebar agent inspector, providing a streamlined, unified save experience.
+*   **🛡️ Phase 1: Security & Gatekeeper**
+    *   Double approval (`WatchdogAG` + `SecurityAG`) for all writes/commands.
+    *   Strict path restrictions on core system files.
+*   **📊 Phase 2: Observability & Health**
+    *   Structured JSON auditing of system events in SQLite.
+    *   Bento Grid dashboard for real-time status and health.
+*   **🧠 Phase 3 & 6: Memory & Retrieval**
+    *   Intelligent fact retrieval (keys weighted 2x vs values).
+    *   Dynamic context injection of top 8 relevant facts.
+*   **🔄 Phase 4: Recovery & Cleanup**
+    *   API failover/rotation and local Ollama model fallbacks.
+    *   Auto-deletes old chat histories (>7d) and facts (>30d).
+*   **🌐 Phase 5: Browser Sandbox**
+    *   Playwright browser automation runs inside isolated Docker container.
+    *   Zero-network access by default (offline), Whitelisting-controlled.
+*   **🔄 Phase 7 & 8: Collaboration & Hardening**
+    *   Task delegation via `@AgentName -> task` mentions.
+    *   Simultaneous stress testing & packaging.
+*   **🔗 Phase 9 & 10: Swarm Intelligence & Git**
+    *   Agent-to-agent direct communications.
+    *   Automated Git commits after successful swarm tasks.
+*   **🧠 Phase 11-13: Continuous Learning & Feedback**
+    *   GeneralAG reviews jobs to inject self-improvement rules (`evolution_*`).
+    *   User feedback panel (thumbs up/down) directly shapes agent behaviors.
+*   **⚡ Phase 14: Versioning & Graceful Degradation**
+    *   Prompt Version Manager with rollbacks for prompt evolution.
+    *   Active fallback routing when workers are offline/blocked.
+*   **🛡️ Phase 15: Zero-Trust Capabilities & FAISS**
+    *   Local FAISS semantic vector search (`sentence-transformers`).
+    *   In-memory Capability Leases (TTL cache) to bypass redundant security checks.
+*   **🛡️ Phase 16: System Hardening & Guarding**
+    *   GeneralAG blocked from writing files/running commands.
+    *   Strict 4/4 agent limit and LLM console performance tuning (`Promise.all`).
+    *   Automated PyPI API validation and DS-R1 `<think>` block filtering.
+*   **🔄 Phase 17: Stability & Loop Prevention**
+    *   Cascading mentions restricted to max depth of 3.
+    *   `pulse_janitor` automatically resets hanging "busy" agents after 5 mins.
+    *   Preset switching wrapped in atomic SQLite transactions.
+*   **🎨 Phase 18: Sidebar & Header Layout**
+    *   Moved global stats to sidebar with a clean thin font.
+    *   Flanked sidebar stats with two fixed 30px placeholders.
+    *   Clean logo in left header, uniform 86px buttons in right header.
+*   **💾 Phase 19: Global Actions & Clean UI**
+    *   Added Back (`↩`) and Save (`💾`) buttons to the header navigation.
+    *   Removed all redundant local "Speichern" / "Apply & Save" buttons.
 
 ---
 
