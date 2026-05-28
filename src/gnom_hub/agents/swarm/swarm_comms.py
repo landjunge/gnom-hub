@@ -4,10 +4,13 @@ from gnom_hub.db.legacy_db import get_all_agents, get_state_value, set_state_val
 
 def process_swarm_mentions(sender: str, text: str, depth: int = 0):
     new_depth = depth + 1
-    if new_depth > 3:
+    if new_depth > 10:
         try:
             from gnom_hub.db.legacy_db import add_chat_message, get_active_project
-            add_chat_message(get_active_project(), "System", "war-room", "chat", f"⚠️ [System] Swarm-Mention-Limit überschritten ({new_depth} > 3). Kaskade gestoppt.")
+            add_chat_message(get_active_project(), "System", "war-room", "chat", f"⚠️ [System] Swarm-Mention-Limit überschritten ({new_depth} > 10). GeneralAG greift automatisch ein, um das Ergebnis fertigzustellen.")
+            from gnom_hub.chat.brainstorm.brainstorm import dispatch
+            prompt = "[AUTOMATISCHE HEILUNG] Mention-Limit überschritten. Bitte analysiere den Chatverlauf und erstelle das abschließende Ergebnis."
+            threading.Thread(target=dispatch, args=(prompt, "GeneralAG", 0), daemon=True).start()
         except Exception: pass
         return
     ags = {a["name"].lower(): a["name"] for a in get_all_agents() if a.get("status") == "online"}
