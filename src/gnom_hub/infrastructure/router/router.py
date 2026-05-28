@@ -14,6 +14,12 @@ def _build_sys(n, sys, agent_name):
         from gnom_hub.core.utils.preset_service import get_preset_prompt
         if prs := get_preset_prompt(active_preset, n): sys = prs + "\n\n" + sys
     if not agent_name: return sys
+    sys += (
+        f"\n\n=== STRIKTE IDENTITÄTS-REGEL ===\n"
+        f"Du bist {agent_name}. Du darfst dich NIEMALS als ein anderer Agent ausgeben oder Nachrichten im Namen anderer simulieren.\n"
+        f"Beginne deine Antwort niemals mit dem Namen eines anderen Agenten (z. B. '**GeneralAG hier.**', '**ResearcherAG hier.**' oder Ähnliches).\n"
+        f"Sprich und antworte ausschließlich als {agent_name}! Schreibe deinen Beitrag direkt unter deiner eigenen Persona."
+    )
     try:
         from gnom_hub.evolution.evolution_v2 import get_active_version
         av = get_active_version(agent_name)

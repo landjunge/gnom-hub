@@ -15,7 +15,12 @@ def ask_llm(ag, q, ctx, bs_mode=False):
     wd = get_workspace_dir(); fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
     sys += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
     if bs_mode: sys += "\n[MODUS: BRAINSTORM — Nur diskutieren! KEIN [WRITE:] erlaubt.]"
-    u_msg = f"{q}\n\nBisherige Diskussion:\n{ctx}" if ctx else q
+    u_msg = (
+        f"Aufgabe/Frage: {q}\n\n"
+        f"Verlauf der bisherigen Diskussion (nur zur Information):\n"
+        f"===\n{ctx}\n===\n\n"
+        f"WICHTIG: Antworte jetzt ausschließlich als {ag['name']} auf die Aufgabe/Frage unter Berücksichtigung des Verlaufs. Spiele keine anderen Rollen."
+    ) if ctx else q
     set_agent_status(ag["name"], "busy")
     try:
         eo = ask_router(u_msg, sys, agent_name=ag.get("name", ""))
