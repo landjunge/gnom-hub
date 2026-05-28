@@ -297,6 +297,13 @@
       gap: 16px;
     }
 
+    .header-right button {
+      width: 86px;
+      justify-content: center;
+      text-align: center;
+      padding: 5px 0 !important;
+    }
+
     .header-stats {
       display: flex;
       gap: 8px;
@@ -1999,14 +2006,34 @@
 
 <body>
   <header>
-    <div class="logo" onclick="showWarRoom()">
-      <div class="logo-mark" id="nuke-btn"
-        onmousedown="nukeStart(event)" onmouseup="nukeCancel()" onmouseleave="nukeCancel()"
-        ontouchstart="nukeStart(event)" ontouchend="nukeCancel()"
-        title="Gedrückt halten (2s) = NUKE: Alle Prozesse killen & Hub neustarten"><img src="/static/assets/logo.png" alt="G"></div>
-      <div class="logo-title-group">
-        <div class="logo-text">GNOM-HUB</div>
-        <div class="logo-subtitle">General Nexus Operator Machine</div>
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <div class="logo" onclick="showWarRoom()">
+        <div class="logo-mark" id="nuke-btn"
+          onmousedown="nukeStart(event)" onmouseup="nukeCancel()" onmouseleave="nukeCancel()"
+          ontouchstart="nukeStart(event)" ontouchend="nukeCancel()"
+          title="Gedrückt halten (2s) = NUKE: Alle Prozesse killen & Hub neustarten"><img src="/static/assets/logo.png" alt="G"></div>
+        <div class="logo-title-group">
+          <div class="logo-text">GNOM-HUB</div>
+          <div class="logo-subtitle">General Nexus Operator Machine</div>
+        </div>
+      </div>
+      
+      <!-- Live Metrics Header Module -->
+      <div class="header-stats-module" style="display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 6px 14px; font-family: 'Inter', sans-serif; font-size: 0.65rem; color: rgba(255,255,255,0.6); font-weight: 200; letter-spacing: 0.3px; box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.01);">
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span>Tokens:</span>
+          <span id="s-tokens" style="font-weight: 400; color: rgba(255,255,255,0.95);">0</span>
+        </div>
+        <div style="width: 1px; height: 12px; background: rgba(255,255,255,0.1);"></div>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span>Agents:</span>
+          <span id="s-agents" style="font-weight: 400; color: rgba(255,255,255,0.95);">0</span>
+        </div>
+        <div style="width: 1px; height: 12px; background: rgba(255,255,255,0.1);"></div>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <span>Memory:</span>
+          <span id="s-memory" style="font-weight: 400; color: rgba(255,255,255,0.95);">0</span>
+        </div>
       </div>
     </div>
     <div class="status-lamps" id="status-lamps"></div>
@@ -2061,20 +2088,8 @@
 
     <div class="sidebar">
       <div style="height: 15px; width: 100%; flex-shrink: 0;"></div>
-      <div class="sidebar-search" style="height: 60px; padding: 6px 15px !important; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-family: 'Inter', sans-serif; font-weight: 100 !important; font-size: 0.65rem; color: rgba(255,255,255,0.6); letter-spacing: 0.3px;">
+      <div class="sidebar-search" style="height: 60px; padding: 0; box-sizing: border-box; display: flex; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04);">
         <input type="text" id="agent-search" style="display: none;" value="">
-        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 100 !important;">
-          <span style="font-weight: 100 !important;">Tokens:</span>
-          <span id="s-tokens" style="font-weight: 100 !important; color: rgba(255,255,255,0.95);">0</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 100 !important;">
-          <span style="font-weight: 100 !important;">Agents:</span>
-          <span id="s-agents" style="font-weight: 100 !important; color: rgba(255,255,255,0.95);">0</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 100 !important;">
-          <span style="font-weight: 100 !important;">Memory:</span>
-          <span id="s-memory" style="font-weight: 100 !important; color: rgba(255,255,255,0.95);">0</span>
-        </div>
       </div>
       <div class="agent-list" id="agent-list"></div>
       
