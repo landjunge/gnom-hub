@@ -20,7 +20,8 @@ tests = [
     "test_soul_warnings.py",
     "test_swarm_e2e.py",
     "test_agent_optimizer.py",
-    "test_swarm_stability.py"
+    "test_swarm_stability.py",
+    "test_agent_limit.py"
 ]
 
 def main():
