@@ -288,6 +288,40 @@ gnom-hub/
 ├── pyproject.toml       # Ruff-Konfiguration & Abhängigkeiten
 ```
 
+## 🧬 Die SuperGNOM-Vision: Vom Spielplatz zum Werkzeug
+
+Während **GNOM-HUB** die interaktive Schmiede (der Spielplatz) ist, in dem wir mit Agenten experimentieren, Prompts weiterentwickeln und Vektor-Erinnerungen trainieren, ist der **SuperGNOM** das fertige Produkt: ein stabiles, unveränderliches und hochgradig spezialisiertes KI-System, das auf eine konkrete Aufgabe oder einen bestimmten Menschen zugeschnitten ist.
+
+### 🎯 Kernkonzepte des SuperGNOMs
+* **Unveränderbarkeit (Immutability):** Ein SuperGNOM lernt nicht kontinuierlich weiter. Seine Prompts und sein Gedächtnis sind eingefroren, um unvorhersehbares Verhalten (Concept Drift) oder Manipulationen im Betrieb auszuschließen.
+* **Fokus-UI:** Keine Entwickler-Konsolen, Token-Budgets oder Schieberegler. Der SuperGNOM bietet eine saubere, zweckgebundene Endnutzer-Oberfläche (z. B. ein minimalistisches Assistenz-UI für Senioren oder einen headless API-Hintergrunddienst).
+* **Portabilität:** Der SuperGNOM läuft vollkommen autark und isoliert in seinem eigenen Verzeichnis, inklusive lokaler SQLite-Datenbank und statischer Konfiguration.
+
+---
+
+## 🛠️ SuperGNOM Ist-Zustand (Was bereits implementiert ist)
+
+Auf der Branch `feature/supergnom` wurden folgende Kern-Komponenten fertiggestellt:
+
+1. **Der `@bake`-Compiler (`compiler.py`):**
+   Erstellt per Chatbefehl (`@bake [name] [template]`) ein eigenständiges, bereinigtes Paket unter `dist/supergnom_[name]/` mit eigener portable `.env`-Konfiguration, schlanker SQLite-Datenbank und automatischem Start-Skript (`run.sh`).
+2. **Gefrorene Soul-Runtime (`SUPERGNOM_MODE`):**
+   Wenn aktiv, blockiert das System jegliche Lernprozesse von `SoulAG` sowie automatische Prompt-Modifikationen durch `GeneralAG`. Die Systemprompts sind statisch festgeschrieben.
+3. **Text-basiertes Routing (`routing.txt`):**
+   Die Zuweisung der LLM-Modelle (lokales Ollama oder externe APIs) für jeden Agenten erfolgt simpel und live über eine `routing.txt` auf deinem Desktop oder im Konfigurationsordner.
+4. **Passive Archiv-Datenbank (`passive_archive.db`):**
+   Jede Interaktion und jeder gelernte Fakt wird in einem passiven Langzeitarchiv mitgeschrieben. Im Notfall kann dieses Archiv via `@emergency [Suchbegriff]` / `@notfall [Suchbegriff]` durchsucht werden, falls das aktive Kontextgedächtnis versagt.
+5. **Dynamische UI-Adaption:**
+   Im SuperGNOM-Modus lädt die Web-Oberfläche ein minimalistisches CSS-Layout: Die Sidebar und alle Administrations-Optionen werden ausgeblendet, das Chat-Fenster wird zentriert und der "Nuke"-Button deaktiviert.
+
+---
+
+## 📅 Roadmap: Was noch getan werden muss (Future Work)
+
+* **Spezifische UI-Skins / Templates:** Implementierung dedizierter HTML-Vorlagen für unterschiedliche Einsatzgebiete (z. B. ein barrierefreies Assistenz-UI für ältere Menschen mit Audio-Support oder eine reine API-Schnittstelle).
+* **Ein-Klick-Binary & Docker-Export:** Automatisches Kompilieren der Runtime in eine einzige ausführbare Binärdatei oder ein kompaktes Docker-Image für einfaches Deployment.
+* **Agenten-Pruning (Reduzierung):** Option, beim Kompilieren ungenutzte Worker-Agenten komplett aus der Runtime zu entfernen (z. B. Verpacken eines reinen Schreib-GNOMs ohne `CoderAG` und `ResearcherAG`), um Ressourcen zu sparen.
+
 ---
 
 ## 🤝 Co-Creators

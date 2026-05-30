@@ -216,6 +216,40 @@ gnom-hub/
 ├── pyproject.toml       # Ruff configs & dependencies
 ```
 
+## 🧬 The SuperGNOM Vision: From Forge to Tool
+
+While **GNOM-HUB** acts as the interactive forge (the playground) where we experiment with agents, fine-tune prompts, and train vector memories, the **SuperGNOM** is the final product: a stable, immutable, and highly specialized AI assistant tailored to a specific task or person.
+
+### 🎯 SuperGNOM Core Concepts
+* **Immutability:** A SuperGNOM does not continuously learn or evolve in production. Its prompts and memory are frozen to eliminate unpredictable behavior (concept drift) or prompt injection risks.
+* **Focused UI:** No developer consoles, token meters, or settings sliders. It serves a clean, task-specific end-user interface (e.g., a simplified assistant UI for seniors or a headless API microservice).
+* **Portability:** The SuperGNOM runs fully self-contained and isolated within its own folder, incorporating a local SQLite database copy and static configs.
+
+---
+
+## 🛠️ SuperGNOM Current State (What is implemented)
+
+On the `feature/supergnom` branch, the following components are completed:
+
+1. **The `@bake` Compiler (`compiler.py`):**
+   Generates a standalone, sanitized package under `dist/supergnom_[name]/` using the chat command `@bake [name] [template]`. It packages a local portable `.env` config, a slim SQLite database, and an automated startup script (`run.sh`).
+2. **Frozen Soul Runtime (`SUPERGNOM_MODE`):**
+   When enabled, skips active learning threads (`SoulAG`) and prompt modifications (`GeneralAG`), ensuring agent behaviors remain completely static and predictable.
+3. **Text-Based Routing Overrides (`routing.txt`):**
+   Agent LLM routings (local Ollama vs external APIs) can be configured simply and on-the-fly via a `routing.txt` file placed on your Desktop or in the project's config folder.
+4. **Passive Archiving Database (`passive_archive.db`):**
+   All interactions and facts are duplicated into a passive long-term archive database. This archive can be queried in case of emergency context memory loss via the `@emergency [term]` or `@notfall [term]` commands.
+5. **Dynamic UI Adaptation:**
+   In SuperGNOM mode, the client dashboard automatically injects custom CSS rules to hide the sidebar, center the chat window, and disable all developer metrics, presets, and nuke buttons.
+
+---
+
+## 📅 Roadmap (Future Work)
+
+* **Dedicated UI Skins / Templates:** Implement template variations for different use cases (e.g., a highly accessible chat UI for seniors with voice support, or a headless backend runner).
+* **Single-Click Binary & Docker Exports:** Automate compiling the SuperGNOM runtime into a single standalone executable binary or a lightweight Docker container.
+* **Agent Pruning (Swarm Minification):** Introduce options during baking to strip unneeded worker agents (e.g., packaging a writer assistant containing only `WriterAG` and `EditorAG`, omitting `CoderAG`), saving local resources.
+
 ---
 
 ## 🤝 Co-Creators
