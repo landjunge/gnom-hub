@@ -124,3 +124,25 @@ def handle_bake(q):
     except Exception as e:
         _post_chat("System", f"❌ Fehler bei der Kompilierung: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+def handle_emergency(q):
+    query = q.strip()
+    if not query:
+        _post_chat("System", "Fehler: Bitte gib einen Suchbegriff für die Notfall-Abfrage an (z.B. `@emergency Python`).")
+        return {"status": "error", "message": "Missing query"}
+    _post_chat("System", f"🚨 Starte Notfall-Abfrage in der passiven Archiv-Datenbank für: **{query}**...")
+    try:
+        from gnom_hub.db.passive_db import emergency_search
+        results = emergency_search(query, limit=5)
+        if not results:
+            _post_chat("System", "⚠️ Keine passenden Einträge im passiven Archiv gefunden.")
+            return {"status": "ok", "results": []}
+        md = f"📋 **Gefundene Archiv-Einträge ({len(results)}):**\n\n"
+        for r in results:
+            ts = r.get("timestamp", "").split("T")[0]
+            md += f"- **[{ts}] {r.get('sender')} ({r.get('category')}):** {r.get('content')}\n"
+        _post_chat("System", md)
+        return {"status": "ok", "results": results}
+    except Exception as e:
+        _post_chat("System", f"❌ Fehler bei der Notfall-Abfrage: {str(e)}")
+        return {"status": "error", "message": str(e)}

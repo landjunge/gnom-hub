@@ -77,6 +77,11 @@ def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, co
                 """, (msg_id, project, sender, agent_id, msg_type, content,
                       datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                       json.dumps(meta_val)))
+                try:
+                    from gnom_hub.db.passive_db import archive_record
+                    archive_record("chat", sender, content, {"project": project, "agent_id": agent_id, "msg_type": msg_type})
+                except Exception as ex:
+                    logger.warning(f"[DB] Passive archive message logging failed: {ex}")
                 return msg_id
     except sqlite3.Error as e:
         logger.error(f"[DB] Failed to add chat message: {e}")
@@ -515,6 +520,11 @@ def save_soul_fact(key: str, value: str, agent: str = "System", priority: str = 
                 cursor = conn.execute("INSERT OR REPLACE INTO soul_memory (key, value, timestamp, priority, agent) VALUES (?, ?, ?, ?, ?)", 
                              (key, value, datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), priority or "medium", ag))
                 row_id = cursor.lastrowid
+        try:
+            from gnom_hub.db.passive_db import archive_record
+            archive_record("fact", ag, f"{key}: {value}", {"priority": priority})
+        except Exception as ex:
+            logger.warning(f"[DB] Passive archive fact logging failed: {ex}")
         try:
             from gnom_hub.memory.embeddings import get_embedder
             get_embedder().add_fact(str(row_id), key, value)
