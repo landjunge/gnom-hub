@@ -122,7 +122,7 @@ Gnom-Hub keeps structural complexity low by keeping code focused.
 
 ## 🤖 Swarm Topology
 
-All agent configurations, system prompts, and permissions are configured centrally in [agent_definitions.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/agent_definitions.py).
+All agent configurations, system prompts, and permissions are configured centrally in [agent_definitions.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/agents/agent_definitions.py).
 
 ### System Agents (Administrative Permissions)
 *   **SoulAG**: Central consciousness and memory. Learns preferences and injects facts.
@@ -195,15 +195,20 @@ Gnom-Hub background agents interact with the system, filesystem, and external AP
 
 ```text
 gnom-hub/
-├── src/gnom_hub/        # 174 Python modules (Backend)
-│   ├── hub_app.py       # FastAPI application and startup hooks
-│   ├── db/              # SQLite3 database WAL layers & schemas
-│   ├── proc_mgr.py      # Process daemon controller (psutil PIDs)
-│   ├── path_validator.py# Path traversal prevention sandboxing
-│   ├── log.py           # Structured logger configuration
-│   ├── router/          # Multi-tier routing & model selection
-│   ├── frontend/        # Glassmorphic dashboard (HTML, CSS, modularized JS scripts)
-│   └── routes_*.py      # REST endpoints for chat, metrics, and memory
+├── src/gnom_hub/        # 176 Python modules (Backend)
+│   ├── core/            # Global configuration, logger, and Gatekeeper security
+│   │   └── security/    # Path validation (path_validator.py) & Gatekeeper (gatekeeper.py)
+│   ├── db/              # SQLite3 database (WAL mode) & repositories (legacy_db.py)
+│   ├── memory/          # Local FAISS semantic search & embeddings
+│   ├── soul/            # Steganographic memory (ZWC encryption)
+│   ├── agents/          # BaseAgent, agent_definitions.py, and tools
+│   │   ├── actions/     # Action dispatcher (action_handlers.py) for [WRITE:], [SHELL:], [BROWSER:]
+│   │   ├── swarm/       # Multi-agent coordination & A2A swarm communications
+│   │   └── explainability/ # Structured reasoning chain (<think> filtering)
+│   ├── chat/            # Chat services, system commands & brainstorming
+│   ├── api/             # FastAPI app.py, router & API endpoints (endpoints/)
+│   ├── infrastructure/  # Process management (psutil_mgr.py), LLM routing, and pulse heartbeat
+│   └── frontend/        # Bento-Grid War Room dashboard (HTML, CSS & 7 JS modules)
 ├── agents/              # Startup scripts for the 8 background agents
 ├── config/              # Local setups, presets, and token configurations
 ├── scripts/             # Local installer and shortcut setups
@@ -221,7 +226,7 @@ Creative pioneer and founder. Designed the agent topologies and laid the philoso
 **Antigravity (Google DeepMind)**
 Architect of the hardening phase. Key contributions:
 * Refactored and modularized codebase files to respect the backend 40-line rule.
-* Secured path traversal risks with dedicated workspace validations (`path_validator.py`).
+* Secured path traversal risks with dedicated workspace validations ([path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/core/security/path_validator.py)).
 * Migrated JSON storage layers into a transaction-safe local SQLite3 database (WAL mode).
 * Implemented the `psutil` process manager with PID files and Lifespan hooks.
 * Added SFTP deployments, CORS protections, and custom presets support.

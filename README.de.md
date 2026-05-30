@@ -178,12 +178,12 @@ Die Hintergrund-Agenten von Gnom-Hub interagieren mit dem System, dem Dateisyste
 Sicherheit ist in Gnom-Hub kein nachträgliches Add-on, sondern ein **fundamentales Architekturprinzip**. Da das System autonom agierende Agenten mit weitreichenden Werkzeugen ausstattet, wird jede Aktionen über eine strikte, mehrstufige Sicherheitsbarriere geleitet.
 
 ### 👮‍♂️ Aktive Gatekeeper: WatchdogAG & SecurityAG
-Alle von Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) angeforderten Datei- und Befehlsaktionen werden in der zentralen Dispatcher-Schicht [action_handlers.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/action_handlers.py) abgefangen, analysiert und erst nach erfolgreicher Validierung ausgeführt.
+Alle von Worker-Agenten (`CoderAG`, `ResearcherAG`, `WriterAG`, `EditorAG`) angeforderten Datei- und Befehlsaktionen werden in der zentralen Dispatcher-Schicht [action_handlers.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/agents/actions/action_handlers.py) abgefangen, analysiert und erst nach erfolgreicher Validierung ausgeführt.
 
 #### 1. WatchdogAG (Pfad- und Integritätsschutz)
 Der Watchdog schützt den Systemkern vor unbefugten Dateizugriffen und Manipulationen:
 * **Absoluter Systemdateien-Schutz**: Systemkritische Dateien (`index.html`, `run.sh`, `.env`) und Verzeichnisse (`src/gnom_hub/`, `config/`, `scripts/`) sind für Worker-Agenten **vollkommen tabu**. Jeglicher Lese-, Schreib- oder Ausführungsversuch auf diese Pfade wird sofort unterbunden. Ein Zugriffsbypass über `approved_system_paths` existiert für Worker nicht.
-* **Pfad-Validierung & Sandboxing**: Alle Dateipfade werden über `is_worker_blocked` in [path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/path_validator.py) normalisiert und in absolute Pfade aufgelöst (`os.path.realpath`). Versuche von Directory-Traversal-Attacken (z. B. mit `../`) werden im Keim erstickt. Jeder Pfad muss zwingend innerhalb des dafür vorgesehenen Workspace-Verzeichnisses (`WORKSPACE_DIR`) liegen.
+* **Pfad-Validierung & Sandboxing**: Alle Dateipfade werden über `is_worker_blocked` in [path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/core/security/path_validator.py) normalisiert und in absolute Pfade aufgelöst (`os.path.realpath`). Versuche von Directory-Traversal-Attacken (z. B. mit `../`) werden im Keim erstickt. Jeder Pfad muss zwingend innerhalb des dafür vorgesehenen Workspace-Verzeichnisses (`WORKSPACE_DIR`) liegen.
 
 #### 2. SecurityAG (Code- und Befehlsanalyse)
 Die SecurityAG bewacht die Ausführungsebene und scannt Aktionen auf potenziell destruktive Absichten:
@@ -267,15 +267,20 @@ Starte den FastAPI-Server:
 
 ```text
 gnom-hub/
-├── src/gnom_hub/        # 174 Python-Module (Backend)
-│   ├── hub_app.py       # FastAPI App & Lifespan-Orchestrierung
-│   ├── db/              # SQLite3-Datenbank (WAL-Modus) und Repositories
-│   ├── proc_mgr.py      # Prozess-Manager (psutil & PID-Dateien)
-│   ├── path_validator.py# Workspace-basierte Pfadvalidierung
-│   ├── log.py           # Zentrales Logging-Framework
-│   ├── router/          # LLM-Routing und SmartRouter (Multi-Provider)
-│   ├── frontend/        # Modularisiertes glassmorphes Dashboard (HTML, CSS, modularisierte static JS-Module)
-│   └── routes_*.py      # API-Endpunkte
+├── src/gnom_hub/        # 176 Python-Module (Backend)
+│   ├── core/            # Globale Konfiguration, Logger und Gatekeeper-Sicherheit
+│   │   └── security/    # Pfadvalidierung (path_validator.py) & Gatekeeper (gatekeeper.py)
+│   ├── db/              # SQLite3-Datenbank (WAL-Modus) & Repositories (legacy_db.py)
+│   ├── memory/          # Lokale FAISS-Semantiksuche & Embeddings
+│   ├── soul/            # Steganographisches Gedächtnis (ZWC-Verschlüsselung)
+│   ├── agents/          # BaseAgent, agent_definitions.py und Werkzeuge
+│   │   ├── actions/     # Dispatcher (action_handlers.py) für [WRITE:], [SHELL:], [BROWSER:]
+│   │   ├── swarm/       # Multi-Agenten-Koordination & A2A-Swarm-Kommunikation
+│   │   └── explainability/ # Strukturierte LLM-Gedankengänge (<think>-Filterung)
+│   ├── chat/            # Chat-Services, Systembefehle & Brainstorming
+│   ├── api/             # FastAPI app.py, Router & API-Endpunkte (endpoints/)
+│   ├── infrastructure/  # Prozess-Management (psutil_mgr.py), LLM-Routing & Pulse-Heartbeat
+│   └── frontend/        # Bento-Grid War Room Dashboard (HTML, CSS & 7 JS-Module)
 ├── agents/              # 8 Agenten-Definitionen (Startup-Skripte der Daemons)
 ├── config/              # Lokale Umgebungskonfigurationen (Presets, Token-Budgets)
 ├── scripts/             # Setup- & Hilfs-Skripte
@@ -293,7 +298,7 @@ Kreative Pionierin der ersten Stunde. Mutter der "Vier Säulen". Legte das philo
 **Antigravity (Google DeepMind)**
 Architekt der Härtungsphase. Spezifische Beiträge:
 * Aufteilung übergroßer Module zur strikten Durchsetzung der 40-Zeilen-Regel im Backend
-* Sicherung der Pfad-Zugriffe über Workspace-basierte Validierung (`path_validator.py`)
+* Sicherung der Pfad-Zugriffe über Workspace-basierte Validierung ([path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/core/security/path_validator.py))
 * Migration der JSON-Speicherung auf eine transaktionssichere SQLite3-Datenbank (WAL-Modus)
 * Implementierung des `psutil`-Prozessmanagers mit PID-Dateien und Lifespan-Integration
 * Integration von SFTP-Bereitstellung, CORS-Einschränkung auf Localhost und des `log.py`-Frameworks
