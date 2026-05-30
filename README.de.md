@@ -8,7 +8,6 @@
 [![Agents](https://img.shields.io/badge/Agenten-8-blueviolet.svg)](#)
 [![Lines of Code](https://img.shields.io/badge/Zeilen_Code-~7500-blue.svg)](#)
 [![Modules](https://img.shields.io/badge/Module-176-blue.svg)](#)
-[![40-Lines-Rule Compliance](https://img.shields.io/badge/40--Zeilen--Regel-~80%25_konform-orange.svg)](#)
 [![Linting](https://img.shields.io/badge/Linting-Ruff-orange.svg)](#)
 
 ---
@@ -23,7 +22,7 @@
 
 ## Was ist Gnom-Hub?
 
-Gnom-Hub ist ein lokales Multi-Agenten-System mit einer klaren Struktur: **176 Python-Module — über 80% davon strikt kürzer als 40 Zeilen**. Es bietet einen leichtgewichtigen Orchestrator ohne aufgeblähte Frameworks, der vollständig lokal läuft, kein schwerfälliges Docker benötigt und die Agenten über ein Web-Dashboard namens **War Room** steuert.
+Gnom-Hub ist ein lokales Multi-Agenten-System mit einer klaren Struktur von **176 Python-Modulen**. Es bietet einen leichtgewichtigen Orchestrator ohne aufgeblähte Frameworks, der vollständig lokal läuft, kein schwerfälliges Docker benötigt und die Agenten über ein Web-Dashboard namens **War Room** steuert.
 
 > [!IMPORTANT]
 > **Bewusster Minimalismus:** Gnom-Hub ist auf Einfachheit und maximale Performance ausgelegt. Das System ist bewusst **nicht** dafür konzipiert, Hunderte von Agenten zu steuern, sondern dient der effizienten Orchestrierung einer kleinen, hochspezialisierten und überschaubaren Gruppe von Agenten.
@@ -113,7 +112,7 @@ Gnom-Hub kombiniert eine robuste Multi-Prozess-Orchestrierung mit einem interakt
 *   **Layer-basiertes visuelles System in der Showbox**:
     Die Showbox im Web-Dashboard stellt Arbeitsergebnisse, Textentwürfe und UI-Mockups in Echtzeit auf interaktiven Informationsebenen (Layern) dar. Jeder Layer besitzt eine feste farbliche Kennzeichnung und erzeugt beim Wechsel einen visuellen Highlight-Effekt (Blinken) an der zugehörigen Agenten-Gruppe (Worker links oder System-Agenten oben), um dem Nutzer sofort die Herkunft der Information anzuzeigen.
 *   **Modulares Frontend**:
-    Das glassmorphe Web-Dashboard wurde vollständig refaktoriert: Anstelle einer riesigen, monolithischen JavaScript-Datei im HTML-Code ist das UI nun in 7 hochgradig spezialisierte JavaScript-Module aufgeteilt. Dies gewährleistet eine saubere Trennung der Zuständigkeiten (core.js, chat.js, workspace.js, system_dashboard.js, worker_dashboard.js, worker_sidebar.js, dashboard.js) und vereinfacht die Wartung.
+    Das glassmorphe Web-Dashboard wurde vollständig refaktoriert: Anstelle einer riesigen, monolithischen JavaScript-Datei im HTML-Code ist das UI nun in 9 hochgradig spezialisierte JavaScript-Module aufgeteilt. Dies gewährleistet eine saubere Trennung der Zuständigkeiten (core.js, chat.js, workspace.js, system_dashboard.js, worker_dashboard.js, worker_sidebar.js, dashboard.js, showbox.js, showbox-buttons.js) und vereinfacht die Wartung.
 *   **Gemeinsames Langzeitgedächtnis**:
     Alle Agenten teilen sich eine persistente SQLite-Wissensbasis. SoulAG analysiert Chats und Interaktionen, speichert relevante Erkenntnisse ab und injiziert diese kontextabhängig via FAISS-Vektorsuche (oder mathematischem TF-IDF-Fallback bei fehlenden Bibliotheken) vor jedem LLM-Call direkt in den Systemprompt der Worker, um wiederholte Fehler zu vermeiden.
 *   **Brainstorming-Modus mit strukturierter Agenten-Diskussion**:
@@ -192,12 +191,12 @@ Die Datenbank-Initialisierung (`init_db()`), das Seeding der Standard-Agenten un
 
 ---
 
-## 📐 Die 40-Zeilen-Regel (Funktionen & Methoden)
+## 📐 Die 40-Zeilen-Regel (Für Agenten-Code)
 
-Gnom-Hub verhindert Komplexität und Code-Bloat durch einen klaren Design-Standard:
-*   **Die Richtlinie**: Jede einzelne **Funktion und Methode** im Backend soll eine Länge von 40 Zeilen nicht überschreiten. Dies fördert Single-Responsibility, Übersichtlichkeit und Testbarkeit.
-*   **Nicht-dogmatische Dateilängen**: Diese Regel ist ein Qualitätsstandard für ausführbaren Code und keine starre Begrenzung für ganze Dateien. Ganze Python-Module dürfen selbstverständlich länger als 40 Zeilen sein, um Konfigurations-Schemas, zusammenhängende Hilfsfunktionen, Konfigurationstabellen (wie Agenten-Definitionen) oder Import-Blöcke sauber zu bündeln, solange die einzelnen Funktionen darin kompakt bleiben.
-*   **Worker-Einfachheit**: Über 80% aller Python-Dateien im Projekt sind insgesamt kürzer als 40 Zeilen. Worker-Schleifen (wie `CoderAG`) benötigen nach wie vor lediglich ein kompaktes Skript von ca. 10 Zeilen.
+Um Komplexität, Monolithen und Sicherheitsrisiken in Projekten zu vermeiden, überwacht GNOM-HUB die Einhaltung eines klaren Programmierstandards für die vom Schwarm geschriebenen Codesegmente:
+*   **Fokus für den Schwarm**: Jede einzelne **Funktion und Methode**, die von den Worker-Agenten (z. B. `CoderAG`) im Workspace erstellt oder refaktoriert wird, soll eine Länge von 40 Zeilen nicht überschreiten.
+*   **Regelprüfung durch WatchdogAG & EditorAG**: `WatchdogAG` fungiert als Wächter dieser Regel und verweigert die Freigabe (`APPROVED`), falls generierter Code diese Grenze überschreitet. `EditorAG` unterstützt bei der anschließenden Modularisierung und Aufteilung in kleinere Hilfsfunktionen.
+*   **Kein Dogma für die Plattform**: Dieser Standard betrifft ausschließlich den im Workspace durch die Agenten generierten Code, nicht das System-Backend von GNOM-HUB selbst. Systemkritische Steuerungsdateien (z. B. für SQLite-WAL oder Vektorsuchen) sind strukturbedingt länger, um Logik lesbar an einem Ort zu behalten.
 
 ---
 
@@ -343,14 +342,14 @@ gnom-hub/
 │   ├── db/              # SQLite3-Datenbank (WAL-Modus) & Repositories (legacy_db.py)
 │   ├── memory/          # Lokale FAISS-Semantiksuche & Embeddings
 │   ├── soul/            # Steganographisches Gedächtnis (ZWC-Verschlüsselung)
-│   ├── agents/          # BaseAgent, agent_definitions.py und Werkzeuge
+│   ├── agents/          # agent_base.py, agent_definitions.py und Werkzeuge
 │   │   ├── actions/     # Dispatcher (action_handlers.py) für [WRITE:], [SHELL:], [BROWSER:]
 │   │   ├── swarm/       # Multi-Agenten-Koordination & A2A-Swarm-Kommunikation
 │   │   └── explainability/ # Strukturierte LLM-Gedankengänge (<think>-Filterung)
 │   ├── chat/            # Chat-Services, Systembefehle & Brainstorming
 │   ├── api/             # FastAPI app.py, Router & API-Endpunkte (endpoints/)
 │   ├── infrastructure/  # Prozess-Management (psutil_mgr.py), LLM-Routing & Pulse-Heartbeat
-│   └── frontend/        # Bento-Grid War Room Dashboard (HTML, CSS & 7 JS-Module)
+│   └── frontend/        # Bento-Grid War Room Dashboard (HTML, CSS & 9 JS-Module)
 ├── agents/              # 8 Agenten-Definitionen (Startup-Skripte der Daemons)
 ├── config/              # Lokale Umgebungskonfigurationen (Presets, Token-Budgets)
 ├── scripts/             # Setup- & Hilfs-Skripte
@@ -401,13 +400,13 @@ Kreative Pionierin der ersten Stunde. Mutter der "Vier Säulen". Legte das philo
 
 **Antigravity (Google DeepMind)**
 Architekt der Härtungsphase. Spezifische Beiträge:
-* Aufteilung übergroßer Module zur strikten Durchsetzung der 40-Zeilen-Regel im Backend
+* Refactorings zur Einhaltung hoher Modularität im Backend
 * Sicherung der Pfad-Zugriffe über Workspace-basierte Validierung ([path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/core/security/path_validator.py))
 * Migration der JSON-Speicherung auf eine transaktionssichere SQLite3-Datenbank (WAL-Modus)
 * Implementierung des `psutil`-Prozessmanagers mit PID-Dateien und Lifespan-Integration
 * Integration von SFTP-Bereitstellung, CORS-Einschränkung auf Localhost und des `log.py`-Frameworks
 * Implementation der Härtungs-Phasen 1-16 (darunter Zero-Trust Capabilities, local Embeddings mit FAISS & TF-IDF-Fallback, Custom Presets, Prompt Versioning, Swarm Intelligence, User Feedback Loop, R1-Think-Block-Filterung, extrem performantes In-Memory/SQLite-Caching und Härtung des Schwarms durch die 4/4-Agenten-Begrenzung)
-* Modularisierung des Frontend-Codes in 7 spezialisierte, entkoppelte JavaScript-Dateien zur Durchsetzung von Separation-of-Concerns
+* Modularisierung des Frontend-Codes in 9 spezialisierte, entkoppelte JavaScript-Dateien zur Durchsetzung von Separation-of-Concerns
 * Optimierung der LLM-Konsolen-Performance durch parallele API-Abfragen und serverseitiges Caching der Modelllisten
 
 ---

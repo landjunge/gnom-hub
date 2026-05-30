@@ -8,7 +8,6 @@
 [![Agents](https://img.shields.io/badge/Agents-8-blueviolet.svg)](#)
 [![Lines of Code](https://img.shields.io/badge/Lines_of_Code-~7500-blue.svg)](#)
 [![Modules](https://img.shields.io/badge/Modules-176-blue.svg)](#)
-[![40-Lines-Rule Compliance](https://img.shields.io/badge/40--Lines--Rule-~80%25_compliant-orange.svg)](#)
 [![Linting](https://img.shields.io/badge/Linting-Ruff-orange.svg)](#)
 
 ---
@@ -23,7 +22,7 @@
 
 ## What is Gnom-Hub?
 
-Gnom-Hub is a local-first multi-agent system with a clear structure: **176 Python modules — over 80% of which are strictly shorter than 40 lines**. It offers a lightweight, high-performance orchestrator without heavy frameworks, running entirely locally on your Mac. It controls background agents through a web dashboard called the **War Room**.
+Gnom-Hub is a local-first multi-agent system with a clear structure of **176 Python modules**. It offers a lightweight, high-performance orchestrator without heavy frameworks, running entirely locally on your Mac. It controls background agents through a web dashboard called the **War Room**.
 
 > [!IMPORTANT]
 > **Conscious Minimalism:** Gnom-Hub is designed for simplicity and maximum performance. It is intentionally **not** built to control hundreds of agents, but to efficiently orchestrate a small, highly specialized, and transparent team.
@@ -113,7 +112,7 @@ Gnom-Hub combines robust multi-process orchestration with an interactive web int
 *   **Layer-Based Visual Showbox System**:
     The dashboard's Showbox displays work results, text drafts, and UI mockups in real-time across interactive layers. Each layer has a distinct color code and triggers a temporary flash effect (highlighting borders) on the corresponding agent group (Worker sidebar or System top-bar) upon switching, providing immediate visual feedback on the source of the data.
 *   **Fully Modularized Frontend**:
-    The glassmorphic web dashboard has been refactored from a massive monolithic file into 7 specialized JavaScript modules. This guarantees a clean separation of concerns (decoupling core.js, chat.js, workspace.js, system_dashboard.js, worker_dashboard.js, worker_sidebar.js, dashboard.js) and simplifies codebase maintenance.
+    The glassmorphic web dashboard has been refactored from a massive monolithic file into 9 specialized JavaScript modules. This guarantees a clean separation of concerns (decoupling core.js, chat.js, workspace.js, system_dashboard.js, worker_dashboard.js, worker_sidebar.js, dashboard.js, showbox.js, showbox-buttons.js) and simplifies codebase maintenance.
 *   **Shared Semantic Long-Term Memory**:
     All agents share a persistent SQLite database. SoulAG monitors chats, extracts relevant facts, and dynamically injects the top 8 most relevant entries into worker prompts via FAISS semantic search (falling back to TF-IDF cosine-similarity math if libraries are missing) to prevent repetitive mistakes.
 *   **Structured Brainstorming Mode (`@bs`)**:
@@ -185,12 +184,12 @@ Gnom-Hub development phases:
 
 ---
 
-## 📐 The 40-Line Rule (Functions & Methods)
+## 📐 The 40-Line Rule (For Agent-Written Code)
 
-Gnom-Hub keeps structural complexity low by keeping code focused and modular:
-*   **The Constraint**: Every single **function and method** in the backend is targeted to be strictly under 40 lines. This ensures single-responsibility, ease of understanding, and clean maintainable logic.
-*   **Non-Dogmatic Module Lengths**: This rule is a target standard to maintain code quality, not a dogmatic restriction on entire file sizes. Complete Python modules/files can naturally exceed 40 lines (holding configuration templates, multiple related helpers, dictionary setups, or import segments) as long as their individual functions remain compact.
-*   **Worker Simplicity**: Over 80% of our 176 Python modules strictly respect this limit, and background workers remain extremely compact (e.g., CoderAG requires only ~10 lines of code for polling and action loops).
+To prevent structural complexity and unmaintainable code in projects, GNOM-HUB enforces a strict programming standard on any code written by the swarm:
+*   **Agent Constraint**: Every single **function and method** written or refactored by worker agents (such as `CoderAG`) within the workspace must not exceed 40 lines.
+*   **Enforced by WatchdogAG**: `WatchdogAG` acts as the gatekeeper of this rule, validating and rejecting (`REJECTED`) code modifications that exceed the 40-line boundary. `EditorAG` assists the swarm by refactoring and splitting logic into smaller helpers.
+*   **Platform Independence**: This constraint applies strictly to agent-generated code inside the workspace. The GNOM-HUB platform backend files are not bound by this limit and naturally grow larger to host complex systems (like SQLite WAL connection pipelines or vector search helpers).
 
 ---
 
@@ -275,14 +274,14 @@ gnom-hub/
 │   ├── db/              # SQLite3 database (WAL mode) & repositories (legacy_db.py)
 │   ├── memory/          # Local FAISS semantic search & embeddings
 │   ├── soul/            # Steganographic memory (ZWC encryption)
-│   ├── agents/          # BaseAgent, agent_definitions.py, and tools
+│   ├── agents/          # agent_base.py, agent_definitions.py, and tools
 │   │   ├── actions/     # Action dispatcher (action_handlers.py) for [WRITE:], [SHELL:], [BROWSER:]
 │   │   ├── swarm/       # Multi-agent coordination & A2A swarm communications
 │   │   └── explainability/ # Structured reasoning chain (<think> filtering)
 │   ├── chat/            # Chat services, system commands & brainstorming
 │   ├── api/             # FastAPI app.py, router & API endpoints (endpoints/)
 │   ├── infrastructure/  # Process management (psutil_mgr.py), LLM routing, and pulse heartbeat
-│   └── frontend/        # Bento-Grid War Room dashboard (HTML, CSS & 7 JS modules)
+│   └── frontend/        # Bento-Grid War Room dashboard (HTML, CSS & 9 JS modules)
 ├── agents/              # Startup scripts for the 8 background agents
 ├── config/              # Local setups, presets, and token configurations
 ├── scripts/             # Local installer and shortcut setups
@@ -333,13 +332,13 @@ Creative pioneer and founder. Designed the agent topologies and laid the philoso
 
 **Antigravity (Google DeepMind)**
 Architect of the hardening phase. Key contributions:
-* Refactored and modularized codebase files to respect the backend 40-line rule.
+* Refactored and modularized codebase files to enforce clean modular design.
 * Secured path traversal risks with dedicated workspace validations ([path_validator.py](file:///Users/landjunge/Documents/AG-Flega/src/gnom_hub/core/security/path_validator.py)).
 * Migrated JSON storage layers into a transaction-safe local SQLite3 database (WAL mode).
 * Implemented the `psutil` process manager with PID files and Lifespan hooks.
 * Added SFTP deployments, CORS protections, and custom presets support.
 * Implemented Phase 1-16 hardening tasks (Zero-Trust Leases, local FAISS embeddings, prompt version manager, user feedback loop, R1 think blocks filter, and strict 4/4 agent limits).
-* Modularized the monolithic web dashboard script into 7 decoupled static JS modules to enforce proper separation of concerns.
+* Modularized the monolithic web dashboard script into 9 decoupled static JS modules to enforce proper separation of concerns.
 * Optimized LLM console dashboard loading latencies by parallelizing backend requests and caching model lookups.
 
 ---
