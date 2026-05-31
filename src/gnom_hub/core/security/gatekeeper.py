@@ -90,7 +90,6 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
         f"  </div>"
         f"</div>"
     )
-    )
     
     # 7. Save and set active showbox presentation with GeneralAG as sender
     presentation_name = f"Blockade: {agent_name}"
@@ -262,7 +261,7 @@ def is_command_safe_and_whitelisted(cmd: str):
                         return False, f"NPM Paket '{pkg}' ist nicht als sicher vordefiniert."
                         
         elif exec_name == "git":
-            allowed_git_subcmds = {"status", "log", "diff", "commit", "add", "checkout", "reset", "init", "config", "push"}
+            allowed_git_subcmds = {"status", "log", "diff", "commit", "add", "checkout", "reset", "init", "config"}
             if not args_tokens or args_tokens[0] not in allowed_git_subcmds:
                 return False, f"Git Subbefehl '{args_tokens[0] if args_tokens else ''}' ist nicht autorisiert."
                 
