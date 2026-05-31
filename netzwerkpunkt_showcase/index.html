@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GNOM-HUB — Die Lokale Multi-Agenten-Schmiede</title>
+  <meta name="description" content="Gnom-Hub ist die Werkbank für lokale KI-Teams. Evolve deine Agenten lokal und bäckst sie mit @bake zu stabilen Produkten. Keine Cloud-Abhängigkeiten.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #070913;
+      --bg-card: rgba(16, 22, 42, 0.65);
+      --glass-border: rgba(0, 229, 255, 0.12);
+      --glass-border-hover: rgba(57, 255, 20, 0.25);
+      --cyan: #00e5ff;
+      --green: #39ff14;
+      --pink: #ff007f;
+      --text-main: #f1f3f9;
+      --text-muted: #8b9bb4;
+      --glow-cyan: 0 0 15px rgba(0, 229, 255, 0.35);
+      --glow-green: 0 0 15px rgba(57, 255, 20, 0.35);
+      --font-orbitron: 'Orbitron', sans-serif;
+      --font-inter: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius: 16px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-inter);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0, 229, 255, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(57, 255, 20, 0.04) 0%, transparent 40%);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--glass-border);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--cyan);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 9, 19, 0.7);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 16px 0;
+      transition: border-color 0.3s;
+    }
+
+    .nav-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-orbitron);
+      font-weight: 900;
+      font-size: 1.3rem;
+      letter-spacing: 2px;
+      color: var(--text-main);
+      text-shadow: var(--glow-cyan);
+      text-decoration: none;
+    }
+
+    .logo-area span {
+      color: var(--green);
+      text-shadow: var(--glow-green);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+    }
+
+    .nav-links a:hover {
+      color: var(--cyan);
+      border-color: rgba(0, 229, 255, 0.2);
+      background: rgba(0, 229, 255, 0.05);
+      text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+    }
+
+    .nav-links a.active {
+      color: var(--green);
+      border-color: rgba(57, 255, 20, 0.2);
+      background: rgba(57, 255, 20, 0.05);
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      padding: 80px 0 60px 0;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 229, 255, 0.06);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      padding: 6px 16px;
+      border-radius: 30px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+      animation: pulse-glow 2s infinite alternate;
+    }
+
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 5px rgba(0, 229, 255, 0.1); }
+      100% { box-shadow: 0 0 20px rgba(0, 229, 255, 0.3); }
+    }
+
+    h1 {
+      font-family: var(--font-orbitron);
+      font-size: 3.5rem;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #fff 30%, var(--cyan) 70%, var(--green) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .lead {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+      font-weight: 400;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-primary {
+      background: var(--cyan);
+      color: var(--bg-dark);
+      box-shadow: var(--glow-cyan);
+      border: 1px solid var(--cyan);
+    }
+
+    .btn-primary:hover {
+      background: #00b8cc;
+      box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-main);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(8px);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--green);
+      background: rgba(57, 255, 20, 0.05);
+      color: var(--green);
+      box-shadow: 0 0 15px rgba(57, 255, 20, 0.15);
+      transform: translateY(-2px);
+    }
+
+    /* Section Styles */
+    section {
+      padding: 60px 0;
+    }
+
+    .section-title-wrap {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 50px auto;
+    }
+
+    .section-subtitle {
+      font-family: var(--font-orbitron);
+      color: var(--cyan);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-family: var(--font-orbitron);
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Differentiators Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 30px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.05) 0%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 10px 30px rgba(0, 229, 255, 0.08);
+      transform: translateY(-4px);
+    }
+
+    .card:hover::before {
+      opacity: 1;
+    }
+
+    .card-icon {
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-title {
+      font-family: var(--font-orbitron);
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #fff;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title span {
+      background: rgba(0, 229, 255, 0.12);
+      color: var(--cyan);
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--font-inter);
+      letter-spacing: 0.5px;
+    }
+
+    .card-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Screenshots Grid (Details-style) */
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .screenshots-grid {
+        grid-template-columns: 1fr;
+      }
+      h1 {
+        font-size: 2.3rem;
+      }
+    }
+
+    .screenshot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .screenshot-card:hover {
+      border-color: var(--green);
+      box-shadow: 0 10px 30px rgba(57, 255, 20, 0.08);
+    }
+
+    .screenshot-header {
+      padding: 14px 20px;
+      background: rgba(7, 9, 19, 0.8);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .screenshot-title {
+      font-family: var(--font-orbitron);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .screenshot-title::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: var(--glow-green);
+    }
+
+    .screenshot-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .screenshot-img-wrap {
+      position: relative;
+      aspect-ratio: 16 / 10;
+      background: #0f1224;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .screenshot-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .screenshot-card:hover .screenshot-img-wrap img {
+      transform: scale(1.02);
+    }
+
+    .screenshot-footer {
+      padding: 16px 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--glass-border);
+      background: rgba(16, 22, 42, 0.2);
+    }
+
+    /* Comparison Table Styling */
+    .table-container {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      overflow-x: auto;
+      margin-top: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      font-family: var(--font-orbitron);
+      background: rgba(7, 9, 19, 0.9);
+      color: #fff;
+      padding: 16px 20px;
+      font-weight: 700;
+      border-bottom: 2px solid var(--glass-border);
+      font-size: 0.8rem;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .check-yes {
+      color: var(--green);
+      font-weight: 700;
+      text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+    }
+
+    .check-no {
+      color: var(--pink);
+      font-weight: 700;
+      opacity: 0.8;
+    }
+
+    .check-warn {
+      color: var(--cyan);
+      font-weight: 700;
+      text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+    }
+
+    /* Interactive Swarm Simulator */
+    .simulator-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 30px;
+      margin-top: 25px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 992px) {
+      .simulator-wrap {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sim-view {
+      position: relative;
+      height: 380px;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      background: rgba(4, 6, 12, 0.6);
+      overflow: hidden;
+    }
+
+    .agent-node {
+      position: absolute;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: rgba(16, 22, 42, 0.9);
+      border: 2px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-orbitron);
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 10;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .agent-node i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+    }
+
+    .agent-node.active {
+      border-color: var(--cyan);
+      box-shadow: var(--glow-cyan);
+      color: #fff;
+    }
+
+    .agent-node.system {
+      border-color: var(--pink);
+    }
+
+    .agent-node.system.active {
+      border-color: var(--pink);
+      box-shadow: 0 0 15px rgba(255, 0, 127, 0.5);
+    }
+
+    .agent-node.worker {
+      border-color: var(--green);
+    }
+
+    .agent-node.worker.active {
+      border-color: var(--green);
+      box-shadow: var(--glow-green);
+      color: #fff;
+    }
+
+    /* Node positioning */
+    #node-user { top: 152px; left: 20px; border-color: #fff; color: #fff; }
+    #node-general { top: 152px; left: 150px; }
+    #node-soul { top: 30px; left: 240px; }
+    #node-watchdog { top: 274px; left: 240px; }
+    #node-security { top: 152px; left: 280px; }
+    
+    #node-coder { top: 30px; left: 410px; }
+    #node-writer { top: 110px; left: 410px; }
+    #node-researcher { top: 194px; left: 410px; }
+    #node-editor { top: 274px; left: 410px; }
+
+    .sim-terminal {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      background: #04050a;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      height: 380px;
+      overflow-y: auto;
+      color: rgba(255,255,255,0.85);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sim-line {
+      display: flex;
+      gap: 8px;
+    }
+
+    .sim-line span.sender {
+      color: var(--cyan);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .sim-line span.sender.sys {
+      color: var(--pink);
+    }
+
+    .sim-line span.sender.wrk {
+      color: var(--green);
+    }
+
+    .sim-line p {
+      word-break: break-all;
+    }
+
+    .sim-line span.thought {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .pulse-line {
+      position: absolute;
+      background: linear-gradient(to right, transparent, var(--cyan), transparent);
+      height: 2px;
+      z-index: 5;
+      transform-origin: left center;
+      display: none;
+    }
+
+    /* Links Cards Grid */
+    .links-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .link-card {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 25px;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .link-card:hover {
+      border-color: var(--green);
+      box-shadow: 0 8px 25px rgba(57, 255, 20, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .link-card-icon {
+      font-size: 1.8rem;
+      background: rgba(255,255,255,0.03);
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--glass-border);
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .link-card:hover .link-card-icon {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(57, 255, 20, 0.05);
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
+    }
+
+    .link-card-info h3 {
+      font-family: var(--font-orbitron);
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #fff;
+    }
+
+    .link-card-info p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Terminal Quick Start */
+    .terminal-box {
+      font-family: var(--font-mono);
+      background: #030408;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      position: relative;
+      margin-top: 20px;
+      overflow: hidden;
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--pink);
+    }
+    .terminal-dot:nth-child(2) { background: #ffcc00; }
+    .terminal-dot:nth-child(3) { background: var(--green); }
+
+    .terminal-code {
+      color: rgba(255,255,255,0.9);
+      font-size: 0.85rem;
+      line-height: 1.8;
+    }
+
+    .terminal-code span.comment {
+      color: var(--text-muted);
+    }
+
+    .terminal-code span.cmd {
+      color: var(--cyan);
+    }
+
+    .copy-btn-code {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-family: var(--font-inter);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn-code:hover {
+      background: rgba(0, 229, 255, 0.05);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--glass-border);
+      padding: 40px 0;
+      text-align: center;
+      background: rgba(4, 6, 12, 0.8);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer p {
+      margin-bottom: 8px;
+    }
+
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .glow-circle {
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: var(--cyan);
+      filter: blur(100px);
+      opacity: 0.15;
+      z-index: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Glow Background Orbs -->
+  <div class="glow-circle" style="top: 20%; left: 10%;"></div>
+  <div class="glow-circle" style="top: 60%; right: 5%; background: var(--green);"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="container nav-wrap">
+      <a href="#" class="logo-area">
+        GNOM<span>HUB</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features" class="active">Features</a></li>
+        <li><a href="#screenshots">Showcase</a></li>
+        <li><a href="#simulator">Simulator</a></li>
+        <li><a href="#frameworks">Vergleich</a></li>
+        <li><a href="#downloads">Links</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <canvas id="hero-canvas" class="hero-canvas"></canvas>
+    <div class="container hero-content">
+      <div class="badge">
+        🚀 Gnom-Hub Version 2.0.0
+      </div>
+      <h1>Die lokale Schmiede für AI-Agentenschwärme</h1>
+      <p class="lead">
+        Gnom-Hub ist der lokale Gegenentwurf zu unüberschaubaren Cloud-Pipelines: Evolve ein stabiles 8-Agenten-Team offline auf deinem Rechner und backe es per <strong>@bake</strong> in ein unveränderliches, portables Endprodukt.
+      </p>
+      <div class="hero-btns">
+        <a href="http://127.0.0.1:3003/" target="_blank" class="btn btn-primary">
+          🖥️ War Room öffnen
+        </a>
+        <a href="#features" class="btn btn-secondary">
+          🔍 Features erkunden
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Differentiators Section -->
+  <section id="features">
+    <div class="container">
+      <div class="section-title-wrap">
+        <div class="section-subtitle">Einzigartigkeit</div>
+        <h2 class="section-title">Was macht Gnom-Hub anders?</h2>
+      </div>
+      
+      <div class="features-grid">
+        <!-- @bake -->
+        <div class="card">
+          <div class="card-icon">🏭</div>
+          <h3 class="card-title">Der @bake Compiler</h3>
+          <p class="card-desc">Bake deinen trainierten Agentenschwarm in ein eigenständiges, eingefrorenes SuperGNOM-Produkt. Keine nachträglichen Verhaltensänderungen (Concept Drift), volle Portabilität und absolute Integritätsprüfung per SHA-256 Manifest.</p>
+        </div>
+        <!-- Tribunal -->
+        <div class="card">
+          <div class="card-icon">🛡️</div>
+          <h3 class="card-title">3-Agenten-Sicherheits-Tribunal</h3>
+          <p class="card-desc">Jede kritische Aktion (Schreiben, Shell-Befehle) wird von einem Tribunal bewertet: WatchdogAG analysiert Pfade, SoulAG liefert Gedächtniskontext, GeneralAG empfiehlt. Freigaben werden über edle Showbox-Genehmigungskarten gesteuert.</p>
+        </div>
+        <!-- ZWC Tracing -->
+        <div class="card">
+          <div class="card-icon">🧬</div>
+          <h3 class="card-title">ZWC Steganographie <span>PoC</span></h3>
+          <p class="card-desc">Ein unsichtbarer forensischer Audit-Trail für regulierte Codebases: Agenten-Metadaten und Trace-IDs werden als unsichtbare Zero-Width-Unicode-Zeichen direkt in den generierten Ausgabetexten eingebettet.</p>
+        </div>
+        <!-- 5-Axis tuning -->
+        <div class="card">
+          <div class="card-icon">🎛️</div>
+          <h3 class="card-title">5-Achsen-Agenten-Tuning</h3>
+          <p class="card-desc">Konfiguriere jeden einzelnen Agenten im Betrieb live über Schieberegler: Verändere Kreativität, Antwortstil (Prägnanz/Detail), Risiko-Toleranz und spiele benutzerdefinierte Prompt-Erweiterungen ein.</p>
+        </div>
+        <!-- Prompt versioning -->
+        <div class="card">
+          <div class="card-icon">🔄</div>
+          <h3 class="card-title">Prompt-Versionskontrolle</h3>
+          <p class="card-desc">Jede Prompt-Änderung erhält ein SHA-256 Versions-Tag mit Parent-Child-Verknüpfung. Sinkt die Qualität einer Version laut Benutzerfeedback ab, erfolgt ein automatischer Rollback auf die sicherere Eltern-Version.</p>
+        </div>
+        <!-- Emergency -->
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <h3 class="card-title">Festes 4+4 System-Design</h3>
+          <p class="card-desc">Verhindert unkontrollierten Agenten-Sprawl und Endlosschleifen. GNOM-HUB erzwingt genau 8 dedizierte Agenten: 4 administrative System-Agenten und 4 fokussierte Worker-Agenten mit klaren Rollenprofilen.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots / Showcase Center -->
+  <section id="screenshots" style="background: rgba(4, 6, 12, 0.4); border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);">
+    <div class="container">
+      <div class="section-title-wrap">
+        <div class="section-subtitle">Visueller Rundgang</div>
+        <h2 class="section-title">Die Gnom-Hub Werkbank</h2>
+      </div>
+
+      <div class="screenshots-grid">
+        <!-- Screen 1: War Room -->
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <span class="screenshot-title">War Room (Zentraler Chat)</span>
+            <span class="screenshot-desc">Hauptansicht</span>
+          </div>
+          <div class="screenshot-img-wrap">
+            <img src="https://raw.githubusercontent.com/landjunge/gnom-hub/master/docs/screenshot_warroom.png" alt="Gnom-Hub War Room Dashboard">
+          </div>
+          <div class="screenshot-footer">
+            Die Kommandozentrale für dein Agententeam. Oben fließen die Denkprozesse der Agenten live ein, unten führst du den Chat und siehst getroffene Entscheidungen.
+          </div>
+        </div>
+
+        <!-- Screen 2: Workspace -->
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <span class="screenshot-title">Workspace File Explorer</span>
+            <span class="screenshot-desc">Local-First Sandbox</span>
+          </div>
+          <div class="screenshot-img-wrap">
+            <img src="https://raw.githubusercontent.com/landjunge/gnom-hub/master/docs/screenshot_workspace.png" alt="Gnom-Hub Workspace Explorer">
+          </div>
+          <div class="screenshot-footer">
+            Hier verwaltest du generierte Dateien, führst Shell-Befehle in Sandbox-Ordnern aus, prüfst Web-Crawl-Vorschauen und nimmst Code-Audits vor.
+          </div>
+        </div>
+
+        <!-- Screen 3: Bento Dashboard -->
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <span class="screenshot-title">Bento Dashboard (Statistiken)</span>
+            <span class="screenshot-desc">Token- & Latenzüberwachung</span>
+          </div>
+          <div class="screenshot-img-wrap">
+            <img src="https://raw.githubusercontent.com/landjunge/gnom-hub/master/docs/screenshot_dashboard.png" alt="Bento Metrics Dashboard">
+          </div>
+          <div class="screenshot-footer">
+            Ein hochpräzises Bento-Grid mit Echtzeit-Statistiken über deinen lokalen Speicherplatz, verbrauchte LLM-Tokens, RAM-Auslastung und durchschnittliche Reaktionszeiten.
+          </div>
+        </div>
+
+        <!-- Screen 4: LLM behavior sliders -->
+        <div class="screenshot-card">
+          <div class="screenshot-header">
+            <span class="screenshot-title">Verhalten & 5-Achsen-Slider</span>
+            <span class="screenshot-desc">LLM-Kalibrierung</span>
+          </div>
+          <div class="screenshot-img-wrap">
+            <img src="https://raw.githubusercontent.com/landjunge/gnom-hub/master/docs/screenshot_llm_behavior.png" alt="LLM behavior configuration sliders">
+          </div>
+          <div class="screenshot-footer">
+            Passe die Persönlichkeit (formal/casual), den Detaillierungsgrad, die Kreativität (Temperatur) und die Risikotoleranz jedes einzelnen Agenten stufenlos an.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Swarm Simulator Section -->
+  <section id="simulator">
+    <div class="container">
+      <div class="section-title-wrap">
+        <div class="section-subtitle">Live-Simulation</div>
+        <h2 class="section-title">Das 8-Agenten-Tribunal in Aktion</h2>
+      </div>
+
+      <div class="simulator-wrap">
+        <div class="sim-view" id="sim-canvas-container">
+          <!-- Pulse line renderer -->
+          <div class="pulse-line" id="pulse-element"></div>
+          
+          <!-- Nodes -->
+          <div class="agent-node" id="node-user">👤<br>User</div>
+          <div class="agent-node system" id="node-general" title="GeneralAG: Delegiert Aufgaben exklusiv an die 4 Worker">👑<br>General</div>
+          <div class="agent-node system" id="node-soul" title="SoulAG: Verwaltet Kontext und spritzt Erinnerungen ein">🧠<br>Soul</div>
+          <div class="agent-node system" id="node-watchdog" title="WatchdogAG: Schützt Systemdateien und blockiert Schreibzugriffe">🐕<br>Watchdog</div>
+          <div class="agent-node system" id="node-security" title="SecurityAG: Scannt Codes und Befehle vor Ausführung">🔒<br>Security</div>
+          
+          <div class="agent-node worker" id="node-coder" title="CoderAG: Schreibt modularisierten, sauberen Code">💻<br>Coder</div>
+          <div class="agent-node worker" id="node-writer" title="WriterAG: Schreibt Texte und Dokumentationen">✍️<br>Writer</div>
+          <div class="agent-node worker" id="node-researcher" title="ResearcherAG: Recherchiert im Web und crawlt Dokumente">🔍<br>Researcher</div>
+          <div class="agent-node worker" id="node-editor" title="EditorAG: Refaktoriert Code und lektoriert Texte">📝<br>Editor</div>
+        </div>
+
+        <div class="sim-terminal" id="sim-terminal-screen">
+          <div class="sim-line">
+            <span class="sender">[System]</span>
+            <p>Klicke links auf einen Agenten, um den Kommunikationsfluss zu simulieren oder starte die automatische Sequenz.</p>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:20px;">
+        <button class="btn btn-secondary" onclick="startSimSequence()">▶️ Automatische Diagnosesequenz simulieren</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Frameworks Comparison -->
+  <section id="frameworks" style="background: rgba(4, 6, 12, 0.4); border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);">
+    <div class="container">
+      <div class="section-title-wrap">
+        <div class="section-subtitle">Vergleich</div>
+        <h2 class="section-title">Gnom-Hub vs. Schwergewichte</h2>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature / Metrik</th>
+              <th>GNOM-HUB</th>
+              <th>CrewAI</th>
+              <th>AutoGen/AG2</th>
+              <th>LangGraph</th>
+              <th>OpenAI Agents</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>100% Offline / Local-First</strong></td>
+              <td class="check-yes">✅ Ja (Out-of-the-Box)</td>
+              <td class="check-warn">⚠️ Bedingt (Cloud-Fokus)</td>
+              <td class="check-warn">⚠️ Bedingt</td>
+              <td class="check-warn">⚠️ Bedingt</td>
+              <td class="check-no">❌ Nein (Cloud Only)</td>
+            </tr>
+            <tr>
+              <td><strong>Agenten-Kompilierung (`@bake`)</strong></td>
+              <td class="check-yes">✅ Echte Kompilierung</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+            </tr>
+            <tr>
+              <td><strong>System- & Sicherheits-Tribunal</strong></td>
+              <td class="check-yes">✅ Ja (3-Agenten-Gate)</td>
+              <td class="check-warn">⚠️ Einfache Pausen</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-warn">⚠️ Manuelles HITL</td>
+              <td class="check-warn">⚠️ Einfache Policies</td>
+            </tr>
+            <tr>
+              <td><strong>Echtzeit-Verhaltensregler (UI)</strong></td>
+              <td class="check-yes">✅ Ja (5-Achsen)</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+            </tr>
+            <tr>
+              <td><strong>Codebase-Größe (Bloat)</strong></td>
+              <td class="check-yes">✅ ~1.800 Zeilen (Ultra-schlank)</td>
+              <td class="check-no">❌ >50k Zeilen</td>
+              <td class="check-no">❌ >100k Zeilen</td>
+              <td class="check-no">❌ >100k Zeilen</td>
+              <td class="check-no">❌ proprietär</td>
+            </tr>
+            <tr>
+              <td><strong>Steganographischer Audit-Trail</strong></td>
+              <td class="check-yes">✅ Ja (ZWC-Spuren)</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+              <td class="check-no">❌ Nein</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Links List & Quick Start -->
+  <section id="downloads">
+    <div class="container">
+      <div class="section-title-wrap">
+        <div class="section-subtitle">Ressourcen</div>
+        <h2 class="section-title">Linkliste & Schnellstart</h2>
+      </div>
+
+      <!-- Links Grid -->
+      <div class="links-grid">
+        <!-- Link 1: War Room -->
+        <a href="http://127.0.0.1:3003/" target="_blank" class="link-card">
+          <div class="link-card-icon">🚀</div>
+          <div class="link-card-info">
+            <h3>War Room Chat</h3>
+            <p>Öffne das interaktive Glassmorphismus-Interface zur Steuerung deiner lokalen Agenten.</p>
+          </div>
+        </a>
+
+        <!-- Link 2: System Metrics -->
+        <a href="http://127.0.0.1:3003/#dashboard" target="_blank" class="link-card">
+          <div class="link-card-icon">📊</div>
+          <div class="link-card-info">
+            <h3>System Metrics</h3>
+            <p>Das Bento-Grid zur Überwachung von RAM, CPU, Tokens und Latenzzeiten.</p>
+          </div>
+        </a>
+
+        <!-- Link 3: Workspace Explorer -->
+        <a href="http://127.0.0.1:3003/#workspace" target="_blank" class="link-card">
+          <div class="link-card-icon">📂</div>
+          <div class="link-card-info">
+            <h3>Workspace Explorer</h3>
+            <p>Durchsuche generierten Code, verwalte lokale Sandboxes und steuere Web-Crawl-Befehle.</p>
+          </div>
+        </a>
+
+        <!-- Link 4: LLM Config -->
+        <a href="http://127.0.0.1:3003/#llm" target="_blank" class="link-card">
+          <div class="link-card-icon">🔧</div>
+          <div class="link-card-info">
+            <h3>LLM Konfiguration</h3>
+            <p>Passe Modellbindungen an (Ollama, OpenRouter) und steuere die Slider des Agentenverhaltens.</p>
+          </div>
+        </a>
+
+        <!-- Link 5: Help Center -->
+        <a href="http://127.0.0.1:3003/help.html" target="_blank" class="link-card">
+          <div class="link-card-icon">📖</div>
+          <div class="link-card-info">
+            <h3>Help Center</h3>
+            <p>Das eingebaute Handbuch mit umfassenden Walkthroughs, Befehlen und Tipps.</p>
+          </div>
+        </a>
+
+        <!-- Link 6: Swagger API Docs -->
+        <a href="http://127.0.0.1:3003/docs" target="_blank" class="link-card">
+          <div class="link-card-icon">🖥️</div>
+          <div class="link-card-info">
+            <h3>API Dokumentation</h3>
+            <p>Die Swagger-API-Docs zur Anbindung externer Oberflächen an den Hub.</p>
+          </div>
+        </a>
+
+        <!-- Link 7: GitHub Repo -->
+        <a href="https://github.com/landjunge/gnom-hub" target="_blank" class="link-card" style="border-color: rgba(57, 255, 20, 0.15);">
+          <div class="link-card-icon" style="color:var(--green); border-color: rgba(57,255,20,0.25);">🐙</div>
+          <div class="link-card-info">
+            <h3>GitHub Repository</h3>
+            <p>Quellcode, Commits, Issues und die Dokumentation im deutschen/englischen Original.</p>
+          </div>
+        </a>
+      </div>
+
+      <!-- Quick Start terminal -->
+      <div style="margin-top: 40px;">
+        <h3 style="font-family: var(--font-orbitron); font-size: 1.1rem; margin-bottom: 12px; color: #fff;">Terminal Schnellstart</h3>
+        <div class="terminal-box">
+          <div class="terminal-header">
+            <div class="terminal-dot"></div>
+            <div class="terminal-dot"></div>
+            <div class="terminal-dot"></div>
+          </div>
+          <button class="copy-btn-code" onclick="copyTerminalCode(this)">Code kopieren</button>
+          <div class="terminal-code" id="terminal-content">
+            <span class="comment"># 1. Klonen & Installation</span><br>
+            <span class="cmd">git clone</span> https://github.com/landjunge/gnom-hub.git<br>
+            <span class="cmd">cd</span> gnom-hub<br>
+            <span class="cmd">bash</span> scripts/install.sh<br><br>
+            <span class="comment"># 2. Starten</span><br>
+            ./run.sh
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 Gnom-Hub. Entwickelt für datenschutzkonforme Local-First-Umgebungen.</p>
+      <p>Bereitgestellt für den Upload auf <a href="https://netzwerkpunkt.de" target="_blank">netzwerkpunkt.de</a></p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    // 1. Particle Canvas Background for Hero
+    const canvas = document.getElementById('hero-canvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      const colors = ['#00e5ff', '#39ff14', 'rgba(255, 255, 255, 0.2)'];
+
+      function resizeCanvas() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      class Particle {
+        constructor() {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+          this.size = Math.random() * 2 + 0.5;
+          this.speedX = Math.random() * 0.4 - 0.2;
+          this.speedY = Math.random() * 0.4 - 0.2;
+          this.color = colors[Math.floor(Math.random() * colors.length)];
+        }
+        update() {
+          this.x += this.speedX;
+          this.y += this.speedY;
+          if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+          if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+        }
+        draw() {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      for (let i = 0; i < 60; i++) {
+        particles.push(new Particle());
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          p.update();
+          p.draw();
+        });
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+
+    // 2. Interactive Swarm Simulator Logik
+    const agents = {
+      user: { name: 'User', id: 'node-user', icon: '👤', desc: 'Sendet Anfrage' },
+      general: { name: 'GeneralAG', id: 'node-general', icon: '👑', desc: 'Delegiert Aufgaben exklusiv' },
+      soul: { name: 'SoulAG', id: 'node-soul', icon: '🧠', desc: 'Injiziert Fakten & Kontext' },
+      watchdog: { name: 'WatchdogAG', id: 'node-watchdog', icon: '🐕', desc: 'Prüft Schreibpfade' },
+      security: { name: 'SecurityAG', id: 'node-security', icon: '🔒', desc: 'Scannt Code auf Viren' },
+      coder: { name: 'CoderAG', id: 'node-coder', icon: '💻', desc: 'Schreibt Quellcode' },
+      writer: { name: 'WriterAG', id: 'node-writer', icon: '✍️', desc: 'Verfasst Berichte' },
+      researcher: { name: 'ResearcherAG', id: 'node-researcher', icon: '🔍', desc: 'Crawlt Webseiten' },
+      editor: { name: 'EditorAG', id: 'node-editor', icon: '📝', desc: 'Lektoriert Ausgaben' }
+    };
+
+    const terminal = document.getElementById('sim-terminal-screen');
+    const nodes = document.querySelectorAll('.agent-node');
+
+    function logSim(sender, content, type = 'normal') {
+      const line = document.createElement('div');
+      line.className = 'sim-line';
+      let tagClass = '';
+      if (type === 'system') tagClass = 'sys';
+      if (type === 'worker') tagClass = 'wrk';
+      
+      line.innerHTML = `
+        <span class="sender ${tagClass}">[${sender}]</span>
+        <p>${content}</p>
+      `;
+      terminal.appendChild(line);
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    // Manual node click simulation
+    nodes.forEach(node => {
+      node.addEventListener('click', () => {
+        const id = node.id.replace('node-', '');
+        nodes.forEach(n => n.classList.remove('active'));
+        node.classList.add('active');
+        
+        let type = 'normal';
+        if (node.classList.contains('system')) type = 'system';
+        if (node.classList.contains('worker')) type = 'worker';
+
+        if (id === 'user') {
+          logSim('User', 'Sendet Anfrage: "Erstelle ein python-Skript zur Datenanalyse."');
+          pulseLine('node-user', 'node-general');
+        } else if (id === 'general') {
+          logSim('GeneralAG', 'Zerlegt Anfrage in Arbeitsschritte und delegiert an CoderAG.', 'system');
+          pulseLine('node-general', 'node-coder');
+        } else if (id === 'soul') {
+          logSim('SoulAG', 'Kontext-Prüfung: Lädt frühere Code-Struktur-Erinnerungen für CoderAG.', 'system');
+          pulseLine('node-soul', 'node-coder');
+        } else if (id === 'watchdog') {
+          logSim('WatchdogAG', ' APPROVED: Der Pfad /workspace/plot.py ist legitim.', 'system');
+          pulseLine('node-coder', 'node-watchdog');
+        } else if (id === 'security') {
+          logSim('SecurityAG', 'APPROVED: Scan für den generierten Python-Code war sauber.', 'system');
+          pulseLine('node-coder', 'node-security');
+        } else if (id === 'coder') {
+          logSim('CoderAG', 'Schreibe Code: <span class="thought">&lt;think&gt;Ich erstelle pandas-basierte Analyse...&lt;/think&gt;</span> [WRITE: plot.py]...', 'worker');
+          pulseLine('node-general', 'node-coder');
+        } else {
+          const name = agents[id]?.name || 'Agent';
+          logSim(name, `Bereit und wartet auf Aufgabenübertragung durch GeneralAG.`, type);
+        }
+      });
+    });
+
+    // Drawing pulse lines
+    const pulseEl = document.getElementById('pulse-element');
+    function pulseLine(fromId, toId) {
+      const from = document.getElementById(fromId);
+      const to = document.getElementById(toId);
+      if (!from || !to || !pulseEl) return;
+
+      const fromRect = from.getBoundingClientRect();
+      const toRect = to.getBoundingClientRect();
+      const containerRect = document.getElementById('sim-canvas-container').getBoundingClientRect();
+
+      const x1 = fromRect.left + fromRect.width / 2 - containerRect.left;
+      const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
+      const x2 = toRect.left + toRect.width / 2 - containerRect.left;
+      const y2 = toRect.top + toRect.height / 2 - containerRect.top;
+
+      const dist = Math.hypot(x2 - x1, y2 - y1);
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+
+      pulseEl.style.left = `${x1}px`;
+      pulseEl.style.top = `${y1}px`;
+      pulseEl.style.width = `${dist}px`;
+      pulseEl.style.transform = `rotate(${angle}rad)`;
+      pulseEl.style.display = 'block';
+
+      // Animation
+      pulseEl.animate([
+        { backgroundPosition: '0% 50%' },
+        { backgroundPosition: '100% 50%' }
+      ], {
+        duration: 800,
+        iterations: 1
+      });
+
+      setTimeout(() => {
+        pulseEl.style.display = 'none';
+      }, 800);
+    }
+
+    // Auto-Sim sequence representing @@diagnose
+    let simTimer;
+    function startSimSequence() {
+      if (simTimer) clearTimeout(simTimer);
+      terminal.innerHTML = "";
+      nodes.forEach(n => n.classList.remove('active'));
+
+      logSim('System', '🚦 Starte automatische Diagnosesequenz (Simuliert den Befehl @@diagnose)...');
+
+      // Step 1: User types diagnose
+      simTimer = setTimeout(() => {
+        document.getElementById('node-user').classList.add('active');
+        logSim('User', 'Sendet Befehl: <code>@@diagnose</code>');
+        pulseLine('node-user', 'node-general');
+
+        // Step 2: GeneralAG broadcasts
+        simTimer = setTimeout(() => {
+          document.getElementById('node-user').classList.remove('active');
+          document.getElementById('node-general').classList.add('active');
+          logSim('GeneralAG', 'Befehl erhalten. Triggere Selbstdiagnose für alle online geschalteten Worker.', 'system');
+          
+          // Broadcast pulse lines sequentially
+          pulseLine('node-general', 'node-coder');
+
+          // Step 3: CoderAG performs check
+          simTimer = setTimeout(() => {
+            document.getElementById('node-general').classList.remove('active');
+            document.getElementById('node-coder').classList.add('active');
+            logSim('CoderAG', 'Selbstdiagnose: <span class="thought">&lt;think&gt;Ich teste Schreibberechtigungen (WRITE) und SHELL-Befehle...&lt;/think&gt;</span>', 'worker');
+            logSim('CoderAG', 'Führe Aktion aus: <code>[WRITE: test_diag.txt] ...</code>', 'worker');
+            pulseLine('node-coder', 'node-watchdog');
+
+            // Step 4: WatchdogAG blocks CoderAG because CoderAG doesn\'t have write permissions in this custom sandbox configuration
+            simTimer = setTimeout(() => {
+              document.getElementById('node-watchdog').classList.add('active');
+              logSim('WatchdogAG', '❌ BLOCKIERT: CoderAG besitzt keine WRITE-Berechtigung für /workspace in dieser Sitzung.', 'system');
+              pulseLine('node-watchdog', 'node-coder');
+
+              // Step 5: CoderAG catches the failure and posts a warning card in the Showbox
+              simTimer = setTimeout(() => {
+                document.getElementById('node-watchdog').classList.remove('active');
+                logSim('CoderAG', '⚠️ Blockade erkannt! Triggere Feedback-Loop zur Warnungserstellung.', 'worker');
+                logSim('CoderAG', 'Sende Showbox-Warnkarte: <code>&lt;SHOWBOX:2&gt;["<h3>Fehlende Schreibrechte</h3>..."]&lt;/SHOWBOX&gt;</code>', 'worker');
+                logSim('System', '✅ Diagnosesequenz abgeschlossen. Showbox-Karte wurde im UI gerendert!');
+                nodes.forEach(n => n.classList.remove('active'));
+              }, 2500);
+
+            }, 2000);
+
+          }, 2000);
+
+        }, 1800);
+
+      }, 1000);
+    }
+
+    // 3. Copy Terminal Code Helper
+    function copyTerminalCode(btn) {
+      const content = document.getElementById('terminal-content').innerText;
+      navigator.clipboard.writeText(content).then(() => {
+        btn.textContent = 'Kopiert! ✓';
+        setTimeout(() => btn.textContent = 'Code kopieren', 2000);
+      });
+    }
+  </script>
+</body>
+</html>
