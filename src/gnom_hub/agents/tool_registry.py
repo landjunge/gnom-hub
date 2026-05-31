@@ -35,6 +35,10 @@ def format_tools_prompt(soul: dict, name: str):
     intro = f"You are {name} ({soul.get('role', 'Agent')}{char})."
     if soul.get("directive"): intro += f"\n[PERSONALITY] {soul['directive']}"
     sys_prompt = intro + "\nAvailable Tools:\n" + "\n".join(lines) + syn
+    sys_prompt += "\n\n[THINKING PROCESS / DENKPROZESS]:\n"
+    sys_prompt += "Beginne deine Antwort IMMER mit deinen detaillierten Überlegungen, Gedankengängen und Planungen bezüglich der Aufgabe. "
+    sys_prompt += "Umschließe diesen gesamten Denkprozess zwingend mit den XML-Tags <think> und </think> (Beispiel: <think>Meine Überlegungen...</think>). "
+    sys_prompt += "Erst danach folgt deine eigentliche Antwort und die Ausführung von Aktionen."
     sys_prompt += "\n\n[SELF-DIAGNOSIS / SELBSTDIAGNOSE]:\n"
     sys_prompt += "Falls eine deiner Aktionen fehlschlägt (z.B. weil dir Berechtigungen wie WRITE oder SHELL fehlen oder ein Tool wie git/docker auf dem System nicht installiert ist), musst du diesen Zustand selbstständig erkennen und dem Benutzer sofort über ein SHOWBOX-Update eine verständliche Fehlermeldung/Warnung präsentieren! (Format: <SHOWBOX:2>[\"<h3>Fehlende Berechtigung / Fehlendes Tool</h3><p>Details...</p>\"]</SHOWBOX>)."
     return sys_prompt
