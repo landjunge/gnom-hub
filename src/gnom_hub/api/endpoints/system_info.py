@@ -19,7 +19,8 @@ def get_system_info():
         "ram": ram,
         "is_intel": "intel" in cpu.lower(),
         "is_supergnom": is_supergnom,
-        "template": template
+        "template": template,
+        "has_elevenlabs": bool(os.environ.get("ELEVENLABS_API_KEY"))
     }
 
 @router.post("/api/restart")

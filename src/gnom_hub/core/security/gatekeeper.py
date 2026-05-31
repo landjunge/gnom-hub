@@ -19,37 +19,17 @@ from gnom_hub.agents.capability_manager import check_capability, request_capabil
 def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     decision_id = str(uuid.uuid4())
     
-    # 1. Determine blocker agent and style
+    # 1. Determine blocker agent
     blocker_name = "WatchdogAG"
-    blocker_sys = "Du bist WatchdogAG. Erkläre kurz, präzise und bestimmt in deutscher Sprache in genau 1 Satz, gegen welche Workspace- oder Dateiregel die Aktion verstößt."
     blocker_color = "#FFA500"
     blocker_rgb = "255, 165, 0"
     
     if "security" in rule.lower() or "gefahr" in rule.lower() or "sicherheits" in rule.lower():
         blocker_name = "SecurityAG"
-        blocker_sys = "Du bist SecurityAG. Erkläre kurz, präzise und bestimmt in deutscher Sprache in genau 1 Satz, welches konkrete Sicherheitsrisiko diese Aktion birgt."
         blocker_color = "#FF69B4"
         blocker_rgb = "255, 105, 180"
-        
-    # 2. Query blocker explanation
-    try:
-        blocker_prompt = f"Erkläre in genau 1 Satz, warum die Aktion von {agent_name} ({action_type}: {detail}) blockiert wurde. Regel: {rule}."
-        blocker_explanation = router.ask_router(blocker_prompt, sys=blocker_sys, agent_name=blocker_name).content
-    except Exception as e:
-        blocker_explanation = f"Blockiert wegen: {rule}"
-        
-    # 3. Query GeneralAG for coordination recommendation
-    try:
-        general_prompt = (
-            f"Die Aktion von {agent_name} ({action_type}: {detail}) wurde blockiert.\n"
-            f"Begründung: '{blocker_explanation}'\n"
-            f"Gib dem User in genau 1 Satz eine kurze Empfehlung zur Vorgehensweise."
-        )
-        general_statement = router.ask_router(general_prompt, sys="Du bist GeneralAG. Triff eine kurze Empfehlung in genau 1 Satz.", agent_name="GeneralAG").content
-    except Exception as e:
-        general_statement = "Bitte passe den Pfad oder Befehl im Workspace an."
 
-    # 4. Register the pending decision
+    # 2. Register the pending decision
     pending = get_state_value("pending_decisions", {})
     import time
     pending[decision_id] = {
@@ -63,30 +43,28 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     }
     set_state_value("pending_decisions", pending)
     
-    # 5. Build HTML content for Showbox slide (Compact version - no scroll)
+    # 3. Build HTML content for Showbox slide (Super compact - no LLM queries, extremely direct)
     html_content = (
-        f"<div style='padding: 14px; font-family: sans-serif; color: #fff; background: rgba(10, 10, 15, 0.95); height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);'>"
+        f"<div style='padding: 12px; font-family: sans-serif; color: #fff; background: rgba(10, 10, 15, 0.96); height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);'>"
         f"  <div>"
-        f"    <h2 style='color: #ff3333; margin: 0 0 10px 0; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; text-transform: uppercase; letter-spacing: 1px;'>"
-        f"      🛑 System-Blockade: {blocker_name}"
+        f"    <h2 style='color: #ff3333; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.5px;'>"
+        f"      🛑 Blockade: {blocker_name}"
         f"    </h2>"
-        f"    <div style='font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 10px; line-height: 1.3;'>"
-        f"      <strong>{agent_name}</strong>: <code style='background: rgba(255,255,255,0.12); padding: 2px 6px; border-radius: 4px; color: #00e5ff; font-family: monospace; font-size: 0.8rem;'>{action_type}: {detail}</code>"
+        f"    <div style='font-size: 0.8rem; color: rgba(255,255,255,0.7); margin-bottom: 6px; line-height: 1.35;'>"
+        f"      <strong>Wer:</strong> {agent_name}<br>"
+        f"      <strong>Aktion:</strong> <code style='background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 3px; color: #00e5ff; font-family: monospace; font-size: 0.75rem;'>{action_type}: {detail}</code>"
         f"    </div>"
-        f"    <div style='background: rgba({blocker_rgb}, 0.05); border-left: 3px solid {blocker_color}; padding: 8px 10px; border-radius: 4px; font-size: 0.82rem; line-height: 1.35; margin-bottom: 8px;'>"
-        f"      {blocker_explanation}"
-        f"    </div>"
-        f"    <div style='background: rgba(255, 255, 255, 0.03); border-left: 3px solid #00FFFF; padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; line-height: 1.3; color: #94a3b8;'>"
-        f"      💡 <em>Empfehlung:</em> {general_statement}"
+        f"    <div style='background: rgba({blocker_rgb}, 0.05); border-left: 3px solid {blocker_color}; padding: 6px 8px; border-radius: 4px; font-size: 0.78rem; line-height: 1.3; color: #f8fafc;'>"
+        f"      <strong>Grund:</strong> {rule}"
         f"    </div>"
         f"  </div>"
-        f"  <div style='display: flex; gap: 10px; margin-top: 10px;'>"
+        f"  <div style='display: flex; gap: 10px; margin-top: 8px;'>"
         f"    <button onclick=\"window.api('POST', '/chat', {{content: '@@approve_decision {decision_id}'}}).then(() => {{ this.disabled=true; this.innerText='Erlaubt'; }})\" "
-        f"            style='flex: 1; background: #28a745; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: background 0.2s;'>"
+        f"            style='flex: 1; background: #28a745; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem; transition: background 0.2s;'>"
         f"      Ja, erlauben"
         f"    </button>"
         f"    <button onclick=\"window.api('POST', '/chat', {{content: '@@reject_decision {decision_id}'}}).then(() => {{ this.disabled=true; this.innerText='Abgelehnt'; }})\" "
-        f"            style='flex: 1; background: #dc3545; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: background 0.2s;'>"
+        f"            style='flex: 1; background: #dc3545; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.8rem; transition: background 0.2s;'>"
         f"      Nein, blockieren"
         f"    </button>"
         f"  </div>"

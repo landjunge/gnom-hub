@@ -2770,8 +2770,10 @@
         }
         try {
           const sysInfo = await api('GET', '/system/info');
-          if (sysInfo && sysInfo.is_supergnom) {
-            document.body.classList.add('supergnom-mode');
+          if (sysInfo) {
+            window.hasElevenLabs = !!sysInfo.has_elevenlabs;
+            if (sysInfo.is_supergnom) {
+              document.body.classList.add('supergnom-mode');
             const style = document.createElement('style');
             style.textContent = `
               body.supergnom-mode .sidebar { display: none !important; }

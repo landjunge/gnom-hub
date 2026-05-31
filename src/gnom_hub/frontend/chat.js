@@ -745,14 +745,14 @@ function getVoiceForAgent(agentName, lang) {
   let filtered = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
   if (!filtered.length) return null;
   
-  // Prioritize premium/high-quality voices
+  // Prioritize premium/high-quality voices, but EXCLUDE Siri which fails to play on Webkit/Safari on macOS
   const premium = filtered.filter(v => 
-    v.name.includes('Premium') || 
-    v.name.includes('Enhanced') || 
-    v.name.includes('Siri') || 
-    v.name.includes('Google') || 
-    v.name.includes('Yannick') || 
-    v.name.includes('Anna')
+    (v.name.includes('Premium') || 
+     v.name.includes('Enhanced') || 
+     v.name.includes('Google') || 
+     v.name.includes('Yannick') || 
+     v.name.includes('Anna')) &&
+    !v.name.includes('Siri')
   );
   if (premium.length > 0) {
     filtered = premium;
@@ -778,32 +778,38 @@ async function speak(text, agentId = '') {
     if (typeof speechSynthesis !== 'undefined') {
       speechSynthesis.cancel();
     }
-    try {
-      const r = await fetch(`${API}/audio/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, agent_id: a }) });
-      if (r.ok && r.headers.get('content-type')?.includes('audio')) {
-        const audio = new Audio(URL.createObjectURL(await r.blob()));
-        await new Promise(ok => {
-          let resolved = false;
-          const done = () => {
-            if (!resolved) {
-              resolved = true;
-              clearTimeout(timeoutId);
-              ok();
-            }
-          };
-          audio.onended = done;
-          audio.onerror = done;
-          const timeoutId = setTimeout(done, 15000); // 15 seconds safety timeout
-          audio.play().catch(err => {
-            console.error("ElevenLabs audio play failed:", err);
-            done();
+    
+    let elevenLabsSuccess = false;
+    if (window.hasElevenLabs) {
+      try {
+        const r = await fetch(`${API}/audio/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, agent_id: a }) });
+        if (r.ok && r.headers.get('content-type')?.includes('audio')) {
+          const audio = new Audio(URL.createObjectURL(await r.blob()));
+          await new Promise(ok => {
+            let resolved = false;
+            const done = () => {
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeoutId);
+                ok();
+              }
+            };
+            audio.onended = done;
+            audio.onerror = done;
+            const timeoutId = setTimeout(done, 15000); // 15 seconds safety timeout
+            audio.play().catch(err => {
+              console.error("ElevenLabs audio play failed:", err);
+              done();
+            });
           });
-        });
-        continue;
+          elevenLabsSuccess = true;
+        }
+      } catch (e) {
+        console.warn("ElevenLabs TTS failed, falling back to browser synthesis:", e);
       }
-    } catch (e) {
-      console.warn("ElevenLabs TTS failed, falling back to browser synthesis:", e);
     }
+    
+    if (elevenLabsSuccess) continue;
     
     if (typeof speechSynthesis === 'undefined') continue;
     
@@ -907,3 +913,18 @@ function checkTimers() {
     }
   }
 }
+
+// Unlocks Browser SpeechSynthesis on first user click
+window.addEventListener('click', () => {
+  if (typeof speechSynthesis !== 'undefined' && !window._speechSynthesisUnlocked) {
+    try {
+      const u = new SpeechSynthesisUtterance('');
+      speechSynthesis.speak(u);
+      window._speechSynthesisUnlocked = true;
+      console.log("SpeechSynthesis unlocked successfully via click interaction");
+    } catch (e) {
+      console.warn("Failed to unlock SpeechSynthesis:", e);
+    }
+  }
+}, { once: true });
+
