@@ -51,13 +51,15 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
 
     # 4. Register the pending decision
     pending = get_state_value("pending_decisions", {})
+    import time
     pending[decision_id] = {
         "agent_name": agent_name,
         "action_type": action_type,
         "detail": detail,
         "content": content,
         "rule": rule,
-        "status": "pending"
+        "status": "pending",
+        "timestamp": time.time()
     }
     set_state_value("pending_decisions", pending)
     
@@ -103,7 +105,7 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
         "GeneralAG", 
         "generalag", 
         "chat", 
-        f"@user @SoulAG: [BLOCKADE] Die geplante Aktion von **{agent_name}** ({action_type}: {detail}) verletzt Watchdog-Regeln. Bitte entscheide in der Showbox!"
+        f"@user Soll die Aktion von **{agent_name}** ({action_type}: {detail}) erlaubt werden? (Ja/Nein)"
     )
     
     # 8. Pause agent and wait for user input

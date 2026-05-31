@@ -10,6 +10,28 @@ CMDS = {"clear": handle_clear, "status": lambda q: handle_status(), "job": handl
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     soul_instance.on_message(msg.content, msg.sender)
+    
+    # Intercept simple approvals/rejections of pending decisions
+    if msg.sender == "user":
+        content_clean = msg.content.strip().lower().strip("!.?,")
+        if content_clean in ("ja", "nein", "yes", "no", "allow", "block", "erlauben", "ablehnen"):
+            from gnom_hub.db.legacy_db import get_state_value
+            pending = get_state_value("pending_decisions", {})
+            pending_items = [
+                (dec_id, d) for dec_id, d in pending.items() 
+                if d.get("status") == "pending"
+            ]
+            if pending_items:
+                pending_items.sort(key=lambda x: x[1].get("timestamp", 0), reverse=True)
+                decision_id, dec_info = pending_items[0]
+                is_approve = content_clean in ("ja", "yes", "allow", "erlauben")
+                if is_approve:
+                    r = handle_approve_decision(decision_id)
+                else:
+                    r = handle_reject_decision(decision_id)
+                add_chat_message(get_active_project(), "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
+                return r
+
     q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt; ags = get_all_agents()
     a = next((x for x in ags if x.get("name", "").lower() == (s_name or "").lower()), None)
     if a: msg.content = add_agent_metadata(a["name"], msg.content)
