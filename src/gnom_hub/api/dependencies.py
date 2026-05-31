@@ -2,7 +2,7 @@ from fastapi import Depends
 from gnom_hub.db.agent_repo import SQLiteAgentRepository as AR
 from gnom_hub.db.chat_repo import SQLiteChatRepository as CR
 from gnom_hub.infrastructure.llm.orchestrator import LLMOrchestrator as LO
-from gnom_hub.infrastructure.process.manager import ProcessManager as PM
+from gnom_hub.infrastructure.process.process_manager import ProcessManager as PM
 from gnom_hub.infrastructure.admin.service import AdminService as AS
 from gnom_hub.agents.commands import AgentCommands as AC
 from gnom_hub.agents.queries import AgentQueries as AQ

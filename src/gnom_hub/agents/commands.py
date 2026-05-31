@@ -1,7 +1,7 @@
 from uuid import UUID
 from gnom_hub.agents.entities import Agent
 from gnom_hub.db.agent_repo import AgentRepository
-from gnom_hub.infrastructure.process.manager import ProcessManager
+from gnom_hub.infrastructure.process.process_manager import ProcessManager
 from gnom_hub.core.exceptions import ValidationError
 
 class AgentCommands:
