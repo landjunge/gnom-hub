@@ -60,8 +60,20 @@ function buildWarRoomHTML() {
   const ttsChecked = document.getElementById('tts-enabled')?.checked ?? true;
   const thoughtTtsActive = window.thoughtTtsEnabled ?? true;
   return `<div class="panel" id="war-room">
-    <h2 style="display:flex; align-items:center;">War Room <span id="project-indicator" style="font-size:0.75rem; color:var(--text-muted); background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:12px; margin-left:10px; border:1px solid rgba(255,255,255,0.1);">MAIN HUB</span>
-      <button id="project-help-btn" onclick="const e=document.getElementById('project-explanation'); e.style.display = e.style.display==='none' ? 'block' : 'none';" style="display:none; margin-left:8px; padding:3px 8px; font-size:0.7rem; border-radius:12px; border:1px solid var(--green); background:rgba(57,255,20,0.1); color:var(--green); cursor:pointer;">ℹ️ Info</button>
+    <h2 style="display:flex; align-items:center; justify-content:space-between; width: 100%;">
+      <div style="display:flex; align-items:center; gap: 8px;">
+        War Room 
+        <span id="project-indicator" style="font-size:0.75rem; color:var(--text-muted); background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:12px; margin-left:10px; border:1px solid rgba(255,255,255,0.1);">MAIN HUB</span>
+        <button id="project-help-btn" onclick="const e=document.getElementById('project-explanation'); e.style.display = e.style.display==='none' ? 'block' : 'none';" style="display:none; margin-left:8px; padding:3px 8px; font-size:0.7rem; border-radius:12px; border:1px solid var(--green); background:rgba(57,255,20,0.1); color:var(--green); cursor:pointer;">ℹ️ Info</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;">Ansicht:</span>
+        <select id="info-level-select" onchange="changeInfoLevel(this.value)" style="background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3); color: var(--cyan); border-radius: 6px; padding: 2px 6px; font-size: 0.65rem; cursor: pointer; outline: none; font-weight: bold; font-family: sans-serif;">
+          <option value="detailed" ${window.infoLevel === 'detailed' ? 'selected' : ''}>Detailliert</option>
+          <option value="compact" ${window.infoLevel === 'compact' ? 'selected' : ''}>Kompakt</option>
+          <option value="minimal" ${window.infoLevel === 'minimal' ? 'selected' : ''}>Minimal</option>
+        </select>
+      </div>
     </h2>
     <div id="project-explanation" style="display:none; font-size:0.8rem; color:#fff; background:rgba(61,220,132,0.1); border-left:3px solid var(--green); padding:10px 14px; margin-bottom:12px; border-radius:4px; line-height:1.5;"></div>
     
@@ -70,16 +82,9 @@ function buildWarRoomHTML() {
       <!-- Top Pane: Thinking Processes -->
       <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--cyan); display: flex; align-items: center; justify-content: space-between; font-weight: bold; margin-bottom: -4px;">
         <span>🧠 Denkprozesse & Logik</span>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <select id="info-level-select" onchange="changeInfoLevel(this.value)" style="background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3); color: var(--cyan); border-radius: 6px; padding: 1px 4px; font-size: 0.62rem; cursor: pointer; outline: none; font-weight: bold; font-family: sans-serif;">
-            <option value="detailed" ${window.infoLevel === 'detailed' ? 'selected' : ''}>Detailliert</option>
-            <option value="compact" ${window.infoLevel === 'compact' ? 'selected' : ''}>Kompakt</option>
-            <option value="minimal" ${window.infoLevel === 'minimal' ? 'selected' : ''}>Minimal</option>
-          </select>
-          <button id="thought-tts-btn" onclick="toggleThoughtTTS()" style="background: ${thoughtTtsActive ? 'rgba(57,255,20,0.15)' : 'rgba(0,229,255,0.1)'}; border: 1px solid ${thoughtTtsActive ? 'rgba(57,255,20,0.4)' : 'rgba(0,229,255,0.3)'}; color: ${thoughtTtsActive ? 'var(--green)' : 'var(--cyan)'}; border-radius: 12px; padding: 2px 8px; font-size: 0.62rem; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s ease;">
-            ${thoughtTtsActive ? '🔊 TTS An' : '🔇 TTS Aus'}
-          </button>
-        </div>
+        <button id="thought-tts-btn" onclick="toggleThoughtTTS()" style="background: ${thoughtTtsActive ? 'rgba(57,255,20,0.15)' : 'rgba(0,229,255,0.1)'}; border: 1px solid ${thoughtTtsActive ? 'rgba(57,255,20,0.4)' : 'rgba(0,229,255,0.3)'}; color: ${thoughtTtsActive ? 'var(--green)' : 'var(--cyan)'}; border-radius: 12px; padding: 2px 8px; font-size: 0.62rem; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s ease;">
+          ${thoughtTtsActive ? '🔊 TTS An' : '🔇 TTS Aus'}
+        </button>
       </div>
       <div id="thought-display"></div>
       
