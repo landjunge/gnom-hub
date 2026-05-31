@@ -19,14 +19,15 @@ var _nukeAudioCtx = null;
 const P_COLORS = ['#00E5FF', '#B026FF', '#FF007F', '#39FF14', '#FF3366', '#8A2BE2', '#0066FF', '#00FF9D', '#FF9900', '#FFD700', '#FF1493', '#00FA9A', '#1E90FF', '#FF4500', '#00FFFF'];
 const KNOWN_COLORS = {
   'soulag': '#FF5E00',
-  'generalag': '#FFD700',
+  'generalag': '#00FFFF',
   'securityag': '#FF69B4',
   'watchdogag': '#FFA500',
-  'researcherag': '#8A2BE2',
-  'writerag': '#32CD32',
-  'editorag': '#DC143C',
-  'coderag': '#1E90FF'
+  'researcherag': '#FFFF00',
+  'writerag': '#00FF00',
+  'editorag': '#0088FF',
+  'coderag': '#FF0000'
 };
+
 
 // ── Toast ──
 function toast(msg, type = 'info') {

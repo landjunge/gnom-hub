@@ -520,8 +520,8 @@ function handleShowboxTrigger(showData, sender) {
 }
 
 function renderChatMessageHTML(m, overrideContent) {
-  const isUser = m.metadata?.sender === 'user';
-  const name = isUser ? 'You' : (m.metadata?.sender || 'System');
+  const isUser = m.metadata?.sender === 'user' || m.sender?.toLowerCase() === 'user';
+  const name = isUser ? 'You' : (m.metadata?.sender || m.sender || 'System');
   const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString() : '';
   const c = isUser ? 'var(--primary)' : agentColor(name);
   const nameColor = isUser ? 'var(--primary)' : (name.toLowerCase().startsWith('testag') ? '#0066FF' : 'inherit');
@@ -633,8 +633,8 @@ async function refreshChat() {
   let thoughtHTML = "";
 
   for (const m of sorted) {
-    const isUser = m.metadata?.sender === 'user';
-    const sender = isUser ? 'You' : (m.metadata?.sender || 'System');
+    const isUser = m.metadata?.sender === 'user' || m.sender?.toLowerCase() === 'user';
+    const sender = isUser ? 'You' : (m.metadata?.sender || m.sender || 'System');
     const timestamp = m.timestamp;
     
     // 1. Extract thoughts

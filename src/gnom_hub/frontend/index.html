@@ -2774,38 +2774,39 @@
             window.hasElevenLabs = !!sysInfo.has_elevenlabs;
             if (sysInfo.is_supergnom) {
               document.body.classList.add('supergnom-mode');
-            const style = document.createElement('style');
-            style.textContent = `
-              body.supergnom-mode .sidebar { display: none !important; }
-              body.supergnom-mode .content { margin-left: 0 !important; width: 100% !important; max-width: 900px !important; margin: 0 auto !important; padding: 20px !important; }
-              body.supergnom-mode header button { display: none !important; }
-              body.supergnom-mode #nuke-btn { pointer-events: none !important; cursor: default !important; }
-              body.supergnom-mode .logo { cursor: default !important; }
-            `;
-            document.head.appendChild(style);
-
-            if (sysInfo.template === 'senior') {
-              document.body.classList.add('senior-mode');
-              // Automatically check the voice (TTS) option for seniors
-              setTimeout(() => {
-                const cb = document.getElementById('tts-enabled');
-                if (cb) cb.checked = true;
-              }, 500);
-            } else if (sysInfo.template === 'headless') {
-              document.body.classList.add('headless-mode');
-              document.getElementById('content').innerHTML = `
-                <div style="text-align: center; padding: 60px 40px; background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: var(--radius); max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0, 229, 255, 0.08); margin: 60px auto;">
-                  <h1 style="font-size: 2.2rem; color: var(--cyan); margin-bottom: 15px; font-weight: 600; text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);">🧠 SuperGNOM Headless</h1>
-                  <p style="font-size: 1rem; color: var(--text-dim); margin-bottom: 30px; line-height: 1.6;">Diese Instanz läuft im <strong>Headless-Modus (API-only)</strong>.<br>Die Hintergrund-Agenten kommunizieren und arbeiten direkt über externe Schnittstellen.</p>
-                  <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                    <a href="/docs" target="_blank" class="btn-primary" style="text-decoration: none; padding: 12px 24px; font-size: 0.95rem; font-weight: bold; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;">
-                      🖥️ API Dokumentation (Swagger)
-                    </a>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Port: 3003 | Host: 127.0.0.1</span>
-                  </div>
-                </div>
+              const style = document.createElement('style');
+              style.textContent = `
+                body.supergnom-mode .sidebar { display: none !important; }
+                body.supergnom-mode .content { margin-left: 0 !important; width: 100% !important; max-width: 900px !important; margin: 0 auto !important; padding: 20px !important; }
+                body.supergnom-mode header button { display: none !important; }
+                body.supergnom-mode #nuke-btn { pointer-events: none !important; cursor: default !important; }
+                body.supergnom-mode .logo { cursor: default !important; }
               `;
-              return; // Stop loading other layouts/polling
+              document.head.appendChild(style);
+
+              if (sysInfo.template === 'senior') {
+                document.body.classList.add('senior-mode');
+                // Automatically check the voice (TTS) option for seniors
+                setTimeout(() => {
+                  const cb = document.getElementById('tts-enabled');
+                  if (cb) cb.checked = true;
+                }, 500);
+              } else if (sysInfo.template === 'headless') {
+                document.body.classList.add('headless-mode');
+                document.getElementById('content').innerHTML = `
+                  <div style="text-align: center; padding: 60px 40px; background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: var(--radius); max-width: 600px; width: 90%; box-shadow: 0 8px 32px rgba(0, 229, 255, 0.08); margin: 60px auto;">
+                    <h1 style="font-size: 2.2rem; color: var(--cyan); margin-bottom: 15px; font-weight: 600; text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);">🧠 SuperGNOM Headless</h1>
+                    <p style="font-size: 1rem; color: var(--text-dim); margin-bottom: 30px; line-height: 1.6;">Diese Instanz läuft im <strong>Headless-Modus (API-only)</strong>.<br>Die Hintergrund-Agenten kommunizieren und arbeiten direkt über externe Schnittstellen.</p>
+                    <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                      <a href="/docs" target="_blank" class="btn-primary" style="text-decoration: none; padding: 12px 24px; font-size: 0.95rem; font-weight: bold; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px;">
+                        🖥️ API Dokumentation (Swagger)
+                      </a>
+                      <span style="font-size: 0.75rem; color: var(--text-muted);">Port: 3003 | Host: 127.0.0.1</span>
+                    </div>
+                  </div>
+                `;
+                return; // Stop loading other layouts/polling
+              }
             }
           }
         } catch (e) {
