@@ -743,7 +743,7 @@ function getVoiceForAgent(agentName, lang) {
   if (!voices.length) return null;
   const langPrefix = lang.split('-')[0].toLowerCase();
   let filtered = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-  if (!filtered.length) filtered = voices;
+  if (!filtered.length) return null;
   
   // Prioritize premium/high-quality voices
   const premium = filtered.filter(v => 
@@ -775,18 +775,76 @@ async function speak(text, agentId = '') {
 
   while (_ttsQ.length) {
     const { text: t, agentId: a } = _ttsQ.shift();
-    speechSynthesis.cancel();
+    if (typeof speechSynthesis !== 'undefined') {
+      speechSynthesis.cancel();
+    }
     try {
       const r = await fetch(`${API}/audio/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, agent_id: a }) });
       if (r.ok && r.headers.get('content-type')?.includes('audio')) {
         const audio = new Audio(URL.createObjectURL(await r.blob()));
-        await new Promise(ok => { audio.onended = ok; audio.onerror = ok; audio.play(); }); continue;
+        await new Promise(ok => {
+          let resolved = false;
+          const done = () => {
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeoutId);
+              ok();
+            }
+          };
+          audio.onended = done;
+          audio.onerror = done;
+          const timeoutId = setTimeout(done, 15000); // 15 seconds safety timeout
+          audio.play().catch(err => {
+            console.error("ElevenLabs audio play failed:", err);
+            done();
+          });
+        });
+        continue;
       }
-    } catch { }
-    const u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; u.rate = 1.0;
+    } catch (e) {
+      console.warn("ElevenLabs TTS failed, falling back to browser synthesis:", e);
+    }
+    
+    if (typeof speechSynthesis === 'undefined') continue;
+    
+    const u = new SpeechSynthesisUtterance(t);
+    u.lang = 'de-DE';
+    u.rate = 1.0;
     const voice = getVoiceForAgent(a || 'System', u.lang);
     if (voice) u.voice = voice;
-    await new Promise(ok => { u.onend = ok; u.onerror = ok; speechSynthesis.speak(u); });
+    
+    // Resume to prevent Chrome/Safari speech from staying paused
+    speechSynthesis.resume();
+    
+    await new Promise(ok => {
+      let resolved = false;
+      const done = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          ok();
+        }
+      };
+      u.onend = done;
+      u.onerror = done;
+      
+      // Safety timeout: 100ms per character, minimum 5 seconds, maximum 20 seconds
+      const duration = Math.min(20000, Math.max(5000, t.length * 100));
+      const timeoutId = setTimeout(() => {
+        console.warn("Browser SpeechSynthesis timeout exceeded, cancelling");
+        try {
+          speechSynthesis.cancel();
+        } catch {}
+        done();
+      }, duration);
+      
+      try {
+        speechSynthesis.speak(u);
+      } catch (err) {
+        console.error("SpeechSynthesis.speak failed:", err);
+        done();
+      }
+    });
   }
   _ttsBusy = false;
   if (stopBtn) stopBtn.style.display = 'none';
