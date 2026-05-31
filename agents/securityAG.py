@@ -4,12 +4,30 @@ from gnom_hub.agents.agent_base import BaseAgent
 from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
 from gnom_hub.core.security.hmac_signer import _get_or_create_secret, generate_signature
 
+import os
+
 def seal_content(agent: str, content: str, fname: str = "") -> str:
     from gnom_hub.soul.zwc_soul import add_agent_metadata
-    return add_agent_metadata(agent, content)
+    sig = add_agent_metadata(agent, "")
+    if not fname:
+        return content + sig
+    
+    ext = os.path.splitext(fname)[1].lower()
+    if ext == ".py":
+        return content + f"\n# {sig}"
+    elif ext in (".html", ".xml", ".md"):
+        return content + f"\n<!-- {sig} -->"
+    elif ext in (".js", ".ts", ".css"):
+        return content + f"\n/* {sig} */"
+    elif ext in (".sh", ".yml", ".yaml", ".toml", ".env", ".ini"):
+        return content + f"\n# {sig}"
+    else:
+        return content + sig
 
 def verify_seal(sealed_content: str) -> bool:
-    return True
+    from gnom_hub.soul.zwc_soul import decode_soul
+    soul = decode_soul(sealed_content)
+    return soul is not None and "agent" in soul
 
 async def main():
     cfg = AGENT_DEFINITIONS["securityag"]

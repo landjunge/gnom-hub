@@ -41,8 +41,10 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                     os.makedirs(os.path.dirname(fpath), exist_ok=True)
                     if os.path.exists(fpath):
                         import shutil; shutil.copy2(fpath, fpath + ".bak")
+                    
+                    sealed_content = seal_content(agent["name"], content, fname)
                     with open(fpath, "w", encoding="utf-8") as f:
-                        f.write(content)
+                        f.write(sealed_content)
                     
                     rel_path = os.path.relpath(fpath, wd)
                     _git_commit_file(wd, rel_path, agent["name"])
