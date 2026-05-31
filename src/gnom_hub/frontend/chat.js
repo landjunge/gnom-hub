@@ -775,9 +775,6 @@ async function speak(text, agentId = '') {
 
   while (_ttsQ.length) {
     const { text: t, agentId: a } = _ttsQ.shift();
-    if (typeof speechSynthesis !== 'undefined') {
-      speechSynthesis.cancel();
-    }
     
     let elevenLabsSuccess = false;
     if (window.hasElevenLabs) {
@@ -819,6 +816,9 @@ async function speak(text, agentId = '') {
     const voice = getVoiceForAgent(a || 'System', u.lang);
     if (voice) u.voice = voice;
     
+    // Crucial: Keep a reference on window to prevent garbage collection on Webkit/Blink which hangs speech synthesis callbacks
+    window._activeUtterance = u;
+    
     // Resume to prevent Chrome/Safari speech from staying paused
     speechSynthesis.resume();
     
@@ -827,6 +827,7 @@ async function speak(text, agentId = '') {
       const done = () => {
         if (!resolved) {
           resolved = true;
+          window._activeUtterance = null;
           clearTimeout(timeoutId);
           ok();
         }
@@ -855,6 +856,7 @@ async function speak(text, agentId = '') {
   _ttsBusy = false;
   if (stopBtn) stopBtn.style.display = 'none';
 }
+
 
 function toggleSTT() {
   const btn = document.getElementById('mic-btn');
