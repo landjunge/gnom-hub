@@ -1,3 +1,4 @@
+import logging
 from gnom_hub.db.state_repo import SQLiteStateRepository
 from .router_call import _try_keys, _call
 from gnom_hub.agents.explainability.eo_wrap import wrap_response, wrap_error
@@ -17,7 +18,7 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
                     old_status = a.get("status", "online")
                     break
             set_agent_status(agent_name, "busy")
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Status-Aktualisierung: %s', e)
     try:
         import time; t0 = time.time()
         n = (agent_name or "").lower()
@@ -46,4 +47,4 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
             try:
                 from gnom_hub.db.legacy_db import set_agent_status
                 set_agent_status(agent_name, old_status)
-            except Exception: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Status-Wiederherstellung: %s', e)

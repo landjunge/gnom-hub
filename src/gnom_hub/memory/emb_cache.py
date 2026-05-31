@@ -1,5 +1,5 @@
 # emb_cache.py — LRU-bounded caching for sentence embeddings
-import os, json, numpy as np
+import os, json, logging, numpy as np
 from collections import OrderedDict
 from gnom_hub.core.config import DATA_DIR
 
@@ -13,8 +13,8 @@ try:
             raw = json.load(f)
             for k, v in raw.items():
                 _cache[k] = np.array(v, dtype=np.float32)
-except Exception:
-    pass
+except Exception as e:
+    logging.getLogger(__name__).error('Fehler beim Laden des Embedding-Cache: %s', e)
 
 def _save_cache():
     try:
@@ -22,8 +22,8 @@ def _save_cache():
         serializable = {k: v.tolist() for k, v in _cache.items()}
         with open(_CACHE_PATH, "w", encoding="utf-8") as f:
             json.dump(serializable, f)
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in _save_cache: %s', e)
 
 def get_emb(model, txt: str):
     if txt in _cache:

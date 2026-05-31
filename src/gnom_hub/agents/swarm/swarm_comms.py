@@ -1,4 +1,5 @@
 # swarm_comms.py — Detects agent-to-agent mentions and dispatches tasks
+import logging
 import re, time, threading
 from gnom_hub.db.legacy_db import get_all_agents, get_state_value, set_state_value
 
@@ -11,7 +12,7 @@ def process_swarm_mentions(sender: str, text: str, depth: int = 0):
             from gnom_hub.chat.brainstorm.brainstorm import dispatch
             prompt = "[AUTOMATISCHE SYNTHESE] Mention-Limit überschritten. Bitte analysiere den Chatverlauf und erstelle das abschließende Ergebnis."
             threading.Thread(target=dispatch, args=(prompt, "GeneralAG", 0), daemon=True).start()
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Swarm-Mention-Limit-Behandlung: %s', e)
         return
     ags = {a["name"].lower(): a["name"] for a in get_all_agents() if a.get("status") == "online"}
     mentions = re.findall(r'@(\w+)', text)
@@ -30,5 +31,5 @@ def process_swarm_mentions(sender: str, text: str, depth: int = 0):
                 try:
                     from gnom_hub.chat.brainstorm.brainstorm import dispatch
                     threading.Thread(target=dispatch, args=(text, tgt_name, new_depth), daemon=True).start()
-                except: pass
+                except Exception as e: logging.getLogger(__name__).error('Fehler in Dispatch an Ziel-Agenten: %s', e)
     if updated: set_state_value("active_swarm_comms", comms)

@@ -26,10 +26,22 @@ def handle_free(q):
     return {"status": "ok"}
 
 def handle_git(q, rb=False):
+    import re as _re
+    ALLOWED_GIT = {'status', 'log', 'diff', 'show', 'branch', 'stash', 'add', 'commit'}
     from gnom_hub.api.endpoints.workspace import get_workspace_dir
     wd = get_workspace_dir()
     p = q.split(" ", 1)
-    cmd = f"reset --hard {p[1]}" if rb else (p[1] if len(p) > 1 else "status")
+    if rb:
+        if len(p) < 2 or not _re.match(r'^[a-f0-9]{7,40}$', p[1].strip()):
+            _post_chat("System", "Git: Ungültiger Rollback-Ref. Nur gültige Commit-Hashes erlaubt.")
+            return {"status": "error", "message": "Invalid rollback ref"}
+        cmd = f"reset --hard {p[1].strip()}"
+    else:
+        cmd = p[1] if len(p) > 1 else "status"
+        subcmd = cmd.split()[0]
+        if subcmd not in ALLOWED_GIT:
+            _post_chat("System", f"Git: Subcommand '{subcmd}' nicht erlaubt. Erlaubt: {', '.join(sorted(ALLOWED_GIT))}")
+            return {"status": "error", "message": f"Git subcommand not allowed: {subcmd}"}
     from pathlib import Path
     if not (Path(wd) / ".git").exists(): 
         subprocess.run(["git", "init"], cwd=wd, capture_output=True)

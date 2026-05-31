@@ -1,5 +1,6 @@
 # eo_store.py
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -14,7 +15,7 @@ class ExplainableOutputStore:
             with get_db_conn() as conn:
                 with conn:
                     conn.execute("CREATE TABLE IF NOT EXISTS explainable_outputs (id TEXT PRIMARY KEY, agent TEXT NOT NULL, task TEXT NOT NULL, data TEXT NOT NULL, timestamp TEXT NOT NULL)")
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Tabellenerstellung explainable_outputs: %s', e)
 
     def store(self, o: ExplainableOutput) -> str:
         oid = str(uuid.uuid4())
@@ -24,7 +25,7 @@ class ExplainableOutputStore:
             with get_db_conn() as conn:
                 with conn:
                     conn.execute("INSERT INTO explainable_outputs (id, agent, task, data, timestamp) VALUES (?, ?, ?, ?, ?)", (oid, o.agent, o.task, data_str, ts))
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Speichern des ExplainableOutput: %s', e)
         return oid
 
     def get(self, oid: str) -> Optional[ExplainableOutput]:
@@ -34,5 +35,5 @@ class ExplainableOutputStore:
                 if r:
                     d = json.loads(r["data"])
                     return ExplainableOutput(d.get("agent"), d.get("task"), d.get("answer"), d.get("confidence", 0.0), d.get("reasoning_chain"), d.get("sources"), d.get("alternatives"), d.get("execution_time_ms", 0), d.get("degradation_note"))
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Laden des ExplainableOutput: %s', e)
         return None

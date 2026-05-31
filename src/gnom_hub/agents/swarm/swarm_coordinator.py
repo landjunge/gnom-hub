@@ -1,7 +1,8 @@
 # swarm_coordinator.py — Coordinates team workflows and gathers results
+import logging
 import time, threading, re
-from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository as AR
-from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository as SR
+from gnom_hub.db.agent_repo import SQLiteAgentRepository as AR
+from gnom_hub.db.state_repo import SQLiteStateRepository as SR
 from gnom_hub.agents.role_tools import _llm; from gnom_hub.chat.brainstorm.brainstorm import _collect_worker_responses, dispatch
 from gnom_hub.chat.brainstorm.brainstorm_helpers import post, get_workspace_dir; from gnom_hub.agents.actions.action_handlers import process_actions; from gnom_hub.soul import get_soul
 def _wait(ar, workers, timeout=40):
@@ -35,6 +36,6 @@ def run_swarm_coordinator(task, workers):
     try:
         from gnom_hub.soul import run_evolution; run_evolution(task, "\n\n".join(all_res))
         post(next((a.name for a in ar.get_all() if a.role == "general" or a.name.lower() == "generalag"), "GeneralAG"), "Der Workflow ist beendet. War das Ergebnis gut? Bitte gib uns Feedback im Dashboard!")
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Evolution und Workflow-Abschluss: %s', e)
 def start_coordinator(task, workers):
     if workers: SR().set_value("active_workflow", f"Team-Workflow aktiv: {' → '.join(workers)}"); threading.Thread(target=run_swarm_coordinator, args=(task, workers), daemon=True).start()

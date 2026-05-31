@@ -1,6 +1,6 @@
 import subprocess
 import tempfile
-import os
+import os, logging
 
 def run_sandboxed(cmd, cwd, timeout=15):
     """
@@ -36,5 +36,5 @@ def run_sandboxed(cmd, cwd, timeout=15):
     finally:
         try:
             os.remove(profile_path)
-        except:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).error('Fehler in run_sandboxed (cleanup): %s', e)

@@ -105,7 +105,7 @@ class SmartRouter:
         return "normal"
 
     @staticmethod
-    def get_best_specific_assignment(role: str, kdb: dict) -> tuple:
+    def get_best_specific_assignment(role: str, kdb: dict, force_provider: str = None) -> tuple:
         """Determines the best specific provider and model for a role based on valid keys."""
         try:
             from gnom_hub.db.state_repo import SQLiteStateRepository
@@ -116,12 +116,20 @@ class SmartRouter:
         if not working_models:
             working_models = list(Config.OPENROUTER_FREE_MODELS)
 
-        has_anthropic = any(k.get("provider") == "anthropic" and k.get("valid") for k in kdb.values())
-        has_openai = any(k.get("provider") == "openai" and k.get("valid") for k in kdb.values())
-        has_gemini = any(k.get("provider") == "gemini" and k.get("valid") for k in kdb.values())
-        has_deepseek = any(k.get("provider") == "deepseek" and k.get("valid") for k in kdb.values())
-        has_openrouter = any(k.get("provider") == "openrouter" and k.get("valid") for k in kdb.values())
-        has_mistral = any(k.get("provider") == "mistral" and k.get("valid") for k in kdb.values())
+        if force_provider:
+            has_anthropic = (force_provider == "anthropic")
+            has_openai = (force_provider == "openai")
+            has_gemini = (force_provider == "gemini")
+            has_deepseek = (force_provider == "deepseek")
+            has_openrouter = (force_provider == "openrouter")
+            has_mistral = (force_provider == "mistral")
+        else:
+            has_anthropic = any(k.get("provider") == "anthropic" and k.get("valid") for k in kdb.values())
+            has_openai = any(k.get("provider") == "openai" and k.get("valid") for k in kdb.values())
+            has_gemini = any(k.get("provider") == "gemini" and k.get("valid") for k in kdb.values())
+            has_deepseek = any(k.get("provider") == "deepseek" and k.get("valid") for k in kdb.values())
+            has_openrouter = any(k.get("provider") == "openrouter" and k.get("valid") for k in kdb.values())
+            has_mistral = any(k.get("provider") == "mistral" and k.get("valid") for k in kdb.values())
         
         role = (role or "normal").lower()
         

@@ -1,4 +1,5 @@
 # tbm_init.py
+import logging
 from gnom_hub.db.legacy_db import get_db_conn
 
 def init_tables():
@@ -19,4 +20,4 @@ def init_tables():
                         timestamp TEXT NOT NULL, acknowledged INTEGER DEFAULT 0
                     )
                 """)
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Token-Budget-Tabellen-Erstellung: %s', e)

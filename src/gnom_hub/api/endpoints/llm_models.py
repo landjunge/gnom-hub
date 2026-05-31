@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from fastapi import APIRouter
 import httpx
 from gnom_hub.db.state_repo import SQLiteStateRepository
@@ -20,8 +21,8 @@ async def check_and_update_models():
             r = await client.get("https://openrouter.ai/api/v1/models")
             if r.status_code == 200:
                 or_models = [m["id"] for m in r.json().get("data", []) if m.get("id", "").endswith(":free")]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in Abruf der OpenRouter-Modelle: %s', e)
         
     if not or_models:
         or_models = list(Config.OPENROUTER_FREE_MODELS)
@@ -67,7 +68,7 @@ async def get_available_models():
             r = await client.get("http://127.0.0.1:11434/api/tags")
             if r.status_code == 200:
                 local_models = [m["name"] for m in r.json().get("models", []) if m.get("name")]
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Abruf lokaler Ollama-Modelle: %s', e)
     if not local_models: local_models = ['llama3', 'mistral', 'qwen2', 'phi3', 'gemma2']
     
     res = {

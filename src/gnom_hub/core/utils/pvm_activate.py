@@ -1,4 +1,5 @@
 # pvm_activate.py
+import logging
 from gnom_hub.db.legacy_db import get_db_conn, log_audit_event
 
 def activate_version(agent: str, version_id: str):
@@ -8,4 +9,5 @@ def activate_version(agent: str, version_id: str):
                 conn.execute("UPDATE prompt_versions SET is_active = 0 WHERE agent = ?", (agent,))
                 conn.execute("UPDATE prompt_versions SET is_active = 1 WHERE id = ?", (version_id,))
         log_audit_event(agent=agent, event_type="prompt_activated", details={"version_id": version_id})
-    except Exception: pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in Version-Aktivierung: %s', e)

@@ -1,4 +1,5 @@
 # tbm_record.py
+import logging
 import uuid
 from datetime import datetime, timezone
 from gnom_hub.db import get_db_conn, add_chat_message
@@ -12,7 +13,7 @@ async def record_operation(tbm, op_id: str, agent: str, op_type: str, input_tok:
         with get_db_conn() as conn:
             with conn:
                 conn.execute("INSERT OR REPLACE INTO token_budget_logs (operation_id, agent, operation_type, input_tokens, output_tokens, model, cost, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (op_id, agent, op_type, input_tok, output_tok, model, cost, ts))
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Token-Verbrauch-Speicherung: %s', e)
     status = tbm.get_budget_status()
     if status["spent_today"] > tbm.daily_limit_usd * 0.8:
         today_start = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -21,7 +22,7 @@ async def record_operation(tbm, op_id: str, agent: str, op_type: str, input_tok:
             with get_db_conn() as conn:
                 row = conn.execute("SELECT COUNT(*) FROM token_budget_alerts WHERE message LIKE ? AND timestamp LIKE ?", ("%80% tägliches Budget%", f"{today_start}%")).fetchone()
                 alert_exists = (row[0] > 0)
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Budget-Alert-Prüfung: %s', e)
         if not alert_exists:
             alert_msg = f"80% tägliches Budget verbraucht: ${status['spent_today']:.02f}"
             alert_id = str(uuid.uuid4())
@@ -30,5 +31,5 @@ async def record_operation(tbm, op_id: str, agent: str, op_type: str, input_tok:
                     with conn:
                         conn.execute("INSERT INTO token_budget_alerts (id, message, timestamp) VALUES (?, ?, ?)", (alert_id, alert_msg, ts))
                 add_chat_message("default", "System", "system", "chat", f"⚠️ Budget-Warnung: {alert_msg} (Limit: ${tbm.daily_limit_usd:.2f})")
-            except Exception: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler in Budget-Alert-Erstellung: %s', e)
     return cost

@@ -190,20 +190,20 @@ async function addMemory(agentId) {
 function editMem(id) {
   const el = document.getElementById('mc-' + id);
   const old = el.innerText;
-  el.innerHTML = `<textarea id="ed-${id}">${old}</textarea>
-    <div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end">
-      <button onclick="selectAgent(selectedId)">Abbrechen</button>
-      <button class="btn-primary" onclick="saveMem('${id}')">Speichern</button>
-    </div>`;
+  el.textContent = '';
+  const ta = document.createElement('textarea');
+  ta.id = 'ed-' + id;
+  ta.value = old;
+  el.appendChild(ta);
+  const btnDiv = document.createElement('div');
+  btnDiv.style.cssText = 'margin-top:6px;display:flex;gap:6px;justify-content:flex-end';
+  btnDiv.innerHTML = `<button onclick="selectAgent(selectedId)">Abbrechen</button><button class="btn-primary" onclick="saveMem('${id}')">Speichern</button>`;
+  el.appendChild(btnDiv);
 }
 
 async function saveMem(id) {
   const c = document.getElementById('ed-' + id).value;
-  await fetch(API + `/memory/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: c })
-  });
+  await api('PUT', `/memory/${id}`, { content: c });
   selectAgent(selectedId);
 }
 
@@ -228,7 +228,7 @@ async function toggleStatus(id, current) {
   const curr = agent ? agent.status : current;
   const isOff = curr === 'offline' || curr === 'sleeping';
   const next = isOff ? 'online' : 'offline';
-  await fetch(API + `/agents/${id}/status?status=${next}`, { method: 'PUT' });
+  await api('PUT', `/agents/${id}/status?status=${next}`);
   const agentName = agent ? agent.name : id;
   toast(`${agentName} ist jetzt ${next === 'online' ? 'Online 🟢' : 'Offline 🔴'}`, 'info');
   await loadAgents();
@@ -238,7 +238,7 @@ async function toggleStatus(id, current) {
 }
 
 async function resumeAgent(id) {
-  await fetch(API + `/agents/${id}/status?status=busy`, { method: 'PUT' });
+  await api('PUT', `/agents/${id}/status?status=busy`);
   const agent = agents.find(a => a.id === id);
   const agentName = agent ? agent.name : id;
   toast(`${agentName} arbeitet wieder (Busy) 🟡`, 'info');
@@ -350,12 +350,8 @@ async function saveAgentOptimizerSettings(agentId) {
   const risk_tolerance = parseInt(document.getElementById('opt-risk').value);
   const custom_prompt = document.getElementById('opt-custom-prompt').value;
   try {
-    const res = await fetch(API + `/agents/${agentId}/settings`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ personality, response_style, memory_strength, creativity, risk_tolerance, custom_prompt })
-    });
-    if (res.ok) {
+    const res = await api('PUT', `/agents/${agentId}/settings`, { personality, response_style, memory_strength, creativity, risk_tolerance, custom_prompt });
+    if (res !== null) {
       toast('Einstellungen erfolgreich gespeichert!', 'success');
       loadAgentOptimizerData(agentId);
     } else {
@@ -389,16 +385,12 @@ async function importAgentConfig(agentId, input) {
   reader.onload = async function(e) {
     try {
       const data = JSON.parse(e.target.result);
-      const res = await fetch(API + `/agents/${agentId}/import`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          settings: data.settings,
-          soul_facts: data.soul_facts,
-          prompt_versions: data.prompt_versions
-        })
+      const res = await api('POST', `/agents/${agentId}/import`, {
+        settings: data.settings,
+        soul_facts: data.soul_facts,
+        prompt_versions: data.prompt_versions
       });
-      if (res.ok) {
+      if (res !== null) {
         toast('Konfiguration erfolgreich importiert!', 'success');
         loadAgentOptimizerData(agentId);
         loadAgentMemory(agentId);
@@ -422,12 +414,8 @@ async function doSavePreset() {
   const description = document.getElementById('preset-desc').value.trim();
   if (!name || !description) { toast('Name und Beschreibung sind erforderlich.', 'error'); return; }
   try {
-    const res = await fetch(API + '/presets/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description })
-    });
-    if (res.ok) {
+    const res = await api('POST', '/presets/save', { name, description });
+    if (res !== null) {
       toast('Preset erfolgreich gespeichert!', 'success');
       closeModal('modal-save-preset');
       document.getElementById('preset-name').value = '';

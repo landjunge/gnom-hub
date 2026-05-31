@@ -1,4 +1,4 @@
-import asyncio, time, re, gnom_hub.db.state_repo as sr
+import asyncio, time, re, os, logging, gnom_hub.db.state_repo as sr
 from pathlib import Path
 from gnom_hub.infrastructure.llm.key_verifier import auto_detect_and_verify, clean_key
 DESKTOP_TXT = Path.home() / "Desktop" / "api_keys.txt"
@@ -74,6 +74,7 @@ async def sync_desktop_keys(db_keys: dict) -> dict:
         if current != target:
             with open(DESKTOP_TXT, "w") as f:
                 f.write(target)
+            os.chmod(DESKTOP_TXT, 0o600)
                 
         sr.SQLiteStateRepository().set_value("llm_keys", db_keys)
     except Exception as e:
@@ -104,5 +105,6 @@ def write_keys_to_desktop(keys: dict):
                 # Avoid duplicates
                 if k not in [v.get("key") for v in keys.values() if isinstance(v, dict)]:
                     f.write(f"# UNGÜLTIG: {lbl}={k}\n")
-    except Exception:
-        pass
+        os.chmod(DESKTOP_TXT, 0o600)
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in write_keys_to_desktop: %s', e)

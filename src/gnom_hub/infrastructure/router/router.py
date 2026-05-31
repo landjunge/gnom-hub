@@ -1,3 +1,4 @@
+import logging
 import time; from gnom_hub.db.legacy_db import get_state_value, set_state_value, get_db_conn
 from gnom_hub.infrastructure.router.router_call import _call, _try_keys
 from gnom_hub.core.structured_log import AgentLogger; from gnom_hub.infrastructure.monitoring import record_agent_request
@@ -58,7 +59,7 @@ def _build_sys(n, sys, agent_name):
         av = get_active_version(agent_name)
         r = av.modifications if av else [row["value"] for row in get_db_conn().execute("SELECT value FROM soul_memory WHERE key LIKE ?", (f"evolution_{agent_name}_%",)).fetchall()]
         if r: sys += "\n\n=== SELBSTVERBESSERTE REGELN ===\n" + "\n".join(f"- {x}" for x in r)
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Evolutions-Regeln-Laden: %s', e)
     return sys
 
 def _resolve(pvd, mdl, kdb, n):
@@ -78,7 +79,7 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0):
                     old_status = a.get("status", "online")
                     break
             set_agent_status(agent_name, "busy")
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Status-Aktualisierung: %s', e)
     try:
         n, t0 = (agent_name or "").lower(), time.time()
         sys = _build_sys(n, sys, agent_name)
@@ -112,4 +113,4 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0):
             try:
                 from gnom_hub.db.legacy_db import set_agent_status
                 set_agent_status(agent_name, old_status)
-            except Exception: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Status-Wiederherstellung: %s', e)

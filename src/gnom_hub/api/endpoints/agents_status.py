@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import json
+import logging
 import os
 from typing import Optional
 from uuid import uuid4
@@ -58,7 +59,7 @@ def get_agent_token_stats(agent_name: str) -> dict:
                         res["prompt_tokens"] += entry.get("prompt", 0)
                         res["completion_tokens"] += entry.get("completion", 0)
                         res["total_tokens"] += entry.get("total", 0)
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Laden der Token-Statistik: %s', e)
     return res
 
 @router.get("/api/agents/{a_id}/status")
@@ -76,7 +77,7 @@ async def set_status(a_id: str, request: Request, update: Optional[StatusUpdate]
         try:
             body = await request.json()
             real_status = body.get("status") if isinstance(body, dict) else None
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Parsen des Request-Body: %s', e)
     if not real_status and update:
         real_status = update.status
     if not real_status: raise HTTPException(422, "Missing 'status'")

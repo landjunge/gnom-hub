@@ -32,7 +32,7 @@ async def run_fallback(mgr, agent: str, fail_type: str, task: str) -> tuple:
                     write_fail_log(agent, fail_type, fb, task, ts)
                     log_audit_event(agent=agent, event_type="degradation_fallback", details={"failure_type": fail_type, "fallback_agent": fb})
                     return eo.content, True, fb
-            except Exception: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler in Fallback-Ausführung: %s', e)
     write_fail_log(agent, fail_type, None, task, ts)
     return f"[ROUTER-FEHLER] Alle Backups für {agent} ebenfalls fehlgeschlagen.", False, None
 
@@ -40,4 +40,4 @@ def write_fail_log(agent, fail, fb, task, ts):
     try:
         with get_db_conn() as conn:
             with conn: conn.execute("INSERT INTO graceful_degradation_failures (id, agent, failure_type, fallback_agent, task, timestamp) VALUES (?, ?, ?, ?, ?, ?)", (str(uuid.uuid4()), agent, fail, fb, task, ts))
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Schreiben des Fehlerprotokolls: %s', e)

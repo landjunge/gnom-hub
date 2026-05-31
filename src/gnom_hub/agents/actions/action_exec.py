@@ -19,7 +19,7 @@ def handle_shell(ans, ms, ag, perms, bs, wd):
 def handle_crawl(ans, ms, ag, perms):
     for m in ms:
         u, o = m.group(1).strip(), m.group(0)
-        if "@job" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine CRAWL-Berechtigung.]"); continue
+        if "crawl" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine CRAWL-Berechtigung.]"); continue
         try:
             from gnom_hub.infrastructure.utils.crawler_engine import crawl_smart, crawl_data
             t = crawl_data(u) if "data" in ag["name"].lower() else crawl_smart(u)

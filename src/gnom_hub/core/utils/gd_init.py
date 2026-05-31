@@ -1,4 +1,5 @@
 # gd_init.py
+import logging
 from gnom_hub.db.legacy_db import get_db_conn
 
 def init_tables():
@@ -12,4 +13,5 @@ def init_tables():
                         task TEXT NOT NULL, timestamp TEXT NOT NULL
                     )
                 """)
-    except Exception: pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in Tabellen-Initialisierung: %s', e)

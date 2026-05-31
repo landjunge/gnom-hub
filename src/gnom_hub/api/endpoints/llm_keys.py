@@ -34,7 +34,7 @@ async def test_key(req: Request):
     return await auto_detect_and_verify(k, l)
 
 @router.post("/api/llm/auto_assign")
-async def auto_assign():
+async def auto_assign(force_provider: str = None):
     db, rep = SQLiteStateRepository(), SQLiteAgentRepository()
     agents, maps = rep.get_all(), {}
     kdb = db.get_value("llm_keys", {})
@@ -61,7 +61,7 @@ async def auto_assign():
             rep.save(a)
             
         from gnom_hub.infrastructure.router.router_stage import SmartRouter
-        pvd, mdl = SmartRouter.get_best_specific_assignment(role, kdb)
+        pvd, mdl = SmartRouter.get_best_specific_assignment(role, kdb, force_provider)
         maps[a.name.lower()] = {"provider": pvd, "model": mdl}
         
     db.set_value("llm_agents", maps)

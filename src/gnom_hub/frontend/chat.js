@@ -222,6 +222,11 @@ function handleShowboxSpeedCommand(m, ta) {
 
 function handleShowboxLoadCommand(m, ta) {
   const showName = m.substring(9).trim();
+  if (!/^[a-zA-Z0-9_-]+$/.test(showName)) {
+    toast('Ungültiger Showbox-Name! Nur Buchstaben, Zahlen, _ und - erlaubt.', 'error');
+    ta.value = '';
+    return;
+  }
   if (window.activeShowboxIndex >= 0) {
     const s = document.createElement('script');
     s.src = showName + '.js';
@@ -445,6 +450,12 @@ function toggleMainTTS() {
       btn.style.background = 'rgba(57,255,20,0.15)';
       btn.style.borderColor = 'rgba(57,255,20,0.4)';
       btn.style.color = 'var(--green)';
+      // Unlock Web Speech API
+      if (typeof speechSynthesis !== 'undefined') {
+        speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+      }
+      // Unlock HTML5 Audio
+      try { new Audio('data:audio/mp3;base64,//OkwAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq').play().catch(()=>{}); } catch(e){}
       toast('🗣️ TTS Aktiviert', 'success');
     } else {
       btn.innerHTML = '🔇 TTS';
@@ -466,6 +477,10 @@ function toggleThoughtTTS() {
       btn.style.background = 'rgba(57,255,20,0.15)';
       btn.style.borderColor = 'rgba(57,255,20,0.4)';
       btn.style.color = 'var(--green)';
+      if (typeof speechSynthesis !== 'undefined') {
+        speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+      }
+      try { new Audio('data:audio/mp3;base64,//OkwAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq').play().catch(()=>{}); } catch(e){}
       toast('🗣️ Denkprozess-TTS Aktiviert', 'success');
     } else {
       btn.innerHTML = '🔇 TTS Aus';
@@ -781,13 +796,15 @@ async function speak(text, agentId = '') {
       try {
         const r = await fetch(`${API}/audio/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, agent_id: a }) });
         if (r.ok && r.headers.get('content-type')?.includes('audio')) {
-          const audio = new Audio(URL.createObjectURL(await r.blob()));
+          const url = URL.createObjectURL(await r.blob());
+          const audio = new Audio(url);
           await new Promise(ok => {
             let resolved = false;
             const done = () => {
               if (!resolved) {
                 resolved = true;
                 clearTimeout(timeoutId);
+                URL.revokeObjectURL(url);
                 ok();
               }
             };

@@ -1,9 +1,9 @@
-import json, re as _re
+import json, logging, re as _re
 def _sanitize_json(raw):
     """Robust JSON parser for LLM-generated Showbox content."""
     raw = raw.strip()
     try: return json.loads(raw)
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in direktem JSON-Parsing: %s', e)
     match = _re.search(r'\[\s*(.*)\s*\]', raw, _re.DOTALL)
     if not match: raise ValueError("Could not find JSON array")
     parts = _re.split(r'(?<!\\)"\s*,\s*(?=\s*(?:"|\[|\{))', match.group(1).strip())

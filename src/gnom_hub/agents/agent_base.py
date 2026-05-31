@@ -1,4 +1,4 @@
-import asyncio, os, requests; from gnom_hub.soul import get_soul; from gnom_hub.infrastructure.router.router import ask_router
+import asyncio, os, logging, threading, requests; from gnom_hub.soul import get_soul; from gnom_hub.infrastructure.router.router import ask_router
 HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
@@ -6,6 +6,7 @@ class BaseAgent:
         self.n, self.d, self.t, self.sys, self.p = name, desc, trigger, sys_prompt, poll
         self._seen_deque = deque(maxlen=1000)
         self.seen = set()
+        self._seen_lock = threading.Lock()
         from gnom_hub.agents.tool_registry import format_tools_prompt
         t_p = format_tools_prompt(get_soul(name), name)
         self.sys = (self.sys + "\n\n" + t_p) if self.sys else t_p
@@ -22,14 +23,15 @@ class BaseAgent:
         try:
             r = getattr(requests, method)(f"{HUB_URL}{p}", json=j, timeout=10)
             if r.status_code == 200: return r.json()
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in _req (%s %s): %s', method, p, e)
         return None
     def _mark_seen(self, msg_id):
-        self._seen_deque.append(msg_id)
-        self.seen.add(msg_id)
-        # Keep the set in sync with deque to bound memory
-        if len(self.seen) > 1200:
-            self.seen = set(self._seen_deque)
+        with self._seen_lock:
+            self._seen_deque.append(msg_id)
+            self.seen.add(msg_id)
+            # Keep the set in sync with deque to bound memory
+            if len(self.seen) > 1200:
+                self.seen = set(self._seen_deque)
     async def run(self):
         while not self._req("post", "/api/agents/register", {"name": self.n, "port": 0, "description": self.d, "status": "online", "capabilities": [self.t]}):
             print(f"⚠️ {self.n}: Hub nicht erreichbar. Reconnect in 5s..."); await asyncio.sleep(5)
@@ -39,7 +41,9 @@ class BaseAgent:
             c = self._req("get", "/api/chat?limit=10")
             if c is None: print(f"⚠️ {self.n}: Hub offline. Versuche Reconnect..."); await asyncio.sleep(5); continue
             self._req("post", f"/api/agents/{self.n}/heartbeat")
-            new = [m for m in c if m.get("id") not in self.seen and m.get("metadata",{}).get("sender","") in ("user", "GeneralAG") and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
+            with self._seen_lock:
+                _seen_copy = set(self.seen)
+            new = [m for m in c if m.get("id") not in _seen_copy and m.get("metadata",{}).get("sender","") in ("user", "GeneralAG") and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
             for m in c: self._mark_seen(m.get("id"))
             if new:
                 self._req("put", f"/api/agents/{self.n}/status?status=busy")
@@ -48,14 +52,14 @@ class BaseAgent:
                         try:
                             from gnom_hub.soul import soul_instance
                             sys = soul_instance.inject_context(self.sys, m["content"], agent_name=self.n)
-                            r = ask_router(m["content"], sys, agent_name=self.n)
+                            r = await asyncio.to_thread(ask_router, m["content"], sys, agent_name=self.n)
                             if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
                                 from gnom_hub.agents.actions.action_handlers import process_actions
                                 from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
                                 wd = get_workspace_dir()
                                 soul = get_soul(self.n) or {"permissions": ["read"]}
                                 perms = soul.get("permissions", [])
-                                processed = process_actions(r.content, {"name": self.n}, perms, False, wd)
+                                processed = await asyncio.to_thread(process_actions, r.content, {"name": self.n}, perms, False, wd)
                                 import re
                                 think_match = re.search(r'(<think>[\s\S]*?</think>)', r.answer)
                                 if think_match:

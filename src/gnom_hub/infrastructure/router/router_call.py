@@ -1,4 +1,5 @@
 # router_call.py — Router API calls executor with token tracking
+import logging
 import requests, time, json; from .router_tokens import track_tokens; from .router_keys import get_keys
 def _track(pvd, mdl, n, r_json, msgs, ans):
     try:
@@ -9,7 +10,7 @@ def _track(pvd, mdl, n, r_json, msgs, ans):
             p_t = int(len(" ".join(m.get("content", "") for m in msgs).split()) * 1.3) or 1
             c_t = int(len((ans or "").split()) * 1.3) or 1
         track_tokens(n or "?", mdl, {"prompt_tokens": p_t, "completion_tokens": c_t})
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Token-Tracking: %s', e)
 
 def _call(pvd, mdl, key, msgs, n):
     h, urls = {"Content-Type": "application/json"}, {"openai": "https://api.openai.com/v1/chat/completions", "mistral": "https://api.mistral.ai/v1/chat/completions", "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "deepseek": "https://api.deepseek.com/chat/completions", "openrouter": "https://openrouter.ai/api/v1/chat/completions", "lokal": "http://127.0.0.1:11434/api/chat", "anthropic": "https://api.anthropic.com/v1/messages"}
@@ -21,7 +22,7 @@ def _call(pvd, mdl, key, msgs, n):
             from gnom_hub.db.legacy_db import get_state_value
             creativity = get_state_value("agent_settings", {}).get(n.lower(), {}).get("creativity", 3)
             temp = {1: 0.1, 2: 0.4, 3: 0.7, 4: 0.9, 5: 1.2}.get(creativity, 0.7)
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Kreativitäts-Einstellung-Laden: %s', e)
     if pvd == "anthropic":
         h.update({"x-api-key": key, "anthropic-version": "2023-06-01"})
         sys = next((m["content"] for m in msgs if m["role"] == "system"), "")
@@ -57,4 +58,4 @@ def _try_keys(pvd, mdl, kdb, msgs, an):
     for k in get_keys(pvd, kdb):
         try:
             if ans := _call(pvd, mdl, k, msgs, an): return ans
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in API-Schlüssel-Aufruf: %s', e)

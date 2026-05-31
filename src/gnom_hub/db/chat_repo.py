@@ -17,7 +17,7 @@ from .connection import get_db_connection, Await, parse_dt
 def _row_to_msg(r) -> ChatMessage:
     role = "user" if r["sender"] == "user" else "assistant"
     try: aid = UUID(r["agent_id"])
-    except:
+    except Exception:
         import uuid; aid = uuid.NAMESPACE_DNS
     meta = json.loads(r["metadata"] or "{}") if "metadata" in r else {}
     return ChatMessage(id=UUID(r["id"]), agent_id=aid, role=role, content=r["content"], timestamp=parse_dt(r["timestamp"]), model=meta.get("model"), token_count=meta.get("token_count", 0))

@@ -1,3 +1,4 @@
+import logging
 import os, json, threading, tempfile
 from gnom_hub.core.config import TOKENS_FILE
 from gnom_hub.core.logger import get_logger
@@ -30,7 +31,7 @@ def track_tokens(key_name, model, usage):
             except Exception:
                 if os.path.exists(temp_path):
                     try: os.remove(temp_path)
-                    except OSError: pass
+                    except OSError as e: logging.getLogger(__name__).error('Fehler in Temp-Datei-Bereinigung: %s', e)
                 raise
                 
             logger.info(f"[TOKENS] +{total_t} (Gesamt: {data['total']}, Calls: {data['calls']})")

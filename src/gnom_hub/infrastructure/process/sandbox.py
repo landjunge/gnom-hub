@@ -1,4 +1,5 @@
 # sandbox.py — Hybrid Docker & macOS Sandbox Executor
+import logging
 import subprocess, os
 from gnom_hub.core.config import WORKSPACE_DIR
 from gnom_hub.infrastructure.process.sandbox_exec import run_sandboxed
@@ -6,7 +7,7 @@ from gnom_hub.infrastructure.process.sandbox_exec import run_sandboxed
 def is_docker_running():
     if os.getenv("GNOM_DISABLE_DOCKER") == "1": return False
     try: return subprocess.run(["docker", "ps"], capture_output=True, timeout=2).returncode == 0
-    except: return False
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Docker-Verfügbarkeitsprüfung: %s', e); return False
 
 def run_in_sandbox(command: str, agent=None, timeout: int = 30):
     if agent:
@@ -18,7 +19,7 @@ def run_in_sandbox(command: str, agent=None, timeout: int = 30):
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             return subprocess.CompletedProcess(args=cmd, returncode=r.returncode, stdout=r.stdout, stderr=r.stderr)
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in Docker-Sandbox-Ausführung: %s', e)
     return run_sandboxed(command, wd, timeout=timeout)
 
 def run_browser_in_sandbox(code_path: str, net: str, timeout: int = 30):

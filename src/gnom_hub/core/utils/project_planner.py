@@ -1,5 +1,5 @@
 # project_planner.py — Critical path analysis and lookahead execution coordinator
-import asyncio
+import asyncio, logging
 from typing import List, Literal, Dict
 
 class Step:
@@ -87,8 +87,8 @@ class ProjectPlan:
                 if lookahead_step.id not in self.lookahead_prepped:
                     self.lookahead_prepped.add(lookahead_step.id)
                     print(f"[Lookahead] Prepping subsequent step '{lookahead_step.id}' ({lookahead_step.description}) in parallel while executing '{step.id}'...")
-        except ValueError:
-            pass
+        except ValueError as e:
+            logging.getLogger(__name__).error('Fehler in prepare_lookahead: %s', e)
 
     async def execute_step(self, step: Step):
         """Simulates step execution with logging and a small speed-adjusted sleep."""

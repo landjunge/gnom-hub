@@ -2,7 +2,7 @@
 import os
 import shutil
 import sqlite3
-import json
+import json, logging
 from pathlib import Path
 from gnom_hub.core.config import PROJECT_ROOT, DB_PATH
 
@@ -53,16 +53,16 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
                     "token_budget_logs", "token_budget_alerts", "showbox_presentations"]:
             try:
                 conn.execute(f"DELETE FROM {tbl}")
-            except sqlite3.OperationalError:
-                pass
+            except sqlite3.OperationalError as e:
+                logging.getLogger(__name__).error('Fehler in bake_supergnom (Tabelle löschen): %s', e)
         try:
             conn.execute("DELETE FROM chat")
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as e:
+            logging.getLogger(__name__).error('Fehler in bake_supergnom (Chat löschen): %s', e)
         try:
             conn.execute("DELETE FROM soul_memory WHERE key NOT IN ('active_preset', 'approved_system_paths', 'approved_security_writes', 'approved_security_commands')")
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as e:
+            logging.getLogger(__name__).error('Fehler in bake_supergnom (soul_memory löschen): %s', e)
         conn.execute("DELETE FROM state WHERE key NOT IN ('active_preset', 'agent_settings')")
         conn.commit()
         conn.close()

@@ -1,5 +1,5 @@
 # context_manager.py — Dynamic context budget management and priority eviction
-import sqlite3
+import logging
 from typing import Literal
 from gnom_hub.db import get_db_conn, add_to_soul_memory
 
@@ -38,8 +38,8 @@ class ContextBudget:
                 ).fetchall()
                 for row in rows:
                     total += count_tokens(row["value"])
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).error('Fehler in _calculate_current_usage: %s', e)
         return total
 
     def evict_by_priority(self, needed_tokens: int = 0):

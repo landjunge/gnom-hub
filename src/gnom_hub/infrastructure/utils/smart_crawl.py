@@ -1,3 +1,4 @@
+import logging
 import os, json, time, random, re, requests, threading; from urllib.parse import urlparse; from gnom_hub.core.config import DATA_DIR
 _lock, _DB = threading.Lock(), DATA_DIR / "domains.json"
 _UA = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/125.0", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0", "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Firefox/128.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) Safari/605.1.15", "Mozilla/5.0 (Windows NT 10.0; Win64) Firefox/127.0"]
@@ -7,7 +8,7 @@ def _load():
     with _lock:
         if _DB.exists():
             try: return json.load(open(_DB))
-            except: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler: %s', e)
     return {}
 def _save(d):
     with _lock: json.dump(d, open(_DB, "w"), indent=2)

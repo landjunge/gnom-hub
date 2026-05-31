@@ -1,4 +1,5 @@
 # pvm_create.py
+import logging
 import json
 import hashlib
 from datetime import datetime, timezone
@@ -11,7 +12,8 @@ def create_version(agent: str, prompt: str, modifications: list) -> PromptVersio
         with get_db_conn() as conn:
             row = conn.execute("SELECT id FROM prompt_versions WHERE agent = ? AND is_active = 1", (agent,)).fetchone()
             if row: parent_id = row["id"]
-    except Exception: pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in Parent-Version-Abfrage: %s', e)
 
     content = prompt + "\n" + "\n".join(modifications)
     version_id = hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
@@ -25,6 +27,7 @@ def create_version(agent: str, prompt: str, modifications: list) -> PromptVersio
                     INSERT OR REPLACE INTO prompt_versions (id, agent, base_prompt, modifications, performance_score, created_at, feedback_count, is_active, parent_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (version_id, agent, prompt, json.dumps(modifications), 1.0, created_at_str, 0, 1, parent_id))
-    except Exception: pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in Version-Erstellung: %s', e)
 
     return PromptVersion(id=version_id, agent=agent, base_prompt=prompt, modifications=modifications, performance_score=1.0, created_at=datetime.now(timezone.utc), feedback_count=0, is_active=True, parent_id=parent_id)

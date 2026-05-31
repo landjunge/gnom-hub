@@ -1,10 +1,11 @@
+import logging
 from typing import List, Optional
 from ...core.config import Config
 from .openrouter import OpenRouterClient
 from .ollama import OllamaClient
 from ..llm.key_assigner import KeyAssigner
-from ...infrastructure.database.agent_repo import SQLiteAgentRepository
-from ...infrastructure.database.state_repo import SQLiteStateRepository
+from ...db.agent_repo import SQLiteAgentRepository
+from ...db.state_repo import SQLiteStateRepository
 
 class LLMOrchestrator:
     def __init__(self):
@@ -25,7 +26,7 @@ class LLMOrchestrator:
             try:
                 a = await SQLiteAgentRepository().get_by_name(str(agent_role))
                 if a: role = a.role
-            except Exception: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler: %s', e)
         assignment = await KeyAssigner.assign_for_agent(str(role or "normal"), ["ollama", "openrouter"])
         provider = assignment["provider"]
         final_model = model or assignment["model"]

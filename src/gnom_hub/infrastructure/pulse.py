@@ -1,6 +1,7 @@
+import logging
 import time, threading
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
-from gnom_hub.infrastructure.process.psutil_mgr import AGENTS, _get_proc
+from gnom_hub.infrastructure.process.process_manager import AGENTS, _get_proc
 
 def pulse_janitor():
     repo = SQLiteAgentRepository()
@@ -19,7 +20,7 @@ def pulse_janitor():
                     add_chat_message(get_active_project(), "System", "war-room", "chat",
                                      f"⚠️ [System] Agent **{agent.name}** wurde nach 5 Minuten Inaktivität automatisch freigegeben (@free).",
                                      {"type": "chat"})
-                except Exception: pass
+                except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Freigabe-Benachrichtigung: %s', e)
     for name in AGENTS:
         proc = _get_proc(name)
         status = "running" if proc else "stopped"

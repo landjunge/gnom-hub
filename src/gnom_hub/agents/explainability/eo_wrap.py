@@ -1,4 +1,5 @@
 # eo_wrap.py — Wraps raw LLM response into ExplainableOutput
+import logging
 from gnom_hub.agents.explainability.eo_builder import ExplainableOutputBuilder
 from gnom_hub.agents.explainability.eo_class import ExplainableOutput
 from gnom_hub.agents.explainability.eo_store import ExplainableOutputStore
@@ -36,4 +37,4 @@ def wrap_error(message, agent="system", task=""):
 
 def _persist(eo):
     try: _get_store().store(eo)
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Persistierung des ExplainableOutput: %s', e)

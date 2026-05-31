@@ -1,4 +1,5 @@
 # gd_reports.py
+import logging
 from datetime import datetime, timezone, timedelta
 from gnom_hub.db.legacy_db import get_db_conn
 
@@ -11,7 +12,8 @@ def get_failure_report(agent=None, days: int = 7) -> list:
             p = (agent, lim) if agent else (lim,)
             rows = conn.execute(q, p).fetchall()
             for r in rows: failures.append(dict(r))
-    except Exception: pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in Fehler-Bericht-Abfrage: %s', e)
     return failures
 
 def get_degradation_report() -> dict:
@@ -20,5 +22,6 @@ def get_degradation_report() -> dict:
         with get_db_conn() as conn:
             rows = conn.execute("SELECT agent, COUNT(*) as cnt FROM graceful_degradation_failures GROUP BY agent").fetchall()
             for r in rows: report[r["agent"]] = r["cnt"]
-    except Exception: pass
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in Degradations-Bericht-Abfrage: %s', e)
     return report

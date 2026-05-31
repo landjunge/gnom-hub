@@ -1,5 +1,5 @@
 # emb_faiss.py — FAISS index and sentence embeddings logic helper
-import os, pickle, sqlite3, numpy as np, faiss; from sentence_transformers import SentenceTransformer; from gnom_hub.memory.emb_cache import get_emb
+import os, pickle, sqlite3, logging, numpy as np, faiss; from sentence_transformers import SentenceTransformer; from gnom_hub.memory.emb_cache import get_emb
 class FaissEmbeddingHelper:
     def __init__(self, model_name: str, db_path: str, scope: str = "global"):
         self.scope = scope
@@ -11,7 +11,7 @@ class FaissEmbeddingHelper:
         else:
             self.index = faiss.read_index(self.index_path)
             try: self.fact_ids = pickle.load(open(self.pkl_path, "rb"))
-            except Exception: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler beim Laden der fact_ids: %s', e)
     def _create(self):
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -41,7 +41,7 @@ class FaissEmbeddingHelper:
                     with sqlite3.connect(self.db_path) as conn:
                         r = conn.execute("SELECT key, value FROM soul_memory WHERE id = ?", (self.fact_ids[idx],)).fetchone()
                         if r: res.append(f"{r[0]}: {r[1]}")
-                except Exception: pass
+                except Exception as e: logging.getLogger(__name__).error('Fehler in search (raw DB-Lookup): %s', e)
             return res
 
         candidate_k = max(top_k * 3, 24)
@@ -75,8 +75,8 @@ class FaissEmbeddingHelper:
                             weight = 1.0
                         boosted_score = base_sim * weight
                         res_scored.append((boosted_score, f"{r['key']}: {r['value']}"))
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).error('Fehler in search (scored DB-Lookup): %s', e)
 
         if not res_scored:
             return []

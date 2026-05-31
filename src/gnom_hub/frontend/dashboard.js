@@ -117,9 +117,9 @@ async function loadDashboardData() {
         if (commsText) {
           commsText.innerHTML = comms.map(c => `
             <div style="display:flex; align-items:center; gap:8px; margin-top:4px; font-size: 0.85rem;">
-              <span style="color:var(--accent); font-weight:600;">${c.from}</span>
+              <span style="color:var(--accent); font-weight:600;">${escapeHtml(c.from)}</span>
               <span style="color:rgba(255,255,255,0.6);">💬 fragt/antwortet</span>
-              <span style="color:var(--accent); font-weight:600;">${c.to}</span>
+              <span style="color:var(--accent); font-weight:600;">${escapeHtml(c.to)}</span>
             </div>
           `).join('') || '<div style="color:rgba(255,255,255,0.4)">Interne Diskussion läuft...</div>';
         }
@@ -193,7 +193,7 @@ async function loadDashboardData() {
               <strong style="color: #c084fc; text-transform: uppercase; font-size: 0.85rem;">Evolution: ${agentName}</strong>
               <span style="font-size: 0.75rem; color: var(--text-dim);">${timestamp}</span>
             </div>
-            <div style="font-size: 0.9rem; color: #fff; line-height: 1.4;">${el.value}</div>
+            <div style="font-size: 0.9rem; color: #fff; line-height: 1.4;">${escapeHtml(el.value)}</div>
           </div>
         `;
       }).join('');
@@ -288,6 +288,8 @@ async function showLLMConfig() {
             <h3 class="llm-card-title">⚡ Agenten-Routing & LLM-Zuweisung</h3>
             <div style="display:flex; gap:6px; align-items:center;">
               <button class="btn-primary" onclick="autoRouteAllAgents()" data-help="Verteilt alle Agenten basierend auf verfügbaren APIs automatisch und kosteneffizient auf die besten LLM-Modelle." data-help-title="Auto-Route ausführen">⚡ Auto-Route</button>
+              <button class="btn-primary" onclick="setAllToProvider('lokal')" title="Alle auf lokale Ollama-Modelle setzen">🏠 Alle Lokal</button>
+              <button class="btn-primary" onclick="setAllToProvider('openrouter')" title="Alle auf OpenRouter Free Modelle setzen">🌍 Alle OpenRouter</button>
             </div>
           </div>
           <span class="llm-card-description" style="flex-shrink:0;">Mappe jeden Agenten im System auf einen spezifischen Provider und ein LLM-Modell. Nutze Auto-Routing für eine kosteneffiziente, ausgewogene Zuweisung basierend auf deinen hinterlegten Keys.</span>
@@ -853,7 +855,7 @@ function detectProvider(line, cleanedKey) {
 }
 
 async function saveKeysOnly() {
-  const btn = document.getElementById('save-keys-only-btn');
+  const btn = document.getElementById('save-keys-btn');
   const origText = btn ? btn.innerText : 'Speichern';
   const origBg = btn ? btn.style.background : '';
   const origColor = btn ? btn.style.color : '';
@@ -960,10 +962,11 @@ async function saveKeysOnly() {
 }
 
 async function saveAndTestKeys() {
-  const input = document.getElementById('llm-keys-input').value;
-  const rawLines = input.split('\n').map(k => k.trim()).filter(k => k);
-  
-  document.getElementById('llm-keys-status').innerHTML = 'Testing & assigning keys...';
+  try {
+    const input = document.getElementById('llm-keys-input').value;
+    const rawLines = input.split('\n').map(k => k.trim()).filter(k => k);
+    
+    document.getElementById('llm-keys-status').innerHTML = 'Testing & assigning keys...';
   
   let testedKeys = [];
   let nextId = Date.now();
@@ -1028,6 +1031,9 @@ async function saveAndTestKeys() {
   globalKeys = testedKeys;
   renderKeyStatus(testedKeys);
   loadLLMConfig();
+  } catch (err) {
+    document.getElementById('llm-keys-status').innerHTML = '<span style="color:var(--red)">Fehler: ' + err.message + '</span>';
+  }
 }
 
 function renderKeyStatus(keys) {
@@ -1290,6 +1296,11 @@ window.autoRouteAllAgents = async function() {
   await window.runRoutingWithProgress(agents, api('POST', '/llm/auto_assign'));
 };
 
+window.setAllToProvider = async function(providerKey) {
+  const agents = window.llmAgentsListGlobal || [];
+  await window.runRoutingWithProgress(agents, api('POST', '/llm/auto_assign?force_provider=' + providerKey));
+};
+
 window.loadRoutingInsights = async function() {
   const container = document.getElementById('routing-insights-panel');
   if (!container) return;
@@ -1443,9 +1454,12 @@ async function saveAgentLLMs() {
 }
 
 async function testAgentLLM(aName) {
-  const p = document.getElementById(`prov-${aName}`).value;
-  const m = document.getElementById(`mod-${aName}`).value;
+  const pEl = document.getElementById(`prov-${aName}`);
+  const mEl = document.getElementById(`mod-${aName}`);
   const lamp = document.getElementById(`lamp-${aName}`);
+  if (!pEl || !mEl || !lamp) return;
+  const p = pEl.value;
+  const m = mEl.value;
   
   lamp.style.background = 'yellow';
   lamp.style.boxShadow = '0 0 8px yellow';
@@ -1653,12 +1667,8 @@ async function saveSettingsAgentBehavior(agentId) {
   const risk_tolerance = parseInt(document.getElementById('settings-opt-risk').value);
   const custom_prompt = document.getElementById('settings-opt-custom-prompt').value;
   try {
-    const res = await fetch(API + `/agents/${agentId}/settings`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ personality, response_style, memory_strength, creativity, risk_tolerance, custom_prompt })
-    });
-    if (res.ok) {
+    const res = await api('PUT', `/agents/${agentId}/settings`, { personality, response_style, memory_strength, creativity, risk_tolerance, custom_prompt });
+    if (res !== null) {
       toast('Einstellungen erfolgreich gespeichert!', 'success');
       changeSettingsAgent(agentId);
     } else {
@@ -1724,11 +1734,7 @@ window.editSettingsMem = function(id, agentId) {
 
 window.saveSettingsMem = async function(id, agentId) {
   const c = document.getElementById('settings-ed-' + id).value;
-  await fetch(API + `/memory/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: c })
-  });
+  await api('PUT', `/memory/${id}`, { content: c });
   loadSettingsAgentMemory(agentId);
   toast('Erinnerung aktualisiert', 'success');
 };

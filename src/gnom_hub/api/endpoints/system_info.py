@@ -1,3 +1,4 @@
+import logging
 import os, sys, subprocess, platform, psutil
 from fastapi import APIRouter, Request
 from gnom_hub.core.security.hmac_signer import _get_or_create_secret
@@ -9,7 +10,7 @@ def get_system_info():
     cpu = platform.processor() or platform.machine()
     try:
         cpu = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True, stderr=subprocess.DEVNULL).strip()
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in Ermittlung des CPU-Namens: %s', e)
     ram = f"{round(psutil.virtual_memory().total / (1024**3))} GB"
     from gnom_hub.core.config import Config
     template = Config.get_supergnom_template()

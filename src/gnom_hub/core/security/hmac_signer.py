@@ -10,3 +10,8 @@ def _get_or_create_secret() -> bytes:
 
 def generate_signature(agent: str, content: str) -> str:
     return hmac.new(_get_or_create_secret(), f"{agent}:{content}".encode('utf-8'), hashlib.sha256).hexdigest()
+
+def verify_signature(agent: str, content: str, signature: str) -> bool:
+    """Timing-safe Verifizierung einer HMAC-Signatur."""
+    expected = generate_signature(agent, content)
+    return hmac.compare_digest(expected, signature)

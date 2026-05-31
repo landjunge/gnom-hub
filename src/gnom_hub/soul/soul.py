@@ -1,5 +1,5 @@
 # soul.py — SoulAG Gedächtnis & Automatische Lerneinheit
-import json, threading, os, re, uuid, logging; from gnom_hub.db.legacy_db import save_soul_fact, add_chat_message
+import json, threading, os, re, uuid, logging; from gnom_hub.db.legacy_db import save_soul_fact, add_chat_message, get_active_project
 from .soul_retrieval import retrieve_relevant_facts; from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
 _log = logging.getLogger("soul")
 class SoulAG:
@@ -82,7 +82,7 @@ class SoulAG:
                 from gnom_hub.db.legacy_db import get_state_value
                 settings = get_state_value("agent_settings", {}).get(agent_name.lower(), {})
                 top_k = {1: 2, 2: 4, 3: 8, 4: 12, 5: 16}.get(settings.get("memory_strength", 3), 8)
-            except Exception: pass
+            except Exception as e: logging.getLogger(__name__).error('Fehler in inject_context (agent_settings): %s', e)
         facts = retrieve_relevant_facts(msg, agent_name=agent_name, top_k=top_k)
         if agent_name and facts:
             for f in facts:
@@ -90,8 +90,13 @@ class SoulAG:
                 self._injections[key] = self._injections.get(key, 0) + 1
                 if self._injections[key] == 2:
                     try:
-                        add_chat_message("default", "SoulAG", "soulag", "chat", f"@user @{agent_name}: [HINWEIS] Ich habe die Information '{f}' bereits zum zweiten Mal im Hintergrund eingespeist. Bitte darauf achten!")
-                    except Exception: pass
+                        add_chat_message(get_active_project(), "SoulAG", "soulag", "chat", f"@user @{agent_name}: [HINWEIS] Ich habe die Information '{f}' bereits zum zweiten Mal im Hintergrund eingespeist. Bitte darauf achten!")
+                    except Exception as e: logging.getLogger(__name__).error('Fehler in inject_context (injection-Hinweis): %s', e)
+            if len(self._injections) > 2000:
+                keys_to_remove = list(self._injections.keys())[:len(self._injections) // 2]
+                for k in keys_to_remove:
+                    del self._injections[k]
+                _log.info('[Soul] _injections evicted: %d Einträge entfernt', len(keys_to_remove))
         ctx = sys + ("\n\n=== RELEVANTE INFORMATIONEN ===\n" + "\n".join(f"- {f}" for f in facts) if facts else "")
         m_ctx = [f"[Ref: @{d['name']} - Role: {d['role']} - {d['description']}]" for k, d in self.get_definitions().items() if k.lower() in [x.lower() for x in re.findall(r'@(\w+)', msg)]]
         return ctx + ("\n\n=== ERWÄHNTE AGENTEN ===\n" + "\n".join(m_ctx) if m_ctx else "")
@@ -107,7 +112,7 @@ def _save_rules(res: str, prefix=""):
                     agent_name = f["agent"]
                     rule_text = prefix + f["rule"]
                     save_soul_fact(f"evolution_{agent_name}_{uuid.uuid4().hex[:6]}", rule_text, agent="GeneralAG")
-                    add_chat_message("default", "GeneralAG", "generalag", "chat", f"@user @SoulAG: Regel für {agent_name} gelernt: '{f['rule']}'")
+                    add_chat_message(get_active_project(), "GeneralAG", "generalag", "chat", f"@user @SoulAG: Regel für {agent_name} gelernt: '{f['rule']}'")
                     try:
                         from gnom_hub.core.utils.evolution_v2 import create_version
                         create_version(agent_name, rule_text)
@@ -123,12 +128,12 @@ def run_evolution(task: str, hist: str):
     if Config.SUPERGNOM_MODE:
         return
     try: _save_rules(ask_router(f"Analysiere '{task}' und den Verlauf:\n{hist}\nSchlage Verbesserungen vor. Antworte NUR im JSON-Format: [{{\"agent\": \"AgentName\", \"rule\": \"Regelinhalt\"}}]", sys="Du bist Optimierer.", agent_name="GeneralAG").content)
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler in run_evolution: %s', e)
 
 def handle_user_feedback(vote: str, comment: str):
     from gnom_hub.core.config import Config
     save_soul_fact(f"feedback_{uuid.uuid4().hex[:6]}", f"Vote: {vote} | {comment}", agent="User")
-    add_chat_message("default", "System", "system", "chat", f"@user Feedback: {vote} | {comment}")
+    add_chat_message(get_active_project(), "System", "system", "chat", f"@user Feedback: {vote} | {comment}")
     if Config.SUPERGNOM_MODE:
         return
     
@@ -157,4 +162,4 @@ def handle_user_feedback(vote: str, comment: str):
 
     if comment.strip():
         try: _save_rules(ask_router(f"User-Feedback: '{comment}'. Schlage Verbesserungen vor. Antworte NUR im JSON-Format: [{{\"agent\": \"AgentName\", \"rule\": \"Regelinhalt\"}}]", sys="Du bist Optimierer.", agent_name="GeneralAG").content, "User-Feedback: ")
-        except Exception: pass
+        except Exception as e: logging.getLogger(__name__).error('Fehler in handle_user_feedback (save_rules): %s', e)

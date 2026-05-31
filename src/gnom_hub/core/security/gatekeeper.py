@@ -2,7 +2,7 @@
 import os
 import uuid
 import time
-import json
+import json, logging
 from gnom_hub.db.legacy_db import (
     add_chat_message, 
     get_state_value, 
@@ -277,8 +277,8 @@ def verify_cmd(agent, cmd):
                 if abs_path == real_wd or abs_path.startswith(real_wd + os.sep):
                     cleaned_tokens.append("[safe_workspace_path]")
                     continue
-            except Exception:
-                pass
+            except Exception as e:
+                logging.getLogger(__name__).error('Fehler in verify_cmd (Pfad-Auflösung): %s', e)
         cleaned_tokens.append(token)
     cleaned_cmd = " ".join(cleaned_tokens).lower()
     

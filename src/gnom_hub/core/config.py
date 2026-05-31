@@ -1,4 +1,4 @@
-import os; from pathlib import Path; from dotenv import load_dotenv
+import os, logging; from pathlib import Path; from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
@@ -35,8 +35,8 @@ class Config:
                 with open(config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     return data.get("template", "chat")
-            except Exception:
-                pass
+            except Exception as e:
+                logging.getLogger(__name__).error('Fehler in get_supergnom_template: %s', e)
         return "chat"
 
     # OpenRouter Free-Modelle (zentral verwaltet)

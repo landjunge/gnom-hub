@@ -24,14 +24,14 @@ function renderWorkspaceItemHTML(f) {
   const isPy = ext === 'py';
   let actionBtn = '';
   if (isWeb) {
-    actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); openWorkspaceFile('${f.name}')" title="Im Browser öffnen">🌐 Open</button>
-    <button class="btn-primary" onclick="event.stopPropagation(); previewWorkspaceFile('${f.name}')" title="Live Preview">👁️ Preview</button>`;
+    actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); openWorkspaceFile('${escapeHtml(f.name)}')" title="Im Browser öffnen">🌐 Open</button>
+    <button class="btn-primary" onclick="event.stopPropagation(); previewWorkspaceFile('${escapeHtml(f.name)}')" title="Live Preview">👁️ Preview</button>`;
   } else if (isPy) {
-    actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); runWorkspaceFile('${f.name}')" title="Python ausführen">▶ Run</button>`;
+    actionBtn = `<button class="btn-primary" onclick="event.stopPropagation(); runWorkspaceFile('${escapeHtml(f.name)}')" title="Python ausführen">▶ Run</button>`;
   }
   return `<div class="mem-item" style="display:flex; justify-content:space-between; align-items:center;">
-    <div style="cursor:pointer; flex:1;" onclick="readWorkspaceFile('${f.name}')">
-      <strong style="color:rgba(255,255,255,0.95); font-weight:500;">${f.name}</strong> 
+    <div style="cursor:pointer; flex:1;" onclick="readWorkspaceFile('${escapeHtml(f.name)}')">
+      <strong style="color:rgba(255,255,255,0.95); font-weight:500;">${escapeHtml(f.name)}</strong> 
       <span style="font-size:0.8em;color:var(--text-dim);margin-left:10px;">${f.size} Bytes</span>
     </div>
     <div style="display:flex; align-items:center; gap:10px;">
@@ -50,7 +50,7 @@ async function loadWorkspace() {
 
   const panelTitle = document.querySelector('#workspace-panel h2');
   if (panelTitle) {
-    panelTitle.innerHTML = `📁 gnom_workspace / <span style="color:var(--green)">${projName}</span> <div class="actions"><button class="btn-primary" onclick="loadWorkspace()">Refresh</button></div>`;
+    panelTitle.innerHTML = `📁 gnom_workspace / <span style="color:var(--green)">${escapeHtml(projName)}</span> <div class="actions"><button class="btn-primary" onclick="loadWorkspace()">Refresh</button></div>`;
   }
 
   if (!files || files.error) {
@@ -82,7 +82,7 @@ function previewWorkspaceFile(name) {
           <button onclick="this.closest('.modal-backdrop').remove()" class="btn-danger" style="font-size:0.75rem; padding:4px 10px;">Close</button>
         </div>
       </div>
-      <iframe src="/api/workspace/${name}/serve" sandbox="allow-scripts allow-same-origin" style="flex:1; border:none; background:white; width:100%; height:100%;"></iframe>
+      <iframe src="/api/workspace/${name}/serve" sandbox="allow-scripts" style="flex:1; border:none; background:white; width:100%; height:100%;"></iframe>
     </div>
   `;
   document.body.appendChild(modal);

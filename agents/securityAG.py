@@ -2,7 +2,7 @@
 import asyncio
 from gnom_hub.agents.agent_base import BaseAgent
 from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
-from gnom_hub.core.security.hmac_signer import _get_or_create_secret, generate_signature
+from gnom_hub.core.security.hmac_signer import generate_signature
 
 import os
 

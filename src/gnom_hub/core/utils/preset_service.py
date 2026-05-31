@@ -1,4 +1,5 @@
 # preset_service.py — Preset management loader and trigger actions
+import logging
 import os, json
 from gnom_hub.db.legacy_db import get_state_value, set_state_value, save_soul_fact, add_chat_message
 from gnom_hub.core.config import CONFIG_DIR
@@ -16,7 +17,8 @@ def load_presets():
                     data.setdefault("focus", {})[name] = c.get("description", "Custom.")
                     tm, ta = c.get("model", {}).get("primary"), c.get("allowed_tools", [None])[0]
                     if tm and ta: data.setdefault("targets", {})[name] = [ta.lower() + "ag", tm]
-            except Exception: pass
+            except Exception as e:
+                logging.getLogger(__name__).error('Fehler in Preset-Datei-Laden: %s', e)
     return data
 def get_preset_prompt(preset: str, agent_name: str) -> str:
     return load_presets().get("prompts", {}).get(preset, {}).get(agent_name, "")
@@ -25,7 +27,8 @@ def _get_preset_agents(conn, preset: str, custom) -> dict:
     row_adb = conn.execute("SELECT value FROM state WHERE key=?", ("llm_agents",)).fetchone()
     if row_adb:
         try: adb = json.loads(row_adb["value"])
-        except: pass
+        except Exception as e:
+            logging.getLogger(__name__).error('Fehler in Agenten-DB-Parsing: %s', e)
     w = ["coderag", "researcherag", "writerag", "editorag"]
     if isinstance(custom, dict) and custom:
         for a in w:
@@ -35,7 +38,8 @@ def _get_preset_agents(conn, preset: str, custom) -> dict:
         row_k = conn.execute("SELECT value FROM state WHERE key=?", ("llm_keys",)).fetchone()
         if row_k:
             try: kdb = json.loads(row_k["value"])
-            except: pass
+            except Exception as e:
+                logging.getLogger(__name__).error('Fehler in LLM-Schlüssel-Parsing: %s', e)
         or_v = any(k.get("provider") == "openrouter" and k.get("valid") for k in (kdb.values() if isinstance(kdb, dict) else kdb))
         for a in w: adb[a] = {"provider": "auto", "model": "stage_2" if a != "coderag" else "stage_3"}
         t = load_presets().get("targets", {}).get(preset)
@@ -58,7 +62,8 @@ def handle_preset_change(preset: str):
             row = conn.execute("SELECT value FROM state WHERE key=?", ("agent_settings",)).fetchone()
             if row:
                 try: all_settings = json.loads(row["value"])
-                except: pass
+                except Exception as e:
+                    logging.getLogger(__name__).error('Fehler in Agent-Settings-Parsing: %s', e)
             if preset_file.exists():
                 with open(preset_file, "r", encoding="utf-8") as f:
                     c = json.load(f)
@@ -69,7 +74,8 @@ def handle_preset_change(preset: str):
             row_c = conn.execute("SELECT value FROM state WHERE key=?", (f"llm_preset_{preset}",)).fetchone()
             if row_c:
                 try: custom = json.loads(row_c["value"])
-                except: pass
+                except Exception as e:
+                    logging.getLogger(__name__).error('Fehler in Custom-Preset-Parsing: %s', e)
             adb = _get_preset_agents(conn, preset, custom)
             conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)", ("llm_agents", json.dumps(adb)))
             focus = load_presets().get("focus", {}).get(preset, "Allgemeine Unterstützung.")

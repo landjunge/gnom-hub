@@ -1,3 +1,4 @@
+import logging
 # smr_prune.py
 from datetime import datetime, timezone, timedelta
 from gnom_hub.db.legacy_db import get_db_conn
@@ -18,4 +19,4 @@ def prune_low_relevance(threshold: float = 0.15, min_age_days: int = 30):
                 for f in facts:
                     if max(cosine_similarity(q, f["value"]) for q in q_list) < threshold:
                         conn.execute("DELETE FROM soul_memory WHERE id = ?", (f["id"],))
-    except Exception: pass
+    except Exception as e: logging.getLogger(__name__).error('Fehler: %s', e)

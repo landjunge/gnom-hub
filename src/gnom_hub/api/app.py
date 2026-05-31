@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from gnom_hub.infrastructure.process.psutil_mgr import start_background_agents, kill_background_agents
+from gnom_hub.infrastructure.process.process_manager import start_background_agents, kill_background_agents
 from gnom_hub.api.router import router as api_router
 from gnom_hub.chat import chat_commands
 

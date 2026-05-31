@@ -25,8 +25,10 @@ def handle_browser(ans, ms, agent, perms, wd) -> str:
             if use_docker:
                 r = run_browser_in_sandbox(fn, net, timeout=30)
             else:
-                import sys, subprocess
-                r = subprocess.run([sys.executable, fp], capture_output=True, text=True, timeout=30)
+                import logging
+                logging.getLogger(__name__).warning('Browser-Ausführung ohne Docker blockiert: %s', agent)
+                r = type('R', (), {'stdout': '[Browser: Ohne Docker nicht erlaubt. Docker starten.]', 'stderr': ''})()
+
             out = (r.stdout + "\n" + r.stderr).strip() or "[Browser: Keine Ausgabe]"
             ans = ans.replace(m.group(0), f"[Browser-Ausgabe:\n{out}]")
         except Exception as e:

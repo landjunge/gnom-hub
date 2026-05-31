@@ -11,11 +11,15 @@ def validate_workspace_path(path: str | Path) -> Path:
     if not path.is_absolute():
         path = Config.WORKSPACE_DIR / path
     
-    if not path.exists():
-        raise ValidationError(f"Pfad existiert nicht: {path}")
+    # Sicherheitsprüfung: resolve() ZUERST, dann relative_to() Check
+    workspace_root = Config.WORKSPACE_DIR.resolve()
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(workspace_root)
+    except ValueError:
+        raise ValidationError(f"Ungültiger Pfad: {path} liegt außerhalb des Workspace-Verzeichnisses")
     
-    # Grundlegende Sicherheitsprüfung
-    if ".." in str(path):
-        raise ValidationError("Ungültiger Pfad: Verwendung von '..' nicht erlaubt")
+    if not resolved.exists():
+        raise ValidationError(f"Pfad existiert nicht: {resolved}")
     
-    return path.resolve()
+    return resolved
