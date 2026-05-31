@@ -41,3 +41,10 @@ def process_status() -> str:
 
 def restart_hub() -> None:
     sys.exit(42)
+
+class ProcessManager:
+    async def start_agent_process(self, agent) -> int:
+        pass
+
+    async def stop_agent_process(self, pid: int) -> None:
+        pass

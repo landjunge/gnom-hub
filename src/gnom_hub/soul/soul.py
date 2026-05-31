@@ -1,7 +1,11 @@
 # soul.py — SoulAG Gedächtnis & Automatische Lerneinheit
 import json, threading, os, re, uuid, logging; from gnom_hub.db.legacy_db import save_soul_fact, add_chat_message, get_active_project
-from .soul_retrieval import retrieve_relevant_facts; from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
+from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
 _log = logging.getLogger("soul")
+
+def retrieve_relevant_facts(msg: str, agent_name: str = None, top_k: int = 8) -> list:
+    return []
+
 class SoulAG:
     def __init__(self):
         self.name = "SoulAG"
