@@ -117,3 +117,16 @@ def test_merken_and_spass_commands():
     assert coder_set.get("personality") == 5
     assert coder_set.get("creativity") == 5
     assert "Humor" in coder_set.get("custom_prompt", "")
+
+    # 3. Test @spass off / @spass ende
+    res_spass_off = client.post("/api/chat", json={"content": "@spass ende", "sender": "user"})
+    assert res_spass_off.status_code == 200
+    assert res_spass_off.json()["status"] == "ok"
+    
+    # Verify settings are reset to standard
+    settings_off = get_state_value("agent_settings", {})
+    assert settings_off is not None
+    coder_set_off = settings_off.get("coderag", {})
+    assert coder_set_off.get("personality") == 3
+    assert coder_set_off.get("creativity") == 3
+    assert "Humor" not in coder_set_off.get("custom_prompt", "")

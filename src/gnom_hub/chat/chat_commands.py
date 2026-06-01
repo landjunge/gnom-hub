@@ -268,6 +268,28 @@ def handle_spass(q):
     
     humor_prompt = "Strikte Regel: Sei humorvoll, locker und witzig. Humor steht vor Logik! Nimm dich selbst und die Aufgabe nicht zu ernst, baue Witze oder lustige Vergleiche ein."
     
+    t = q.strip().lower()
+    if t in ("off", "disable", "ende", "end", "stop", "0", "false"):
+        for a in agents:
+            a_name = a.get("name", "").lower()
+            if not a_name:
+                continue
+            a_settings = settings.get(a_name, {})
+            a_settings["personality"] = 3
+            a_settings["creativity"] = 3
+            a_settings["risk_tolerance"] = 3
+            a_settings["response_style"] = 3
+            
+            orig_prompt = a_settings.get("custom_prompt", "")
+            if humor_prompt in orig_prompt:
+                orig_prompt = orig_prompt.replace(humor_prompt, "")
+            a_settings["custom_prompt"] = orig_prompt.strip()
+            settings[a_name] = a_settings
+            
+        set_state_value("agent_settings", settings)
+        _post_chat("System", "😐 **Humor-Modus deaktiviert (@spass off/ende):** Alle Agenten wurden auf Normalbetrieb (Standard-Reglerwerte) zurückgesetzt.")
+        return {"status": "ok"}
+    
     for a in agents:
         a_name = a.get("name", "").lower()
         if not a_name:
