@@ -4,11 +4,22 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 load_dotenv(CONFIG_DIR / ".env")
 
-HOME = Path(os.getenv("GNOM_HUB_HOME", Path.home() / ".gnom-hub"))
+# Support running multiple instances simultaneously by isolating paths based on the port
+port = os.getenv("GNOM_HUB_PORT", "3002")
+if port == "3002":
+    default_home = Path.home() / ".gnom-hub"
+    default_workspace = PROJECT_ROOT / "gnom_workspace"
+else:
+    default_home = Path.home() / f".gnom-hub-{port}"
+    default_workspace = PROJECT_ROOT / f"gnom_workspace_{port}"
+
+HOME = Path(os.getenv("GNOM_HUB_HOME", default_home))
 GNOM_HUB_HOME = HOME
 DATA_DIR, RUN_DIR = HOME / "data", HOME / "run"
-WORKSPACE_DIR, FRONTEND_DIR = PROJECT_ROOT / "gnom_workspace", PROJECT_ROOT / "src" / "gnom_hub" / "frontend"
-TOKENS_FILE, DB_PATH = CONFIG_DIR / ".gnom-hub-tokens.json", DATA_DIR / "gnomhub.db"
+WORKSPACE_DIR = Path(os.getenv("GNOM_HUB_WORKSPACE", default_workspace))
+FRONTEND_DIR = PROJECT_ROOT / "src" / "gnom_hub" / "frontend"
+TOKENS_FILE = CONFIG_DIR / f".gnom-hub-tokens-{port}.json"
+DB_PATH = DATA_DIR / "gnomhub.db"
 
 for d in (DATA_DIR, RUN_DIR, WORKSPACE_DIR, CONFIG_DIR): d.mkdir(parents=True, exist_ok=True)
 

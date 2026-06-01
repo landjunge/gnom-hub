@@ -29,7 +29,9 @@ config/.gnom-hub-tokens.json
 
 # Local workspace and caches
 gnom_workspace/
+gnom_workspace_*/
 .gnom-hub/
+
 .backups/
 .visions/
 
