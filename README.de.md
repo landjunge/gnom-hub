@@ -17,7 +17,7 @@
 ### 📸 Visuelle Galerie / Screenshots & Demo
 
 #### 🎥 Demo-Video
-<video src="docs/demo_video/gnom_hub_demo.webm" width="100%" controls autoplay loop muted></video>
+[![▶️ Gnom-Hub Demo-Video abspielen (Hier klicken)](docs/screenshot_warroom.png)](docs/demo_video/gnom_hub_demo.webm)
 
 <details open>
 <summary><b>Gnom-Hub Benutzeroberfläche</b></summary>
