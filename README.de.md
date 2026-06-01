@@ -41,22 +41,15 @@
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Ein-Klick-Installation)
+
+Kopiere einfach diesen Befehl und füge ihn in dein macOS-Terminal ein:
 
 ```bash
-# 1. Klonen & Installieren
-git clone https://github.com/landjunge/gnom-hub.git
-cd gnom-hub
-bash scripts/install.sh
-
-# 2. Umgebungskonfiguration
-cp config/.env.example config/.env
-# Trage deine API-Keys (DeepSeek, OpenRouter) in config/.env ein
-
-# 3. Starten
-./run.sh
+git clone https://github.com/landjunge/gnom-hub.git && cd gnom-hub && bash scripts/install.sh && open /Applications/Gnom-Hub.app
 ```
-Öffne **[http://127.0.0.1:3002](http://127.0.0.1:3002)** im Browser, um den War Room zu betreten.
+
+Dieser Befehl klont das Repository, erstellt die virtuelle Umgebung, installiert alle Abhängigkeiten (inklusive automatischer Intel-Mac-Kompatibilitätspatches), baut das macOS App Bundle und startet den Gnom-Hub automatisch!
 
 ---
 

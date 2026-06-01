@@ -40,24 +40,15 @@
 </details>
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (One-Click Installation)
+
+Just copy and paste this command into your macOS terminal:
 
 ```bash
-# 1. Clone & Install
-git clone https://github.com/landjunge/gnom-hub.git
-cd gnom-hub
-bash scripts/install.sh
-
-# 2. Configure
-cp config/.env.example config/.env
-# Add your LLM API keys (OpenRouter, DeepSeek, etc.) or configure local Ollama
-
-# 3. Run
-./run.sh
-
-# 4. Open War Room
-open http://127.0.0.1:3002
+git clone https://github.com/landjunge/gnom-hub.git && cd gnom-hub && bash scripts/install.sh && open /Applications/Gnom-Hub.app
 ```
+
+This single command clones the repository, sets up the virtual environment, installs all dependencies (including automatic compatibility patches for Intel Macs), builds the macOS App bundle, and starts Gnom-Hub automatically!
 
 ---
 
