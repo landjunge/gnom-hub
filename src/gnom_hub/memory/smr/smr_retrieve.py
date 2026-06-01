@@ -6,10 +6,15 @@ def retrieve_similar_sync(query: str, top_k: int = 8, agent_name: str = None, ra
     try:
         with get_db_conn() as conn:
             if agent_name:
-                rows = conn.execute(
-                    "SELECT key, value, priority FROM soul_memory WHERE LOWER(agent) = ? OR agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag')",
-                    (agent_name.lower(),)
-                ).fetchall()
+                if agent_name.lower() == 'generalag':
+                    rows = conn.execute(
+                        "SELECT key, value, priority FROM soul_memory"
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        "SELECT key, value, priority FROM soul_memory WHERE LOWER(agent) = ? OR agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag')",
+                        (agent_name.lower(),)
+                    ).fetchall()
             else:
                 rows = conn.execute(
                     "SELECT key, value, priority FROM soul_memory WHERE agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag')"
@@ -38,10 +43,16 @@ async def retrieve_with_fallback(query: str, top_k: int = 8, agent_name: str = N
     try:
         with get_db_conn() as conn:
             if agent_name:
-                rows = conn.execute(
-                    "SELECT key, value FROM soul_memory WHERE LOWER(agent) = ? OR agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag') ORDER BY timestamp DESC LIMIT ?",
-                    (agent_name.lower(), top_k)
-                ).fetchall()
+                if agent_name.lower() == 'generalag':
+                    rows = conn.execute(
+                        "SELECT key, value FROM soul_memory ORDER BY timestamp DESC LIMIT ?",
+                        (top_k,)
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        "SELECT key, value FROM soul_memory WHERE LOWER(agent) = ? OR agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag') ORDER BY timestamp DESC LIMIT ?",
+                        (agent_name.lower(), top_k)
+                    ).fetchall()
             else:
                 rows = conn.execute(
                     "SELECT key, value FROM soul_memory WHERE agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag') ORDER BY timestamp DESC LIMIT ?",

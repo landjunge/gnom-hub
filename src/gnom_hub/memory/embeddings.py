@@ -64,6 +64,21 @@ class SoulEmbedder:
                     seen.add(content)
                     merged.append(r)
             res = merged[:top_k]
+        elif agent_scope == "generalag":
+            # GeneralAG orchestrates the entire swarm and must see facts for all agents
+            all_results = []
+            for scope in ["global", "coderag", "researcherag", "writerag", "editorag"]:
+                helper = self.get_helper(scope)
+                if helper:
+                    all_results += helper.search(query, top_k, raw=raw)
+            seen = set()
+            merged = []
+            for r in all_results:
+                content = r.split(": ", 1)[1] if ": " in r else r
+                if content not in seen:
+                    seen.add(content)
+                    merged.append(r)
+            res = merged[:top_k]
         else:
             res = global_results
             
