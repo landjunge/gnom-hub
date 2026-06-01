@@ -18,6 +18,8 @@ dependencies = [
     "httpx>=0.24.0",
     "sentence-transformers>=3.0.0",
     "faiss-cpu>=1.7.0",
+    "numpy<2",
+    "transformers<5.0",
 ]
 
 [project.scripts]
