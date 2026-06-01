@@ -1,77 +1,7 @@
 {
-  "total": 880948,
-  "calls": 306,
+  "total": 917193,
+  "calls": 316,
   "history": [
-    {
-      "key": "WriterAG",
-      "model": "deepseek-chat",
-      "prompt": 2548,
-      "completion": 755,
-      "total": 3303
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 2633,
-      "completion": 8192,
-      "total": 10825
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 3138,
-      "completion": 518,
-      "total": 3656
-    },
-    {
-      "key": "EditorAG",
-      "model": "deepseek-chat",
-      "prompt": 3302,
-      "completion": 667,
-      "total": 3969
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 3552,
-      "completion": 714,
-      "total": 4266
-    },
-    {
-      "key": "WriterAG",
-      "model": "deepseek-chat",
-      "prompt": 3647,
-      "completion": 750,
-      "total": 4397
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 4267,
-      "completion": 500,
-      "total": 4767
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 594,
-      "completion": 1,
-      "total": 595
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 616,
-      "completion": 1,
-      "total": 617
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 3474,
-      "completion": 216,
-      "total": 3690
-    },
     {
       "key": "GeneralAG",
       "model": "deepseek-chat",
@@ -1401,8 +1331,78 @@
       "prompt": 4519,
       "completion": 1646,
       "total": 6165
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 603,
+      "completion": 66,
+      "total": 669
+    },
+    {
+      "key": "WriterAG",
+      "model": "deepseek-chat",
+      "prompt": 1684,
+      "completion": 206,
+      "total": 1890
+    },
+    {
+      "key": "SecurityAG",
+      "model": "deepseek-reasoner",
+      "prompt": 1610,
+      "completion": 667,
+      "total": 2277
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 1725,
+      "completion": 683,
+      "total": 2408
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 1591,
+      "completion": 999,
+      "total": 2590
+    },
+    {
+      "key": "ResearcherAG",
+      "model": "deepseek-chat",
+      "prompt": 1625,
+      "completion": 1599,
+      "total": 3224
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 1670,
+      "completion": 6716,
+      "total": 8386
+    },
+    {
+      "key": "WatchdogAG",
+      "model": "deepseek-chat",
+      "prompt": 1621,
+      "completion": 8192,
+      "total": 9813
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1792,
+      "completion": 609,
+      "total": 2401
+    },
+    {
+      "key": "WatchdogAG",
+      "model": "deepseek-chat",
+      "prompt": 1768,
+      "completion": 819,
+      "total": 2587
     }
   ],
-  "total_pay": 878332,
+  "total_pay": 914577,
   "total_free": 2616
 }

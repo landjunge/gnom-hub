@@ -4,6 +4,7 @@
 
 const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'worker', 'system', 'all', 'confirmations', 'spass', 'merken'];
 var acIdx = -1;
+window._pageLoadTime = Date.now();
 
 // TTS Queue State
 const _ttsQ = [];
@@ -738,7 +739,9 @@ async function refreshChat() {
                                   senderLower === 'watchdogag' || 
                                   senderLower === 'securityag' || 
                                   senderLower === 'system';
-          if (ttsChecked && window.thoughtTtsEnabled && window.infoLevel !== 'minimal' && isAllowedSender) {
+          const msgTime = m.timestamp ? new Date(m.timestamp).getTime() : Date.now();
+          const isRecent = msgTime > (window._pageLoadTime - 5000);
+          if (isRecent && ttsChecked && window.thoughtTtsEnabled && window.infoLevel !== 'minimal' && isAllowedSender) {
             let speakThought = thought;
             if (window.infoLevel === 'compact') {
               speakThought = thought.split(/[.!?]/)[0].trim() + ".";
@@ -757,6 +760,9 @@ async function refreshChat() {
     if (!isUser && !window._spokenIds.has(m.id)) {
       window._spokenIds.add(m.id);
       
+      const msgTime = m.timestamp ? new Date(m.timestamp).getTime() : Date.now();
+      const isRecent = msgTime > (window._pageLoadTime - 5000);
+      
       // Determine if we should speak this message (only speak decisive/user-directed info)
       const lowercaseCleaned = cleaned.toLowerCase().trim();
       const isSystemLog = cleaned.includes('[AUTO-APPROVED]') || 
@@ -774,7 +780,7 @@ async function refreshChat() {
                              lowercaseCleaned.startsWith('@securityag') || 
                              lowercaseCleaned.startsWith('@soulag');
       
-      if (!isSystemLog && !isAgentToAgent) {
+      if (isRecent && !isSystemLog && !isAgentToAgent) {
         let speechText = cleaned.replace(/\[WRITE:\s*([^\]\n]+)\]([\s\S]*?)\[\/WRITE\]/gi, 'schreibt Datei $1')
                                 .replace(/\[SHELL:\s*([^\]\n]+)\]/gi, 'führt Befehl $1 aus')
                                 .replace(/\[READ:\s*([^\]\n]+)\]/gi, 'liest Datei $1')

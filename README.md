@@ -321,6 +321,7 @@ Agents interact with the system by generating markdown-like tags in their LLM ou
 |:--------|:-------|
 | `@bs [topic]` | Parallel brainstorm: all workers debate simultaneously, GeneralAG synthesizes |
 | `@job [task]` | Multi-round team workflow: GeneralAG delegates, collects, evaluates, re-delegates (up to 4 rounds) |
+| `@worker [task]` / `@workers [task]` | Parallel execution: assign task to all active workers concurrently |
 | `@code / @write / @edit / @research` | Direct assignment to a specific worker |
 | `@bake [name] [template]` | Compile swarm into portable SuperGNOM product |
 | `@emergency [term]` | Search passive archive for context recovery |
@@ -328,10 +329,21 @@ Agents interact with the system by generating markdown-like tags in their LLM ou
 | `@@project [name]` | Switch active workspace project |
 | `@@status` | Show all agent daemon statuses |
 | `@@clear` | Clear chat timeline |
+| `@@clear db` / `@@clear database` | Reset database tables (chats, showbox presentations, jobs) except agent definitions and prompts |
+| `@@diagnose` | Run diagnostics on daemon processes, database tables, and blocked gatekeeper decisions |
 | `@free` | Reset all active jobs and paused statuses |
 | `@merken [text]` | Memorize written text anywhere in the message as a high-priority fact in long-term memory |
 | `@spass [off/ende]` | Toggle all agents to a loose/casual tone, maximum creativity, high risk tolerance, and inject humor. Pass `off`, `ende`, `stop`, or `aus` to deactivate and reset sliders to default (3). |
 | **Nuke** 💣 | Hold War Room logo 2 seconds for cinematic restart |
+
+### 🛠️ Standalone Diagnostics & Database Cleaning Scripts
+
+For administrative and debugging tasks outside the Gnom-Hub UI, you can run the following scripts directly in your terminal:
+
+* **Database Cleaning (`python3 scripts/clean_db.py`):**
+  Clears the SQLite database (`gnomhub.db`) by resetting chat timelines, showbox presentations, and active jobs, while keeping system configurations, agent settings, and prompt histories intact.
+* **Hub Diagnostics (`python3 scripts/diagnose_hub.py`):**
+  Performs checks on the SQLite database, checks the running PIDs of Gnom-Hub server and agent daemons, lists active heartbeats, and reports any blocked Gatekeeper decisions.
 
 ---
 

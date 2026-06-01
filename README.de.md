@@ -322,6 +322,7 @@ Agenten fordern Werkzeuge über strukturierte Markdown-Tags an:
 |:-------|:-------|
 | `@bs [thema]` | Paralleles Brainstorming: Alle Worker diskutieren gleichzeitig, GeneralAG synthetisiert. |
 | `@job [aufgabe]` | Mehrstufiger Team-Workflow: GeneralAG delegiert, sammelt Ergebnisse, bewertet und verteilt nach (bis zu 4 Runden). |
+| `@worker [aufgabe]` / `@workers [aufgabe]` | Parallele Ausführung: Zuweisung einer Aufgabe an alle aktiven Worker-Agenten gleichzeitig. |
 | `@code / @write / @edit / @research` | Direkte Aufgabenzuweisung an einen bestimmten Spezialisten. |
 | `@bake [name] [template]` | Kompiliert den aktuellen Schwarm in ein portables SuperGNOM-Produkt. |
 | `@emergency [begriff]` | Durchsucht das passive Langzeitarchiv zur Kontext-Wiederherstellung. |
@@ -329,10 +330,21 @@ Agenten fordern Werkzeuge über strukturierte Markdown-Tags an:
 | `@@project [name]` | Wechselt das aktive Workspace-Projekt. |
 | `@@status` | Zeigt den Laufzeit-Status aller Agenten-Daemons. |
 | `@@clear` | Leert den Chatverlauf im Dashboard. |
+| `@@clear db` / `@@clear database` | Setzt die Datenbank zurück (Chats, Showbox-Präsentationen, Jobs), behält jedoch die Agenteneinstellungen und Prompts bei. |
+| `@@diagnose` | Führt Diagnoseprüfungen für laufende Prozesse, Datenbanken und blockierte Gatekeeper-Freigaben durch. |
 | `@free` | Bricht alle laufenden Jobs ab und setzt blockierte Agenten zurück. |
 | `@merken [text]` | Merkt sich den geschriebenen Text als hochpriorisierten Fakt im Langzeitgedächtnis (kann an beliebiger Stelle in der Nachricht stehen). |
 | `@spass [off/ende]` | Schaltet den Humor-Modus ein oder aus. Bei Deaktivierung (z. B. `@spass off` oder `@spass ende`) werden alle Agenten-Regler auf Normalbetrieb (Standardwert 3) zurückgesetzt und der Humor-Prompt entfernt. |
 | **Nuke** 💣 | Halte das War Room Logo im Dashboard für 2 Sekunden gedrückt für einen cinematisches Neustart. |
+
+### 🛠️ Standalone Diagnose- & Bereinigungs-Skripte
+
+Für administrative Aufgaben und Fehlersuche außerhalb der Benutzeroberfläche stehen folgende Terminal-Skripte zur Verfügung:
+
+* **Datenbank-Bereinigung (`python3 scripts/clean_db.py`):**
+  Löscht sicher Chat-Timelines, Showbox-Einträge und aktive Jobs aus der SQLite-Datenbank (`gnomhub.db`), während Agenteneinstellungen, Prompts und Systemkonfigurationen erhalten bleiben.
+* **Hub-Diagnose (`python3 scripts/diagnose_hub.py`):**
+  Führt Konsistenzprüfungen auf der Datenbank durch, ermittelt die PIDs von Gnom-Hub Server und Agenten-Daemons, prüft Heartbeats auf Aktivität und listet blockierte Gatekeeper-Freigaben auf.
 
 ---
 
