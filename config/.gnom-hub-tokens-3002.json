@@ -1,0 +1,14 @@
+{
+  "total": 53205,
+  "calls": 1,
+  "history": [
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 52358,
+      "completion": 847,
+      "total": 53205
+    }
+  ],
+  "total_pay": 53205
+}
