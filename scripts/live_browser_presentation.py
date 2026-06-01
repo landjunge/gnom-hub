@@ -6,9 +6,24 @@ import glob
 import shutil
 from playwright.async_api import async_playwright
 
-def speak(text):
+# Terminate running browsers at the start to ensure clean state
+def kill_browsers():
+    print("Schließe alle vorhandenen Browser-Instanzen...")
+    for proc_pattern in ["Chromium", "Google Chrome", "Chrome"]:
+        try:
+            subprocess.run(["pkill", "-f", proc_pattern], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"Fehler beim Schließen von {proc_pattern}: {e}")
+
+async def speak(text):
     print(f"TTS: {text}")
-    subprocess.run(["say", "-v", "Anna", text])
+    try:
+        proc = await asyncio.create_subprocess_exec("say", "-v", "Anna", text)
+        await proc.wait()
+    except Exception as e:
+        print(f"TTS Failed: {e}")
+
+import traceback
 
 async def move_mouse(page, x, y, steps=25):
     try:
@@ -26,8 +41,9 @@ async def move_mouse(page, x, y, steps=25):
         page._virtual_y = y
     except Exception as e:
         print(f"Failed to move mouse: {e}")
+        traceback.print_exc()
 
-async def click_element(page, selector, text_to_speak=None, wait_after_speak=3.0):
+async def click_element(page, selector, text_to_speak=None, wait_after_speak=1.0):
     try:
         await page.wait_for_selector(selector, timeout=5000)
         el = await page.query_selector(selector)
@@ -41,15 +57,15 @@ async def click_element(page, selector, text_to_speak=None, wait_after_speak=3.0
                 await move_mouse(page, x, y)
                 await page.evaluate("if (window.clickVirtualCursor) window.clickVirtualCursor();")
                 if text_to_speak:
-                    loop = asyncio.get_event_loop()
-                    loop.run_in_executor(None, speak, text_to_speak)
+                    await speak(text_to_speak)
                     await asyncio.sleep(wait_after_speak)
                 await page.click(selector)
                 await asyncio.sleep(1.0)
     except Exception as e:
         print(f"Failed to click element {selector}: {e}")
+        traceback.print_exc()
 
-async def hover_element(page, selector, text_to_speak=None, wait_after_speak=3.0):
+async def hover_element(page, selector, text_to_speak=None, wait_after_speak=1.0):
     try:
         await page.wait_for_selector(selector, timeout=5000)
         el = await page.query_selector(selector)
@@ -62,11 +78,11 @@ async def hover_element(page, selector, text_to_speak=None, wait_after_speak=3.0
                 y = box["y"] + box["height"] / 2
                 await move_mouse(page, x, y)
                 if text_to_speak:
-                    loop = asyncio.get_event_loop()
-                    loop.run_in_executor(None, speak, text_to_speak)
+                    await speak(text_to_speak)
                     await asyncio.sleep(wait_after_speak)
     except Exception as e:
         print(f"Failed to hover element {selector}: {e}")
+        traceback.print_exc()
 
 async def type_text(page, selector, text, delay=0.08):
     try:
@@ -90,27 +106,32 @@ async def type_text(page, selector, text, delay=0.08):
                 await asyncio.sleep(0.5)
     except Exception as e:
         print(f"Failed to type text in {selector}: {e}")
+        traceback.print_exc()
 
 async def main():
+    # First, close any running Chrome/Chromium browsers
+    kill_browsers()
+    await asyncio.sleep(1.0)
+
     video_dir = "/Users/landjunge/Documents/AG-Flega/docs/demo_video"
     os.makedirs(video_dir, exist_ok=True)
     
     # Track existing webm files to find the new one later
     pre_existing_webms = set(glob.glob(os.path.join(video_dir, "*.webm")))
     
-    speak("Starte die automatisierte Präsentation von Gnom-Hub im Browser...")
+    await speak("Ich starte meine Präsentation und öffne den Browser im Vollbildmodus.")
     
     try:
         async with async_playwright() as p:
-            # Launch Chromium with visible window
+            # Launch Chromium in fullscreen
             browser = await p.chromium.launch(
-                headless=True,
-                args=["--start-maximized", "--no-sandbox", "--disable-setuid-sandbox"]
+                headless=False,
+                args=["--start-fullscreen", "--no-sandbox", "--disable-setuid-sandbox"]
             )
+            # Create context with no_viewport=True to let start-fullscreen command take effect
             context = await browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                record_video_dir=video_dir,
-                record_video_size={"width": 1280, "height": 800}
+                no_viewport=True,
+                record_video_dir=video_dir
             )
             page = await context.new_page()
             
@@ -154,108 +175,100 @@ async def main():
             page._virtual_y = 0
             
             await asyncio.sleep(1.5)
-            speak("Willkommen bei Gnom-Hub. Ich führe dich heute durch unsere lokale Agenten-Schmiede.")
-            await asyncio.sleep(4.5)
             
-            # 1. Hover Title Logo
+            # Gnom introduces itself
+            await speak("Hallo! Ich bin Gnom-Hub, deine lokale Multi-Agenten-Plattform.")
+            await asyncio.sleep(0.5)
+            await speak("Ich bin ein autonomer Schwarm von System-Agenten und spezialisierten Workern, die lokal auf deinem Rechner laufen.")
+            await asyncio.sleep(1.0)
+            
+            # Show System Agents
             await hover_element(
-                page, 
-                ".logo", 
-                "Gnom-Hub läuft zu einhundert Prozent lokal und sicher auf deinem Rechner.",
-                wait_after_speak=4.5
+                page,
+                "#status-lamps",
+                "Hier oben im Header siehst du meine vier System-Agenten: Soul-A-G, General-A-G, Security-A-G und Watchdog-A-G. Sie koordinieren und überwachen meine Workflows.",
+                wait_after_speak=1.0
             )
             
-            # 2. Sidebar Agent Cards
-            speak("Links siehst du die spezialisierten Gnom-Worker, die mir bei der Arbeit helfen.")
-            await asyncio.sleep(3.5)
-            
+            # Show Worker Agents
             await hover_element(
                 page,
                 ".agent-card:has-text('CoderAG')",
-                "Coder-A-G schreibt selbstständig Programme und Webseiten in einer isolierten Sandbox.",
-                wait_after_speak=5.0
+                "Links in der Seitenleiste befinden sich meine Worker-Agenten wie der Coder-A-G, der Researcher-A-G, der Writer-A-G und der Editor-A-G.",
+                wait_after_speak=1.0
+            )
+            
+            # Explain Pulse
+            await hover_element(
+                page,
+                ".status-lamps",
+                "Wenn meine System-Agenten oder Worker aktiv nachdenken, fangen sie an zu pulsieren. So siehst du in Echtzeit an ihrem rhythmischen Puls, wie sie arbeiten.",
+                wait_after_speak=1.0
+            )
+            
+            # Navigate to LLM Config
+            await click_element(
+                page,
+                "button:has-text('LLM')",
+                "Lass uns nun einen Blick auf meine Steuerelemente werfen. Ich klicke auf LLM-Einstellungen.",
+                wait_after_speak=1.0
             )
             
             await hover_element(
                 page,
-                ".agent-card:has-text('ResearcherAG')",
-                "Researcher-A-G durchsucht das Internet nach Bibliotheken und Dokumentationen.",
-                wait_after_speak=5.0
+                "#settings-tab-global-content",
+                "Hier kannst du API-Schlüssel eintragen, Gang-Presets wählen oder jeden Agenten einem spezifischen Modell zuweisen. Mein integriertes Auto-Routing ermittelt dabei vollautomatisch die besten Verbindungen.",
+                wait_after_speak=1.0
+            )
+            
+            # Navigate to Dashboard
+            await click_element(
+                page,
+                "button:has-text('Dashboard')",
+                "Als nächstes zeige ich dir mein Bento-Grid Systemdashboard. Ich klicke auf Dashboard.",
+                wait_after_speak=1.0
             )
             
             await hover_element(
                 page,
-                ".agent-card:has-text('WriterAG')",
-                "Writer-A-G erstellt professionelle Texte, Handbücher und Produktbeschreibungen.",
-                wait_after_speak=5.0
+                "#dashboard-panel",
+                "Im Bento-Grid siehst du in Echtzeit meine Leistungskennzahlen wie Anfragen, Fehlerquoten, Antwortzeiten und Token-Verbräuche der einzelnen Gnome.",
+                wait_after_speak=1.0
             )
             
+            # Go back to War Room
+            await click_element(
+                page,
+                ".logo",
+                "Kehren wir nun in den Haupt-Arbeitsraum zurück.",
+                wait_after_speak=1.0
+            )
+            
+            # Type Prompt and run
             await hover_element(
                 page,
-                ".agent-card:has-text('EditorAG')",
-                "Und der Editor-A-G übernimmt das Lektorat und sichert die Softwarequalität.",
-                wait_after_speak=5.0
+                "#chat-input",
+                "Jetzt demonstriere ich dir, wie einfach du mir Aufgaben erteilen kannst. Ich tippe den Befehl ein, um eine Landingpage für mich erstellen zu lassen.",
+                wait_after_speak=1.0
             )
-            
-            # 3. Chat and Thought Area
-            await hover_element(
-                page,
-                "#chat-split-container",
-                "Im War-Room in der Mitte siehst du oben die Denkprozesse der Agenten und unten den Chatverlauf.",
-                wait_after_speak=6.0
-            )
-            
-            # 4. Type Prompt
-            speak("Wir geben dem gesamten Schwarm die Aufgabe, eine Landingpage für Gnom-Hub zu entwerfen.")
-            await asyncio.sleep(3.5)
             
             prompt = "@bs Erstelle eine Landingpage für Gnom-Hub"
-            await type_text(page, "#chat-input", prompt, delay=0.04)
+            await type_text(page, "#chat-input", prompt, delay=0.05)
             
-            # 5. Send Prompt
+            # Click Send button to run swarm
             await click_element(
                 page,
                 "button:has-text('Send')",
-                "Wir senden die Aufgabe ab.",
-                wait_after_speak=2.5
+                "Jetzt schicke ich den Job ab und lasse meinen Schwarm für dich arbeiten. Danke fürs Zuschauen!",
+                wait_after_speak=1.0
             )
             
-            # 6. Wait for Swarm & Comment
-            speak("General-A-G delegiert die Teilaufgaben an die passenden Worker.")
-            await asyncio.sleep(4.0)
-            
-            speak("Oben können wir jetzt live zuschauen, wie die Gnome miteinander diskutieren und Ansätze austauschen.")
-            await asyncio.sleep(5.0)
-            
-            speak("Alles wird sicher von unserem Gatekeeper überwacht, ohne Gefahr von ungewollten Dateizugriffen.")
+            # Let the visual swarm thinking effect run for 6 seconds for the video
             await asyncio.sleep(6.0)
-            
-            speak("Coder-A-G und Writer-A-G entwerfen nun das HTML-Grundgerüst und die Texte.")
-            await asyncio.sleep(7.0)
-            
-            # 7. Navigation bar demonstration
-            await hover_element(
-                page,
-                "button:has-text('Workspace')",
-                "Oben in der Menüleiste können wir in den Workspace wechseln, um generierte Dateien zu prüfen.",
-                wait_after_speak=5.0
-            )
-            
-            await hover_element(
-                page,
-                "button:has-text('Dashboard')",
-                "Das Bento-Grid-Dashboard zeigt uns Systemstatistiken und Token-Verbräuche.",
-                wait_after_speak=4.5
-            )
-            
-            speak("Der Entwurf wurde erfolgreich in der Showbox bereitgestellt.")
-            await asyncio.sleep(4.0)
-            
-            speak("Die Präsentation ist abgeschlossen und das Video wurde erfolgreich aufgezeichnet.")
-            await asyncio.sleep(3.0)
             
             await context.close()
             await browser.close()
+            
     except Exception as e:
         print(f"Exception during presentation loop: {e}")
         
@@ -271,7 +284,7 @@ async def main():
             dest_video = os.path.join(video_dir, "gnom_hub_demo.webm")
             shutil.move(latest_video, dest_video)
             print(f"Recorded video successfully saved and renamed to: {dest_video}")
-            speak("Das Demovideo wurde unter docs/demo_video/gnom_hub_demo.webm gespeichert.")
+            await speak("Das Demovideo wurde erfolgreich unter docs/demo_video/gnom_hub_demo.webm gespeichert.")
         else:
             # Fallback to search all webm files if set difference was empty
             video_files = glob.glob(os.path.join(video_dir, "*.webm"))
