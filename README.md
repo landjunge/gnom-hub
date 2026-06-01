@@ -356,7 +356,9 @@ To avoid performance bottlenecks in tight agent interaction loops, Gnom-Hub uses
 > [!TIP]
 > Run `python3 scratch/run_benchmarks.py` to verify benchmarks locally.
 
-**LLM Routing:** Gnom-Hub supports 7 providers (DeepSeek, OpenRouter, OpenAI, Anthropic, Gemini, Mistral, local Ollama). Drop a `routing.txt` file on your Desktop to switch routing on-the-fly without restarting.
+**LLM Routing & API Keys (Desktop Synchronization):** Gnom-Hub supports 7 providers (DeepSeek, OpenRouter, OpenAI, Anthropic, Gemini, Mistral, local Ollama).
+- **Routing:** Drop a `routing.txt` file on your Desktop to switch routing on-the-fly without restarting.
+- **API Keys:** Drop an `api_keys.txt` file on your Desktop (e.g., `DEEPSEEK_API_KEY=sk-...`) to automatically load, verify, and securely import your keys into the SQLite database on startup.
 
 ---
 

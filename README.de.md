@@ -357,7 +357,9 @@ Um Performance-Flaschenhälse in schnellen Agenten-Interaktionsschleifen zu verm
 > [!TIP]
 > Führe `python3 scratch/run_benchmarks.py` aus, um die Leistungswerte lokal zu ermitteln.
 
-**LLM Routing:** Gnom-Hub unterstützt 7 Anbieter (DeepSeek, OpenRouter, OpenAI, Anthropic, Gemini, Mistral, lokales Ollama). Lege eine Datei namens `routing.txt` auf deinem Desktop ab, um das Routing im laufenden Betrieb zu ändern, ohne neu zu starten.
+**LLM-Routing & API-Schlüssel (Desktop-Synchronisation):** Gnom-Hub unterstützt 7 Anbieter (DeepSeek, OpenRouter, OpenAI, Anthropic, Gemini, Mistral, lokales Ollama).
+- **Routing:** Lege eine Datei namens `routing.txt` auf deinem Desktop ab, um das Routing im laufenden Betrieb zu ändern, ohne neu zu starten.
+- **API-Schlüssel:** Du kannst eine Datei namens `api_keys.txt` auf deinem Desktop ablegen (z. B. `DEEPSEEK_API_KEY=sk-...`), die der Hub beim Starten automatisch einliest, validiert und sicher in die SQLite-Datenbank importiert.
 
 ---
 
