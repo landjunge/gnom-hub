@@ -17,6 +17,19 @@ from gnom_hub.core.security.path_validator import is_worker_blocked, is_security
 from gnom_hub.agents.capability_manager import check_capability, request_capability
 
 def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
+    # Auto-approve if confirmations are disabled (default is False/disabled as requested by user)
+    from gnom_hub.db.legacy_db import get_state_value
+    if not get_state_value("enable_confirmations", False):
+        proj = get_active_project()
+        add_chat_message(
+            proj, 
+            "WatchdogAG", 
+            "watchdogag", 
+            "chat", 
+            f"⚡ [AUTO-APPROVED] Aktion von **{agent_name}** ({action_type}: {detail}) automatisch freigegeben."
+        )
+        return True
+
     decision_id = str(uuid.uuid4())
     
     # 1. Determine blocker agent
@@ -193,7 +206,8 @@ def is_command_safe_and_whitelisted(cmd: str):
             "python3", "python", "pytest", "git", "pip", "pip3",
             "npm", "npx", "node", "ls", "echo", "cat", "tail",
             "find", "mkdir", "cp", "rm", "wc", "cd", "which", 
-            "touch", "chmod", "mv", "grep", "pwd", "clear"
+            "touch", "chmod", "mv", "grep", "pwd", "clear",
+            "stat", "head", "date", "sort", "uniq", "du", "df", "diff"
         }
         
         if exec_name not in allowed_execs:

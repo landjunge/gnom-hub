@@ -2,7 +2,7 @@
    GNOM-HUB — War Room Chat & Autocomplete
    ═══════════════════════════════════════════ */
 
-const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'worker', 'system', 'all'];
+const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'worker', 'system', 'all', 'confirmations'];
 var acIdx = -1;
 
 // TTS Queue State
@@ -73,6 +73,9 @@ function buildWarRoomHTML() {
       <!-- Top Pane: Thinking Processes -->
       <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--cyan); display: flex; align-items: center; justify-content: space-between; font-weight: bold; margin-bottom: -4px;" data-help-title="🧠 Denkprozess-Fenster" data-help="Hier werden die 'Gedankengänge' (Chain of Thought) der Agenten live eingeblendet, während sie an einer Lösung arbeiten. So bleibt die Entscheidungsfindung transparent.">
         <span>🧠 Denkprozesse & Logik</span>
+        <button id="thought-tts-btn" onclick="toggleThoughtTTS()" style="font-size:0.65rem; background:${window.thoughtTtsEnabled ? 'rgba(57,255,20,0.15)' : 'rgba(0,229,255,0.1)'}; border:1px solid ${window.thoughtTtsEnabled ? 'rgba(57,255,20,0.4)' : 'rgba(0,229,255,0.3)'}; color:${window.thoughtTtsEnabled ? 'var(--green)' : 'var(--cyan)'}; border-radius:4px; padding:2px 8px; cursor:pointer; font-weight:bold;">
+          ${window.thoughtTtsEnabled ? '🔊 TTS An' : '🔇 TTS Aus'}
+        </button>
       </div>
       <div id="thought-display" data-help-title="🧠 Denkprozesse & Logik" data-help="Dieses Fenster zeigt dir live die interne Logik und Lösungsfindung der Agenten. Schalte oben auf 'Kompakt' oder 'Minimal', um die Anzeige anzupassen oder auszublenden."></div>
       
@@ -385,6 +388,9 @@ function cleanNormalChatMessage(safe) {
   });
   // Wrap code blocks
   safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, lang, code) {
+    if (window.infoLevel === 'minimal') {
+      return `<div style="font-size:0.7rem; color:var(--text-muted); opacity:0.6; padding:2px 0;">[💻 Codeblock ausgeblendet]</div>`;
+    }
     return `<details class="chat-code-block" style="margin: 8px 0; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; background: rgba(0,0,0,0.2);">
       <summary style="cursor: pointer; padding: 6px 10px; font-size: 0.72rem; color: var(--cyan); user-select: none; font-weight: 500;">💻 Code anzeigen (${lang || 'Text'})</summary>
       <pre style="margin: 0; padding: 10px; font-family: monospace; font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05); overflow-x: auto; white-space: pre-wrap; color: #a9b1d6; background: rgba(0,0,0,0.3);">${code.trim()}</pre>
@@ -393,7 +399,7 @@ function cleanNormalChatMessage(safe) {
   return safe;
 }
 
-window.thoughtTtsEnabled = true;
+window.thoughtTtsEnabled = localStorage.getItem('thoughtTtsEnabled') !== 'false';
 window.infoLevel = localStorage.getItem('infoLevel') || 'detailed';
 
 function changeInfoLevel(level) {
@@ -470,6 +476,7 @@ function toggleMainTTS() {
 
 function toggleThoughtTTS() {
   window.thoughtTtsEnabled = !window.thoughtTtsEnabled;
+  localStorage.setItem('thoughtTtsEnabled', window.thoughtTtsEnabled ? 'true' : 'false');
   const btn = document.getElementById('thought-tts-btn');
   if (btn) {
     if (window.thoughtTtsEnabled) {
@@ -666,12 +673,17 @@ async function refreshChat() {
         // Speak thought if new and main TTS is enabled, and view is not minimal
         if (!window._spokenThoughtIds.has(thoughtId)) {
           const ttsChecked = localStorage.getItem('ttsEnabled') !== 'false';
-          if (ttsChecked && window.infoLevel !== 'minimal') {
+          const senderLower = sender.toLowerCase();
+          const isAllowedSender = senderLower === 'generalag' || 
+                                  senderLower === 'watchdogag' || 
+                                  senderLower === 'securityag' || 
+                                  senderLower === 'system';
+          if (ttsChecked && window.thoughtTtsEnabled && window.infoLevel !== 'minimal' && isAllowedSender) {
             let speakThought = thought;
             if (window.infoLevel === 'compact') {
               speakThought = thought.split(/[.!?]/)[0].trim() + ".";
             }
-            speak(`${sender} denkt: ${speakThought}`, sender);
+            speak(speakThought, sender);
           }
           window._spokenThoughtIds.add(thoughtId);
         }
@@ -684,25 +696,73 @@ async function refreshChat() {
     // 3. Speak normal message if new and main TTS is enabled
     if (!isUser && !window._spokenIds.has(m.id)) {
       window._spokenIds.add(m.id);
-      let speechText = cleaned.replace(/\[WRITE:\s*([^\]\n]+)\]([\s\S]*?)\[\/WRITE\]/gi, 'schreibt Datei $1')
-                              .replace(/\[SHELL:\s*([^\]\n]+)\]/gi, 'führt Befehl $1 aus')
-                              .replace(/<SHOWBOX[\s\S]*?<\/SHOWBOX>/gi, '')
-                              .trim();
-      const hasBlock = cleaned.includes('blockiert') || cleaned.includes('BLOCKIERT') || 
-                       cleaned.includes('Fehler') || cleaned.includes('permission denied') || 
-                       cleaned.includes('keine WRITE') || cleaned.includes('keine SHELL') ||
-                       cleaned.includes('Gatekeeper') || cleaned.includes('System-Blockade');
-      if (hasBlock) {
-        speechText = "🛑 CRITICAL: System-Blockade";
-      }
-      if (speechText) {
-        if (speechText === "🛑 CRITICAL: System-Blockade") {
-          speak(speechText, sender);
-        } else {
-          if (window.infoLevel === 'compact' || window.infoLevel === 'minimal') {
-            speechText = speechText.split(/[.!?]/)[0].trim() + ".";
+      
+      // Determine if we should speak this message (only speak decisive/user-directed info)
+      const lowercaseCleaned = cleaned.toLowerCase().trim();
+      const isSystemLog = cleaned.includes('[AUTO-APPROVED]') || 
+                          cleaned.includes('heartbeat') || 
+                          cleaned.includes('status=') || 
+                          lowercaseCleaned.includes('status online') || 
+                          lowercaseCleaned.includes('status busy');
+      
+      const isAgentToAgent = lowercaseCleaned.startsWith('@coderag') || 
+                             lowercaseCleaned.startsWith('@researcherag') || 
+                             lowercaseCleaned.startsWith('@writerag') || 
+                             lowercaseCleaned.startsWith('@editorag') || 
+                             lowercaseCleaned.startsWith('@generalag') || 
+                             lowercaseCleaned.startsWith('@watchdogag') || 
+                             lowercaseCleaned.startsWith('@securityag') || 
+                             lowercaseCleaned.startsWith('@soulag');
+      
+      if (!isSystemLog && !isAgentToAgent) {
+        let speechText = cleaned.replace(/\[WRITE:\s*([^\]\n]+)\]([\s\S]*?)\[\/WRITE\]/gi, 'schreibt Datei $1')
+                                .replace(/\[SHELL:\s*([^\]\n]+)\]/gi, 'führt Befehl $1 aus')
+                                .replace(/\[READ:\s*([^\]\n]+)\]/gi, 'liest Datei $1')
+                                .replace(/\[BROWSER:\s*([^\]\n]+)\]/gi, 'führt Browser-Aktion $1 aus')
+                                .replace(/\[IMAGE:\s*([^\]\n]+)\]/gi, 'generiert Bild $1')
+                                .replace(/<SHOWBOX[\s\S]*?<\/SHOWBOX>/gi, '')
+                                .trim();
+        let isWarningOrBlock = false;
+        if (cleaned.includes('Warnung!') || cleaned.includes('WARNUNG')) {
+          isWarningOrBlock = true;
+          const agentMatch = cleaned.match(/Worker ([^ ]+)/i) || cleaned.match(/durch ([^ ]+)/i);
+          const agentName = agentMatch ? agentMatch[1] : '';
+          if (cleaned.includes('Systemdatei')) {
+            speechText = `Warnung! ${agentName || 'Worker'} versucht auf Systemdatei zuzugreifen.`;
+          } else if (cleaned.includes('unsicher')) {
+            speechText = `Warnung! Unsichere Dateiänderung durch ${agentName || 'Worker'}.`;
+          } else {
+            speechText = `Warnung für ${agentName || 'System'}.`;
           }
-          speak(`${sender} sagt: ${speechText}`, sender);
+        } else {
+          const hasBlock = cleaned.includes('blockiert') || cleaned.includes('BLOCKIERT') || 
+                           cleaned.includes('Fehler') || cleaned.includes('permission denied') || 
+                           cleaned.includes('keine WRITE') || cleaned.includes('keine SHELL') ||
+                           cleaned.includes('Gatekeeper') || cleaned.includes('System-Blockade');
+          if (hasBlock) {
+            isWarningOrBlock = true;
+            speechText = "🛑 CRITICAL: System-Blockade";
+          }
+        }
+        if (speechText) {
+          // Clean leading user mentions and whitespace to speak naturally
+          speechText = speechText.replace(/^@user\s*/gi, '')
+                                 .replace(/^@\w+\s*/g, '')
+                                 .trim();
+          if (speechText) {
+            // Only speak if it's an allowed sender (GeneralAG, WatchdogAG, SecurityAG, System) OR it is a warning/block
+            const senderLower = sender.toLowerCase();
+            const isAllowedSender = senderLower === 'generalag' || 
+                                    senderLower === 'watchdogag' || 
+                                    senderLower === 'securityag' || 
+                                    senderLower === 'system';
+            if (isAllowedSender || isWarningOrBlock) {
+              if (window.infoLevel === 'compact' || window.infoLevel === 'minimal') {
+                speechText = speechText.split(/[.!?]/)[0].trim() + ".";
+              }
+              speak(speechText, sender);
+            }
+          }
         }
       }
     }
@@ -739,6 +799,17 @@ function copyMsg(id) {
 
 function stopTTS() {
   speechSynthesis.cancel();
+  if (window._activeUtterance && window._activeUtterance.onstop) {
+    try { window._activeUtterance.onstop(); } catch(e){}
+  }
+  window._activeUtterance = null;
+  if (window.currentAudio) {
+    try {
+      window.currentAudio.pause();
+      if (window.currentAudio.onstop) window.currentAudio.onstop();
+    } catch(e){}
+    window.currentAudio = null;
+  }
   _ttsQ.length = 0;
   _ttsBusy = false;
   const btn = document.getElementById('stop-tts-btn');
@@ -780,9 +851,78 @@ function getVoiceForAgent(agentName, lang) {
   return filtered[Math.abs(hash) % filtered.length];
 }
 
+function cleanTextForTTS(text) {
+  if (!text) return '';
+  // Remove zero-width steganographic characters and hidden unicode markers
+  let cleaned = text.replace(/[\u200b-\u200d\uFEFF\u200e\u200f]/g, '');
+  
+  // Remove leading agent name declarations (e.g. "CoderAG hier - direkte Antwort", "GeneralAG:") to prevent double-name repetition
+  cleaned = cleaned.replace(/^\s*\**\s*(GeneralAG|CoderAG|ResearcherAG|WriterAG|EditorAG|SecurityAG|SoulAG|WatchdogAG|System)\s*(hier|sagt|ist|meldet sich)?\s*[\*–—:-]*\s*/gi, '');
+  
+  // Clean up [WRITE: ...] syntax without matching [/WRITE] or with it
+  if (cleaned.includes('[/WRITE]')) {
+    cleaned = cleaned.replace(/\[WRITE:\s*([^\]\n]+)\]([\s\S]*?)\[\/WRITE\]/gi, 'schreibt Datei $1');
+  } else {
+    cleaned = cleaned.replace(/\[WRITE:\s*([^\]\n]+)\][\s\S]*/gi, 'schreibt Datei $1');
+  }
+
+  // Remove markdown tables (lines starting with | or containing multiple | symbols)
+  let lines = cleaned.split('\n');
+  lines = lines.filter(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|')) return false;
+    const pipes = trimmed.split('|').length - 1;
+    if (pipes >= 2) return false;
+    return true;
+  });
+  cleaned = lines.join('\n');
+
+  // Remove list bullet points/hyphens at the start of lines to avoid reading "Bindestrich"
+  cleaned = cleaned.replace(/^[ \t]*[-*+]\s+/gm, '');
+  // Remove numbered lists at the start of lines
+  cleaned = cleaned.replace(/^[ \t]*\d+\.\s+/gm, '');
+
+  // Remove code blocks entirely
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, ' Codeblock ');
+  
+  // Clean AUTO-APPROVED to sound natural
+  cleaned = cleaned.replace(/\[AUTO-APPROVED\]/gi, 'automatisch freigegeben');
+  
+  // Strip brackets around any other words so the TTS doesn't say punctuation words
+  cleaned = cleaned.replace(/\[([^\]\n]+)\]/g, '$1');
+  
+  // Remove inline code ticks
+  cleaned = cleaned.replace(/`([^`\n]+)`/g, '$1');
+  // Remove markdown links [title](url) -> title
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  // Remove markdown headers prefix
+  cleaned = cleaned.replace(/^\s*#+\s+/gm, '');
+  // Remove markdown bold/italic formatting characters
+  cleaned = cleaned.replace(/[\*_~]/g, '');
+  // Remove HTML tags
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  // Collapse whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  return cleaned;
+}
+
 async function speak(text, agentId = '') {
   if (localStorage.getItem('ttsEnabled') === 'false') return;
-  _ttsQ.push({ text, agentId });
+  
+  // Clean text before sending to ElevenLabs or Browser speechSynthesis
+  const cleanedText = cleanTextForTTS(text);
+  if (!cleanedText) return;
+
+  // Prevent repeating the exact same text within 60 seconds
+  if (!window._lastSpokenTexts) window._lastSpokenTexts = {};
+  const now = Date.now();
+  if (window._lastSpokenTexts[cleanedText] && (now - window._lastSpokenTexts[cleanedText] < 60000)) {
+    console.log("TTS duplicate speech prevented for:", cleanedText);
+    return;
+  }
+  window._lastSpokenTexts[cleanedText] = now;
+
+  _ttsQ.push({ text: cleanedText, agentId });
   if (_ttsBusy) return;
   _ttsBusy = true;
   const stopBtn = document.getElementById('stop-tts-btn');
@@ -798,11 +938,13 @@ async function speak(text, agentId = '') {
         if (r.ok && r.headers.get('content-type')?.includes('audio')) {
           const url = URL.createObjectURL(await r.blob());
           const audio = new Audio(url);
+          window.currentAudio = audio;
           await new Promise(ok => {
             let resolved = false;
             const done = () => {
               if (!resolved) {
                 resolved = true;
+                if (window.currentAudio === audio) window.currentAudio = null;
                 clearTimeout(timeoutId);
                 URL.revokeObjectURL(url);
                 ok();
@@ -810,6 +952,7 @@ async function speak(text, agentId = '') {
             };
             audio.onended = done;
             audio.onerror = done;
+            audio.onstop = done;
             const timeoutId = setTimeout(done, 15000); // 15 seconds safety timeout
             audio.play().catch(err => {
               console.error("ElevenLabs audio play failed:", err);
@@ -851,9 +994,10 @@ async function speak(text, agentId = '') {
       };
       u.onend = done;
       u.onerror = done;
+      u.onstop = done;
       
-      // Safety timeout: 100ms per character, minimum 5 seconds, maximum 20 seconds
-      const duration = Math.min(20000, Math.max(5000, t.length * 100));
+      // Safety timeout: 150ms per character, minimum 5 seconds, maximum 120 seconds to prevent cutting off long messages
+      const duration = Math.min(120000, Math.max(5000, t.length * 150));
       const timeoutId = setTimeout(() => {
         console.warn("Browser SpeechSynthesis timeout exceeded, cancelling");
         try {

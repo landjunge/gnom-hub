@@ -3,8 +3,7 @@ import json, threading, os, re, uuid, logging; from gnom_hub.db.legacy_db import
 from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
 _log = logging.getLogger("soul")
 
-def retrieve_relevant_facts(msg: str, agent_name: str = None, top_k: int = 8) -> list:
-    return []
+from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
 
 class SoulAG:
     def __init__(self):

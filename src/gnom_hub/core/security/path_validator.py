@@ -22,9 +22,11 @@ def is_worker_blocked(agent, f, wd, perms):
     check = p or os.path.join(wd, f)
     path_str = os.path.realpath(check).replace("\\", "/").lower()
     if any(part in path_str for part in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]):
-        from gnom_hub.db.legacy_db import add_chat_message
-        msg = f"@user @SoulAG: Warnung! Worker {agent.get('name')} versucht auf Systemdatei '{f}' zuzugreifen. Zugriff blockiert."
-        add_chat_message("default", "WatchdogAG", "watchdogag", "chat", msg)
+        from gnom_hub.db.legacy_db import get_state_value
+        if get_state_value("enable_confirmations", False):
+            from gnom_hub.db.legacy_db import add_chat_message
+            msg = f"@user @SoulAG: Warnung! Worker {agent.get('name')} versucht auf Systemdatei '{f}' zuzugreifen. Zugriff blockiert."
+            add_chat_message("default", "WatchdogAG", "watchdogag", "chat", msg)
         return True
     return False
 
@@ -38,7 +40,8 @@ def is_security_block(agent, f, content, wd, perms):
         approved = [os.path.realpath(os.path.join(wd, a)) for a in (get_state_value("approved_security_writes", []) or [])]
         p = _safe(wd, f, perms)
         if p and os.path.realpath(p) in approved: return False
-        msg = f"@user @SoulAG: Warnung! SecurityAG hat die geplante Dateiänderung an '{f}' durch {agent.get('name')} als unsicher eingestuft. Freigabe erforderlich."
-        add_chat_message("default", "SecurityAG", "securityag", "chat", msg)
+        if get_state_value("enable_confirmations", False):
+            msg = f"@user @SoulAG: Warnung! SecurityAG hat die geplante Dateiänderung an '{f}' durch {agent.get('name')} als unsicher eingestuft. Freigabe erforderlich."
+            add_chat_message("default", "SecurityAG", "securityag", "chat", msg)
         return True
     return False

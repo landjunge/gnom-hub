@@ -245,3 +245,18 @@ def handle_help(q):
     _post_chat("System", f"📖 **Gnom-Hub Handbuch geladen:** Die vollständige Anleitung wurde direkt in deine Showbox übertragen! <SHOWBOX:1>{slides_json}</SHOWBOX>")
     return {"status": "ok"}
 
+def handle_confirmations(q):
+    from gnom_hub.db.legacy_db import get_state_value, set_state_value
+    val = q.strip().lower()
+    if val in ("on", "true", "1", "enable"):
+        set_state_value("enable_confirmations", True)
+        _post_chat("System", "🛡️ **Gatekeeper-Bestätigungen aktiviert:** Gefährliche Aktionen müssen ab jetzt wieder manuell freigegeben werden.")
+    elif val in ("off", "false", "0", "disable"):
+        set_state_value("enable_confirmations", False)
+        _post_chat("System", "⚡ **Gatekeeper-Bestätigungen deaktiviert:** Alle Datei- und Befehlszugriffe werden automatisch freigegeben (Auto-Approve).")
+    else:
+        current = get_state_value("enable_confirmations", False)
+        status = "Aktiviert" if current else "Deaktiviert"
+        _post_chat("System", f"ℹ️ **Gatekeeper-Bestätigungen:** {status}. Nutze `@@confirmations off` zum Ausschalten oder `@@confirmations on` zum Einschalten.")
+    return {"status": "ok"}
+

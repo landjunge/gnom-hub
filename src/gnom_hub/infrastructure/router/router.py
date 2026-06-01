@@ -57,7 +57,11 @@ def _build_sys(n, sys, agent_name):
     try:
         from gnom_hub.core.utils.evolution_v2 import get_active_version
         av = get_active_version(agent_name)
-        r = av.modifications if av else [row["value"] for row in get_db_conn().execute("SELECT value FROM soul_memory WHERE key LIKE ?", (f"evolution_{agent_name}_%",)).fetchall()]
+        if av:
+            r = av.modifications
+        else:
+            with get_db_conn() as conn:
+                r = [row["value"] for row in conn.execute("SELECT value FROM soul_memory WHERE key LIKE ?", (f"evolution_{agent_name}_%",)).fetchall()]
         if r: sys += "\n\n=== SELBSTVERBESSERTE REGELN ===\n" + "\n".join(f"- {x}" for x in r)
     except Exception as e: logging.getLogger(__name__).error('Fehler in Evolutions-Regeln-Laden: %s', e)
     return sys

@@ -10,6 +10,20 @@ def verify_browser(agent, code, wd, perms) -> bool:
     name = (agent or {}).get("name", "Unknown")
     code_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()[:16]
     if check_capability(name, "BROWSER", code_hash): return True
+    
+    # Auto-approve if confirmations are disabled (default is False)
+    from gnom_hub.db.legacy_db import get_active_project
+    if not get_state_value("enable_confirmations", False):
+        proj = get_active_project()
+        add_chat_message(
+            proj,
+            "WatchdogAG",
+            "watchdogag",
+            "chat",
+            f"⚡ [AUTO-APPROVED] Browser-Aktion von **{name}** (Code Hash: {code_hash}) automatisch freigegeben."
+        )
+        request_capability(name, "BROWSER", code_hash, "AutoApprovedBrowser")
+        return True
     urls = re.findall(r'https?://[^\s\'"]+', code)
     approved = get_state_value("approved_external_urls", []) or []
     for u in urls:

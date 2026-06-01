@@ -8,6 +8,10 @@ ELEVEN_VOICE = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 def tts(text: str, voice_id: str = ""):
     """ElevenLabs TTS → MP3 Pfad. None = Fallback auf Browser Web Speech."""
     if not ELEVEN_KEY: return None
+    # Strip zero-width characters and hidden markers to save character quota and prevent ElevenLabs errors
+    for char in ['\u200b', '\u200c', '\u200d', '\u200e', '\u200f', '\ufeff']:
+        text = text.replace(char, '')
+    if not text.strip(): return None
     try:
         import requests
         vid = voice_id or ELEVEN_VOICE
