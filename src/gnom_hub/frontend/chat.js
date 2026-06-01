@@ -2,7 +2,7 @@
    GNOM-HUB — War Room Chat & Autocomplete
    ═══════════════════════════════════════════ */
 
-const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'worker', 'system', 'all', 'confirmations'];
+const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'worker', 'system', 'all', 'confirmations', 'spass', 'merken'];
 var acIdx = -1;
 
 // TTS Queue State
@@ -695,8 +695,21 @@ async function refreshChat() {
   const sorted = msgs.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
   window._processedShowboxes = window._processedShowboxes || new Set();
 
+  const isFirstRender = !window._chatInitialized;
   if (!window._spokenIds) window._spokenIds = new Set();
   if (!window._spokenThoughtIds) window._spokenThoughtIds = new Set();
+
+  if (isFirstRender) {
+    for (const m of sorted) {
+      window._spokenIds.add(m.id);
+      const { thoughts } = extractThoughtsAndClean(m.content);
+      if (thoughts.length > 0) {
+        for (let i = 0; i < thoughts.length; i++) {
+          window._spokenThoughtIds.add(m.id + "-" + i);
+        }
+      }
+    }
+  }
 
   let chatHTML = "";
   let thoughtHTML = "";
@@ -1083,6 +1096,14 @@ function toggleSTT() {
 async function updateProjectIndicator() {
   const res = await api('GET', '/project');
   const p = res && res.project ? res.project : 'default';
+  
+  if (window._currentProject && window._currentProject !== p) {
+    window._spokenIds = new Set();
+    window._spokenThoughtIds = new Set();
+    window._chatInitialized = false;
+  }
+  window._currentProject = p;
+
   const ind = document.getElementById('project-indicator');
   const expl = document.getElementById('project-explanation');
   const helpBtn = document.getElementById('project-help-btn');
