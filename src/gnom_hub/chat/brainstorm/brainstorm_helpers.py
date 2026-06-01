@@ -27,7 +27,7 @@ def ask_llm(ag, q, ctx, bs_mode=False, depth=0):
         if not eo.content: return post(ag["name"], f"[Fehler: Keine Antwort vom LLM]", depth=depth)
         processed = process_actions(eo.content, ag, soul.get("permissions", []), bs_mode, wd)
         
-        has_failure = any(term in processed for term in ["[System:", "[Gatekeeper:", "Fehler:", "blockiert", "BLOCKIERT", "not found", "command not found", "permission denied"])
+        has_failure = any(term in processed for term in ["[Gatekeeper:", "Fehler:", "blockiert", "BLOCKIERT", "not found", "command not found", "permission denied"]) or ("keine" in processed and "Berechtigung" in processed)
         has_showbox = any(tag in processed for tag in ["<SHOWBOX", "<showbox", "[SHOWBOX", "[showbox"])
         
         if has_failure and not has_showbox:
