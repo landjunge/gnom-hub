@@ -35,7 +35,13 @@ async def check_and_update_models():
     if Config.OPENROUTER_API_KEY:
         try:
             client = OpenRouterClient()
-            tasks = [client._test_model(m, "Ping", timeout=5.0) for m in or_models]
+            sem = asyncio.Semaphore(2)
+            async def test_with_sem(m):
+                async with sem:
+                    res = await client._test_model(m, "Ping", timeout=5.0)
+                    await asyncio.sleep(0.5)  # Sleep briefly to avoid hitting rate limits
+                    return res
+            tasks = [test_with_sem(m) for m in or_models]
             results = await asyncio.gather(*tasks)
             working = [m for m, res in zip(or_models, results) if res is not None]
             repo.set_value("openrouter_working_models", working)

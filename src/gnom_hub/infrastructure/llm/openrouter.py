@@ -74,7 +74,13 @@ class OpenRouterClient:
         print(f"🟡 Oberstes Modell {top_model} fehlgeschlagen. Teste alle verbleibenden Modelle...")
         remaining_models = models_to_try[1:]
 
-        tasks = [self._test_model(m, prompt) for m in remaining_models]
+        sem = asyncio.Semaphore(2)
+        async def test_with_sem(m):
+            async with sem:
+                res = await self._test_model(m, prompt)
+                await asyncio.sleep(0.5)  # Sleep briefly to avoid hitting rate limits
+                return res
+        tasks = [test_with_sem(m) for m in remaining_models]
         results = await asyncio.gather(*tasks)
 
         # Identify which models worked and remember them
