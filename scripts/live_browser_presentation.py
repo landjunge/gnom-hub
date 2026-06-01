@@ -29,6 +29,7 @@ async def move_mouse(page, x, y, steps=25):
 
 async def click_element(page, selector, text_to_speak=None, wait_after_speak=3.0):
     try:
+        await page.wait_for_selector(selector, timeout=5000)
         el = await page.query_selector(selector)
         if el:
             await el.scroll_into_view_if_needed()
@@ -50,6 +51,7 @@ async def click_element(page, selector, text_to_speak=None, wait_after_speak=3.0
 
 async def hover_element(page, selector, text_to_speak=None, wait_after_speak=3.0):
     try:
+        await page.wait_for_selector(selector, timeout=5000)
         el = await page.query_selector(selector)
         if el:
             await el.scroll_into_view_if_needed()
@@ -68,6 +70,7 @@ async def hover_element(page, selector, text_to_speak=None, wait_after_speak=3.0
 
 async def type_text(page, selector, text, delay=0.08):
     try:
+        await page.wait_for_selector(selector, timeout=5000)
         el = await page.query_selector(selector)
         if el:
             await el.scroll_into_view_if_needed()
