@@ -1687,16 +1687,9 @@ window.saveGeneratedPreset = async function() {
       saveBtn.style.display = 'none';
       window.lastGeneratedPreset = null;
       
-      // Reload presets dropdown and switch to it
+      // Reload presets dropdown (but do not switch to the new preset automatically)
       if (typeof loadActivePreset === 'function') {
         await loadActivePreset();
-      }
-      const select = document.getElementById('preset-select');
-      if (select) {
-        select.value = preset.name;
-        if (typeof changePreset === 'function') {
-          await changePreset(preset.name);
-        }
       }
     } else {
       toast('Fehler beim Speichern des Presets.', 'error');
