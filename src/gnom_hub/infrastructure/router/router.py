@@ -40,7 +40,7 @@ def _build_sys(n, sys, agent_name):
     """Inject preset + evolution rules into system prompt."""
     settings = get_state_value("agent_settings", {}).get(n.lower(), {}) if n else {}
     if settings.get("custom_prompt"):
-        sys = settings["custom_prompt"]
+        sys += "\n\n=== BENUTZERDEFINIERTER SUFFIX ===\n" + settings["custom_prompt"]
     if settings:
         sys += _get_behavioral_instructions(settings)
     active_preset = (get_state_value("active_preset") or "Web Development").strip('"\'')
