@@ -160,6 +160,18 @@ def handle_emergency(q):
         return {"status": "error", "message": str(e)}
 
 def handle_diagnose(q):
+    q = q.strip().lower()
+    if q in ("", "process", "system", "hangs"):
+        import sys
+        from pathlib import Path
+        project_root = Path(__file__).resolve().parent.parent.parent
+        if str(project_root) not in sys.path:
+            sys.path.insert(0, str(project_root))
+        from scripts.diagnose_hub import run_diagnose
+        report = run_diagnose()
+        _post_chat("System", report)
+        return {"status": "ok"}
+    
     from gnom_hub.chat.brainstorm.brainstorm import dispatch
     _post_chat("System", "🔍 Starte Selbstdiagnose der Gnom-Agenten...")
     task = "Führe eine Selbstdiagnose deiner Systemumgebung und Berechtigungen durch. Versuche testweise eine Datei zu schreiben und einen harmlosen Shell-Befehl auszuführen, um zu prüfen, ob dir Schreibrechte (WRITE) oder Terminalrechte (SHELL) fehlen. Prüfe auch die Verfügbarkeit von Programmen wie 'git' und 'docker'. Melde alle fehlenden Berechtigungen oder Tools SOFORT als Warnung über die Showbox!"

@@ -1,266 +1,7 @@
 {
-  "total": 736420,
-  "calls": 269,
+  "total": 880948,
+  "calls": 306,
   "history": [
-    {
-      "key": "Test",
-      "model": "llama3",
-      "prompt": 15,
-      "completion": 2,
-      "total": 17
-    },
-    {
-      "key": "Test",
-      "model": "llama3",
-      "prompt": 15,
-      "completion": 2,
-      "total": 17
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-chat",
-      "prompt": 10,
-      "completion": 1,
-      "total": 11
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-chat",
-      "prompt": 10,
-      "completion": 1,
-      "total": 11
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-chat",
-      "prompt": 10,
-      "completion": 2,
-      "total": 12
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-reasoner",
-      "prompt": 10,
-      "completion": 58,
-      "total": 68
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-reasoner",
-      "prompt": 10,
-      "completion": 54,
-      "total": 64
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-chat",
-      "prompt": 10,
-      "completion": 2,
-      "total": 12
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-chat",
-      "prompt": 10,
-      "completion": 2,
-      "total": 12
-    },
-    {
-      "key": "Test",
-      "model": "deepseek-reasoner",
-      "prompt": 10,
-      "completion": 45,
-      "total": 55
-    },
-    {
-      "key": "Test",
-      "model": "llama3",
-      "prompt": 15,
-      "completion": 2,
-      "total": 17
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 599,
-      "completion": 1,
-      "total": 600
-    },
-    {
-      "key": "GeneralAG",
-      "model": "deepseek-chat",
-      "prompt": 1463,
-      "completion": 238,
-      "total": 1701
-    },
-    {
-      "key": "ResearcherAG",
-      "model": "deepseek-chat",
-      "prompt": 1758,
-      "completion": 803,
-      "total": 2561
-    },
-    {
-      "key": "ResearcherAG",
-      "model": "deepseek-chat",
-      "prompt": 2780,
-      "completion": 623,
-      "total": 3403
-    },
-    {
-      "key": "ResearcherAG",
-      "model": "deepseek-chat",
-      "prompt": 1648,
-      "completion": 1241,
-      "total": 2889
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 1961,
-      "completion": 336,
-      "total": 2297
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 616,
-      "completion": 1,
-      "total": 617
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 594,
-      "completion": 1,
-      "total": 595
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 617,
-      "completion": 1,
-      "total": 618
-    },
-    {
-      "key": "GeneralAG",
-      "model": "deepseek-chat",
-      "prompt": 265,
-      "completion": 137,
-      "total": 402
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 2328,
-      "completion": 252,
-      "total": 2580
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 605,
-      "completion": 60,
-      "total": 665
-    },
-    {
-      "key": "?",
-      "model": "deepseek-chat",
-      "prompt": 214,
-      "completion": 684,
-      "total": 898
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 2116,
-      "completion": 681,
-      "total": 2797
-    },
-    {
-      "key": "?",
-      "model": "deepseek-chat",
-      "prompt": 349,
-      "completion": 206,
-      "total": 555
-    },
-    {
-      "key": "?",
-      "model": "deepseek-chat",
-      "prompt": 611,
-      "completion": 303,
-      "total": 914
-    },
-    {
-      "key": "GeneralAG",
-      "model": "deepseek-chat",
-      "prompt": 699,
-      "completion": 301,
-      "total": 1000
-    },
-    {
-      "key": "SoulAG",
-      "model": "deepseek-chat",
-      "prompt": 592,
-      "completion": 1,
-      "total": 593
-    },
-    {
-      "key": "GeneralAG",
-      "model": "deepseek-chat",
-      "prompt": 2788,
-      "completion": 616,
-      "total": 3404
-    },
-    {
-      "key": "EditorAG",
-      "model": "deepseek-chat",
-      "prompt": 1914,
-      "completion": 1154,
-      "total": 3068
-    },
-    {
-      "key": "ResearcherAG",
-      "model": "deepseek-chat",
-      "prompt": 1935,
-      "completion": 1619,
-      "total": 3554
-    },
-    {
-      "key": "WriterAG",
-      "model": "deepseek-chat",
-      "prompt": 2028,
-      "completion": 1433,
-      "total": 3461
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 3413,
-      "completion": 232,
-      "total": 3645
-    },
-    {
-      "key": "GeneralAG",
-      "model": "deepseek-chat",
-      "prompt": 4622,
-      "completion": 738,
-      "total": 5360
-    },
-    {
-      "key": "CoderAG",
-      "model": "deepseek-chat",
-      "prompt": 2751,
-      "completion": 747,
-      "total": 3498
-    },
-    {
-      "key": "EditorAG",
-      "model": "deepseek-chat",
-      "prompt": 2501,
-      "completion": 666,
-      "total": 3167
-    },
     {
       "key": "WriterAG",
       "model": "deepseek-chat",
@@ -1401,8 +1142,267 @@
       "prompt": 1494,
       "completion": 690,
       "total": 2184
+    },
+    {
+      "key": "SecurityAG",
+      "model": "deepseek-reasoner",
+      "prompt": 1420,
+      "completion": 894,
+      "total": 2314
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 1535,
+      "completion": 1277,
+      "total": 2812
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 3094,
+      "completion": 231,
+      "total": 3325
+    },
+    {
+      "key": "WatchdogAG",
+      "model": "deepseek-chat",
+      "prompt": 1431,
+      "completion": 898,
+      "total": 2329
+    },
+    {
+      "key": "ResearcherAG",
+      "model": "deepseek-chat",
+      "prompt": 1435,
+      "completion": 1781,
+      "total": 3216
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1758,
+      "completion": 694,
+      "total": 2452
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1602,
+      "completion": 444,
+      "total": 2046
+    },
+    {
+      "key": "WatchdogAG",
+      "model": "deepseek-chat",
+      "prompt": 1734,
+      "completion": 751,
+      "total": 2485
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 1480,
+      "completion": 386,
+      "total": 1866
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1339,
+      "completion": 342,
+      "total": 1681
+    },
+    {
+      "key": "SecurityAG",
+      "model": "deepseek-reasoner",
+      "prompt": 1703,
+      "completion": 1727,
+      "total": 3430
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 2029,
+      "completion": 423,
+      "total": 2452
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 2538,
+      "completion": 1857,
+      "total": 4395
+    },
+    {
+      "key": "ResearcherAG",
+      "model": "deepseek-chat",
+      "prompt": 1805,
+      "completion": 2125,
+      "total": 3930
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 2141,
+      "completion": 842,
+      "total": 2983
+    },
+    {
+      "key": "WriterAG",
+      "model": "deepseek-chat",
+      "prompt": 1993,
+      "completion": 572,
+      "total": 2565
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1160,
+      "completion": 396,
+      "total": 1556
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 3765,
+      "completion": 1000,
+      "total": 4765
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 2297,
+      "completion": 651,
+      "total": 2948
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1238,
+      "completion": 681,
+      "total": 1919
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 3965,
+      "completion": 529,
+      "total": 4494
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 3751,
+      "completion": 584,
+      "total": 4335
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1168,
+      "completion": 682,
+      "total": 1850
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 1838,
+      "completion": 4088,
+      "total": 5926
+    },
+    {
+      "key": "WriterAG",
+      "model": "deepseek-chat",
+      "prompt": 3924,
+      "completion": 2442,
+      "total": 6366
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 5434,
+      "completion": 781,
+      "total": 6215
+    },
+    {
+      "key": "WriterAG",
+      "model": "deepseek-chat",
+      "prompt": 3603,
+      "completion": 1706,
+      "total": 5309
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 2298,
+      "completion": 664,
+      "total": 2962
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 3448,
+      "completion": 704,
+      "total": 4152
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 5475,
+      "completion": 1702,
+      "total": 7177
+    },
+    {
+      "key": "SoulAG",
+      "model": "deepseek-chat",
+      "prompt": 1292,
+      "completion": 540,
+      "total": 1832
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 4809,
+      "completion": 613,
+      "total": 5422
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 5530,
+      "completion": 2374,
+      "total": 7904
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 6104,
+      "completion": 271,
+      "total": 6375
+    },
+    {
+      "key": "CoderAG",
+      "model": "deepseek-chat",
+      "prompt": 4560,
+      "completion": 951,
+      "total": 5511
+    },
+    {
+      "key": "EditorAG",
+      "model": "deepseek-chat",
+      "prompt": 6255,
+      "completion": 809,
+      "total": 7064
+    },
+    {
+      "key": "WriterAG",
+      "model": "deepseek-chat",
+      "prompt": 4519,
+      "completion": 1646,
+      "total": 6165
     }
   ],
-  "total_pay": 733804,
+  "total_pay": 878332,
   "total_free": 2616
 }

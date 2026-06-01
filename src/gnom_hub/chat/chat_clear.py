@@ -1,6 +1,25 @@
 """Chat-Commands: clear-Varianten und Datenbereinigung."""
 def handle_clear(q=""):
     q = q.strip().lower()
+    if q in ("db", "database", "all"):
+        from gnom_hub.db.connection import get_db_connection
+        from gnom_hub.chat.chat_commands import _post_chat
+        try:
+            with get_db_connection() as conn:
+                with conn:
+                    conn.execute("DELETE FROM chat")
+                    conn.execute("DELETE FROM showbox_presentations WHERE name != 'Standard'")
+                    conn.execute("UPDATE state SET value = '\"\"' WHERE key = 'active_showbox'")
+                    conn.execute("UPDATE state SET value = '{}' WHERE key = 'pending_decisions'")
+                    conn.execute("UPDATE state SET value = '[]' WHERE key = 'approved_security_writes'")
+                    conn.execute("UPDATE state SET value = '[]' WHERE key = 'approved_security_commands'")
+                    conn.execute("UPDATE agents SET active_job = NULL")
+                conn.execute("VACUUM")
+            _post_chat("System", "🧹 **Datenbank komplett bereinigt:** Alle Chats, temporären Showboxen, Jobs und Blockaden wurden zurückgesetzt. System-Agenten und Prompts bleiben unverändert.")
+            return {"status": "cleared"}
+        except Exception as e:
+            _post_chat("System", f"❌ Fehler bei der Bereinigung: {e}")
+            return {"status": "error", "message": str(e)}
     if q == "all agents":
         sys_ags = ['soulag', 'generalag', 'securityag', 'watchdogag']
         from gnom_hub.db.legacy_db import delete_non_system_agents; delete_non_system_agents(sys_ags)
