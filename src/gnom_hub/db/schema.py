@@ -205,14 +205,11 @@ def init_database() -> None:
                         conn.execute("UPDATE agents SET role = ? WHERE name = ?", (v["role"], v["name"]))
                 
                 # Seeding chat
-                import os
-                if os.getenv("SUPERGNOM_MODE", "False").lower() != "true":
-                    if not conn.execute("SELECT 1 FROM chat").fetchone():
-                        _seed_chat_history(conn)
-                    
-                    # Seeding showbox presentations
-                    if not conn.execute("SELECT 1 FROM showbox_presentations").fetchone():
-                        _seed_showboxes(conn)
+                # Disabled to ensure new installations start with a clean slate
+
+                # Seeding showbox presentations
+                if not conn.execute("SELECT 1 FROM showbox_presentations").fetchone():
+                    _seed_showboxes(conn)
                     
         logger.info("[DB] Database initialized successfully.")
     except Exception as e:
