@@ -852,19 +852,21 @@ window.globalSave = async () => {
 window.getAgentHelpText = function(name, desc) {
   const n = (name || '').toLowerCase();
   if (n === 'generalag') {
-    return '👑 <b>GeneralAG (Koordinator):</b><br><br>Er ist das koordinierende Oberhaupt des Schwarms. Seine Aufgabe ist es, komplexe Benutzeranfragen zu analysieren, sie in logische Teilaufgaben zu zerlegen und diese gezielt an die spezialisierten Worker-Agenten (CoderAG, WriterAG, ResearcherAG) zu delegieren. Am Ende führt er die Teilergebnisse zu einem harmonischen Gesamtwerk zusammen.';
+    return '👑 <b>Commander-V50 (Koordinator):</b><br><br>Er ist das koordinierende Oberhaupt des Schwarms. Seine Aufgabe ist es, komplexe Benutzeranfragen zu analysieren, sie in logische Teilaufgaben zu zerlegen und diese gezielt an die spezialisierten Worker-Agenten zu delegieren. Am Ende führt er die Teilergebnisse zusammen.';
   } else if (n === 'soulag') {
-    return '🧠 <b>SoulAG (Gedächtnis & Kontext):</b><br><br>Er verwaltet das kollektive Langzeit- und Kurzzeitgedächtnis des Schwarms. SoulAG speichert historische Interaktionen und Fakten in einem Vektorindex (FAISS) und lädt bei neuen Anfragen automatisch die relevantesten Kontextinformationen, damit kein Wissen verloren geht.';
-  } else if (n === 'watchdogag' || n === 'securityag') {
-    return '🛡️ <b>WatchdogAG / SecurityAG (Tribunal):</b><br><br>Er ist der Sicherheitswächter im Hub. Jede potenziell gefährliche Aktion – wie das Ausführen von Shell-Befehlen oder das Schreiben kritischer Dateien – wird von ihm analysiert. Er entscheidet im 3-Agenten-Tribunal, ob eine Aktion sicher ist oder blockiert werden muss.';
+    return '🧠 <b>Memex-50 (Gedächtnis & Kontext):</b><br><br>Er verwaltet das kollektive Langzeit- und Kurzzeitgedächtnis des Schwarms. Memex-50 speichert historische Interaktionen und Fakten in einem Vektorindex (FAISS) und lädt bei neuen Anfragen automatisch die relevantesten Kontextinformationen.';
+  } else if (n === 'watchdogag') {
+    return '🛡️ <b>Sentry-V50 (Regel-Wächter):</b><br><br>Ein Wächter aus massivem Messing, der die Einhaltung aller Sicherheitsregeln und Verzeichnispfade überwacht und illegale Systemzugriffe blockiert.';
+  } else if (n === 'securityag') {
+    return '🛡️ <b>Securitron-V50 (Sicherheits-Auditor):</b><br><br>Ein verchromter Sicherheitswächter, der Code-Dateien und Befehle vor Ausführung auf Schadcode und Schwachstellen analysiert.';
   } else if (n === 'coderag') {
-    return '💻 <b>CoderAG (Entwickler):</b><br><br>Er ist der Programmierer des Teams. Er schreibt, analysiert und optimiert Quellcode in diversen Programmiersprachen (Python, JS, HTML/CSS). Er repariert Bugs, implementiert neue Features und führt Verifikationstests durch.';
+    return '💻 <b>Turing-V50 (Entwickler):</b><br><br>Ein relaisgesteuerter Programmierer. Er schreibt, analysiert und optimiert Quellcode in diversen Programmiersprachen (Python, JS, HTML/CSS) und repariert Bugs.';
   } else if (n === 'writerag') {
-    return '✍️ <b>WriterAG (Redakteur & Doku):</b><br><br>Er verfasst Texte jeglicher Art auf exzellentem sprachlichem Niveau. Von ausführlichen READMEs und Benutzerhandbüchern bis hin zu prägnanten Systemmeldungen, E-Mails oder Dokumenten-Updates – er findet immer den passenden Tonfall.';
+    return '✍️ <b>Scribe-V50 (Redakteur & Doku):</b><br><br>Ein mechanischer Tastenschreiber. Er verfasst Texte jeglicher Art auf exzellentem sprachlichem Niveau und feilt an CTAs und Slogans.';
   } else if (n === 'researcherag') {
-    return '🔍 <b>ResearcherAG (Rechercheur):</b><br><br>Er sammelt Fakten und führt Analysen durch. ResearcherAG durchsucht das Internet, wertet Webseiten aus und liest technische Dokumentationen, um dem Team fundiertes Fachwissen und aktuelle Daten zuzuliefern.';
+    return '🔍 <b>Archive-V50 (Rechercheur):</b><br><br>Ein Lochkarten-Archivar, der Fakten sammelt, das Web durchsucht und technische Dokumentationen auswertet, um dem Team fundierte Daten zuzuliefern.';
   } else if (n === 'editorag') {
-    return '🔎 <b>EditorAG (Qualitätskontrolle):</b><br><br>Er führt die Endabnahme durch. Jeder Text und jeder Code, der von den anderen Worker-Agenten erzeugt wird, wird von EditorAG auf logische Fehler, syntaktische Richtigkeit und Einhaltung aller Vorgaben geprüft.';
+    return '🔎 <b>Audit-V50 (Qualitätskontrolle):</b><br><br>Er führt die Endabnahme durch. Jeder Text und jeder Code, der von den anderen Worker-Agenten erzeugt wird, wird auf logische Fehler und Einhaltung aller Vorgaben geprüft.';
   }
   return `🤖 <b>${name}:</b><br><br>${desc || 'Ein spezialisierter Agent des Gnom-Hub Schwarms, der zur Erledigung deiner Aufgaben beiträgt.'}`;
 };

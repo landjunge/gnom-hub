@@ -1571,14 +1571,14 @@ async function testAgentLLM(aName) {
 window.getAgentMeta = function(agentId) {
   const key = agentId ? agentId.toLowerCase().trim() : '';
   const roles = {
-    'soulag': { name: 'SoulAG', desc: 'Gedächtnis-Agent' },
-    'generalag': { name: 'GeneralAG', desc: 'Koordinator' },
-    'securityag': { name: 'SecurityAG', desc: 'Sicherheits-Agent' },
-    'watchdogag': { name: 'WatchdogAG', desc: 'Regel-Wächter' },
-    'coderag': { name: 'CoderAG', desc: 'Entwickler & Coder' },
-    'researcherag': { name: 'ResearcherAG', desc: 'Recherche & Analyse' },
-    'writerag': { name: 'WriterAG', desc: 'Dokumentation & Text' },
-    'editorag': { name: 'EditorAG', desc: 'Review & Editierung' }
+    'soulag': { name: 'Memex-50', desc: 'Röhrengehirn-Speicher (Teal/Vakuum-Stil)' },
+    'generalag': { name: 'Commander-V50', desc: 'Schaltpult-Orchestrator (Stahlschrank mit Analoghebeln)' },
+    'securityag': { name: 'Securitron-V50', desc: 'Sicherheits-Auditor (Chrom-Sicherheitsbox)' },
+    'watchdogag': { name: 'Sentry-V50', desc: 'Regel-Wächter (Messing-Sicherheitsbox)' },
+    'coderag': { name: 'Turing-V50', desc: 'Relais-Techniker (Pastell-Teal / Funkenrelais)' },
+    'researcherag': { name: 'Archive-V50', desc: 'Lochkarten-Archivar (Ozeanblau / Kartenschacht)' },
+    'writerag': { name: 'Scribe-V50', desc: 'Tastenschreiber (Pastell-Orange)' },
+    'editorag': { name: 'Audit-V50', desc: 'Signal-Prüfer (Silber / Analoge Zeigerschalter)' }
   };
   return roles[key] || { name: agentId.charAt(0).toUpperCase() + agentId.slice(1), desc: 'Schwarm-Mitglied' };
 };

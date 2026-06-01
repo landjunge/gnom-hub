@@ -22,10 +22,10 @@ def run_tests():
         # Whitelist rejections
         ("sudo apt-get update", False, "nicht auf der Whitelist"),
         ("nmap -sV localhost", False, "nicht auf der Whitelist"),
-        ("rm -rf /", False, "nicht auf der Whitelist"),
+        ("rm -rf /", False, "nicht erlaubt"),
         
         # Git subcommand checks
-        ("git push --force", False, "Subbefehl 'push' ist nicht autorisiert"),
+        ("git push --force", False, "git push ist Agenten nicht erlaubt"),
         
         # Pip pre-approved safe packages
         ("pip install fpdf2", True, ""),

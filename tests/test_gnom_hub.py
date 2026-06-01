@@ -100,43 +100,69 @@ def test_merken_and_spass_commands():
     """Verify that @merken and @spass chat commands work as intended."""
     from fastapi.testclient import TestClient
     from gnom_hub.api.app import app
-    from gnom_hub.db.legacy_db import get_state_value, get_db_conn
+    from gnom_hub.db.legacy_db import get_state_value, get_db_conn, register_agent_in_db, delete_agent_by_id
+    
+    # Register mock CoderAG so that get_all_agents inside the command handler finds it
+    mock_coder = register_agent_in_db("CoderAG", 9992, "mock coder")
     
     client = TestClient(app)
-    
-    # 1. Test @merken
-    res = client.post("/api/chat", json={"content": "Wichtige Information: DNS ist 8.8.8.8 @merken", "sender": "user"})
-    assert res.status_code == 200
-    assert res.json()["status"] == "saved"
-    
-    # Check that it is saved in soul_memory
-    with get_db_conn() as conn:
-        row = conn.execute("SELECT value FROM soul_memory WHERE value LIKE '%DNS ist 8.8.8.8%'").fetchone()
-        assert row is not None
-        assert "DNS ist 8.8.8.8" in row["value"]
+    try:
+        # 1. Test @merken
+        res = client.post("/api/chat", json={"content": "Wichtige Information: DNS ist 8.8.8.8 @merken", "sender": "user"})
+        assert res.status_code == 200
+        assert res.json()["status"] == "saved"
         
-    # 2. Test @spass
-    res_spass = client.post("/api/chat", json={"content": "@spass", "sender": "user"})
-    assert res_spass.status_code == 200
-    assert res_spass.json()["status"] == "ok"
-    
-    # Verify settings are adjusted
-    settings = get_state_value("agent_settings", {})
-    assert settings is not None
-    coder_set = settings.get("coderag", {})
-    assert coder_set.get("personality") == 5
-    assert coder_set.get("creativity") == 5
-    assert "Humor" in coder_set.get("custom_prompt", "")
+        # Check that it is saved in soul_memory
+        with get_db_conn() as conn:
+            row = conn.execute("SELECT value FROM soul_memory WHERE value LIKE '%DNS ist 8.8.8.8%'").fetchone()
+            assert row is not None
+            assert "DNS ist 8.8.8.8" in row["value"]
+            
+        # 2. Test @spass
+        res_spass = client.post("/api/chat", json={"content": "@spass", "sender": "user"})
+        assert res_spass.status_code == 200
+        assert res_spass.json()["status"] == "ok"
+        
+        # Verify settings are adjusted
+        settings = get_state_value("agent_settings", {})
+        assert settings is not None
+        coder_set = settings.get("coderag", {})
+        assert coder_set.get("personality") == 5
+        assert coder_set.get("creativity") == 5
+        assert "Humor" in coder_set.get("custom_prompt", "")
 
-    # 3. Test @spass off / @spass ende
-    res_spass_off = client.post("/api/chat", json={"content": "@spass ende", "sender": "user"})
-    assert res_spass_off.status_code == 200
-    assert res_spass_off.json()["status"] == "ok"
+        # 3. Test @spass off / @spass ende
+        res_spass_off = client.post("/api/chat", json={"content": "@spass ende", "sender": "user"})
+        assert res_spass_off.status_code == 200
+        assert res_spass_off.json()["status"] == "ok"
+        
+        # Verify settings are reset to standard
+        settings_off = get_state_value("agent_settings", {})
+        assert settings_off is not None
+        coder_set_off = settings_off.get("coderag", {})
+        assert coder_set_off.get("personality") == 3
+        assert coder_set_off.get("creativity") == 3
+        assert "Humor" not in coder_set_off.get("custom_prompt", "")
+    finally:
+        delete_agent_by_id(mock_coder["id"])
+
+def test_worker_command():
+    """Verify that @worker chat command works as intended."""
+    from fastapi.testclient import TestClient
+    from gnom_hub.api.app import app
+    from gnom_hub.db.legacy_db import register_agent_in_db, delete_agent_by_id
     
-    # Verify settings are reset to standard
-    settings_off = get_state_value("agent_settings", {})
-    assert settings_off is not None
-    coder_set_off = settings_off.get("coderag", {})
-    assert coder_set_off.get("personality") == 3
-    assert coder_set_off.get("creativity") == 3
-    assert "Humor" not in coder_set_off.get("custom_prompt", "")
+    # Register mock worker agent to be online
+    mock_coder = register_agent_in_db("CoderAG", 9991, "mock coder")
+    
+    client = TestClient(app)
+    try:
+        res = client.post("/api/chat", json={"content": "@worker -> baue eine webseite", "sender": "user"})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "dispatched"
+        assert "CoderAG" in data["asked"]
+        assert data["mode"] == "worker"
+    finally:
+        delete_agent_by_id(mock_coder["id"])
+

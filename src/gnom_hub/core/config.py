@@ -52,17 +52,14 @@ class Config:
 
     # OpenRouter Free-Modelle (zentral verwaltet)
     OPENROUTER_FREE_MODELS = [
-        "baidu/cobuddy:free",
-        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-        "poolside/laguna-xs.2:free",
-        "poolside/laguna-m.1:free",
-        "deepseek/deepseek-v4-flash:free",
-        "google/gemma-2-9b-it",
-        "meta-llama/llama-3.1-8b-instruct",
-        "mistralai/mistral-7b-instruct",
-        "qwen/qwen2.5-7b-instruct",
-        "deepseek/deepseek-chat",
-        "llama3.2",
+        "google/gemma-2-9b-it:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "qwen/qwen-2.5-7b-instruct:free",
+        "deepseek/deepseek-r1:free",
+        "nvidia/llama-3.1-nemotron-70b-instruct:free",
+        "meta-llama/llama-3-8b-instruct:free",
+        "meta-llama/llama-3.2-3b-instruct:free",
+        "liquid/lfm-2.5-1.2b-instruct:free",
     ]
 
 Config.LOG_DIR.mkdir(parents=True, exist_ok=True)

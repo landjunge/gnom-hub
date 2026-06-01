@@ -2731,6 +2731,20 @@
       </div>
     </div>
   </div>
+
+  <!-- Agent Detail Modal -->
+  <div class="modal-bg" id="modal-agent-detail" onclick="if(event.target===this) closeModal('modal-agent-detail')">
+    <div class="modal" style="width: 850px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; padding: 20px;">
+      <h2 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; margin-top: 0;">
+        <span id="agent-detail-title">Agenten-Details</span>
+        <button onclick="closeModal('modal-agent-detail')" style="background: none; border: none; color: var(--text-dim); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px;">✕</button>
+      </h2>
+      <div id="agent-detail-modal-body" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; padding-right: 5px; scrollbar-width: thin;">
+        <!-- Dynamically loaded panels -->
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toasts"></div>
 
   <!-- SuperGNOM Mode Floating elements (only used/shown in supergnom-mode) -->

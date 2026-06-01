@@ -49,10 +49,10 @@ def get_soul(agent_name: str) -> dict:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 dirty = False
-                if "role" not in data: data["role"] = role; dirty = True
-                if "character" not in data: data["character"] = character; dirty = True
-                if "directive" not in data: data["directive"] = directive; dirty = True
-                if "permissions" not in data: data["permissions"] = permissions; dirty = True
+                if data.get("role") != role: data["role"] = role; dirty = True
+                if data.get("character") != character: data["character"] = character; dirty = True
+                if data.get("directive") != directive: data["directive"] = directive; dirty = True
+                if data.get("permissions") != permissions: data["permissions"] = permissions; dirty = True
                 if "breakpoints" not in data: data["breakpoints"] = []; dirty = True
                 
                 if dirty:

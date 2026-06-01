@@ -42,12 +42,16 @@ function renderAgentList(filter = '') {
       else if (a.status === 'paused') statusLabel = 'Pausiert 🟠';
       else if (a.status === 'online') statusLabel = 'Online 🟢';
       
-      const helpTitle = `${a.name} (${statusLabel})`;
-      const helpText = typeof getAgentHelpText === 'function' ? getAgentHelpText(a.name, a.description) : (a.description || 'Ein Agent im Gnom-Hub.');
+      const meta = typeof window.getAgentMeta === 'function' ? window.getAgentMeta(a.name) : { name: a.name, desc: a.description };
+      const displayName = meta.name;
+      const displayDesc = meta.desc;
+      
+      const helpTitle = `${displayName} (${statusLabel})`;
+      const helpText = typeof getAgentHelpText === 'function' ? getAgentHelpText(a.name, a.description) : (displayDesc || 'Ein Agent im Gnom-Hub.');
       
       return `<div class="agent-card ${stClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="handleWorkerClick('${a.id}')" ondblclick="handleWorkerDblClick('${a.id}', '${a.status}')" style="--agent-color:${c}; --dur:${dur}s; --delay:${dly}s;" data-help-title="${helpTitle.replace(/"/g, '&quot;')}" data-help="${helpText.replace(/"/g, '&quot;')}">
-        <h3><span>${a.name}</span>${roleIcon}</h3>
-        <div class="desc">${a.description || '–'}</div>
+        <h3><span>${displayName}</span>${roleIcon}</h3>
+        <div class="desc">${displayDesc || '–'}</div>
         <div class="meta">${a.port ? `<span class="badge port">:${a.port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}</div>
       </div>`;
     };

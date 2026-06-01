@@ -8,7 +8,7 @@ async def verify_key(pvd: str, key: str) -> dict:
     key = clean_key(key)
     urls = {
         "deepseek": ("https://api.deepseek.com/user/balance", {"Authorization": f"Bearer {key}"}, ["text", "tools"]),
-        "openrouter": ("https://openrouter.ai/api/v1/auth/key", {"Authorization": f"Bearer {key}"}, ["text", "vision", "tools"]),
+        "openrouter": ("https://openrouter.ai/api/v1/key", {"Authorization": f"Bearer {key}"}, ["text", "vision", "tools"]),
         "openai": ("https://api.openai.com/v1/models", {"Authorization": f"Bearer {key}"}, ["text", "vision", "image", "audio", "tools"]),
         "anthropic": ("https://api.anthropic.com/v1/models", {"x-api-key": key, "anthropic-version": "2023-06-01"}, ["text", "vision", "tools"]),
         "gemini": (f"https://generativelanguage.googleapis.com/v1beta/models?key={key}", {}, ["text", "vision", "image", "audio", "tools"]),

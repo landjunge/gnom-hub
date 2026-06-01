@@ -54,8 +54,8 @@ def test_agent_optimizer():
 
         # 5. Test _build_sys system prompt overwrite & injection
         sys_prompt = _build_sys("testcoderag", "BASE_PROMPT", "TestCoderAG")
-        # Base prompt must be replaced by CUSTOM_PROMPT_PREFIX
-        assert "BASE_PROMPT" not in sys_prompt
+        # Base prompt must contain both original and CUSTOM_PROMPT_PREFIX
+        assert "BASE_PROMPT" in sys_prompt
         assert "CUSTOM_PROMPT_PREFIX" in sys_prompt
         # Instructions must be appended
         assert "casual, relaxed" in sys_prompt

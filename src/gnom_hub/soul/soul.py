@@ -93,7 +93,7 @@ class SoulAG:
                 self._injections[key] = self._injections.get(key, 0) + 1
                 if self._injections[key] == 2:
                     try:
-                        add_chat_message(get_active_project(), "SoulAG", "soulag", "chat", f"@user @{agent_name}: [HINWEIS] Ich habe die Information '{f}' bereits zum zweiten Mal im Hintergrund eingespeist. Bitte darauf achten!")
+                        _log.info(f"[SoulAG] Information '{f}' wurde bereits zum zweiten Mal an {agent_name} übermittelt.")
                     except Exception as e: logging.getLogger(__name__).error('Fehler in inject_context (injection-Hinweis): %s', e)
             if len(self._injections) > 2000:
                 keys_to_remove = list(self._injections.keys())[:len(self._injections) // 2]

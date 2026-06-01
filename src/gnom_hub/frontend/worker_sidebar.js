@@ -40,15 +40,19 @@ async function selectAgent(id) {
     statusLabel = 'Paused';
   }
 
-  const meta = (window.getAgentMeta ? window.getAgentMeta(agent.name) : null) || { desc: 'Schwarm-Mitglied' };
+  const meta = (window.getAgentMeta ? window.getAgentMeta(agent.name) : null) || { name: agent.name, desc: 'Schwarm-Mitglied' };
   const avatarUrl = window.getAgentAvatarUrl ? window.getAgentAvatarUrl(agent.name) : `/static/avatars/${agent.name.toLowerCase()}.png`;
 
-  document.getElementById('content').innerHTML = `
+  const target = document.getElementById('agent-detail-modal-body');
+  const titleEl = document.getElementById('agent-detail-title');
+  if (titleEl) titleEl.textContent = `${meta.name} - Details & Einstellungen`;
+
+  const html = `
     <div class="panel" style="display:flex; gap:16px; align-items:center; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(20,25,40,0.8), rgba(10,15,30,0.95));">
-      <img src="${avatarUrl}" alt="${agent.name}" style="width: 54px; height: 54px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
+      <img src="${avatarUrl}" alt="${meta.name}" style="width: 54px; height: 54px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
       <div style="flex-grow:1;">
         <h2 style="margin:0 0 6px 0; display: flex; align-items: center; justify-content: space-between;">
-          <span>${agent.name}</span>
+          <span>${meta.name}</span>
           <div class="actions">
             ${resumeBtn} ${openUiBtn} ${nudgeBtn}
             <button onclick="toggleStatus('${agent.id}','${agent.status}')">${on ? '⏹ Offline' : '▶ Online'}</button>
@@ -76,7 +80,7 @@ async function selectAgent(id) {
         <div style="display:grid; grid-template-columns:85px 1fr 1fr 1fr; gap:8px;">
           <!-- Avatar Card -->
           <div id="identity-avatar" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center;">
-            <img src="${avatarUrl}" alt="${agent.name}" style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
+            <img src="${avatarUrl}" alt="${meta.name}" style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
             <div style="font-size:0.58rem; font-weight:600; color:rgba(255,255,255,0.7); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">${meta.desc}</div>
           </div>
           <!-- LLM Card -->
@@ -162,7 +166,7 @@ async function selectAgent(id) {
           </div>
 
           <!-- Apply Button -->
-          <button id="btn-apply-optimizer" onclick="saveAgentOptimizerSettings('${agent.id}')" style="margin-top:4px; width:100%; padding:9px 0; font-size:0.78rem; font-weight:700; color:#fff; background:linear-gradient(135deg,rgba(0,120,255,0.25),rgba(0,80,200,0.15)); border:1px solid rgba(0,150,255,0.5); border-radius:8px; cursor:pointer; transition:all 0.2s; letter-spacing:0.3px;" onmouseover="this.style.background='linear-gradient(135deg,rgba(0,150,255,0.4),rgba(0,100,220,0.3))'; this.style.borderColor='rgba(0,180,255,0.8)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,120,255,0.25),rgba(0,80,200,0.15))'; this.style.borderColor='rgba(0,150,255,0.5)'; this.style.transform='translateY(0)';">💾 Einstellungen speichern</button>
+          <button id="btn-apply-optimizer" onclick="saveAgentOptimizerSettings('${agent.id}')" style="margin-top:4px; width:100%; padding:9px 0; font-size:0.78rem; font-weight:700; color:#fff; background:linear-gradient(135deg,rgba(0,120,255,0.25),rgba(0,80,200,0.15)); border:1px solid rgba(0,150,255,0.5); border-radius:8px; cursor:pointer; transition:all 0.2s; letter-spacing:0.3px;" onmouseover="this.style.background='linear-gradient(135deg,rgba(0,150,255,0.4),rgba(0,100,220,0.3))'; this.style.borderColor='rgba(0,180,255,0.8)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,120,255,0.25),rgba(0,80,200,0.15))'; this.style.borderColor='rgba(0,150,255,0.5)'; this.style.transform='translateY(0)';" >💾 Einstellungen speichern</button>
 
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button onclick="exportAgentConfig('${agent.id}')">📥 Export</button>
@@ -209,6 +213,17 @@ async function selectAgent(id) {
       <div id="mem-list"><div class="empty">Loading…</div></div>
     </div>
     <div id="agent-ui-frame"></div>`;
+
+  if (target) {
+    target.innerHTML = html;
+    const modalBg = document.getElementById('modal-agent-detail');
+    if (modalBg) {
+      modalBg.classList.add('show');
+    }
+  } else {
+    document.getElementById('content').innerHTML = html;
+  }
+
   loadAgentMemory(agent.id);
   loadAgentOptimizerData(agent.id);
   loadAgentProfile(agent.id);
@@ -320,7 +335,7 @@ async function deleteAgent(id) {
   await api('DELETE', `/agents/${id}`);
   toast(`${agentName} wurde gelöscht ❌`, 'warning');
   selectedId = null;
-  if (typeof showWarRoom === 'function') showWarRoom();
+  closeModal('modal-agent-detail');
   await loadAgents();
 }
 
@@ -335,7 +350,16 @@ function openAgentUI(name, port) {
 
 // ── Register ──
 function openAddAgent() { document.getElementById('modal-add').classList.add('show'); }
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+  if (id === 'modal-agent-detail') {
+    selectedId = null;
+    const searchInput = document.getElementById('agent-search');
+    if (typeof renderAgentList === 'function') {
+      renderAgentList(searchInput ? searchInput.value : '');
+    }
+  }
+}
 async function doRegister() {
   const n = document.getElementById('add-name').value.trim();
   const p = parseInt(document.getElementById('add-port').value) || 0;

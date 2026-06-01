@@ -57,6 +57,10 @@ echo -e "  6 Packages installiert ${G}✓${N}"
 # ── 4. Verzeichnisse & Datenbanken ──
 echo -e "${B}▸ Datenverzeichnisse...${N}"
 mkdir -p "$REPO_DIR/logs" "$REPO_DIR/gnom_workspace/default"
+if [ -d "$HOME/.gnom-hub" ]; then
+    echo -e "  Altes Datenverzeichnis gefunden. Bereinige Datenbank für saubere Neuinstallation..."
+    rm -f "$HOME/.gnom-hub/data/gnomhub.db"* 2>/dev/null || true
+fi
 echo -e "  Verzeichnisse ${G}✓${N}"
 
 # ── 5. .env prüfen ──
