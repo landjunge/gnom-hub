@@ -40,17 +40,26 @@ async function selectAgent(id) {
     statusLabel = 'Paused';
   }
 
+  const meta = (window.getAgentMeta ? window.getAgentMeta(agent.name) : null) || { desc: 'Schwarm-Mitglied' };
+  const avatarUrl = window.getAgentAvatarUrl ? window.getAgentAvatarUrl(agent.name) : `/static/avatars/${agent.name.toLowerCase()}.png`;
+
   document.getElementById('content').innerHTML = `
-    <div class="panel">
-      <h2>${agent.name} <div class="actions">
-        ${resumeBtn} ${openUiBtn} ${nudgeBtn}
-        <button onclick="toggleStatus('${agent.id}','${agent.status}')">${on ? '⏹ Offline' : '▶ Online'}</button>
-        <button class="btn-danger" onclick="deleteAgent('${agent.id}')">Delete</button>
-      </div></h2>
-      <div class="status-row">
-        <span class="dot ${statusDotClass}"></span><span class="label">${statusLabel}</span>
-        ${port ? `<span class="badge port">:${port}</span>` : ''}
-        <span class="label">Last seen: ${ls}</span>
+    <div class="panel" style="display:flex; gap:16px; align-items:center; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(20,25,40,0.8), rgba(10,15,30,0.95));">
+      <img src="${avatarUrl}" alt="${agent.name}" style="width: 54px; height: 54px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
+      <div style="flex-grow:1;">
+        <h2 style="margin:0 0 6px 0; display: flex; align-items: center; justify-content: space-between;">
+          <span>${agent.name}</span>
+          <div class="actions">
+            ${resumeBtn} ${openUiBtn} ${nudgeBtn}
+            <button onclick="toggleStatus('${agent.id}','${agent.status}')">${on ? '⏹ Offline' : '▶ Online'}</button>
+            <button class="btn-danger" onclick="deleteAgent('${agent.id}')">Delete</button>
+          </div>
+        </h2>
+        <div class="status-row" style="margin:0;">
+          <span class="dot ${statusDotClass}"></span><span class="label">${statusLabel}</span>
+          ${port ? `<span class="badge port">:${port}</span>` : ''}
+          <span class="label" style="margin-left: 10px;">Last seen: ${ls}</span>
+        </div>
       </div>
     </div>
     
@@ -64,7 +73,12 @@ async function selectAgent(id) {
       <!-- Agent Identity Block -->
       <div id="agent-identity-block" style="margin-bottom:14px;">
         <div style="font-size:0.62rem; font-weight:700; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Agent Identity</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+        <div style="display:grid; grid-template-columns:85px 1fr 1fr 1fr; gap:8px;">
+          <!-- Avatar Card -->
+          <div id="identity-avatar" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center;">
+            <img src="${avatarUrl}" alt="${agent.name}" style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
+            <div style="font-size:0.58rem; font-weight:600; color:rgba(255,255,255,0.7); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">${meta.desc}</div>
+          </div>
           <!-- LLM Card -->
           <div id="identity-llm" style="background:rgba(0,100,255,0.08); border:1px solid rgba(0,120,255,0.2); border-radius:8px; padding:10px 10px 8px; display:flex; flex-direction:column; gap:4px;">
             <div style="font-size:0.65rem; color:rgba(0,180,255,0.7); font-weight:700; letter-spacing:0.5px;">🧠 LLM</div>
