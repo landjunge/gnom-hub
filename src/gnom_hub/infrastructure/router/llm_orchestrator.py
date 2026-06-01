@@ -12,7 +12,7 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     old_status = "online"
     if agent_name:
         try:
-            from gnom_hub.db.legacy_db import get_all_agents, set_agent_status
+            from gnom_hub.db import get_all_agents, set_agent_status
             for a in get_all_agents():
                 if a["name"].lower() == agent_name.lower():
                     old_status = a.get("status", "online")
@@ -45,6 +45,6 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
     finally:
         if agent_name:
             try:
-                from gnom_hub.db.legacy_db import set_agent_status
+                from gnom_hub.db import set_agent_status
                 set_agent_status(agent_name, old_status)
             except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Status-Wiederherstellung: %s', e)

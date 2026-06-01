@@ -16,7 +16,7 @@ def pulse_janitor():
                 agent.active_job = None
                 repo.save(agent)
                 try:
-                    from gnom_hub.db.legacy_db import add_chat_message, get_active_project
+                    from gnom_hub.db import add_chat_message, get_active_project
                     add_chat_message(get_active_project(), "System", "war-room", "chat",
                                      f"⚠️ [System] Agent **{agent.name}** wurde nach 5 Minuten Inaktivität automatisch freigegeben (@free).",
                                      {"type": "chat"})

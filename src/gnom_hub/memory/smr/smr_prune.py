@@ -1,7 +1,7 @@
 import logging
 # smr_prune.py
 from datetime import datetime, timezone, timedelta
-from gnom_hub.db.legacy_db import get_db_conn
+from gnom_hub.db.connection import get_db_conn
 from gnom_hub.memory.smr.smr_math import cosine_similarity
 
 def prune_low_relevance(threshold: float = 0.15, min_age_days: int = 30):

@@ -26,6 +26,7 @@ config/.env.*
 !config/.env.example
 config/.gnom-hub-tokens.json
 .gnom-hub-tokens.json
+*.gnom-hub-tokens-*.json
 
 # Local workspace and caches
 gnom_workspace/

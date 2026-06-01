@@ -24,11 +24,12 @@ def _git_commit_file(wd, rel_path, agent_name):
         print(f"Git auto-commit failed: {e}")
 
 def handle_write(answer, matches, agent, perms, bs_mode, wd):
-    from agents.securityAG import seal_content
+    from gnom_hub.core.security.hmac_signer import seal_content
     for m in matches:
         fname, content = m.group(1).strip(), m.group(2).strip()
         content = re.sub(r"^```\w*\n", "", re.sub(r"\n```$", "", content).strip())
-        if bs_mode: r = "[System: WRITE blockiert im Brainstorm-Modus.]"
+        from gnom_hub.db import get_state_value
+        if bs_mode and get_state_value("enable_confirmations", False): r = "[System: WRITE blockiert im Brainstorm-Modus.]"
         elif "write" not in perms: r = f"[System: {agent['name']} hat keine WRITE-Berechtigung.]"
         else:
             fpath = _safe(wd, fname, perms)

@@ -15,7 +15,12 @@ def run_in_sandbox(command: str, agent=None, timeout: int = 30):
         if not verify_cmd(agent, command): raise PermissionError("Befehlsausführung verweigert.")
     wd = os.path.abspath(str(WORKSPACE_DIR))
     if is_docker_running():
-        cmd = ["docker", "run", "--rm", "--network=none", "--memory=512m", "--cpus=1", "-w", "/workspace", "-v", f"{wd}:/workspace:rw", "python:3.11-slim", "bash", "-c", command]
+        # Mount workspace as read-only; create a writable /tmp dir for agent outputs
+        cmd = ["docker", "run", "--rm", "--network=none", "--memory=512m", "--cpus=1",
+               "-w", "/workspace",
+               "-v", f"{wd}:/workspace:ro",
+               "--tmpfs", "/tmp:size=100m",
+               "python:3.11-slim", "bash", "-c", command]
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             return subprocess.CompletedProcess(args=cmd, returncode=r.returncode, stdout=r.stdout, stderr=r.stderr)
@@ -25,7 +30,10 @@ def run_in_sandbox(command: str, agent=None, timeout: int = 30):
 def run_browser_in_sandbox(code_path: str, net: str, timeout: int = 30):
     wd = os.path.abspath(str(WORKSPACE_DIR))
     if is_docker_running():
-        cmd = ["docker", "run", "--rm", f"--network={net}", "--memory=512m", "-v", f"{wd}:/workspace:rw", "-w", "/workspace", "gnom-playwright:latest", "python3", code_path]
+        cmd = ["docker", "run", "--rm", f"--network={net}", "--memory=512m",
+               "-v", f"{wd}:/workspace:ro",
+               "--tmpfs", "/tmp:size=100m",
+               "-w", "/workspace", "gnom-playwright:latest", "python3", code_path]
         return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     import sys
     py_exec = sys.executable or "python3"

@@ -5,7 +5,7 @@ def stt_local(audio_bytes: bytes) -> Optional[str]:
     """Lokales faster-whisper STT."""
     try:
         from faster_whisper import WhisperModel
-        from gnom_hub.db.legacy_db import get_language
+        from gnom_hub.db import get_language
         model = WhisperModel("tiny", compute_type="int8")
         tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
         tmp.write(audio_bytes); tmp.close()
@@ -19,7 +19,7 @@ def stt_cloud(audio_bytes: bytes) -> Optional[str]:
     if not key: return None
     try:
         import requests
-        from gnom_hub.db.legacy_db import get_language
+        from gnom_hub.db import get_language
         r = requests.post("https://api.openai.com/v1/audio/transcriptions",
             headers={"Authorization": f"Bearer {key}"},
             files={"file": ("audio.wav", io.BytesIO(audio_bytes), "audio/wav")},

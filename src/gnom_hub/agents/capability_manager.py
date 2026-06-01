@@ -1,6 +1,6 @@
 # capability_manager.py — capability manager with TTL-cache
 import logging
-import sqlite3, time; from datetime import datetime, timezone, timedelta; from gnom_hub.db.legacy_db import get_db_conn
+import sqlite3, time; from datetime import datetime, timezone, timedelta; from gnom_hub.db.connection import get_db_conn
 _cache = {}
 def request_capability(agent_name: str, cap_type: str, resource: str, granted_by: str, ttl_min: int = 5) -> bool:
     exp = (datetime.now(timezone.utc) + timedelta(minutes=ttl_min)).isoformat().replace("+00:00", "Z")

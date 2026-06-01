@@ -1,17 +1,32 @@
-import sqlite3
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
-from contextlib import contextmanager
 from gnom_hub.core.config import DATA_DIR
 from gnom_hub.core.logger import get_logger
+from gnom_hub.db.connection import get_db_conn  # Single source of truth
+
+# =====================================================================
+# BACKWARD COMPATIBILITY RE-EXPORTS
+# Functions have moved to dedicated repositories.
+# These re-exports ensure existing consumers continue to work.
+# =====================================================================
+from gnom_hub.db.system_repo import (  # noqa: F401
+    init_db, get_state_value, set_state_value,
+    get_active_project, set_active_project,
+    get_language, set_language,
+    is_testing, log_audit_event, cleanup_old_data,
+)
+from gnom_hub.db.showbox_repo import (  # noqa: F401
+    save_showbox_presentation, get_showbox_presentations,
+    delete_showbox_presentation, get_showbox_presentation_by_name,
+    get_active_showbox, set_active_showbox,
+)
 
 # =====================================================================
 # CONFIGURATION & CONSTANTS
 # =====================================================================
 
-DB_PATH = DATA_DIR / "gnomhub.db"
 logger = get_logger("db")
 
 
@@ -19,27 +34,7 @@ logger = get_logger("db")
 # CONNECTION MANAGER
 # =====================================================================
 
-@contextmanager
-def get_db_conn():
-    """Öffnet eine rohe Verbindung zu SQLite und konfiguriert grundlegende Pragmas."""
-    conn = sqlite3.connect(DB_PATH, timeout=15)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-
-# =====================================================================
-# INITIALIZATION & SEEDING
-# =====================================================================
-
-def init_db():
-    """Erstellt alle benötigten Tabellen idempotent und führt Seeding bei Bedarf aus."""
-    from gnom_hub.db.schema import init_database
-    init_database()
+# get_db_conn is now imported from gnom_hub.db.connection
 
 
 # =====================================================================
@@ -144,39 +139,6 @@ def get_all_agents():
 # SYSTEM & PROJECT HELPER
 # =====================================================================
 
-def get_active_project() -> str:
-    try:
-        with get_db_conn() as conn:
-            row = conn.execute("SELECT value FROM state WHERE key='active_project'").fetchone()
-            return json.loads(row["value"]) if row else "default"
-    except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
-        logger.error(f"[DB] Failed to get active project: {e}")
-        return "default"
-
-def set_active_project(name: str):
-    try:
-        with get_db_conn() as conn:
-            with conn:
-                conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('active_project', ?)", (json.dumps(name.strip()),))
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to set active project: {e}")
-
-def get_language() -> str:
-    try:
-        with get_db_conn() as conn:
-            row = conn.execute("SELECT value FROM state WHERE key='language'").fetchone()
-            return json.loads(row["value"]) if row else "en"
-    except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
-        logger.error(f"[DB] Failed to get language: {e}")
-        return "en"
-
-def set_language(lang: str):
-    try:
-        with get_db_conn() as conn:
-            with conn:
-                conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('language', ?)", (json.dumps(lang.strip().lower()),))
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to set language: {e}")
 def agent_exists(agent_id: str) -> bool:
     try:
         with get_db_conn() as conn:
@@ -264,33 +226,6 @@ def search_memories(query: str, project: str = "default") -> list:
     except sqlite3.Error as e:
         logger.error(f"[DB] Failed to search memories: {e}")
         return []
-
-def get_state_value(key: str, default=None):
-    try:
-        with get_db_conn() as conn:
-            row = conn.execute("SELECT value FROM state WHERE key=?", (key,)).fetchone()
-            return json.loads(row["value"]) if row else default
-    except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
-        logger.error(f"[DB] Failed to get state value for {key}: {e}")
-        return default
-
-def set_state_value(key: str, value):
-    try:
-        with get_db_conn() as conn:
-            with conn:
-                conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)", (key, json.dumps(value)))
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to set state value for {key}: {e}")
-
-def is_testing() -> bool:
-    import sys, os
-    if os.environ.get("FORCE_LIMIT_CHECK") == "1":
-        return False
-    if os.environ.get("GNOM_HUB_ENV") == "test" or os.environ.get("TESTING") in ("true", "1"):
-        return True
-    if "pytest" in sys.modules:
-        return True
-    return any("test" in arg or "pytest" in arg or "benchmark" in arg for arg in sys.argv)
 
 def validate_agent_limit_db(conn, role: str, name: str) -> bool:
     if is_testing():
@@ -553,122 +488,3 @@ def get_relevant_facts(user_message: str) -> list:
     except Exception as e:
         logger.error(f"[DB] Failed to get relevant facts: {e}")
         return []
-
-def log_audit_event(agent: str, event_type: str, details: dict, trace_id: str = None):
-    try:
-        with get_db_conn() as conn:
-            with conn:
-                conn.execute("""
-                    INSERT INTO audit_log (timestamp, agent, event_type, details, trace_id)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                       agent, event_type, json.dumps(details), trace_id))
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to save audit log: {e}")
-
-def cleanup_old_data(days_chat: int = 7, days_soul: int = 30):
-    try:
-        from datetime import timedelta
-        limit_chat = (datetime.now(timezone.utc) - timedelta(days=days_chat)).isoformat().replace("+00:00", "Z")
-        limit_soul = (datetime.now(timezone.utc) - timedelta(days=days_soul)).isoformat().replace("+00:00", "Z")
-        with get_db_conn() as conn:
-            with conn:
-                conn.execute("DELETE FROM chat WHERE timestamp < ? AND msg_type != 'role'", (limit_chat,))
-                protected = ["active_preset", "approved_system_paths", "approved_security_writes", "approved_security_commands"]
-                placeholders = ",".join("?" for _ in protected)
-                conn.execute(f"DELETE FROM soul_memory WHERE timestamp < ? AND key NOT IN ({placeholders})", (limit_soul, *protected))
-        logger.info("[DB] Old chats and soul facts cleaned up successfully.")
-    except Exception as e:
-        logger.error(f"[DB] Cleanup failed: {e}")
-
-
-# =====================================================================
-# SHOWBOX DATABASE OPERATIONS
-# =====================================================================
-
-def save_showbox_presentation(name: str, slides: list, sender: str = None) -> dict:
-    """Erstellt oder aktualisiert eine Showbox-Präsentation."""
-    try:
-        with get_db_conn() as conn:
-            with conn:
-                pid = str(uuid.uuid4())
-                ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-                conn.execute("""
-                    INSERT INTO showbox_presentations (id, name, slides, sender, updated_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(name) DO UPDATE SET
-                        slides = excluded.slides,
-                        sender = excluded.sender,
-                        updated_at = excluded.updated_at
-                """, (pid, name, json.dumps(slides), sender, ts))
-                return {"name": name, "slides": slides, "sender": sender, "updated_at": ts}
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to save showbox presentation: {e}")
-        return None
-
-def get_showbox_presentations() -> list:
-    """Gibt alle gespeicherten Showbox-Präsentationen zurück."""
-    try:
-        with get_db_conn() as conn:
-            rows = conn.execute("SELECT * FROM showbox_presentations ORDER BY name ASC").fetchall()
-            res = []
-            for r in rows:
-                d = dict(r)
-                d["slides"] = json.loads(d["slides"])
-                res.append(d)
-            return res
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to get showbox presentations: {e}")
-        return []
-
-def delete_showbox_presentation(name: str) -> bool:
-    """Löscht eine Showbox-Präsentation über ihren Namen."""
-    try:
-        with get_db_conn() as conn:
-            with conn:
-                conn.execute("DELETE FROM showbox_presentations WHERE name = ?", (name,))
-                return True
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to delete showbox presentation: {e}")
-        return False
-
-def get_showbox_presentation_by_name(name: str) -> dict:
-    """Gibt eine Showbox-Präsentation über ihren Namen zurück."""
-    try:
-        with get_db_conn() as conn:
-            row = conn.execute("SELECT * FROM showbox_presentations WHERE name = ?", (name,)).fetchone()
-            if row:
-                d = dict(row)
-                d["slides"] = json.loads(d["slides"])
-                return d
-            return None
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to get showbox presentation: {e}")
-        return None
-
-def get_active_showbox() -> str:
-    """Gibt den Namen der aktiven Showbox-Präsentation zurück."""
-    try:
-        with get_db_conn() as conn:
-            row = conn.execute("SELECT value FROM state WHERE key='active_showbox'").fetchone()
-            return json.loads(row["value"]) if row else ""
-    except (sqlite3.Error, json.JSONDecodeError, TypeError) as e:
-        logger.error(f"[DB] Failed to get active showbox: {e}")
-        return ""
-
-def set_active_showbox(name: str):
-    """Setzt den Namen der aktiven Showbox-Präsentation."""
-    try:
-        if not name.startswith("Blockade:"):
-            pending = get_state_value("pending_decisions", {})
-            has_pending = any(d.get("status") == "pending" for d in pending.values())
-            if has_pending:
-                logger.info(f"[DB] Override active showbox to '{name}' blocked: pending decision in progress.")
-                return
-        with get_db_conn() as conn:
-            with conn:
-                conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('active_showbox', ?)", (json.dumps(name.strip()),))
-    except sqlite3.Error as e:
-        logger.error(f"[DB] Failed to set active showbox: {e}")
-
-

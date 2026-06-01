@@ -34,7 +34,7 @@ class SQLiteAgentRepository(AgentRepository):
     get_all = list_all
     def save(self, a: Agent) -> Await:
         with get_db_connection() as c:
-            from gnom_hub.db.legacy_db import validate_agent_limit_db
+            from gnom_hub.db import validate_agent_limit_db
             validate_agent_limit_db(c, a.role, a.name)
             ls = a.last_seen.isoformat() if a.last_seen else datetime.now().isoformat()
             c.execute("INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, active_job, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (a.name, str(a.id), a.port, a.description, a.status, json.dumps(a.capabilities or []), a.role, a.active_job, ls)); c.commit()

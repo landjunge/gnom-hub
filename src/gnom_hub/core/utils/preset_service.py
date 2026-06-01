@@ -1,7 +1,7 @@
 # preset_service.py — Preset management loader and trigger actions
 import logging
 import os, json
-from gnom_hub.db.legacy_db import get_state_value, set_state_value, save_soul_fact, add_chat_message
+from gnom_hub.db import get_state_value, set_state_value, save_soul_fact, add_chat_message
 from gnom_hub.core.config import CONFIG_DIR
 def load_presets():
     path = os.path.join(os.path.dirname(__file__), "presets.json")
@@ -47,7 +47,7 @@ def _get_preset_agents(conn, preset: str, custom) -> dict:
     return adb
 
 def handle_preset_change(preset: str):
-    from gnom_hub.db.legacy_db import get_db_conn
+    from gnom_hub.db.connection import get_db_conn
     from datetime import datetime, timezone
     import uuid
     pdir = CONFIG_DIR / "presets"

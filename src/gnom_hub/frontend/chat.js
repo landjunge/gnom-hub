@@ -249,18 +249,10 @@ function handleShowboxLoadCommand(m, ta) {
     return;
   }
   if (window.activeShowboxIndex >= 0) {
-    const s = document.createElement('script');
-    s.src = showName + '.js';
-    s.onload = () => {
-      if (window.loadedShowbox) {
-        const idx = window.activeShowboxIndex;
-        window.showboxes[idx] = window.loadedShowbox;
-        window.closeShowbox();
-        setTimeout(() => window.triggerShowbox(idx), 100);
-      }
-    };
-    document.head.appendChild(s);
-    toast(`Loading Showbox: ${showName}`, 'success');
+    // SECURITY: Dynamic script loading from user-controlled names has been disabled.
+    // If you need to load showbox modules, use static imports or a whitelist.
+    console.warn('Dynamic showbox script loading is disabled for security reasons.');
+    toast('Dynamic showbox loading is disabled for security.', 'warning');
   } else {
     toast('Please activate a Showbox first!', 'error');
   }
@@ -614,7 +606,7 @@ function renderChatMessageHTML(m, overrideContent) {
               🖥️ Visuelle Ausgabe / Entwurf
             </div>
             <div class="inline-showbox-body" style="font-size: 0.85rem; color: #fff; max-height: 400px; overflow-y: auto;">
-              ${slides[0]}
+              ${(typeof sanitizeHTML === 'function') ? sanitizeHTML(slides[0]) : slides[0]}
             </div>
           </div>
         `;
@@ -696,11 +688,19 @@ async function refreshChat() {
   const sorted = msgs.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
   window._processedShowboxes = window._processedShowboxes || new Set();
 
-  const isFirstRender = !window._chatInitialized;
   if (!window._spokenIds) window._spokenIds = new Set();
   if (!window._spokenThoughtIds) window._spokenThoughtIds = new Set();
 
-  if (isFirstRender) {
+  const isFirstRender = !window._chatInitialized;
+  const currentIds = sorted.map(m => m.id);
+  const hasOverlap = currentIds.some(id => window._spokenIds.has(id));
+  const isReset = window._spokenIds.size > 0 && !hasOverlap && sorted.length > 0;
+
+  if (isFirstRender || isReset) {
+    if (isReset) {
+      window._spokenIds.clear();
+      window._spokenThoughtIds.clear();
+    }
     for (const m of sorted) {
       window._spokenIds.add(m.id);
       const { thoughts } = extractThoughtsAndClean(m.content);

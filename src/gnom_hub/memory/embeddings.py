@@ -1,6 +1,7 @@
 # embeddings.py — Local embeddings / semantic retrieval helper (Singleton)
 import gnom_hub.memory.smr.smr_retrieve as sr
 import logging
+import threading
 
 try:
     from sentence_transformers import SentenceTransformer
@@ -14,7 +15,8 @@ _logger = logging.getLogger("embeddings")
 
 class SoulEmbedder:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", db_path: str = None):
-        from gnom_hub.db.legacy_db import DB_PATH
+        from gnom_hub.core.config import Config
+        DB_PATH = Config.DB_PATH
         self.model_name = model_name
         self.db_path = str(db_path or DB_PATH)
         self.helpers = {}
@@ -107,10 +109,13 @@ class SoulEmbedder:
 
 # ── Singleton ──────────────────────────────────────────────
 _instance = None
+_instance_lock = threading.Lock()
 
 def get_embedder() -> SoulEmbedder:
     global _instance
     if _instance is None:
-        _instance = SoulEmbedder()
-        _logger.info("SoulEmbedder singleton initialized (FAISS=%s)", _instance.get_helper("global") is not None)
+        with _instance_lock:
+            if _instance is None:  # Double-check locking
+                _instance = SoulEmbedder()
+                _logger.info("SoulEmbedder singleton initialized (FAISS=%s)", _instance.get_helper("global") is not None)
     return _instance

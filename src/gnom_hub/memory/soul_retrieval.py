@@ -1,5 +1,5 @@
 # soul_retrieval.py — Semantic Retrieval via local embeddings / fallbacks
-from gnom_hub.db.legacy_db import get_db_conn
+from gnom_hub.db.connection import get_db_conn
 from gnom_hub.memory.embeddings import get_embedder
 
 def retrieve_relevant_facts(query: str, agent_name: str = None, top_k: int = 5) -> list:

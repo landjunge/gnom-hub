@@ -3,7 +3,8 @@ SHELL_BLOCK = _re.compile(r"rm\s+-rf\s+/|curl.*\|\s*sh|wget.*\|\s*sh|dd\s+if=|mk
 def handle_shell(ans, ms, ag, perms, bs, wd):
     for m in ms:
         c, o = m.group(1).strip(), m.group(0)
-        if bs: ans = ans.replace(o, "[System: SHELL blockiert im Brainstorm-Modus.]")
+        from gnom_hub.db import get_state_value
+        if bs and get_state_value("enable_confirmations", False): ans = ans.replace(o, "[System: SHELL blockiert im Brainstorm-Modus.]")
         elif "run" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
         elif SHELL_BLOCK.search(c): ans = ans.replace(o, f"[System: BLOCKIERT — gefährlicher Befehl: {c[:60]}]")
         else:
@@ -28,8 +29,8 @@ def handle_crawl(ans, ms, ag, perms):
     return ans
 def handle_showbox(ans, ms):
     from gnom_hub.core.json_sanitizer import _sanitize_json
-    from agents.securityAG import generate_signature
-    from gnom_hub.db.legacy_db import save_showbox_presentation, set_active_showbox
+    from gnom_hub.core.security.hmac_signer import generate_signature
+    from gnom_hub.db import save_showbox_presentation, set_active_showbox
     for full, idx, raw in ms:
         try:
             d = _sanitize_json(raw.strip())

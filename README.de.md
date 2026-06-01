@@ -332,6 +332,7 @@ Agenten fordern Werkzeuge über strukturierte Markdown-Tags an:
 | `@@clear` | Leert den Chatverlauf im Dashboard. |
 | `@@clear db` / `@@clear database` | Setzt die Datenbank zurück (Chats, Showbox-Präsentationen, Jobs), behält jedoch die Agenteneinstellungen und Prompts bei. |
 | `@@diagnose` | Führt Diagnoseprüfungen für laufende Prozesse, Datenbanken und blockierte Gatekeeper-Freigaben durch. |
+| `@blockade [aus/an]` / `@blokade [off/on]` | Schaltet Gatekeeper-Bestätigungen ein/aus. Beim Ausschalten werden alle ausstehenden Freigaben sofort automatisch genehmigt, damit pausierte Jobs weiterlaufen können. |
 | `@free` | Bricht alle laufenden Jobs ab und setzt blockierte Agenten zurück. |
 | `@merken [text]` | Merkt sich den geschriebenen Text als hochpriorisierten Fakt im Langzeitgedächtnis (kann an beliebiger Stelle in der Nachricht stehen). |
 | `@spass [off/ende]` | Schaltet den Humor-Modus ein oder aus. Bei Deaktivierung (z. B. `@spass off` oder `@spass ende`) werden alle Agenten-Regler auf Normalbetrieb (Standardwert 3) zurückgesetzt und der Humor-Prompt entfernt. |

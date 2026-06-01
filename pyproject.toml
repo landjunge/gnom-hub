@@ -50,6 +50,14 @@ ignore = [
     "B023",   # function def in loop
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "httpx>=0.24"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+
 [tool.ruff.lint.per-file-ignores]
 "agents/*.py" = ["E402"]  # module level import not at top
 "scripts/*.py" = ["S", "E402"]  # scripts may have security-irrelevant patterns

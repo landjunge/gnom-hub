@@ -24,8 +24,13 @@ def parse_dt(s) -> Optional[datetime]:
     except Exception: return None
 
 def get_db_connection() -> sqlite3.Connection:
+    """Create a raw SQLite connection with all necessary PRAGMAs.
+    
+    This is the single source of truth for DB connections in the entire project.
+    Use get_db_conn() context manager for automatic cleanup.
+    """
     db_path = str(Config.DB_PATH)
-    conn = sqlite3.connect(db_path, timeout=10.0)
+    conn = sqlite3.connect(db_path, timeout=15.0)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-20000")

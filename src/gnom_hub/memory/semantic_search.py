@@ -1,5 +1,6 @@
 import json, re
-from gnom_hub.db.legacy_db import get_active_project, get_db_conn, _row_to_msg
+from gnom_hub.db import get_active_project, _row_to_msg
+from gnom_hub.db.connection import get_db_conn
 from gnom_hub.infrastructure.router.router import ask_router
 
 def semantic_search_memories(q: str) -> list:
@@ -24,5 +25,5 @@ def semantic_search_memories(q: str) -> list:
         id_map = {m["id"]: m for m in memories}
         return [id_map[mid] for mid in ids if mid in id_map]
     except Exception:
-        from gnom_hub.db.legacy_db import search_memories
+        from gnom_hub.db import search_memories
         return search_memories(q)

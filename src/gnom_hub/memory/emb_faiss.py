@@ -1,16 +1,18 @@
 # emb_faiss.py — FAISS index and sentence embeddings logic helper
-import os, pickle, sqlite3, logging, numpy as np, faiss; from sentence_transformers import SentenceTransformer; from gnom_hub.memory.emb_cache import get_emb
+import os, json, sqlite3, logging, numpy as np, faiss; from sentence_transformers import SentenceTransformer; from gnom_hub.memory.emb_cache import get_emb
 class FaissEmbeddingHelper:
     def __init__(self, model_name: str, db_path: str, scope: str = "global"):
         self.scope = scope
         self.db_path, self.model, self.index, self.fact_ids = db_path, SentenceTransformer(model_name), None, []
         os.makedirs("data", exist_ok=True)
         self.index_path = f"data/soul_embeddings_{scope}.index"
-        self.pkl_path = f"data/soul_fact_ids_{scope}.pkl"
+        self.json_path = f"data/soul_fact_ids_{scope}.json"
         if not os.path.exists(self.index_path): self._create()
         else:
             self.index = faiss.read_index(self.index_path)
-            try: self.fact_ids = pickle.load(open(self.pkl_path, "rb"))
+            try:
+                with open(self.json_path, "r", encoding="utf-8") as f:
+                    self.fact_ids = json.load(f)
             except Exception as e: logging.getLogger(__name__).error('Fehler beim Laden der fact_ids: %s', e)
     def _create(self):
         try:
@@ -26,11 +28,13 @@ class FaissEmbeddingHelper:
         if len(embs) > 0: self.index.add(embs)
         self.fact_ids = [f[0] for f in facts]
         faiss.write_index(self.index, self.index_path)
-        pickle.dump(self.fact_ids, open(self.pkl_path, "wb"))
+        with open(self.json_path, "w", encoding="utf-8") as f:
+            json.dump(self.fact_ids, f)
     def add_fact(self, fact_id: str, key: str, value: str):
         self.index.add(get_emb(self.model, value)); self.fact_ids.append(fact_id)
         faiss.write_index(self.index, self.index_path)
-        pickle.dump(self.fact_ids, open(self.pkl_path, "wb"))
+        with open(self.json_path, "w", encoding="utf-8") as f:
+            json.dump(self.fact_ids, f)
     def search(self, query: str, top_k: int = 8, raw: bool = False) -> list:
         if self.index is None or self.index.ntotal == 0: return []
         if raw:

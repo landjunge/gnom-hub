@@ -102,7 +102,7 @@ def delete_agent(a_id: str):
 
 @router.get("/api/agents/{a_id}/settings")
 def get_agent_settings(a_id: str):
-    from gnom_hub.db.legacy_db import get_state_value
+    from gnom_hub.db import get_state_value
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
     if not agent: raise HTTPException(404, "Agent not found")
@@ -112,7 +112,7 @@ def get_agent_settings(a_id: str):
 
 @router.put("/api/agents/{a_id}/settings")
 def update_agent_settings(a_id: str, settings: AgentSettings):
-    from gnom_hub.db.legacy_db import get_state_value, set_state_value
+    from gnom_hub.db import get_state_value, set_state_value
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
     if not agent: raise HTTPException(404, "Agent not found")
@@ -141,7 +141,8 @@ def get_agent_stats(a_id: str):
 
 @router.get("/api/agents/{a_id}/export")
 def export_agent(a_id: str):
-    from gnom_hub.db.legacy_db import get_state_value, get_db_conn
+    from gnom_hub.db import get_state_value
+    from gnom_hub.db.connection import get_db_conn
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
     if not agent: raise HTTPException(404, "Agent not found")
@@ -170,7 +171,8 @@ def export_agent(a_id: str):
 
 @router.post("/api/agents/{a_id}/import")
 def import_agent(a_id: str, data: ImportData):
-    from gnom_hub.db.legacy_db import get_state_value, set_state_value, get_db_conn, save_soul_fact
+    from gnom_hub.db import get_state_value, set_state_value, save_soul_fact
+    from gnom_hub.db.connection import get_db_conn
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
     if not agent: raise HTTPException(404, "Agent not found")
@@ -202,7 +204,7 @@ def get_agent_profile(a_id: str):
     from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
     from gnom_hub.agents.tool_registry import get_tools_for_agent
     from gnom_hub.db.state_repo import SQLiteStateRepository
-    from gnom_hub.db.legacy_db import get_db_conn
+    from gnom_hub.db.connection import get_db_conn
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
     if not agent:
@@ -252,7 +254,7 @@ def get_agent_profile(a_id: str):
 @router.post("/api/presets/save")
 def save_preset(p: SavePresetPayload):
     from gnom_hub.core.config import CONFIG_DIR
-    from gnom_hub.db.legacy_db import get_state_value
+    from gnom_hub.db import get_state_value
     all_settings = get_state_value("agent_settings", {})
     prompt_modifiers = {}
     for a_name, a_set in all_settings.items():

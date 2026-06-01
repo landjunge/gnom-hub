@@ -1,4 +1,4 @@
-import os, uuid; from datetime import datetime, timezone; from gnom_hub.db.legacy_db import add_chat_message, get_chat_history, get_active_project; from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
+import os, uuid; from datetime import datetime, timezone; from gnom_hub.db import add_chat_message, get_chat_history, get_active_project; from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
 def get_workspace_dir():
     d = os.path.join(str(WORKSPACE_DIR), get_active_project()); os.makedirs(d, exist_ok=True); return d
 def post(sender, content, depth=0):
@@ -7,7 +7,7 @@ def get_ctx():
     from gnom_hub.soul.zwc_soul import strip_zwc; c = list(reversed(get_chat_history(get_active_project(), limit=8)))
     return "\n".join(f"[{m.get('sender','?')}] {strip_zwc(m['content'])[:1000]}" for m in c)
 def ask_llm(ag, q, ctx, bs_mode=False, depth=0):
-    from gnom_hub.agents.tool_registry import format_tools_prompt; from gnom_hub.soul import get_soul; from gnom_hub.agents.actions.action_handlers import process_actions; from gnom_hub.db.legacy_db import set_agent_status, update_agent_active_job
+    from gnom_hub.agents.tool_registry import format_tools_prompt; from gnom_hub.soul import get_soul; from gnom_hub.agents.actions.action_handlers import process_actions; from gnom_hub.db import set_agent_status, update_agent_active_job
     soul = get_soul(ag["name"]) or {"role": ag.get('description', ''), "permissions": ["read"]}
     sys = format_tools_prompt(soul, ag["name"])
     from gnom_hub.soul import soul_instance
@@ -30,7 +30,7 @@ def ask_llm(ag, q, ctx, bs_mode=False, depth=0):
         has_failure = any(term in processed for term in ["[Gatekeeper:", "Fehler:", "blockiert", "BLOCKIERT", "not found", "command not found", "permission denied"]) or ("keine" in processed and "Berechtigung" in processed)
         has_showbox = any(tag in processed for tag in ["<SHOWBOX", "<showbox", "[SHOWBOX", "[showbox"])
         
-        if has_failure and not has_showbox:
+        if has_failure and not has_showbox and not bs_mode:
             retry_prompt = (
                 f"Beobachtung (Systemfehler / Aktion fehlgeschlagen):\n"
                 f"{processed}\n\n"

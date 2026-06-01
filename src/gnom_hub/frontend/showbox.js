@@ -301,7 +301,7 @@
 
     const pres = layer.history[layer.currentHistoryIdx];
     const slide = pres.slides[pres.currentSlideIdx] || 'Kein Inhalt';
-    body.innerHTML = slide;
+    body.innerHTML = (typeof sanitizeHTML === 'function') ? sanitizeHTML(slide) : slide;
 
     if (layerIdx === LAYERS.USER) {
       const match = slide.match(/@@approve_decision\s+([a-f0-9\-]+)/);
@@ -467,7 +467,7 @@
           const match = slideContent.match(/@@approve_decision\s+([a-f0-9\-]+)/);
           activeDecisionId = match ? match[1] : null;
           
-          tribunalCard.innerHTML = slideContent;
+          tribunalCard.innerHTML = (typeof sanitizeHTML === 'function') ? sanitizeHTML(slideContent) : slideContent;
           tribunalOverlay.classList.add('show');
         }
       } else {

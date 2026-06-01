@@ -11,14 +11,14 @@ pkill -f "[pP]ython.*AG\.py"
 sleep 1
 
 # Start in background with -u for unbuffered output
-python3 -u -m agents.generalAG > logs/logs_general.txt 2>&1 &
-python3 -u -m agents.soulAG > logs/logs_soul.txt 2>&1 &
-python3 -u -m agents.securityAG > logs/logs_security.txt 2>&1 &
-python3 -u -m agents.watchdogAG > logs/logs_watchdog.txt 2>&1 &
-python3 -u -m agents.researcherAG > logs/logs_researcher.txt 2>&1 &
-python3 -u -m agents.writerAG > logs/logs_writer.txt 2>&1 &
-python3 -u -m agents.editorAG > logs/logs_editor.txt 2>&1 &
-python3 -u -m agents.coderAG > logs/logs_coder.txt 2>&1 &
+python3 -u -m agents.run_agent --name generalag > logs/logs_general.txt 2>&1 &
+python3 -u -m agents.run_agent --name soulag > logs/logs_soul.txt 2>&1 &
+python3 -u -m agents.run_agent --name securityag > logs/logs_security.txt 2>&1 &
+python3 -u -m agents.run_agent --name watchdogag > logs/logs_watchdog.txt 2>&1 &
+python3 -u -m agents.run_agent --name researcherag > logs/logs_researcher.txt 2>&1 &
+python3 -u -m agents.run_agent --name writerag > logs/logs_writer.txt 2>&1 &
+python3 -u -m agents.run_agent --name editorag > logs/logs_editor.txt 2>&1 &
+python3 -u -m agents.run_agent --name coderag > logs/logs_coder.txt 2>&1 &
 
 echo "✅ Die 8 Hintergrund-Agenten wurden gestartet."
 

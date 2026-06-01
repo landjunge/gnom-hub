@@ -331,6 +331,7 @@ Agents interact with the system by generating markdown-like tags in their LLM ou
 | `@@clear` | Clear chat timeline |
 | `@@clear db` / `@@clear database` | Reset database tables (chats, showbox presentations, jobs) except agent definitions and prompts |
 | `@@diagnose` | Run diagnostics on daemon processes, database tables, and blocked gatekeeper decisions |
+| `@blockade [aus/an]` / `@blokade [off/on]` | Toggle Gatekeeper confirmations. When turning off, auto-approves all currently pending agent decisions to let active tasks resume. |
 | `@free` | Reset all active jobs and paused statuses |
 | `@merken [text]` | Memorize written text anywhere in the message as a high-priority fact in long-term memory |
 | `@spass [off/ende]` | Toggle all agents to a loose/casual tone, maximum creativity, high risk tolerance, and inject humor. Pass `off`, `ende`, `stop`, or `aus` to deactivate and reset sliders to default (3). |

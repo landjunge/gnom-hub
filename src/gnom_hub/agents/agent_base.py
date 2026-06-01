@@ -2,10 +2,10 @@ import asyncio, os, logging, threading, requests; from gnom_hub.soul import get_
 HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
-        from collections import deque
+        from collections import OrderedDict
         self.n, self.d, self.t, self.sys, self.p = name, desc, trigger, sys_prompt, poll
-        self._seen_deque = deque(maxlen=1000)
-        self.seen = set()
+        self._seen_ids = OrderedDict()  # Bounded LRU set (replaces deque+set)
+        self._seen_max = 1000
         self._seen_lock = threading.Lock()
         from gnom_hub.agents.tool_registry import format_tools_prompt
         t_p = format_tools_prompt(get_soul(name), name)
@@ -27,11 +27,12 @@ class BaseAgent:
         return None
     def _mark_seen(self, msg_id):
         with self._seen_lock:
-            self._seen_deque.append(msg_id)
-            self.seen.add(msg_id)
-            # Keep the set in sync with deque to bound memory
-            if len(self.seen) > 1200:
-                self.seen = set(self._seen_deque)
+            if msg_id in self._seen_ids:
+                self._seen_ids.move_to_end(msg_id)
+                return
+            self._seen_ids[msg_id] = True
+            while len(self._seen_ids) > self._seen_max:
+                self._seen_ids.popitem(last=False)
     async def run(self):
         while not self._req("post", "/api/agents/register", {"name": self.n, "port": 0, "description": self.d, "status": "online", "capabilities": [self.t]}):
             print(f"⚠️ {self.n}: Hub nicht erreichbar. Reconnect in 5s..."); await asyncio.sleep(5)
@@ -42,7 +43,7 @@ class BaseAgent:
             if c is None: print(f"⚠️ {self.n}: Hub offline. Versuche Reconnect..."); await asyncio.sleep(5); continue
             self._req("post", f"/api/agents/{self.n}/heartbeat")
             with self._seen_lock:
-                _seen_copy = set(self.seen)
+                _seen_copy = set(self._seen_ids.keys())
             new = [m for m in c if m.get("id") not in _seen_copy and m.get("metadata",{}).get("sender","") in ("user", "GeneralAG") and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
             for m in c: self._mark_seen(m.get("id"))
             if new:

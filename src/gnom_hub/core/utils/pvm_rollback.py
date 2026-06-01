@@ -1,5 +1,5 @@
 # pvm_rollback.py
-from gnom_hub.db.legacy_db import add_chat_message, log_audit_event
+from gnom_hub.db import add_chat_message, log_audit_event
 
 def should_rollback(pvm, agent: str, cur_id: str, prev_id: str) -> bool:
     cur = pvm.get_version_by_id(cur_id)

@@ -1,6 +1,6 @@
 # pvm_test.py
 import logging
-from gnom_hub.db.legacy_db import get_db_conn
+from gnom_hub.db.connection import get_db_conn
 from gnom_hub.core.utils.evolution_v2 import _row_to_version
 
 def record_test_result(version_id: str, success: bool):

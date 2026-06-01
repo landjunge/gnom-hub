@@ -617,6 +617,32 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
+/**
+ * Sanitize HTML to prevent XSS from LLM-generated content.
+ * Allows safe HTML tags for rendering but strips dangerous ones.
+ */
+function sanitizeHTML(html) {
+    if (typeof html !== 'string') return '';
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    // Remove dangerous elements
+    const dangerous = div.querySelectorAll('script, iframe[src], object, embed, form[action], link[rel=import], meta, base');
+    dangerous.forEach(el => el.remove());
+    // Remove dangerous attributes from all elements
+    div.querySelectorAll('*').forEach(el => {
+        for (const attr of [...el.attributes]) {
+            const name = attr.name.toLowerCase();
+            if (name.startsWith('on') || name === 'formaction' || 
+                (name === 'href' && attr.value.trim().toLowerCase().startsWith('javascript:')) ||
+                (name === 'src' && attr.value.trim().toLowerCase().startsWith('javascript:')) ||
+                (name === 'action' && attr.value.trim().toLowerCase().startsWith('javascript:'))) {
+                el.removeAttribute(attr.name);
+            }
+        }
+    });
+    return div.innerHTML;
+}
+
 // ── Preset Display and Activation ──
 function showPresetInShowbox(preset) {
   const focusMap = {

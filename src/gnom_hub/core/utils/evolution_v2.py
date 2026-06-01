@@ -3,7 +3,8 @@ import json
 import hashlib
 from datetime import datetime, timezone
 from typing import List, Optional
-from gnom_hub.db.legacy_db import get_db_conn, add_chat_message, log_audit_event
+from gnom_hub.db.connection import get_db_conn
+from gnom_hub.db import add_chat_message, log_audit_event
 
 class PromptVersion:
     def __init__(

@@ -4,7 +4,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from gnom_hub.db.legacy_db import get_db_conn
+from gnom_hub.db.connection import get_db_conn
 from gnom_hub.agents.explainability.eo_class import ExplainableOutput
 from gnom_hub.agents.explainability.eo_formatter import ExplainableOutputFormatter
 

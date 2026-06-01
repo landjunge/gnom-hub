@@ -1,5 +1,5 @@
 # emb_cache.py — LRU-bounded caching for sentence embeddings
-import os, json, logging, numpy as np
+import os, json, logging, threading, numpy as np
 from collections import OrderedDict
 from gnom_hub.core.config import DATA_DIR
 
@@ -7,6 +7,9 @@ _MAX_CACHE_SIZE = 5000
 _CACHE_PATH = os.path.join(str(DATA_DIR), "emb_cache.json")
 
 _cache = OrderedDict()
+_cache_lock = threading.Lock()
+_dirty_count = 0
+_SAVE_EVERY = 50  # Save to disk every N new embeddings
 try:
     if os.path.exists(_CACHE_PATH):
         with open(_CACHE_PATH, "r", encoding="utf-8") as f:
@@ -26,13 +29,18 @@ def _save_cache():
         logging.getLogger(__name__).error('Fehler in _save_cache: %s', e)
 
 def get_emb(model, txt: str):
-    if txt in _cache:
-        _cache.move_to_end(txt)
-        return _cache[txt]
+    global _dirty_count
+    with _cache_lock:
+        if txt in _cache:
+            _cache.move_to_end(txt)
+            return _cache[txt]
     emb = model.encode([txt])
-    _cache[txt] = emb
-    # Evict oldest entries if over limit
-    while len(_cache) > _MAX_CACHE_SIZE:
-        _cache.popitem(last=False)
-    _save_cache()
+    with _cache_lock:
+        _cache[txt] = emb
+        while len(_cache) > _MAX_CACHE_SIZE:
+            _cache.popitem(last=False)
+        _dirty_count += 1
+        if _dirty_count >= _SAVE_EVERY:
+            _save_cache()
+            _dirty_count = 0
     return emb

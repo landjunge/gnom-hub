@@ -1,6 +1,6 @@
 # gd_init.py
 import logging
-from gnom_hub.db.legacy_db import get_db_conn
+from gnom_hub.db.connection import get_db_conn
 
 def init_tables():
     try:

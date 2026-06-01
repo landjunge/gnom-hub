@@ -1,7 +1,7 @@
 # specialization_monitor.py — Monitor agent drift and recommend corrective tasks
 import asyncio
 from typing import Dict
-from gnom_hub.db.legacy_db import add_chat_message, log_audit_event
+from gnom_hub.db import add_chat_message, log_audit_event
 
 async def analyze_task_categories(agent: str) -> Dict[str, float]:
     """Simulates or analyzes historical agent task category performance."""

@@ -1,5 +1,5 @@
 # soul.py — SoulAG Gedächtnis & Automatische Lerneinheit
-import json, threading, os, re, uuid, logging; from gnom_hub.db.legacy_db import save_soul_fact, add_chat_message, get_active_project
+import json, threading, os, re, uuid, logging; from gnom_hub.db import save_soul_fact, add_chat_message, get_active_project
 from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
 _log = logging.getLogger("soul")
 
@@ -82,7 +82,7 @@ class SoulAG:
         top_k = 8
         if agent_name:
             try:
-                from gnom_hub.db.legacy_db import get_state_value
+                from gnom_hub.db import get_state_value
                 settings = get_state_value("agent_settings", {}).get(agent_name.lower(), {})
                 top_k = {1: 2, 2: 4, 3: 8, 4: 12, 5: 16}.get(settings.get("memory_strength", 3), 8)
             except Exception as e: logging.getLogger(__name__).error('Fehler in inject_context (agent_settings): %s', e)
@@ -142,7 +142,7 @@ def handle_user_feedback(vote: str, comment: str):
     
     try:
         from gnom_hub.core.utils.evolution_v2 import update_version_score
-        from gnom_hub.db.legacy_db import get_chat_history
+        from gnom_hub.db import get_chat_history
         
         active_agents = set()
         history = get_chat_history(limit=40)

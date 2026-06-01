@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
                 print(f"⚠️ [SICHERHEITSWARNUNG] {len(tampered)} Systemdatei(en) manipuliert: {tampered}")
                 # Warnung in Chat schreiben
                 try:
-                    from gnom_hub.db.legacy_db import add_chat_message, get_active_project
+                    from gnom_hub.db import add_chat_message, get_active_project
                     proj = get_active_project()
                     msg = (
                         f"🚨 **[INTEGRITÄTSALARM]** {len(tampered)} Systemdatei(en) wurden seit dem letzten "
@@ -100,9 +100,15 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="GNOM-HUB", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"]
+    allow_origins=[
+        "http://127.0.0.1:*",
+        "http://localhost:*",
+        f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}",
+        f"http://localhost:{os.environ.get('GNOM_HUB_PORT', '3002')}",
+    ],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Hub-Secret"],
+    allow_credentials=True
 )
 
 app.include_router(api_router)

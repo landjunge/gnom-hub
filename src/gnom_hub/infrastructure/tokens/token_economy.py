@@ -1,7 +1,7 @@
 # token_economy.py — Token cost budgeting and spending guardrails
 import asyncio
 from typing import List
-from gnom_hub.db.legacy_db import add_chat_message
+from gnom_hub.db import add_chat_message
 
 PRICE_PER_1K_TOKENS = 0.002  # $0.002 per 1k tokens
 EXPENSIVE_THRESHOLD = 0.05    # Set threshold low ($0.05) to trigger confirmations easily

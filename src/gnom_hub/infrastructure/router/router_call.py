@@ -19,7 +19,7 @@ def _call(pvd, mdl, key, msgs, n):
     temp = None
     if n:
         try:
-            from gnom_hub.db.legacy_db import get_state_value
+            from gnom_hub.db import get_state_value
             creativity = get_state_value("agent_settings", {}).get(n.lower(), {}).get("creativity", 3)
             temp = {1: 0.1, 2: 0.4, 3: 0.7, 4: 0.9, 5: 1.2}.get(creativity, 0.7)
         except Exception as e: logging.getLogger(__name__).error('Fehler in Kreativitäts-Einstellung-Laden: %s', e)

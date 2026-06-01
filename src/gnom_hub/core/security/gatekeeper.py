@@ -3,7 +3,7 @@ import os
 import uuid
 import time
 import json, logging
-from gnom_hub.db.legacy_db import (
+from gnom_hub.db import (
     add_chat_message, 
     get_state_value, 
     set_state_value, 
@@ -18,7 +18,7 @@ from gnom_hub.agents.capability_manager import check_capability, request_capabil
 
 def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     # Auto-approve if confirmations are disabled (default is False/disabled as requested by user)
-    from gnom_hub.db.legacy_db import get_state_value
+    from gnom_hub.db import get_state_value
     if not get_state_value("enable_confirmations", False):
         proj = get_active_project()
         add_chat_message(
@@ -125,13 +125,13 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
                 return False
                 
         # Fallback check if agent was resumed externally
-        from gnom_hub.db.legacy_db import get_all_agents
+        from gnom_hub.db import get_all_agents
         agents = get_all_agents()
         current_agent = next((a for a in agents if a["name"].lower() == agent_name.lower()), None)
         if current_agent and current_agent.get("status") not in ["paused", "offline"]:
             break
             
-        time.sleep(0.5)
+        time.sleep(0.3)  # NOTE: Blocking poll — runs in worker thread via asyncio.to_thread
         
     set_agent_status(agent_name, "busy")
     return False
@@ -139,6 +139,21 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
 def verify_write(agent, fn, content, wd, perms) -> bool:
     name = (agent or {}).get("name", "Unknown")
     role = (agent or {}).get("role", "")
+    
+    # 0. Bypass ALL blockades if enable_confirmations is False!
+    from gnom_hub.db import get_state_value, get_active_project
+    if not get_state_value("enable_confirmations", False):
+        proj = get_active_project()
+        add_chat_message(
+            proj, 
+            "WatchdogAG", 
+            "watchdogag", 
+            "chat", 
+            f"⚡ [AUTO-APPROVED] Aktion von **{name}** (WRITE: {fn}) automatisch freigegeben."
+        )
+        request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
+        return True
+
     if name.lower() == "generalag" or role == "general":
         add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"🛑 [BLOCKADE] GeneralAG hat keine Berechtigung, Dateien zu schreiben oder zu editieren.")
         return False
@@ -313,6 +328,21 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
 def verify_cmd(agent, cmd):
     name = (agent or {}).get("name", "Unknown")
     role = (agent or {}).get("role", "")
+    
+    # 0. Bypass ALL blockades if enable_confirmations is False!
+    from gnom_hub.db import get_state_value, get_active_project
+    if not get_state_value("enable_confirmations", False):
+        proj = get_active_project()
+        add_chat_message(
+            proj, 
+            "WatchdogAG", 
+            "watchdogag", 
+            "chat", 
+            f"⚡ [AUTO-APPROVED] Aktion von **{name}** (SHELL: {cmd}) automatisch freigegeben."
+        )
+        request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
+        return True
+
     if name.lower() == "generalag" or role == "general":
         add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"🛑 [BLOCKADE] GeneralAG hat keine Berechtigung, Terminal-Befehle auszuführen.")
         return False

@@ -125,7 +125,7 @@ def verify_system_files(root: Path) -> list[str]:
 
 def is_integrity_enabled() -> bool:
     try:
-        from gnom_hub.db.legacy_db import get_state_value
+        from gnom_hub.db import get_state_value
         return bool(get_state_value("integrity_check_enabled", False))
     except Exception:
         return False
@@ -133,7 +133,7 @@ def is_integrity_enabled() -> bool:
 
 def _set_enabled(val: bool) -> None:
     try:
-        from gnom_hub.db.legacy_db import set_state_value
+        from gnom_hub.db import set_state_value
         set_state_value("integrity_check_enabled", val)
     except Exception as e:
         log.error("integrity: Konnte Schutz-Flag nicht setzen: %s", e)

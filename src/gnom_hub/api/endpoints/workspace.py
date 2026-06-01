@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 import os, subprocess
 from gnom_hub.core.config import WORKSPACE_DIR
 from gnom_hub.db.state_repo import SQLiteStateRepository
@@ -28,12 +28,26 @@ def list_workspace():
 @router.get("/api/workspace/{filename}")
 def read_workspace_file(filename: str):
     p = _safe_path(filename)
-    return {"content": open(p, "r").read()} if os.path.exists(p) else {"error": "File not found"}
+    if os.path.exists(p):
+        with open(p, "r", encoding="utf-8") as f:
+            return {"content": f.read()}
+    return {"error": "File not found"}
 
 @router.get("/api/workspace/{filename}/serve", response_class=HTMLResponse)
 def serve_workspace_file(filename: str):
     p = _safe_path(filename)
-    return HTMLResponse(open(p, "r").read()) if os.path.exists(p) else HTMLResponse("<h1>Datei nicht gefunden</h1>", status_code=404)
+    if os.path.exists(p):
+        with open(p, "r", encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    return HTMLResponse("<h1>Datei nicht gefunden</h1>", status_code=404)
+
+@router.get("/api/workspace/{filename}/raw")
+def serve_raw_file(filename: str):
+    p = _safe_path(filename)
+    if os.path.exists(p):
+        return FileResponse(p)
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail="Datei nicht gefunden")
 
 @router.post("/api/workspace/{filename}/run")
 def run_workspace_file(filename: str):

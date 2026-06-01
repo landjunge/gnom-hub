@@ -48,7 +48,8 @@ def handle_git(q, rb=False):
         subprocess.run(["git", "config", "user.name", "Gnom-Hub Agents"], cwd=wd, capture_output=True)
         subprocess.run(["git", "config", "user.email", "agents@gnom-hub.local"], cwd=wd, capture_output=True)
     try: 
-        r = subprocess.run(["git"] + cmd.split(), cwd=wd, capture_output=True, text=True, timeout=10).stdout.strip()
+        import shlex
+        r = subprocess.run(["git"] + shlex.split(cmd), cwd=wd, capture_output=True, text=True, timeout=10).stdout.strip()
     except Exception as e: 
         r = f"Error: {e}"
     _post_chat("System", f"Git: {r[:300]}"); return {"status": "ok"}
@@ -59,7 +60,7 @@ def handle_resume(q):
         _post_chat("System", "Fehler: Bitte gib einen Agenten-Namen an (z.B. @@resume CoderAG)")
         return {"status": "error", "message": "Missing agent name"}
     
-    from gnom_hub.db.legacy_db import set_agent_status, get_all_agents
+    from gnom_hub.db import set_agent_status, get_all_agents
     agents = get_all_agents()
     agent = next((a for a in agents if a["name"].lower() == agent_name.lower()), None)
     if not agent:
@@ -72,7 +73,7 @@ def handle_resume(q):
 
 def handle_approve_decision(q):
     decision_id = q.strip()
-    from gnom_hub.db.legacy_db import get_state_value, set_state_value, set_agent_status
+    from gnom_hub.db import get_state_value, set_state_value, set_agent_status
     pending = get_state_value("pending_decisions", {})
     if decision_id in pending:
         d = pending[decision_id]
@@ -88,7 +89,7 @@ def handle_approve_decision(q):
             set_state_value("approved_security_commands", cmds)
         set_agent_status(d["agent_name"], "busy")
         try:
-            from gnom_hub.db.legacy_db import set_active_showbox, delete_showbox_presentation
+            from gnom_hub.db import set_active_showbox, delete_showbox_presentation
             set_active_showbox("")
             delete_showbox_presentation(f"Blockade: {d['agent_name']}")
         except Exception as e:
@@ -101,7 +102,7 @@ def handle_approve_decision(q):
 
 def handle_reject_decision(q):
     decision_id = q.strip()
-    from gnom_hub.db.legacy_db import get_state_value, set_state_value, set_agent_status
+    from gnom_hub.db import get_state_value, set_state_value, set_agent_status
     pending = get_state_value("pending_decisions", {})
     if decision_id in pending:
         d = pending[decision_id]
@@ -109,7 +110,7 @@ def handle_reject_decision(q):
         set_state_value("pending_decisions", pending)
         set_agent_status(d["agent_name"], "busy")
         try:
-            from gnom_hub.db.legacy_db import set_active_showbox, delete_showbox_presentation
+            from gnom_hub.db import set_active_showbox, delete_showbox_presentation
             set_active_showbox("")
             delete_showbox_presentation(f"Blockade: {d['agent_name']}")
         except Exception as e:
@@ -259,7 +260,7 @@ def handle_help(q):
     return {"status": "ok"}
 
 def handle_confirmations(q):
-    from gnom_hub.db.legacy_db import get_state_value, set_state_value
+    from gnom_hub.db import get_state_value, set_state_value
     val = q.strip().lower()
     if val in ("on", "true", "1", "enable"):
         set_state_value("enable_confirmations", True)
@@ -275,7 +276,7 @@ def handle_confirmations(q):
 
 
 def handle_spass(q):
-    from gnom_hub.db.legacy_db import get_state_value, set_state_value, get_all_agents
+    from gnom_hub.db import get_state_value, set_state_value, get_all_agents
     agents = get_all_agents()
     settings = get_state_value("agent_settings", {})
     
@@ -321,5 +322,65 @@ def handle_spass(q):
     set_state_value("agent_settings", settings)
     
     _post_chat("System", "🤪 **Humor-Modus aktiviert (@spass):** Alle Agenten wurden auf maximale Kreativität (Wild), sehr lockeren Umgangston (Sehr locker) und hohe Risikobereitschaft eingestellt. Humor steht ab jetzt vor Logik!")
+    return {"status": "ok"}
+
+
+def handle_blockade(q):
+    from gnom_hub.db import get_state_value, set_state_value, set_agent_status
+    val = q.strip().lower()
+    if val in ("off", "false", "0", "disable", "aus"):
+        set_state_value("enable_confirmations", False)
+        
+        # Auto-approve all pending decisions immediately
+        pending = get_state_value("pending_decisions", {})
+        approved_count = 0
+        for d_id, d in list(pending.items()):
+            if d.get("status") == "pending":
+                d["status"] = "approved"
+                
+                # Update approved lists
+                if d.get("action_type") == "WRITE":
+                    writes = get_state_value("approved_security_writes", []) or []
+                    writes.append(d["detail"])
+                    set_state_value("approved_security_writes", writes)
+                elif d.get("action_type") == "SHELL":
+                    cmds = get_state_value("approved_security_commands", []) or []
+                    cmds.append(d["detail"])
+                    set_state_value("approved_security_commands", cmds)
+                
+                # Wake up agent
+                set_agent_status(d["agent_name"], "busy")
+                
+                # Delete Showbox card
+                try:
+                    from gnom_hub.db import delete_showbox_presentation
+                    delete_showbox_presentation(f"Blockade: {d['agent_name']}")
+                except Exception as e:
+                    print(f"Error clearing blockade presentation: {e}")
+                
+                approved_count += 1
+                
+        set_state_value("pending_decisions", pending)
+        
+        # Also clear active showbox if needed
+        try:
+            from gnom_hub.db import set_active_showbox
+            set_active_showbox("")
+        except Exception:
+            pass
+            
+        msg = "⚡ **System-Blockaden deaktiviert:** Alle Datei- und Befehlszugriffe werden automatisch freigegeben (Auto-Approve)."
+        if approved_count > 0:
+            msg += f" {approved_count} ausstehende Freigabe(n) wurden automatisch genehmigt."
+        _post_chat("System", msg)
+        
+    elif val in ("on", "true", "1", "enable", "an", "ein"):
+        set_state_value("enable_confirmations", True)
+        _post_chat("System", "🛡️ **System-Blockaden aktiviert:** Gefährliche Aktionen müssen ab jetzt wieder manuell freigegeben werden.")
+    else:
+        current = get_state_value("enable_confirmations", False)
+        status = "Deaktiviert (Auto-Approve)" if not current else "Aktiviert (Bestätigungspflichtig)"
+        _post_chat("System", f"ℹ️ **System-Blockaden:** {status}. Nutze `@blockade aus` zum Ausschalten oder `@blockade an` zum Einschalten.")
+        
     return {"status": "ok"}
 

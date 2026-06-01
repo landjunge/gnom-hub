@@ -5,11 +5,8 @@ from gnom_hub.infrastructure.process.sandbox import is_docker_running, run_brows
 
 def handle_browser(ans, ms, agent, perms, wd) -> str:
     if not ms: return ans
-    from gnom_hub.db.legacy_db import get_state_value
+    from gnom_hub.db import get_state_value
     use_docker = get_state_value("browser_use_docker", True)
-    if use_docker and not is_docker_running():
-        for m in ms: ans = ans.replace(m.group(0), "[Browser: Docker offline. Ausführung blockiert.]")
-        return ans
     for m in ms:
         code = m.group(1).strip()
         if not verify_browser(agent, code, wd, perms):
@@ -22,12 +19,13 @@ def handle_browser(ans, ms, agent, perms, wd) -> str:
         fp = os.path.join(wd, fn)
         try:
             with open(fp, "w") as f: f.write(code)
-            if use_docker:
+            if use_docker and is_docker_running():
                 r = run_browser_in_sandbox(fn, net, timeout=30)
             else:
-                import logging
-                logging.getLogger(__name__).warning('Browser-Ausführung ohne Docker blockiert: %s', agent)
-                r = type('R', (), {'stdout': '[Browser: Ohne Docker nicht erlaubt. Docker starten.]', 'stderr': ''})()
+                import sys
+                from gnom_hub.infrastructure.process.sandbox_exec import run_sandboxed
+                py_exec = sys.executable or "python3"
+                r = run_sandboxed([py_exec, fn], wd, timeout=30)
 
             out = (r.stdout + "\n" + r.stderr).strip() or "[Browser: Keine Ausgabe]"
             ans = ans.replace(m.group(0), f"[Browser-Ausgabe:\n{out}]")

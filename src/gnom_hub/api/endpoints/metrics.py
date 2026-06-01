@@ -1,7 +1,8 @@
 # metrics.py — FastAPI Router for agent metrics and audit logs
 from fastapi import APIRouter; from pydantic import BaseModel
 from gnom_hub.infrastructure.monitoring import get_agent_metrics
-from gnom_hub.db.legacy_db import get_db_conn, get_state_value; import sqlite3
+from gnom_hub.db.connection import get_db_conn
+from gnom_hub.db import get_state_value; import sqlite3
 router = APIRouter()
 class FeedbackMsg(BaseModel): vote: str; comment: str
 @router.get("/api/metrics")

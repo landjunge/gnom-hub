@@ -3,7 +3,7 @@ import logging
 import json
 import hashlib
 from datetime import datetime, timezone
-from gnom_hub.db.legacy_db import get_db_conn
+from gnom_hub.db.connection import get_db_conn
 from gnom_hub.core.utils.evolution_v2 import PromptVersion
 
 def create_version(agent: str, prompt: str, modifications: list) -> PromptVersion:

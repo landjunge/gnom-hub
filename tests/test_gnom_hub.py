@@ -166,3 +166,53 @@ def test_worker_command():
     finally:
         delete_agent_by_id(mock_coder["id"])
 
+
+def test_blockade_command():
+    """Verify that @blockade chat command works as intended."""
+    from fastapi.testclient import TestClient
+    from gnom_hub.api.app import app
+    from gnom_hub.db.legacy_db import get_state_value, set_state_value, register_agent_in_db, delete_agent_by_id, set_agent_status
+    
+    # 1. Register a mock agent and set its status to paused
+    mock_coder = register_agent_in_db("CoderAG", 9993, "mock coder")
+    set_agent_status("CoderAG", "paused")
+    
+    # 2. Add a pending decision in DB
+    pending = {
+        "test-decision-123": {
+            "agent_name": "CoderAG",
+            "action_type": "WRITE",
+            "detail": "test_file.txt",
+            "content": "hello",
+            "rule": "test rule",
+            "status": "pending",
+            "timestamp": 123456789.0
+        }
+    }
+    set_state_value("pending_decisions", pending)
+    set_state_value("enable_confirmations", True)
+    
+    client = TestClient(app)
+    try:
+        # Send @blockade aus command
+        res = client.post("/api/chat", json={"content": "@blockade aus", "sender": "user"})
+        assert res.status_code == 200
+        
+        # Verify confirmations setting is disabled
+        assert get_state_value("enable_confirmations", True) is False
+        
+        # Verify the decision is approved
+        pending_after = get_state_value("pending_decisions", {})
+        assert pending_after["test-decision-123"]["status"] == "approved"
+        
+        # Verify the agent status was reset to busy
+        from gnom_hub.db.legacy_db import get_all_agents
+        agents = get_all_agents()
+        coder = next((a for a in agents if a["name"] == "CoderAG"), None)
+        assert coder is not None
+        assert coder["status"] == "busy"
+        
+    finally:
+        delete_agent_by_id(mock_coder["id"])
+
+

@@ -2,11 +2,10 @@
 import sqlite3
 import uuid
 import os
-import datetime
+from datetime import datetime, timezone
 import json
 
 db_path = os.path.expanduser('~/.gnom-hub/data/gnomhub.db')
-conn = sqlite3.connect(db_path)
 
 msg_id = str(uuid.uuid4())
 content = (
@@ -15,10 +14,16 @@ content = (
     "Sie können den Befehl über `@@git push` direkt im Chat ausführen, oder mir antworten, damit ich es für Sie erledige."
 )
 
-# Insert the message under GeneralAG's name
-conn.execute(
-    "INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    (msg_id, "default", "GeneralAG", "61a3eef8-4482-48f7-9b7f-51d2b238f8a0", "chat", content, datetime.datetime.utcnow().isoformat() + "Z", json.dumps({"model": "deepseek/deepseek-chat", "token_count": 50}))
-)
-conn.commit()
+with sqlite3.connect(db_path) as conn:
+    # Dynamically resolve agent ID instead of using hardcoded UUID
+    row = conn.execute("SELECT id FROM agents WHERE LOWER(name) = 'generalag'").fetchone()
+    agent_id = row[0] if row else str(uuid.uuid4())
+
+    conn.execute(
+        "INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (msg_id, "default", "GeneralAG", agent_id, "chat", content,
+         datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+         json.dumps({"model": "deepseek/deepseek-chat", "token_count": 50}))
+    )
+
 print("Git push offer message inserted successfully!")

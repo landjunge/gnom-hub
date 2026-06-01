@@ -3,14 +3,14 @@ def _run_phase(ags, q, ctx, bs=False):
     ts = [threading.Thread(target=ask_llm, args=(a, q, ctx, bs), daemon=True) for a in ags]
     [t.start() for t in ts]; [t.join(timeout=200) for t in ts]
 def _collect_worker_responses(worker_names):
-    from gnom_hub.db.legacy_db import get_chat_history, get_active_project; msgs = get_chat_history(get_active_project(), limit=50)
+    from gnom_hub.db import get_chat_history, get_active_project; msgs = get_chat_history(get_active_project(), limit=50)
     out = []
     for n in worker_names:
         resp = next((m for m in msgs if m.get("sender", "").lower() == n.lower()), None)
         if resp: out.append(f"[{n}] {strip_zwc(resp['content'])[:800]}")
     return "\n\n".join(out)
 def dispatch(q, target=None, depth=0):
-    from gnom_hub.db.legacy_db import get_all_agents; ao = [a for a in get_all_agents() if a.get("status") == "online"]
+    from gnom_hub.db import get_all_agents; ao = [a for a in get_all_agents() if a.get("status") == "online"]
     if target:
         t_low = target.lower()
         sys_names = {"soulag", "generalag", "securityag", "watchdogag"}
