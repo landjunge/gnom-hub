@@ -14,7 +14,10 @@
 🇬🇧 **English (README.md)** • 🇩🇪 **[Deutsch (README.de.md)](README.de.md)**
 
 ---
-### 📸 Visual Showcase / Screenshots
+### 📸 Visual Showcase / Screenshots & Demo
+
+#### 🎥 Demo Video
+<video src="docs/demo_video/gnom_hub_demo.webm" width="100%" controls autoplay loop muted></video>
 
 <details open>
 <summary><b>Gnom-Hub Interface Showcase</b></summary>
