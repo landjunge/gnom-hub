@@ -250,6 +250,8 @@ Each worker agent has a **real-time tuning panel** in the sidebar:
 | **Risk Tolerance** | Very Cautious (1) → Very Bold (5) | Affects decision-making style |
 
 Plus:
+- **Agent Avatars:** Each agent has a unique, AI-generated robot avatar displayed in the sidebar, inspector, and chat. Avatars can be customized or regenerated directly from the UI.
+- **Auto-Preset Generator:** Create customized slider and prompt configurations using natural language descriptions (e.g., *"A preset for React web development"*). The backend brainstorms the preset, asks clarification questions if needed, and applies the settings instantly.
 - **Custom System Prompt Suffix** — override base behavior per agent
 - **Export/Import** agent configurations as JSON (settings, soul facts, prompt versions)
 - **Save as Preset** — persist slider configurations as reusable "agent gangs"
@@ -334,7 +336,7 @@ Agents interact with the system by generating markdown-like tags in their LLM ou
 | `@@clear` | Clear chat timeline |
 | `@free` | Reset all active jobs and paused statuses |
 | `@merken [text]` | Memorize written text anywhere in the message as a high-priority fact in long-term memory |
-| `@spass` | Toggle all agents to a loose/casual tone, maximum creativity, high risk tolerance, and inject humor |
+| `@spass [off/ende]` | Toggle all agents to a loose/casual tone, maximum creativity, high risk tolerance, and inject humor. Pass `off`, `ende`, `stop`, or `aus` to deactivate and reset sliders to default (3). |
 | **Nuke** 💣 | Hold War Room logo 2 seconds for cinematic restart |
 
 ---

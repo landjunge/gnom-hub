@@ -249,6 +249,8 @@ Jeder Worker-Agent kann im Sidebar-Panel in Echtzeit feinjustiert werden:
 | **Risikobereitschaft**| Sehr Vorsichtig (1) → Sehr Mutig (5) | Beeinflusst die Entscheidungsfindung bei Lösungsansätzen. |
 
 Zusätzlich:
+- **Agenten-Avatare:** Jeder Agent besitzt ein individuelles, KI-generiertes Roboter-Avatar-Bild, das in der Sidebar, im Inspector und im Chat angezeigt wird. Avatare können über das Dashboard neu generiert oder angepasst werden.
+- **Auto-Preset-Generator:** Erstelle maßgeschneiderte Regler- und Prompt-Konfigurationen durch natürliche Sprache (z. B. *"Ein Preset für Webentwicklung mit React"*). Das Backend brainstormt ein passendes Preset, klärt Unklarheiten über Gegenfragen ab und aktiviert das Preset sofort nach dem Speichern.
 - **Custom System Prompt Suffix:** Überschreibt das Basisverhalten des Agenten per Texteingabe.
 - **Export/Import:** Speichere Agenten-Konfigurationen als JSON (Einstellungen, gelernte Fakten, Prompt-Versionen).
 - **Als Preset speichern:** Sichere die Reglereinstellungen der Gruppe als wiederverwendbares Preset ("Agenten-Bande").
@@ -333,7 +335,7 @@ Agenten fordern Werkzeuge über strukturierte Markdown-Tags an:
 | `@@clear` | Leert den Chatverlauf im Dashboard. |
 | `@free` | Bricht alle laufenden Jobs ab und setzt blockierte Agenten zurück. |
 | `@merken [text]` | Merkt sich den geschriebenen Text als hochpriorisierten Fakt im Langzeitgedächtnis (kann an beliebiger Stelle in der Nachricht stehen). |
-| `@spass` | Schaltet alle Agenten auf lockere Tonalität, maximale Kreativität, hohe Risikobereitschaft und Humor um. |
+| `@spass [off/ende]` | Schaltet den Humor-Modus ein oder aus. Bei Deaktivierung (z. B. `@spass off` oder `@spass ende`) werden alle Agenten-Regler auf Normalbetrieb (Standardwert 3) zurückgesetzt und der Humor-Prompt entfernt. |
 | **Nuke** 💣 | Halte das War Room Logo im Dashboard für 2 Sekunden gedrückt für einen cinematisches Neustart. |
 
 ---
