@@ -95,6 +95,8 @@ We analyzed **12+ leading multi-agent frameworks** (CrewAI, AutoGen/AG2, LangGra
 | 🔒 | **Fixed 4+4 Topology** | Hard-coded 8-agent limit prevents uncontrolled spawning. Every agent has a clear, auditable role | ❌ Every competitor allows unlimited agents |
 | 💣 | **Cinematic Nuke Restart** | Hold the logo for 2 seconds → CRT scanline static + white noise + retro terminal boot sequence + synthesized Godzilla roar via Web Audio API | ❌ Obviously unique 😄 |
 | 🔐 | **Live PyPI Vulnerability Scanning** | When agents run `pip install`, unknown packages are verified against PyPI's live API for existence, valid releases, and known vulnerabilities *before* execution | ❌ No framework validates agent package installs in real-time |
+| 🌐 | **Multi-Instance Isolation** | Isolated data directories and workspace folders based on port configurations (`~/.gnom-hub-{port}`) to support multiple concurrent server instances | ❌ Competitors share configuration environments |
+| ⛓️ | **Extended Mention Limit** | Communication depth raised to 6 hops to allow complex multi-agent workflows (Coder → Writer → Researcher → Editor) to complete without interruptions | ❌ Rigid limits or infinite loops without synthesis |
 
 ### 📊 Framework Comparison
 

@@ -94,6 +94,8 @@ Wir haben **mehr als 12 führende Multi-Agenten-Frameworks** analysiert (CrewAI,
 | 🔒 | **Feste 4+4 Topologie** | Hardcodiertes Limit auf exakt 8 Agenten verhindert unkontrolliertes Spawnen. Jede Rolle ist präzise definiert und transparent auditierbar. | ❌ Unbegrenztes Spawnen von Agenten ist Standard |
 | 💣 | **Cinematische Nuke-Aktion** | Logo für 2 Sekunden gedrückt halten → CRT-Röhren-Scanlines + weißes Rauschen + Retro-Boot-Sequenz + synthetisiertes Godzilla-Brüllen via Web Audio API. | ❌ Einzigartig und mit viel Liebe zum Detail 😄 |
 | 🔐 | **Live PyPI-Schwachstellenscan** | Bei Ausführung von `pip install` durch Agenten werden Pakete in Echtzeit gegen die Live-API von PyPI auf Existenz, valide Releases und bekannte CVEs geprüft, *befür* Code ausgeführt wird. | ❌ Keine Echtzeit-Validierung von externen Paketen |
+| 🌐 | **Multi-Instanzen-Isolation** | Isolierte Daten- und Arbeitsverzeichnisse basierend auf Port-Konfigurationen (`~/.gnom-hub-{port}`), um mehrere parallele Hub-Instanzen ohne Konflikte zu betreiben. | ❌ Konkurrenten nutzen meist geteilte Konfigurationspfade |
+| ⛓️ | **Erweitertes Mention-Limit** | Auf 6 Hops angehobene Kommunikationstiefe, um komplexe multi-agentielle Workflows (Coder → Writer → Researcher → Editor) ohne Unterbrechungen auszuführen. | ❌ Starre Limits oder unendliche Schleifen ohne Synthese |
 
 ### 📊 Vergleich der Frameworks
 
