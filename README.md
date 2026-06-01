@@ -333,6 +333,8 @@ Agents interact with the system by generating markdown-like tags in their LLM ou
 | `@@status` | Show all agent daemon statuses |
 | `@@clear` | Clear chat timeline |
 | `@free` | Reset all active jobs and paused statuses |
+| `@merken [text]` | Memorize written text anywhere in the message as a high-priority fact in long-term memory |
+| `@spass` | Toggle all agents to a loose/casual tone, maximum creativity, high risk tolerance, and inject humor |
 | **Nuke** 💣 | Hold War Room logo 2 seconds for cinematic restart |
 
 ---

@@ -234,15 +234,6 @@ async function showLLMConfig() {
             <div id="llm-keys-status" style="font-size:0.78rem; max-height:85px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding:6px; border-radius:8px; background:rgba(0,0,0,0.18); scrollbar-width:thin;"></div>
           </div>
           
-          <!-- Module 2: Agenten-Gangs -->
-          <div class="llm-card" style="flex-shrink:0;">
-            <div class="llm-card-header">
-              <h3 class="llm-card-title">👥 Agenten-Gangs</h3>
-            </div>
-            <span class="llm-card-description">Wähle eine vordefinierte Team-Spezialisierung aus, um die Rollenverteilung und Prompts im Schwarm anzupassen.</span>
-            <select id="preset-select" onchange="changePreset(this.value)" class="llm-input-area" style="cursor:pointer;" data-help="Lade ein Preset, um alle Systemprompts und das Zusammenspiel der Agenten auf einen Themenschwerpunkt einzustellen." data-help-title="Gangs & Presets"></select>
-          </div>
-          
           <!-- Module 3: Global Options -->
           <div class="llm-card" style="flex-shrink:0;">
             <div class="llm-card-header">
@@ -314,6 +305,48 @@ async function showLLMConfig() {
       <div id="settings-tab-behavior-content" style="display: none; flex: 1; min-height: 0; grid-template-columns: 1fr 1.2fr; gap: 20px; overflow: hidden; height: 100%;">
         <!-- Left Column: Agent Selection & Sliders -->
         <div style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px; height: 100%; scrollbar-width: thin;">
+          
+          <!-- Module 2: Agenten-Gangs -->
+          <div class="llm-card" style="flex-shrink:0;">
+            <div class="llm-card-header">
+              <h3 class="llm-card-title">👥 Agenten-Gangs</h3>
+            </div>
+            <span class="llm-card-description">Wähle eine vordefinierte Team-Spezialisierung aus, um die Rollenverteilung und Prompts im Schwarm anzupassen.</span>
+            <select id="preset-select" onchange="changePreset(this.value)" class="llm-input-area" style="cursor:pointer;" data-help="Lade ein Preset, um alle Systemprompts und das Zusammenspiel der Agenten auf einen Themenschwerpunkt einzustellen." data-help-title="Gangs & Presets"></select>
+          </div>
+
+          <!-- Module: Auto-Preset-Generator -->
+          <div class="llm-card" style="flex-shrink: 0;">
+            <div class="llm-card-header">
+              <h3 class="llm-card-title">✨ Auto-Preset-Generator</h3>
+            </div>
+            <span class="llm-card-description">Beschreibe das gewünschte Team-Verhalten (z.B. "Webdesign mit HSL-Farben" oder "Backend in Python"). Ein LLM generiert das gesamte Preset automatisch.</span>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+              <textarea id="auto-preset-desc" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 8px; font-size: 0.78rem; resize: vertical; min-height: 60px; outline: none;" placeholder="Beschreibe die Spezialisierung..."></textarea>
+              
+              <!-- Question section for clarify state (hidden by default) -->
+              <div id="auto-preset-clarify-section" style="display: none; flex-direction: column; gap: 6px; background: rgba(255, 150, 0, 0.08); border: 1px solid rgba(255, 150, 0, 0.22); border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.8rem; font-weight: bold; color: #ff9d00;">Gegenfrage vom Gnom:</div>
+                <div id="auto-preset-question-text" style="font-size: 0.78rem; color: #fff; line-height: 1.3;"></div>
+                <input type="text" id="auto-preset-answer" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 10px; color: #fff; font-size: 0.78rem; outline: none;" placeholder="Antwort eingeben...">
+              </div>
+
+              <!-- Preview section for generated presets (hidden by default) -->
+              <div id="auto-preset-preview-section" style="display: none; flex-direction: column; gap: 6px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.15); border-radius: 8px; padding: 10px;">
+                <div style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">Vorschau des generierten Presets:</div>
+                <div id="auto-preset-preview-name" style="font-size: 0.82rem; font-weight: bold; color: #fff;"></div>
+                <div id="auto-preset-preview-desc" style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 6px;"></div>
+                <div id="auto-preset-preview-details" style="font-family: monospace; font-size: 0.7rem; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px; max-height: 150px; overflow-y: auto; white-space: pre-wrap; color: #a5f3fc; scrollbar-width: thin;"></div>
+              </div>
+
+              <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button class="btn-primary" id="btn-generate-preset" onclick="generateAutoPreset()" style="flex: 1;">✨ Generieren</button>
+                <button class="btn-primary" id="btn-save-generated-preset" onclick="saveGeneratedPreset()" style="flex: 1; display: none; background: #10b981; border-color: #059669;">💾 Speichern</button>
+              </div>
+            </div>
+          </div>
+
           <div class="llm-card" style="flex-shrink: 0;">
             <div class="llm-card-header">
               <h3 class="llm-card-title">🤖 Agenten-Auswahl</h3>
@@ -329,6 +362,16 @@ async function showLLMConfig() {
             <div class="llm-card-header">
               <h3 class="llm-card-title">⚙️ Regler & Modell-Zuweisung</h3>
             </div>
+
+            <!-- Avatar Display Container -->
+            <div id="settings-agent-avatar-container" style="display: none; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+              <img id="settings-agent-avatar-img" src="" style="width: 65px; height: 65px; border-radius: 50%; border: 2px solid var(--primary); box-shadow: 0 0 15px rgba(0, 150, 255, 0.25); object-fit: cover;">
+              <div>
+                <h4 id="settings-agent-avatar-name" style="margin: 0 0 4px 0; color: #fff; font-size: 0.95rem; font-weight: 600;">Agent Name</h4>
+                <span id="settings-agent-avatar-role" style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Rolle</span>
+              </div>
+            </div>
+
             <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">
               <div class="slider-group" data-help="Beeinflusst den Tonfall des Agenten von formal und geschäftsmäßig (1) bis locker und informell (5)." data-help-title="Regler: Personality">
                 <label style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; font-weight: 500;">
@@ -1525,6 +1568,148 @@ async function testAgentLLM(aName) {
   localStorage.setItem('gnom_tested_agent_status', JSON.stringify(window.testedAgentStatus));
 }
 
+window.getAgentMeta = function(agentId) {
+  const key = agentId ? agentId.toLowerCase().trim() : '';
+  const roles = {
+    'soulag': { name: 'SoulAG', desc: 'Gedächtnis-Agent' },
+    'generalag': { name: 'GeneralAG', desc: 'Koordinator' },
+    'securityag': { name: 'SecurityAG', desc: 'Sicherheits-Agent' },
+    'watchdogag': { name: 'WatchdogAG', desc: 'Regel-Wächter' },
+    'coderag': { name: 'CoderAG', desc: 'Entwickler & Coder' },
+    'researcherag': { name: 'ResearcherAG', desc: 'Recherche & Analyse' },
+    'writerag': { name: 'WriterAG', desc: 'Dokumentation & Text' },
+    'editorag': { name: 'EditorAG', desc: 'Review & Editierung' }
+  };
+  return roles[key] || { name: agentId.charAt(0).toUpperCase() + agentId.slice(1), desc: 'Schwarm-Mitglied' };
+};
+
+window.getAgentAvatarUrl = function(agentId) {
+  const known = ['soulag', 'generalag', 'coderag', 'researcherag', 'writerag', 'watchdogag', 'securityag', 'editorag'];
+  const key = agentId ? agentId.toLowerCase().trim() : '';
+  if (known.includes(key)) {
+    return `/static/avatars/${key}.png`;
+  }
+  for (const k of known) {
+    if (key.includes(k) || k.includes(key)) {
+      return `/static/avatars/${k}.png`;
+    }
+  }
+  return `/static/avatars/generalag.png`;
+};
+
+window.generateAutoPreset = async function() {
+  const desc = document.getElementById('auto-preset-desc').value.trim();
+  if (!desc) {
+    toast('Bitte gib eine Beschreibung ein!', 'warning');
+    return;
+  }
+  
+  const clarifySec = document.getElementById('auto-preset-clarify-section');
+  const previewSec = document.getElementById('auto-preset-preview-section');
+  const saveBtn = document.getElementById('btn-save-generated-preset');
+  const genBtn = document.getElementById('btn-generate-preset');
+  const answerInput = document.getElementById('auto-preset-answer');
+  
+  let answer = null;
+  if (clarifySec && clarifySec.style.display === 'flex') {
+    answer = answerInput.value.trim();
+  }
+  
+  genBtn.innerText = '⏳ Generiere...';
+  genBtn.disabled = true;
+  
+  try {
+    const res = await api('POST', '/admin/presets/generate', { description: desc, answer: answer || undefined });
+    if (!res) {
+      toast('Fehler bei der Preset-Generierung.', 'error');
+      return;
+    }
+    
+    if (res.status === 'clarify') {
+      if (clarifySec) clarifySec.style.display = 'flex';
+      document.getElementById('auto-preset-question-text').innerText = res.question;
+      if (previewSec) previewSec.style.display = 'none';
+      if (saveBtn) saveBtn.style.display = 'none';
+      toast('Gegenfrage erhalten. Bitte beantworten!', 'info');
+    } else if (res.status === 'success' && res.preset) {
+      if (clarifySec) clarifySec.style.display = 'none';
+      if (previewSec) previewSec.style.display = 'flex';
+      if (saveBtn) saveBtn.style.display = 'block';
+      
+      const preset = res.preset;
+      window.lastGeneratedPreset = preset;
+      
+      document.getElementById('auto-preset-preview-name').innerText = preset.name;
+      document.getElementById('auto-preset-preview-desc').innerText = preset.description;
+      
+      let rolesTxt = '';
+      for (const [agent, prompt] of Object.entries(preset.prompt_modifier || {})) {
+        rolesTxt += `[${agent}]:\n${prompt}\n\n`;
+      }
+      document.getElementById('auto-preset-preview-details').innerText = rolesTxt;
+      toast('Preset erfolgreich generiert!', 'success');
+    } else {
+      toast('Fehler: ' + (res.message || 'LLM konnte kein Preset erstellen.'), 'error');
+    }
+  } catch (e) {
+    console.error("Preset generation failed", e);
+    toast('Verbindungsfehler: ' + e.message, 'error');
+  } finally {
+    genBtn.innerText = '✨ Generieren';
+    genBtn.disabled = false;
+  }
+};
+
+window.saveGeneratedPreset = async function() {
+  const preset = window.lastGeneratedPreset;
+  if (!preset) return;
+  
+  const saveBtn = document.getElementById('btn-save-generated-preset');
+  saveBtn.innerText = '⏳ Speichere...';
+  saveBtn.disabled = true;
+  
+  try {
+    const res = await api('POST', '/admin/presets/save_custom', preset);
+    if (res && res.status === 'success') {
+      toast('Preset erfolgreich gespeichert!', 'success');
+      
+      // Reset inputs & hide sections
+      document.getElementById('auto-preset-desc').value = '';
+      const ansInput = document.getElementById('auto-preset-answer');
+      if (ansInput) ansInput.value = '';
+      
+      const clarifySec = document.getElementById('auto-preset-clarify-section');
+      if (clarifySec) clarifySec.style.display = 'none';
+      
+      const previewSec = document.getElementById('auto-preset-preview-section');
+      if (previewSec) previewSec.style.display = 'none';
+      
+      saveBtn.style.display = 'none';
+      window.lastGeneratedPreset = null;
+      
+      // Reload presets dropdown and switch to it
+      if (typeof loadActivePreset === 'function') {
+        await loadActivePreset();
+      }
+      const select = document.getElementById('preset-select');
+      if (select) {
+        select.value = preset.name;
+        if (typeof changePreset === 'function') {
+          await changePreset(preset.name);
+        }
+      }
+    } else {
+      toast('Fehler beim Speichern des Presets.', 'error');
+    }
+  } catch (e) {
+    console.error("Failed to save preset", e);
+    toast('Fehler beim Speichern: ' + e.message, 'error');
+  } finally {
+    saveBtn.innerText = '💾 Speichern';
+    saveBtn.disabled = false;
+  }
+};
+
 // ── Settings Hub / Behavior Tab Handlers ──
 
 window.switchSettingsTab = function(tab) {
@@ -1583,14 +1768,25 @@ async function loadSettingsAgentsList() {
 window.changeSettingsAgent = async function(agentId) {
   const slidersCard = document.getElementById('settings-sliders-card');
   const memoriesCard = document.getElementById('settings-memories-card');
+  const avatarContainer = document.getElementById('settings-agent-avatar-container');
   if (!agentId) {
     if (slidersCard) slidersCard.style.display = 'none';
     if (memoriesCard) memoriesCard.style.display = 'none';
+    if (avatarContainer) avatarContainer.style.display = 'none';
     return;
   }
   
   if (slidersCard) slidersCard.style.display = 'block';
   if (memoriesCard) memoriesCard.style.display = 'flex';
+  
+  if (avatarContainer) {
+    avatarContainer.style.display = 'flex';
+    const meta = window.getAgentMeta(agentId);
+    const avatarUrl = window.getAgentAvatarUrl(agentId);
+    document.getElementById('settings-agent-avatar-img').src = avatarUrl;
+    document.getElementById('settings-agent-avatar-name').innerText = meta.name;
+    document.getElementById('settings-agent-avatar-role').innerText = meta.desc;
+  }
   
   try {
     const settings = await api('GET', `/agents/${agentId}/settings`);

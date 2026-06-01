@@ -14,8 +14,8 @@ import gnom_hub.core.security.gatekeeper as gatekeeper
 import gnom_hub.core.utils.preset_service as preset_service
 import gnom_hub.memory.soul_retrieval as soul_retrieval
 from gnom_hub.chat.chat_commands_handlers import handle_job
-from gnom_hub.infrastructure.database.state_repo import SQLiteStateRepository
-from gnom_hub.infrastructure.database.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.state_repo import SQLiteStateRepository
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.agents.capability_manager import check_capability
 from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
 

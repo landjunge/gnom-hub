@@ -43,7 +43,8 @@ def test_capabilities():
     router.ask_router = mock_ask_router
 
     # Mock get_state_value to automatically set pending_decisions to approved
-    original_get_state_value = gatekeeper.get_state_value
+    import gnom_hub.db.legacy_db as legacy_db
+    original_get_state_value = legacy_db.get_state_value
     
     def mock_get_state_value(key, default=None):
         val = original_get_state_value(key, default)
@@ -52,19 +53,25 @@ def test_capabilities():
                 val[d_id]["status"] = "approved"
         return val
         
+    legacy_db.get_state_value = mock_get_state_value
     gatekeeper.get_state_value = mock_get_state_value
 
     try:
+        gnom_hub.db.legacy_db.set_state_value("enable_confirmations", True)
+        gnom_hub.db.legacy_db.set_state_value("pending_decisions", {})
         # First verification should bypass router because capability exists
         assert gatekeeper.verify_write(agent, res, "print('hello')", "/tmp", []) is True
         assert not called, "Router was incorrectly called even though capability was active!"
 
-        # Verification on a new resource with a blocked pattern (rm -rf) should call the router
+        # Verification on a new resource with a blocked pattern (rm -rf) should trigger a decision
         assert gatekeeper.verify_write(agent, "new_script.py", "rm -rf", "/tmp", []) is True
-        assert called, "Router should have been called for a new resource!"
+        pending = gnom_hub.db.legacy_db.get_state_value("pending_decisions", {})
+        assert len(pending) > 0, "A pending decision should have been created for the blocked write!"
     finally:
         router.ask_router = original_ask_router
+        legacy_db.get_state_value = original_get_state_value
         gatekeeper.get_state_value = original_get_state_value
+        gnom_hub.db.legacy_db.set_state_value("enable_confirmations", False)
 
     print("Capabilities system verified successfully!")
 

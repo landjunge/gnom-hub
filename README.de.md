@@ -332,6 +332,8 @@ Agenten fordern Werkzeuge über strukturierte Markdown-Tags an:
 | `@@status` | Zeigt den Laufzeit-Status aller Agenten-Daemons. |
 | `@@clear` | Leert den Chatverlauf im Dashboard. |
 | `@free` | Bricht alle laufenden Jobs ab und setzt blockierte Agenten zurück. |
+| `@merken [text]` | Merkt sich den geschriebenen Text als hochpriorisierten Fakt im Langzeitgedächtnis (kann an beliebiger Stelle in der Nachricht stehen). |
+| `@spass` | Schaltet alle Agenten auf lockere Tonalität, maximale Kreativität, hohe Risikobereitschaft und Humor um. |
 | **Nuke** 💣 | Halte das War Room Logo im Dashboard für 2 Sekunden gedrückt für einen cinematisches Neustart. |
 
 ---

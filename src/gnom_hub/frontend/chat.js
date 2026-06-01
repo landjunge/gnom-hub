@@ -32,6 +32,21 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   };
 }
 
+function insertHint(cmd) {
+  const ta = document.getElementById('chat-input');
+  if (!ta) return;
+  // Slash-Commands direkt senden
+  if (cmd.startsWith('/')) {
+    ta.value = cmd;
+    sendChat();
+    return;
+  }
+  // @-Befehle: ins Input einfügen + Leerzeichen + Fokus
+  ta.value = cmd + ' ';
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = ta.value.length;
+}
+
 function buildChatHintsHTML() {
   return `
     <div style="font-size:0.60rem; color:var(--text-dim); margin-top:8px; display:flex; gap:16px; align-items:center; padding: 2px 4px;">
@@ -39,20 +54,22 @@ function buildChatHintsHTML() {
       <span><strong>@@</strong> System-level command (e.g. @@project, @@status, @@git)</span>
     </div>
     <div class="chat-hints">
-      <span data-help-title="🧠 Brainstorming (@bs)" data-help="Der @bs Befehl aktiviert den gesamten Schwarm für komplexe Brainstorming- und Planungsaufgaben. Mehrere Agenten diskutieren und arbeiten zusammen, um eine optimale Lösung zu erarbeiten." data-tooltip="Brainstorm: Activate the swarm for complex ideas.">@bs</span>
-      <span data-help-title="🔍 Research (@research)" data-help="Der @research Befehl startet einen autonomen Forschungs- und Recherche-Job. Der ResearcherAG sucht im Web und in lokalen Dokumenten nach Fakten und bereitet diese übersichtlich auf." data-tooltip="Research: Start an autonomous research job.">@research</span>
-      <span data-help-title="📋 Job Task (@job)" data-help="Der @job Befehl verteilt Aufgaben an Hintergrund-Agenten. Ideal, um parallele Arbeitsschritte zu koordinieren und auszuführen." data-tooltip="Job Task: Distribute background tasks to agents.">@job</span>
-      <span data-help-title="🧹 Free Agent (@free)" data-help="Der @free Befehl bricht alle aktuell laufenden Hintergrundprozesse und Aufgaben eines bestimmten Agenten ab und setzt ihn wieder in den Standby-Zustand." data-tooltip="Free: Clear active jobs from an agent.">@free</span>
-      <span data-help-title="👷 Worker (@worker)" data-help="Mit dem @worker Befehl sprichst du gezielt alle ausführenden Worker-Agenten (CoderAG, WriterAG, ResearcherAG, EditorAG) an." data-tooltip="Worker: Query all non-system agents.">@worker</span>
-      <span data-help-title="⚙️ System (@system)" data-help="Mit dem @system Befehl sprichst du die koordinierenden System-Agenten (GeneralAG, SoulAG, WatchdogAG) an." data-tooltip="System: Query all system-level agents.">@system</span>
-      <span data-help-title="🌐 All (@all)" data-help="Der @all Befehl sendet deine Nachricht an alle online verfügbaren Agenten im System gleichzeitig." data-tooltip="All: Query all online agents.">@all</span>
-      <span data-help-title="📂 Project Management (@@project)" data-help="Verwalte deine Projekte im Hub. Nutze '@@project <name>' um ein Projekt zu erstellen oder zu wechseln, und '@@project delete <name>' zum Löschen." data-tooltip="Project: (e.g. @@project netzwerkpunkt, @@project delete netzwerkpunkt)">@@project</span>
-      <span data-help-title="🗑️ Clear Hub (@@clear)" data-help="Löscht ausgewählte Verläufe oder Daten: '@@clear chat' leert den Chatverlauf, '@@clear all agents' setzt alle Agenten-Speicher zurück." data-tooltip="Clear: (@@clear chat, @@clear @project, @@clear all agents)">@@clear</span>
-      <span data-help-title="📊 System Status (@@status)" data-help="Ruft den aktuellen Systemstatus ab. Zeigt CPU-, RAM-, Docker- und Netzwerkmetriken sowie den Zustand der Agenten." data-tooltip="Status: Get system and agent status.">@@status</span>
-      <span data-help-title="🐙 Git Integration (@@git)" data-help="Ermöglicht das Ausführen von Git-Befehlen direkt im Hub-Arbeitsverzeichnis, z.B. '@@git status', '@@git log' oder '@@git commit'." data-tooltip="Git: Run git commands (e.g. @@git status)">@@git</span>
-      <span data-help-title="☕ Kaffeepause (/coffee)" data-help="Löst eine gemütliche Kaffeepausen-Animation im War Room aus. Perfekt für kurze Verschnaufpausen." data-tooltip="Coffee break: (Animation)">/coffee</span>
-      <span data-help-title="🛸 UFO-Sichtung (/ufo)" data-help="Fliegt ein UFO über deinen Bildschirm? Dieser Animationsbefehl sorgt für außerirdische Abwechslung." data-tooltip="UFO Event: (Animation)">/ufo</span>
-      <span data-help-title="👻 Geisterstunde (/ghost)" data-help="Ruft einen geheimnisvollen Geist herbei, der durch dein Dashboard schwebt." data-tooltip="Ghost: (Animation)">/ghost</span>
+      <span onclick="insertHint('@bs')" data-help-title="🧠 Brainstorming (@bs)" data-help="Der @bs Befehl aktiviert den gesamten Schwarm für komplexe Brainstorming- und Planungsaufgaben. Mehrere Agenten diskutieren und arbeiten zusammen, um eine optimale Lösung zu erarbeiten." data-tooltip="Brainstorm: Activate the swarm for complex ideas.">@bs</span>
+      <span onclick="insertHint('@research')" data-help-title="🔍 Research (@research)" data-help="Der @research Befehl startet einen autonomen Forschungs- und Recherche-Job. Der ResearcherAG sucht im Web und in lokalen Dokumenten nach Fakten und bereitet diese übersichtlich auf." data-tooltip="Research: Start an autonomous research job.">@research</span>
+      <span onclick="insertHint('@job')" data-help-title="📋 Job Task (@job)" data-help="Der @job Befehl verteilt Aufgaben an Hintergrund-Agenten. Ideal, um parallele Arbeitsschritte zu koordinieren und auszuführen." data-tooltip="Job Task: Distribute background tasks to agents.">@job</span>
+      <span onclick="insertHint('@free')" data-help-title="🧹 Free Agent (@free)" data-help="Der @free Befehl bricht alle aktuell laufenden Hintergrundprozesse und Aufgaben eines bestimmten Agenten ab und setzt ihn wieder in den Standby-Zustand." data-tooltip="Free: Clear active jobs from an agent.">@free</span>
+      <span onclick="insertHint('@worker')" data-help-title="👷 Worker (@worker)" data-help="Mit dem @worker Befehl sprichst du gezielt alle ausführenden Worker-Agenten (CoderAG, WriterAG, ResearcherAG, EditorAG) an." data-tooltip="Worker: Query all non-system agents.">@worker</span>
+      <span onclick="insertHint('@system')" data-help-title="⚙️ System (@system)" data-help="Mit dem @system Befehl sprichst du die koordinierenden System-Agenten (GeneralAG, SoulAG, WatchdogAG) an." data-tooltip="System: Query all system-level agents.">@system</span>
+      <span onclick="insertHint('@all')" data-help-title="🌐 All (@all)" data-help="Der @all Befehl sendet deine Nachricht an alle online verfügbaren Agenten im System gleichzeitig." data-tooltip="All: Query all online agents.">@all</span>
+      <span onclick="insertHint('@spass')" data-help-title="🤪 Humor-Modus (@spass)" data-help="Der @spass Befehl schaltet alle Agenten in einen lockeren, kreativen Modus um. Humor steht ab jetzt vor Logik!" data-tooltip="Humor-Modus: Maximize agent creativity and casual tone.">@spass</span>
+      <span onclick="insertHint('@merken')" data-help-title="💾 Fakt merken (@merken)" data-help="Der @merken Befehl speichert den eingegebenen Fakt mit hoher Priorität dauerhaft im Langzeitgedächtnis des Hubs ab." data-tooltip="Merken: Save important facts to agent memory.">@merken</span>
+      <span onclick="insertHint('@@project')" data-help-title="📂 Project Management (@@project)" data-help="Verwalte deine Projekte im Hub. Nutze '@@project &lt;name&gt;' um ein Projekt zu erstellen oder zu wechseln, und '@@project delete &lt;name&gt;' zum Löschen." data-tooltip="Project: (e.g. @@project netzwerkpunkt, @@project delete netzwerkpunkt)">@@project</span>
+      <span onclick="insertHint('@@clear')" data-help-title="🗑️ Clear Hub (@@clear)" data-help="Löscht ausgewählte Verläufe oder Daten: '@@clear chat' leert den Chatverlauf, '@@clear all agents' setzt alle Agenten-Speicher zurück." data-tooltip="Clear: (@@clear chat, @@clear @project, @@clear all agents)">@@clear</span>
+      <span onclick="insertHint('@@status')" data-help-title="📊 System Status (@@status)" data-help="Ruft den aktuellen Systemstatus ab. Zeigt CPU-, RAM-, Docker- und Netzwerkmetriken sowie den Zustand der Agenten." data-tooltip="Status: Get system and agent status.">@@status</span>
+      <span onclick="insertHint('@@git')" data-help-title="🐙 Git Integration (@@git)" data-help="Ermöglicht das Ausführen von Git-Befehlen direkt im Hub-Arbeitsverzeichnis, z.B. '@@git status', '@@git log' oder '@@git commit'." data-tooltip="Git: Run git commands (e.g. @@git status)">@@git</span>
+      <span onclick="insertHint('/coffee')" data-help-title="☕ Kaffeepause (/coffee)" data-help="Löst eine gemütliche Kaffeepausen-Animation im War Room aus. Perfekt für kurze Verschnaufpausen." data-tooltip="Coffee break: (Animation)">/coffee</span>
+      <span onclick="insertHint('/ufo')" data-help-title="🛸 UFO-Sichtung (/ufo)" data-help="Fliegt ein UFO über deinen Bildschirm? Dieser Animationsbefehl sorgt für außerirdische Abwechslung." data-tooltip="UFO Event: (Animation)">/ufo</span>
+      <span onclick="insertHint('/ghost')" data-help-title="👻 Geisterstunde (/ghost)" data-help="Ruft einen geheimnisvollen Geist herbei, der durch dein Dashboard schwebt." data-tooltip="Ghost: (Animation)">/ghost</span>
     </div>`;
 }
 
@@ -250,13 +267,43 @@ function handleShowboxLoadCommand(m, ta) {
 }
 
 function handleChatCommands(msg, ta) {
-  const m = msg.toLowerCase();
+  const m = msg.toLowerCase().trim();
   if (m === '@tts on') { const cb = document.getElementById('tts-enabled'); if (cb) { cb.checked = true; localStorage.setItem('ttsEnabled', 'true'); } ta.value = ''; toast('🗣️ TTS Aktiviert', 'success'); return true; }
   if (m === '@tts off') { const cb = document.getElementById('tts-enabled'); if (cb) { cb.checked = false; localStorage.setItem('ttsEnabled', 'false'); } stopTTS(); ta.value = ''; toast('🔇 TTS Deaktiviert', 'info'); return true; }
   if (m === '@tts') { const cb = document.getElementById('tts-enabled'); if (cb) { cb.checked = !cb.checked; localStorage.setItem('ttsEnabled', cb.checked ? 'true' : 'false'); if (!cb.checked) stopTTS(); toast(cb.checked ? '🗣️ TTS Aktiviert' : '🔇 TTS Deaktiviert', cb.checked ? 'success' : 'info'); } ta.value = ''; return true; }
   if (m === '/ufo') { if (window.showUfoAttack) window.showUfoAttack(); return true; }
   if (m === '/ghost') { if (window.showGhost) window.showGhost(); return true; }
   if (m === '/coffee') { if (window.showCoffeeBreak) window.showCoffeeBreak(); return true; }
+
+  // ── @system save / unsave ────────────────────────────────────────────────
+  if (m === '@system save') {
+    ta.value = '';
+    toast('🔐 Signiere Systemdateien…', 'info');
+    api('POST', '/system/save').then(res => {
+      if (res && res.status === 'saved') {
+        toast(`✅ ${res.files?.length ?? 0} Dateien signiert & geschützt`, 'success');
+      } else {
+        toast('❌ Fehler beim Signieren: ' + (res?.message || 'Unbekannt'), 'error');
+      }
+      refreshChat();
+    });
+    return true;
+  }
+  if (m === '@system unsave') {
+    ta.value = '';
+    toast('⚠️ Integritätsschutz wird deaktiviert…', 'info');
+    api('POST', '/system/unsave').then(res => {
+      if (res && res.status === 'unsaved') {
+        toast('🔓 Schutz deaktiviert — Systemdateien editierbar', 'info');
+      } else {
+        toast('❌ Fehler: ' + (res?.message || 'Unbekannt'), 'error');
+      }
+      refreshChat();
+    });
+    return true;
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   if (m.startsWith('@showbox speed ')) {
     handleShowboxSpeedCommand(m, ta);
     return true;

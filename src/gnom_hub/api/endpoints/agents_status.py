@@ -196,6 +196,59 @@ def import_agent(a_id: str, data: ImportData):
             conn.commit()
     return {"status": "success"}
 
+@router.get("/api/agents/{a_id}/profile")
+def get_agent_profile(a_id: str):
+    """One-shot endpoint: permissions, tools, LLM routing, soul summary."""
+    from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+    from gnom_hub.agents.tool_registry import get_tools_for_agent
+    from gnom_hub.db.state_repo import SQLiteStateRepository
+    from gnom_hub.db.legacy_db import get_db_conn
+    repo = SQLiteAgentRepository()
+    agent = repo.get_by_id(a_id)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    key = agent.name.lower()
+    defn = AGENT_DEFINITIONS.get(key, {})
+    lang_block = defn.get("de") or defn.get("en") or {}
+    permissions = lang_block.get("permissions", [])
+    # Build soul dict for tool_registry (mirrors what agent_base uses)
+    soul = {"role": defn.get("role", "normal"), "permissions": permissions,
+            "character": lang_block.get("character", ""), "directive": lang_block.get("directive", "")}
+    tools = list(get_tools_for_agent(soul).keys())
+    # LLM routing
+    state_db = SQLiteStateRepository()
+    llm_map = state_db.get_value("llm_agents", {})
+    agent_llm = llm_map.get(key, {}) if isinstance(llm_map, dict) else {}
+    llm_provider = agent_llm.get("provider", "–")
+    llm_model = agent_llm.get("model", "–")
+    # Soul facts summary
+    try:
+        with get_db_conn() as conn:
+            total = conn.execute(
+                "SELECT COUNT(*) FROM soul_memory WHERE agent = ?", (agent.name,)
+            ).fetchone()[0]
+            top_rows = conn.execute(
+                "SELECT key, value, priority FROM soul_memory WHERE agent = ? "
+                "ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, rowid DESC LIMIT 3",
+                (agent.name,)
+            ).fetchall()
+            top_facts = [{"key": r["key"], "value": r["value"][:80], "priority": r["priority"]}
+                         for r in top_rows]
+    except Exception:
+        total = 0
+        top_facts = []
+    return {
+        "name": agent.name,
+        "role": defn.get("role", agent.role or "normal"),
+        "permissions": permissions,
+        "tools": tools,
+        "llm_provider": llm_provider,
+        "llm_model": llm_model,
+        "soul_fact_count": total,
+        "top_soul_facts": top_facts,
+    }
+
+
 @router.post("/api/presets/save")
 def save_preset(p: SavePresetPayload):
     from gnom_hub.core.config import CONFIG_DIR

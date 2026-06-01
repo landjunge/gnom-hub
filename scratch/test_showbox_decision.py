@@ -45,6 +45,7 @@ def main():
         
     set_state_value("pending_decisions", {})
     set_state_value("approved_security_writes", [])
+    set_state_value("enable_confirmations", True)
     
     agent = {"name": "CoderAG", "role": "coder"}
     fn = "/etc/passwd"
@@ -108,6 +109,7 @@ def main():
     assert active == "Latest Update", "Showbox override must be allowed after decision is resolved!"
     print("    SUCCESS: Showbox persistence works perfectly!")
     
+    set_state_value("enable_confirmations", False)
     print("\n=== SHOWBOX DECISION SYSTEM TEST PASSED ===")
     os._exit(0)
 

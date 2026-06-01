@@ -260,3 +260,31 @@ def handle_confirmations(q):
         _post_chat("System", f"ℹ️ **Gatekeeper-Bestätigungen:** {status}. Nutze `@@confirmations off` zum Ausschalten oder `@@confirmations on` zum Einschalten.")
     return {"status": "ok"}
 
+
+def handle_spass(q):
+    from gnom_hub.db.legacy_db import get_state_value, set_state_value, get_all_agents
+    agents = get_all_agents()
+    settings = get_state_value("agent_settings", {})
+    
+    humor_prompt = "Strikte Regel: Sei humorvoll, locker und witzig. Humor steht vor Logik! Nimm dich selbst und die Aufgabe nicht zu ernst, baue Witze oder lustige Vergleiche ein."
+    
+    for a in agents:
+        a_name = a.get("name", "").lower()
+        if not a_name:
+            continue
+        a_settings = settings.get(a_name, {})
+        a_settings["personality"] = 5
+        a_settings["creativity"] = 5
+        a_settings["risk_tolerance"] = 5
+        a_settings["response_style"] = 4
+        
+        orig_prompt = a_settings.get("custom_prompt", "")
+        if "Humor steht vor Logik!" not in orig_prompt:
+            a_settings["custom_prompt"] = (orig_prompt + "\n\n" + humor_prompt).strip()
+        settings[a_name] = a_settings
+        
+    set_state_value("agent_settings", settings)
+    
+    _post_chat("System", "🤪 **Humor-Modus aktiviert (@spass):** Alle Agenten wurden auf maximale Kreativität (Wild), sehr lockeren Umgangston (Sehr locker) und hohe Risikobereitschaft eingestellt. Humor steht ab jetzt vor Logik!")
+    return {"status": "ok"}
+

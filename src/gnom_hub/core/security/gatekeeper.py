@@ -168,7 +168,7 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
     request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
     return True
 
-def is_command_safe_and_whitelisted(cmd: str):
+def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
     """
     Parses a shell command and determines if it is safe and whitelisted.
     Returns (is_safe, reason).
@@ -201,35 +201,58 @@ def is_command_safe_and_whitelisted(cmd: str):
         # Normalize executable name (e.g. './run.sh' -> 'run.sh', '/usr/bin/python3' -> 'python3')
         exec_name = os.path.basename(exec_token).strip()
         
-        # 2. Strict Whitelist of Allowed Base Executables
+        # 2. Erweiterte Whitelist erlaubter Executables
         allowed_execs = {
-            "python3", "python", "pytest", "git", "pip", "pip3",
-            "npm", "npx", "node", "ls", "echo", "cat", "tail",
-            "find", "mkdir", "cp", "rm", "wc", "cd", "which", 
-            "touch", "chmod", "mv", "grep", "pwd", "clear",
-            "stat", "head", "date", "sort", "uniq", "du", "df", "diff"
+            # Python
+            "python3", "python", "pytest", "pip", "pip3", "uv",
+            # Node
+            "npm", "npx", "node", "yarn", "pnpm", "bun",
+            # Git
+            "git", "gh",
+            # Dateisystem
+            "ls", "echo", "cat", "tail", "head", "find", "mkdir", "cp",
+            "rm", "wc", "which", "touch", "chmod", "mv", "grep", "pwd",
+            "stat", "date", "sort", "uniq", "du", "df", "diff", "tree",
+            "cut", "awk", "sed", "xargs", "tee", "tr",
+            # Archive
+            "zip", "unzip", "tar", "gzip", "gunzip",
+            # Netzwerk / Tools
+            "curl", "wget", "brew", "make", "cmake", "cargo", "go",
+            "java", "mvn", "gradle", "docker", "docker-compose",
+            "open", "pbcopy", "pbpaste", "xclip", "xdg-open",
+            # Shell builtins (oft in commands)
+            "bash", "sh", "zsh", "env", "export", "source",
         }
-        
+
         if exec_name not in allowed_execs:
+            # Soft-block: nur hard-blocken wenn kein godmode
+            agent_perms = (agent or {}).get("permissions", []) if isinstance(agent, dict) else []
+            if "godmode" in agent_perms:
+                # godmode-Agent: trotzdem erlauben mit Log
+                logging.getLogger(__name__).warning(
+                    "gatekeeper: godmode-Agent %s führt unbekannten Befehl aus: %s",
+                    (agent or {}).get("name", "?"), exec_name
+                )
+                continue
             return False, f"Befehl '{exec_name}' ist nicht auf der Whitelist erlaubter Programme."
-            
-        # 3. Arguments validation for specific commands
+
+        # 3. Argument-Validierung für spezifische Befehle
         if exec_name in ("pip", "pip3"):
             if len(args_tokens) >= 2 and args_tokens[0] == "install":
                 packages = [a for a in args_tokens[1:] if not a.startswith("-")]
                 if not packages:
                     return False, "Ungültiger pip install Befehl ohne Paketnamen."
-                
+
                 safe_packages = {
                     "pytest", "requests", "fpdf2", "numpy", "pandas",
                     "fastapi", "uvicorn", "jinja2", "pycompile", "autopep8"
                 }
-                
+
                 for pkg in packages:
                     pkg_clean = re.split(r'(==|>=|<=|>|<)', pkg)[0].strip()
                     if pkg_clean.lower() in safe_packages:
                         continue
-                    
+
                     try:
                         url = f"https://pypi.org/pypi/{pkg_clean}/json"
                         r = requests.get(url, timeout=3.0)
@@ -244,18 +267,44 @@ def is_command_safe_and_whitelisted(cmd: str):
                         else:
                             return False, f"Paket '{pkg_clean}' konnte nicht auf PyPI verifiziert werden (Status {r.status_code})."
                     except Exception as e:
-                        return False, f"Netzwerkfehler bei der Verifizierung von '{pkg_clean}': {e}"
+                        # Netzwerk nicht erreichbar → Auto-approve mit Warning statt Hard-Block
+                        logging.getLogger(__name__).warning(
+                            "gatekeeper: PyPI-Check für '%s' nicht möglich (Netzwerk?), auto-approve: %s",
+                            pkg_clean, e
+                        )
+                        continue  # Weiter, nicht blocken
+
+        elif exec_name in ("npm", "npx", "yarn", "pnpm", "bun"):
+            # Node-Pakete generell erlauben — Worker benötigen das
+            # Nur offensichtliche Gefahren abfangen
+            full_cmd = " ".join(args_tokens).lower()
+            if "rm -rf" in full_cmd or "&&rm" in full_cmd or "curl|sh" in full_cmd:
+                return False, f"Gefährliche Verkettung in npm-Befehl erkannt."
                         
-        elif exec_name in ("npm", "npx"):
-            if len(args_tokens) >= 2 and args_tokens[0] == "install":
-                packages = [a for a in args_tokens[1:] if not a.startswith("-")]
-                safe_npm = {"vite", "react", "vue", "next"}
-                for pkg in packages:
-                    if pkg.lower() not in safe_npm:
-                        return False, f"NPM Paket '{pkg}' ist nicht als sicher vordefiniert."
-                        
+        elif exec_name == "rm":
+            if "/" in args_tokens or any(arg.strip() == "/" for arg in args_tokens):
+                return False, "Befehl 'rm' auf Root-Ebene ist nicht erlaubt."
+            # rm -rf auf Systemdateien blockieren
+            if "-rf" in args_tokens or "-fr" in args_tokens:
+                for arg in args_tokens:
+                    if arg.startswith("-"): continue
+                    abs_arg = os.path.realpath(arg) if os.path.isabs(arg) else arg
+                    if any(sys_path in abs_arg for sys_path in ["src/gnom_hub", "run.sh", ".env"]):
+                        return False, f"rm -rf auf Systemdatei '{arg}' ist nicht erlaubt."
+
         elif exec_name == "git":
-            allowed_git_subcmds = {"status", "log", "diff", "commit", "add", "checkout", "reset", "init", "config"}
+            allowed_git_subcmds = {
+                "status", "log", "diff", "commit", "add", "checkout",
+                "reset", "init", "config", "pull", "fetch",
+                "clone", "stash", "branch", "merge", "rebase", "tag",
+                "remote", "show", "blame", "shortlog", "describe"
+            }
+            # git push ist NUR dem User via @@git push erlaubt
+            if args_tokens and args_tokens[0] == "push":
+                return False, (
+                    "git push ist Agenten nicht erlaubt. "
+                    "Nur der User darf pushen — nutze @@git push im Chat."
+                )
             if not args_tokens or args_tokens[0] not in allowed_git_subcmds:
                 return False, f"Git Subbefehl '{args_tokens[0] if args_tokens else ''}' ist nicht autorisiert."
                 
@@ -300,7 +349,7 @@ def verify_cmd(agent, cmd):
         return wait_for_decision(name, "SHELL", cmd, "", "Befehl greift auf geschützte Systemdateien/Pfade zu")
     
     # Smart Rules Engine: Auto-approve whitelisted commands
-    is_safe, block_reason = is_command_safe_and_whitelisted(cmd)
+    is_safe, block_reason = is_command_safe_and_whitelisted(cmd, agent)
     if is_safe:
         request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
         return True

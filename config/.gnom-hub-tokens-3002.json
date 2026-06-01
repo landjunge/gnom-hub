@@ -1,6 +1,6 @@
 {
-  "total": 53205,
-  "calls": 1,
+  "total": 57795,
+  "calls": 7,
   "history": [
     {
       "key": "GeneralAG",
@@ -8,7 +8,49 @@
       "prompt": 52358,
       "completion": 847,
       "total": 53205
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 2085,
+      "completion": 243,
+      "total": 2328
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 265,
+      "completion": 150,
+      "total": 415
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 265,
+      "completion": 173,
+      "total": 438
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 265,
+      "completion": 160,
+      "total": 425
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 265,
+      "completion": 191,
+      "total": 456
+    },
+    {
+      "key": "GeneralAG",
+      "model": "deepseek-chat",
+      "prompt": 386,
+      "completion": 142,
+      "total": 528
     }
   ],
-  "total_pay": 53205
+  "total_pay": 57795
 }

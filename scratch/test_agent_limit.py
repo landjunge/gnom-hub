@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import os
-os.environ["FORCE_LIMIT_CHECK"] = "1"
 from pathlib import Path
 
 # Add src/ to sys.path
@@ -70,13 +69,21 @@ def check_valid_role_update():
 
 def test_limits():
     print("🧪 Running Agent Limit Verification Tests...")
-    gnom_hub.db.init_db()
-    check_initial_agents()
-    check_create_worker_overflow()
-    check_create_sys_overflow()
-    check_register_overflow()
-    check_repo_save_overflow()
-    check_valid_role_update()
+    old = os.environ.get("FORCE_LIMIT_CHECK")
+    os.environ["FORCE_LIMIT_CHECK"] = "1"
+    try:
+        gnom_hub.db.init_db()
+        check_initial_agents()
+        check_create_worker_overflow()
+        check_create_sys_overflow()
+        check_register_overflow()
+        check_repo_save_overflow()
+        check_valid_role_update()
+    finally:
+        if old is None:
+            del os.environ["FORCE_LIMIT_CHECK"]
+        else:
+            os.environ["FORCE_LIMIT_CHECK"] = old
     print("\n🎉 All agent limit tests PASSED!")
 
 if __name__ == "__main__":

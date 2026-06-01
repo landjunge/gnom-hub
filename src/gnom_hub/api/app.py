@@ -25,7 +25,35 @@ async def start_openrouter_updater():
 async def lifespan(app: FastAPI):
     from gnom_hub.db.schema import init_database
     init_database()
-    
+
+    # ── Datei-Integritätsprüfung (ZWC-Signaturen) ──────────────────────────
+    try:
+        from gnom_hub.core.security.integrity import verify_system_files, is_integrity_enabled
+        if is_integrity_enabled():
+            from pathlib import Path as _Path
+            _root = _Path(__file__).parent.parent.parent.parent.resolve()
+            tampered = verify_system_files(_root)
+            if tampered:
+                print(f"⚠️ [SICHERHEITSWARNUNG] {len(tampered)} Systemdatei(en) manipuliert: {tampered}")
+                # Warnung in Chat schreiben
+                try:
+                    from gnom_hub.db.legacy_db import add_chat_message, get_active_project
+                    proj = get_active_project()
+                    msg = (
+                        f"🚨 **[INTEGRITÄTSALARM]** {len(tampered)} Systemdatei(en) wurden seit dem letzten "
+                        f"`@system save` verändert:\n" +
+                        "\n".join(f"• `{f}`" for f in tampered) +
+                        "\n\nFalls du selbst Änderungen gemacht hast: `@system save` um den neuen Stand zu sichern. "
+                        "Falls nicht — mögliche Manipulation!"
+                    )
+                    add_chat_message(proj, "WatchdogAG", "watchdogag", "chat", msg)
+                except Exception:
+                    pass
+            else:
+                print("✅ [INTEGRITÄT] Alle Systemdateien unverändert.")
+    except Exception as e:
+        print(f"⚠️ Fehler bei Integritätsprüfung: {e}")
+
     # Prompt validation check in SUPERGNOM_MODE
     from gnom_hub.core.config import CONFIG_DIR
     if os.getenv("SUPERGNOM_MODE", "False").lower() == "true":
@@ -58,6 +86,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"⚠️ Fehler bei Prompt-Integritätsprüfung: {e}")
 
+
     start_background_agents()
     
     import asyncio
@@ -78,6 +107,9 @@ app.add_middleware(
 
 app.include_router(api_router)
 app.include_router(chat_commands.router)
+
+AVATARS_DIR = Path(__file__).parent.parent / "config" / "avatars"
+if AVATARS_DIR.exists(): app.mount("/static/avatars", StaticFiles(directory=str(AVATARS_DIR)), name="avatars")
 
 FRONT = Path(__file__).parent.parent / "frontend"
 if FRONT.exists(): app.mount("/static", StaticFiles(directory=str(FRONT)), name="static")

@@ -56,7 +56,7 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
             except sqlite3.OperationalError as e:
                 logging.getLogger(__name__).error('Fehler in bake_supergnom (Tabelle löschen): %s', e)
         try:
-            conn.execute("DELETE FROM chat")
+            conn.execute("DELETE FROM chat WHERE id NOT IN (SELECT id FROM chat ORDER BY timestamp DESC LIMIT 1000)")
         except sqlite3.OperationalError as e:
             logging.getLogger(__name__).error('Fehler in bake_supergnom (Chat löschen): %s', e)
         try:

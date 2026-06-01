@@ -4,7 +4,7 @@ from gnom_hub.memory.embeddings import get_embedder
 
 def retrieve_relevant_facts(query: str, agent_name: str = None, top_k: int = 5) -> list:
     q_clean = query.strip()
-    if len(q_clean) < 2:
+    if len(q_clean) < 10:
         return []
     if len(q_clean) < 25 or len(q_clean.split()) < 4:
         return _fetch_recent(agent_name, top_k)
