@@ -14,6 +14,16 @@ from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
 @pytest.fixture(autouse=True)
 def setup_db():
     """Idempotently initialize and clean up the database state before each test."""
+    # Reset FAISS embeddings singleton and cache files to avoid cross-test contamination
+    import glob
+    import gnom_hub.memory.embeddings as emb
+    emb._instance = None
+    for f in glob.glob("data/soul_embeddings_*.index") + glob.glob("data/soul_fact_ids_*.pkl"):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+
     db.init_db()
     with db.get_db_conn() as conn:
         with conn:
