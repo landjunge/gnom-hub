@@ -53,6 +53,23 @@ Dieser Befehl klont das Repository, erstellt die virtuelle Umgebung, installiert
 
 ---
 
+## 🧪 Tests ausführen
+
+Gnom-Hub enthält eine isolierte Test-Suite mit Mock-Datenbanken via `pytest`:
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+Dies führt 32 automatisierte Unit- und Integrationstests aus:
+- **Connection-Layer:** WAL-Modus, Foreign Keys, Row-Factories und Context-Management.
+- **State-Repository:** Zustands-Schlüssel-Wert-Zuweisung und Schema-Standards.
+- **Agent-Repository:** Agenten-Registrierung, Limits, Job-Tracking und Daemons.
+- **Chat-Repository:** Nachrichten-Persistenz, Verlaufsabfrage und Projekt-Scopes.
+- **Admin-Authentifizierung:** IP-basierte und Bearer-Token-Sicherheitsprüfungen.
+
+---
+
 ## Was ist Gnom-Hub?
 
 Gnom-Hub ist ein **lokaler Multi-Agenten-Orchestrator** mit einer festen Topologie von 4+4 Agenten, einem integrierten glassmorphen **War Room Dashboard** und einer einzigartigen Kompilierungs-Pipeline, die evolvierte Agentenschwärme in eingefrorene, portable KI-Produkte namens **SuperGNOMs** "backt" (`@bake`).
@@ -395,9 +412,10 @@ gnom-hub/
 │   ├── api/               # FastAPI Endpunkte, Router, CORS, Auth
 │   ├── infrastructure/    # Prozess-Management (psutil), LLM-Routing, Pulse-Janitor
 │   └── frontend/          # Glassmorphic War Room UI (HTML, CSS, 9 JS-Module)
-├── agents/                # Startskripte für die 8 Hintergrund-Agenten
+├── agents/                # Startskripte für die 8 Hintergrund-Agenten (1-Zeilen-Wrapper)
 ├── config/                # Presets, .env, Routing-Overrides
 ├── scripts/               # Setup- & Hilfs-Skripte
+├── tests/                 # Unit-Testsuite (32 Tests: connection, state, agents, chat, admin_auth)
 ├── docs/                  # Systemberichte & Screenshots
 └── pyproject.toml         # Ruff-Konfiguration & Abhängigkeiten
 ```
@@ -419,12 +437,16 @@ gnom-hub/
 Kreative Pionierin der ersten Stunde. Entwarf die Agenten-Topologien und legte das philosophische Fundament für das Projekt.
 
 **Antigravity (Google DeepMind)**  
-Architekt der Härtungs- und Optimierungsphase. Zentrale Beiträge:
+Architekt der Härtungs- und Konsolidierungsphase. Zentrale Beiträge:
 - Modularisierung der 180+ Python-Module nach sauberer Clean-Architecture.
 - Implementierung der Härtungs-Phasen 1-16 (Zero-Trust-inspirierte Capability Leases, lokale FAISS-Embeddings, Prompt Version Manager, Feedback-Loop, R1-Think-Block-Filterung, 4/4 Agentenlimits).
 - Absicherung gegen Path Traversal, CORS-Schutz, XSS-Bereinigung, HMAC-Admin-Authentifizierung und Verbindungsmanagement.
 - Vollständiger Refaktor des UI-Frontends in 9 entkoppelte JS-Module.
 - Vollständiger Code-Audit: 120 Findings → 26 Hotfixes in Bezug auf Stabilität, Abstürze, Sicherheit und Cleanup.
+- Konsolidierung des monolithischen `legacy_db` in modulare Domain-Repositories (`system_repo`, `showbox_repo`) mit direkten Package-Root-Imports.
+- Ersatz der 8 duplizierten Agenten-Startskripte durch einen universellen, argumentgesteuerten Runner (`agents/run_agent.py`) und abwärtskompatible Einzeiler-Wrapper.
+- Konzeption und Aufbau einer vollständigen isolierten Test-Suite (32 Unit- und Integrationstests) mit In-Memory-SQLite-Datenbanken.
+
 
 ---
 

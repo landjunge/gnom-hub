@@ -52,6 +52,23 @@ This single command clones the repository, sets up the virtual environment, inst
 
 ---
 
+## 🧪 Running Tests
+
+Gnom-Hub includes an isolated, database-mocked test suite using `pytest`:
+
+```bash
+python3 -m pytest tests/ -v
+```
+
+This runs 32 automated unit and integration tests covering:
+- **Connection Layer:** WAL mode, foreign keys, row factories, and context management.
+- **State Repository:** State key-value get/set and schema defaults.
+- **Agent Repository:** Agent registration, limits, active job tracking, and daemons.
+- **Chat Repository:** Message persistence, history retrieval, and project database scoping.
+- **Admin Authentication:** IP-based and Bearer Token authentication security checks.
+
+---
+
 ## What is Gnom-Hub?
 
 Gnom-Hub is a **local-first multi-agent orchestrator** with a fixed 4+4 agent topology, a built-in glassmorphic War Room dashboard, and a unique compilation pipeline that "bakes" evolved agent swarms into frozen, portable AI products called **SuperGNOMs**.
@@ -394,9 +411,10 @@ gnom-hub/
 │   ├── api/               # FastAPI endpoints, router, CORS, auth
 │   ├── infrastructure/    # Process management (psutil), LLM routing, pulse janitor
 │   └── frontend/          # Glassmorphic War Room (HTML, CSS, 9 JS modules)
-├── agents/                # Startup scripts for 8 background agents
+├── agents/                # Startup scripts for 8 background agents (1-line wrappers)
 ├── config/                # Presets, .env, routing overrides
 ├── scripts/               # Installer & shortcuts
+├── tests/                 # Unit test suite (32 tests: connection, state, agents, chat, admin_auth)
 ├── docs/                  # Architecture docs & screenshots
 └── pyproject.toml         # Ruff config & dependencies
 ```
@@ -444,12 +462,15 @@ gnom-hub/
 Creative pioneer and founder. Designed the agent topologies and laid the philosophical foundation of Gnom-Hub.
 
 **Antigravity (Google DeepMind)**
-Architect of the hardening phase. Key contributions:
+Architect of the hardening & consolidation phases. Key contributions:
 - Modularized 180+ Python modules with clean architecture
 - Implemented Phase 1-16 hardening (Zero-Trust Capability Leases, FAISS embeddings, PVM, user feedback loop, R1 think block filtering, 4/4 agent limits)
 - Secured path traversal, CORS, XSS, auth gates, and connection management
 - Refactored monolithic frontend into 9 decoupled JS modules
 - Full code audit: 120 findings → 26 fixes across security, crashes, stability, and cleanup
+- Consolidated monolithic `legacy_db` into modular domain repositories (`system_repo`, `showbox_repo`) with package-root imports
+- Replaced 8 duplicate agent startup scripts with a single universal argument-driven runner (`agents/run_agent.py`) and backward-compatible wrappers
+- Designed and built a comprehensive isolated test suite (32 unit/integration tests) with in-memory SQLite fixtures
 
 ---
 
