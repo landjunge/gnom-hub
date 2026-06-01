@@ -101,7 +101,7 @@ async def main():
         async with async_playwright() as p:
             # Launch Chromium with visible window
             browser = await p.chromium.launch(
-                headless=False,
+                headless=True,
                 args=["--start-maximized", "--no-sandbox", "--disable-setuid-sandbox"]
             )
             context = await browser.new_context(
@@ -145,113 +145,111 @@ async def main():
             };
             """
             
-            # Navigate to local Gnom-Hub server
             await page.goto("http://127.0.0.1:3002/")
             await page.evaluate(cursor_script)
             page._virtual_x = 0
             page._virtual_y = 0
             
-            await asyncio.sleep(2.0)
-            speak("Willkommen bei Gnom-Hub. Ich bin deine künstliche Intelligenz und führe dich heute durch unsere lokale Agenten-Schmiede.")
-            await asyncio.sleep(7.0)
+            await asyncio.sleep(1.5)
+            speak("Willkommen bei Gnom-Hub. Ich führe dich heute durch unsere lokale Agenten-Schmiede.")
+            await asyncio.sleep(4.5)
             
             # 1. Hover Title Logo
             await hover_element(
                 page, 
                 ".logo", 
-                "Gnom-Hub läuft zu einhundert Prozent lokal auf deinem Rechner. Kein Cloud-Zwang, keine API-Datenweitergabe und volle Datenkontrolle.",
-                wait_after_speak=8.0
+                "Gnom-Hub läuft zu einhundert Prozent lokal und sicher auf deinem Rechner.",
+                wait_after_speak=4.5
             )
             
             # 2. Sidebar Agent Cards
-            speak("Hier auf der linken Seite siehst du die spezialisierten Gnom-Worker, die mir bei der Arbeit helfen.")
-            await asyncio.sleep(5.0)
+            speak("Links siehst du die spezialisierten Gnom-Worker, die mir bei der Arbeit helfen.")
+            await asyncio.sleep(3.5)
             
             await hover_element(
                 page,
                 ".agent-card:has-text('CoderAG')",
-                "Coder-A-G schreibt selbstständig Programme, Skripte und Webseiten. Er führt Code in einer isolierten Sandbox aus.",
-                wait_after_speak=8.5
+                "Coder-A-G schreibt selbstständig Programme und Webseiten in einer isolierten Sandbox.",
+                wait_after_speak=5.0
             )
             
             await hover_element(
                 page,
                 ".agent-card:has-text('ResearcherAG')",
-                "Researcher-A-G durchsucht das Internet nach Bibliotheken und Dokumentationen, um stets aktuellen Code zu garantieren.",
-                wait_after_speak=8.5
+                "Researcher-A-G durchsucht das Internet nach Bibliotheken und Dokumentationen.",
+                wait_after_speak=5.0
             )
             
             await hover_element(
                 page,
                 ".agent-card:has-text('WriterAG')",
-                "Writer-A-G erstellt professionelle Texte, Handbücher, Markdown-Dokumente und Produktbeschreibungen.",
-                wait_after_speak=7.5
+                "Writer-A-G erstellt professionelle Texte, Handbücher und Produktbeschreibungen.",
+                wait_after_speak=5.0
             )
             
             await hover_element(
                 page,
                 ".agent-card:has-text('EditorAG')",
-                "Und der Editor-A-G übernimmt das Lektorat. Er liest den generierten Code quer und sichert die Softwarequalität.",
-                wait_after_speak=8.0
+                "Und der Editor-A-G übernimmt das Lektorat und sichert die Softwarequalität.",
+                wait_after_speak=5.0
             )
             
             # 3. Chat and Thought Area
             await hover_element(
                 page,
                 "#chat-split-container",
-                "In der Mitte befindet sich unser geteilter War-Room. Oben siehst du die Live-Denkprozesse der Agenten, unten den fertigen Chatverlauf.",
-                wait_after_speak=9.0
+                "Im War-Room in der Mitte siehst du oben die Denkprozesse der Agenten und unten den Chatverlauf.",
+                wait_after_speak=6.0
             )
             
             # 4. Type Prompt
-            speak("Jetzt geben wir dem gesamten Schwarm die Aufgabe, eine Landingpage für Gnom-Hub zu entwerfen.")
-            await asyncio.sleep(5.0)
+            speak("Wir geben dem gesamten Schwarm die Aufgabe, eine Landingpage für Gnom-Hub zu entwerfen.")
+            await asyncio.sleep(3.5)
             
             prompt = "@bs Erstelle eine Landingpage für Gnom-Hub"
-            await type_text(page, "#chat-input", prompt, delay=0.08)
+            await type_text(page, "#chat-input", prompt, delay=0.04)
             
             # 5. Send Prompt
             await click_element(
                 page,
                 "button:has-text('Send')",
-                "Wir senden die Aufgabe ab und aktivieren das parallele Brainstorming.",
-                wait_after_speak=4.5
+                "Wir senden die Aufgabe ab.",
+                wait_after_speak=2.5
             )
             
             # 6. Wait for Swarm & Comment
-            speak("General-A-G nimmt den Auftrag entgegen und delegiert die Teilaufgaben an die passenden Worker.")
+            speak("General-A-G delegiert die Teilaufgaben an die passenden Worker.")
+            await asyncio.sleep(4.0)
+            
+            speak("Oben können wir jetzt live zuschauen, wie die Gnome miteinander diskutieren und Ansätze austauschen.")
+            await asyncio.sleep(5.0)
+            
+            speak("Alles wird sicher von unserem Gatekeeper überwacht, ohne Gefahr von ungewollten Dateizugriffen.")
+            await asyncio.sleep(6.0)
+            
+            speak("Coder-A-G und Writer-A-G entwerfen nun das HTML-Grundgerüst und die Texte.")
             await asyncio.sleep(7.0)
-            
-            speak("In der oberen Fensterhälfte können wir jetzt live zuschauen, wie die Gnome miteinander diskutieren und ihre Lösungsansätze austauschen.")
-            await asyncio.sleep(8.0)
-            
-            # Additional wait for swarm brainstorming progress (30s)
-            speak("Da alles in Echtzeit und sicher von unserem Gatekeeper überwacht wird, besteht keine Gefahr von ungewollten Dateizugriffen.")
-            await asyncio.sleep(10.0)
-            
-            speak("Coder-A-G entwirft nun das HTML-Grundgerüst mit modernen H-S-L Farbstilen, während Writer-A-G passende Texte beisteuert.")
-            await asyncio.sleep(12.0)
             
             # 7. Navigation bar demonstration
             await hover_element(
                 page,
                 "button:has-text('Workspace')",
-                "Oben in der Menüleiste können wir jederzeit in den Workspace wechseln, um generierte Dateien direkt zu inspizieren.",
-                wait_after_speak=8.0
+                "Oben in der Menüleiste können wir in den Workspace wechseln, um generierte Dateien zu prüfen.",
+                wait_after_speak=5.0
             )
             
             await hover_element(
                 page,
                 "button:has-text('Dashboard')",
-                "Das Bento-Grid-Dashboard zeigt uns zudem genaue Systemstatistiken, Latenzen und Token-Verbräuche.",
-                wait_after_speak=7.0
+                "Das Bento-Grid-Dashboard zeigt uns Systemstatistiken und Token-Verbräuche.",
+                wait_after_speak=4.5
             )
             
-            speak("Unser Schwarm hat den ersten Entwurf erfolgreich fertiggestellt und in der Showbox bereitgestellt.")
-            await asyncio.sleep(7.0)
-            
-            speak("Damit ist die Präsentation abgeschlossen. Das Video wurde erfolgreich aufgezeichnet.")
+            speak("Der Entwurf wurde erfolgreich in der Showbox bereitgestellt.")
             await asyncio.sleep(4.0)
+            
+            speak("Die Präsentation ist abgeschlossen und das Video wurde erfolgreich aufgezeichnet.")
+            await asyncio.sleep(3.0)
             
             await context.close()
             await browser.close()
