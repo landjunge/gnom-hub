@@ -127,14 +127,16 @@ def test_openrouter_candidate_fallbacks():
     # Mock working models in DB
     kdb = {}
     with patch("gnom_hub.db.state_repo.SQLiteStateRepository.get_value", return_value=["google/gemma-4-31b-it:free", "liquid/lfm-2.5-1.2b-instruct:free"]):
+        # Case A: Requested model is not in working models -> should bypass and start with best fallback
         cands = _resolve("openrouter", "qwen/qwen3-coder:free", kdb, "CoderAG")
-        
-        # Should start with requested model
-        assert cands[0] == ("openrouter", "qwen/qwen3-coder:free")
-        
-        # Should include other working models from DB
-        assert ("openrouter", "google/gemma-4-31b-it:free") in cands
+        assert cands[0] == ("openrouter", "google/gemma-4-31b-it:free")
         assert ("openrouter", "liquid/lfm-2.5-1.2b-instruct:free") in cands
-        
-        # Should end with local fallback
+        assert ("openrouter", "qwen/qwen3-coder:free") not in cands
         assert cands[-1] == ("lokal", "llama3")
+
+        # Case B: Requested model is in working models -> should start with it
+        cands_ok = _resolve("openrouter", "google/gemma-4-31b-it:free", kdb, "CoderAG")
+        assert cands_ok[0] == ("openrouter", "google/gemma-4-31b-it:free")
+        assert ("openrouter", "liquid/lfm-2.5-1.2b-instruct:free") in cands_ok
+        assert cands_ok[-1] == ("lokal", "llama3")
+
