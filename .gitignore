@@ -56,3 +56,10 @@ data/
 src/data/
 .hub_secret
 config/.hub_secret
+
+# Local launcher scripts
+start_gnom_hub.sh
+stop_gnom_hub.sh
+start_gnom_hub.bat
+stop_gnom_hub.bat
+

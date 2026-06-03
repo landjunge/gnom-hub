@@ -22,6 +22,13 @@ class SmartRouter:
         return SmartRouter.ROLE_PREFERENCE.get(role.lower(), "stage_3")
 
     @staticmethod
+    def _order_working_models(working: list) -> list:
+        from gnom_hub.core.config import Config
+        curated = [m for m in Config.OPENROUTER_FREE_MODELS if m in working]
+        others = [m for m in working if m not in Config.OPENROUTER_FREE_MODELS]
+        return curated + others
+
+    @staticmethod
     def get_best_openrouter_model(role: str) -> str:
         try:
             from gnom_hub.db.state_repo import SQLiteStateRepository
@@ -31,6 +38,8 @@ class SmartRouter:
             working = []
         if not working:
             working = list(Config.OPENROUTER_FREE_MODELS)
+        
+        working = SmartRouter._order_working_models(working)
             
         role = (role or "normal").lower()
         if role == "coder":
@@ -50,14 +59,14 @@ class SmartRouter:
                 if any(x in m.lower() for x in ("poolside", "liquid", "glm")):
                     return m
                     
-        return working[0] if working else "baidu/cobuddy:free"
+        return working[0] if working else "meta-llama/llama-3.3-70b-instruct:free"
 
     @staticmethod
     def get_best_model(stage: str, available_models: list) -> str:
         preferred = {
             "stage_4": ["claude-3-5-sonnet-20241022", "claude-3.5-sonnet", "gpt-4o", "deepseek-reasoner", "gemini-1.5-pro"],
             "stage_3": ["deepseek-chat", "gemini-1.5-flash", "gpt-4o-mini", "mistral-large-latest", "llama-3.1-8b-instruct", "llama3.1"],
-            "stage_2": ["baidu/cobuddy:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "poolside/laguna-xs.2:free", "poolside/laguna-m.1:free", "deepseek/deepseek-v4-flash:free", "llama-3.3-70b-instruct:free", "qwen3-coder:free", "gemma-2-9b-it", "llama3", "gemma2"],
+            "stage_2": ["meta-llama/llama-3.3-70b-instruct:free", "qwen/qwen3-coder:free", "nousresearch/hermes-3-llama-3.1-405b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.2-3b-instruct:free", "liquid/lfm-2.5-1.2b-instruct:free", "openai/gpt-oss-120b:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "poolside/laguna-xs.2:free", "poolside/laguna-m.1:free", "llama3", "gemma2"],
             "stage_1": ["llama3", "phi3", "mistral"]
         }.get(stage, ["llama3"])
 
@@ -115,6 +124,7 @@ class SmartRouter:
             working_models = []
         if not working_models:
             working_models = list(Config.OPENROUTER_FREE_MODELS)
+        working_models = SmartRouter._order_working_models(working_models)
 
         if force_provider:
             has_anthropic = (force_provider == "anthropic")

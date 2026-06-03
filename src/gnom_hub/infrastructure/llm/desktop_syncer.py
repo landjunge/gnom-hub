@@ -77,6 +77,11 @@ async def sync_desktop_keys(db_keys: dict) -> dict:
             os.chmod(DESKTOP_TXT, 0o600)
                 
         sr.SQLiteStateRepository().set_value("llm_keys", db_keys)
+        
+        # Trigger model check in background immediately on desktop sync
+        if any(v.get("provider") == "openrouter" and v.get("valid") for v in db_keys.values()):
+            from gnom_hub.api.endpoints.llm_models import check_and_update_models
+            asyncio.create_task(check_and_update_models())
     except Exception as e:
         print(f"Error in sync_desktop_keys: {e}")
     return db_keys

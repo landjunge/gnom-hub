@@ -67,21 +67,30 @@ def _call(pvd, mdl, key, msgs, n):
             if pvd == "lokal": pyld.setdefault("options", {})["temperature"] = temp
             else: pyld["temperature"] = temp
 
-    r = requests.post(url, headers=h, json=pyld, timeout=120)
-    if r.status_code == 200:
-        try: res_json = r.json()
-        except Exception: res_json = {}
-        if pvd == "anthropic": ans = res_json.get("content", [{}])[0].get("text")
-        elif pvd == "lokal" and not res_json: ans = "".join(json.loads(l).get("message", {}).get("content", "") for l in r.text.strip().split("\n") if l).strip()
-        elif pvd == "lokal": ans = res_json.get("message", {}).get("content", "")
-        else:
-            msg_obj = res_json.get("choices", [{}])[0].get("message", {})
-            ans = msg_obj.get("content", "")
-            reasoning = msg_obj.get("reasoning_content") or msg_obj.get("reasoning")
-            if reasoning:
-                ans = f"<think>\n{reasoning}\n</think>\n\n{ans}"
-        if ans: _track(pvd, mdl, n, res_json, msgs, ans); return ans
-    if r.status_code == 429: time.sleep(2)
+    for attempt in range(3):
+        try:
+            r = requests.post(url, headers=h, json=pyld, timeout=120)
+            if r.status_code == 200:
+                try: res_json = r.json()
+                except Exception: res_json = {}
+                if pvd == "anthropic": ans = res_json.get("content", [{}])[0].get("text")
+                elif pvd == "lokal" and not res_json: ans = "".join(json.loads(l).get("message", {}).get("content", "") for l in r.text.strip().split("\n") if l).strip()
+                elif pvd == "lokal": ans = res_json.get("message", {}).get("content", "")
+                else:
+                    msg_obj = res_json.get("choices", [{}])[0].get("message", {})
+                    ans = msg_obj.get("content", "")
+                    reasoning = msg_obj.get("reasoning_content") or msg_obj.get("reasoning")
+                    if reasoning:
+                        ans = f"<think>\n{reasoning}\n</think>\n\n{ans}"
+                if ans: _track(pvd, mdl, n, res_json, msgs, ans); return ans
+            
+            if r.status_code in (429, 502, 503, 504):
+                time.sleep(1.5 * (attempt + 1))
+            else:
+                break
+        except Exception as e:
+            if attempt == 2: raise e
+            time.sleep(1.5 * (attempt + 1))
 def _try_keys(pvd, mdl, kdb, msgs, an):
     for k in get_keys(pvd, kdb):
         try:

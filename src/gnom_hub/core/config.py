@@ -52,14 +52,13 @@ class Config:
 
     # OpenRouter Free-Modelle (zentral verwaltet)
     OPENROUTER_FREE_MODELS = [
-        "google/gemma-2-9b-it:free",
-        "meta-llama/llama-3.1-8b-instruct:free",
-        "qwen/qwen-2.5-7b-instruct:free",
-        "deepseek/deepseek-r1:free",
-        "nvidia/llama-3.1-nemotron-70b-instruct:free",
-        "meta-llama/llama-3-8b-instruct:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "qwen/qwen3-coder:free",
+        "nousresearch/hermes-3-llama-3.1-405b:free",
+        "google/gemma-4-31b-it:free",
         "meta-llama/llama-3.2-3b-instruct:free",
         "liquid/lfm-2.5-1.2b-instruct:free",
+        "openai/gpt-oss-120b:free",
     ]
 
 Config.LOG_DIR.mkdir(parents=True, exist_ok=True)

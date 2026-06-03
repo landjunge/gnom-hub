@@ -207,13 +207,7 @@ async function showLLMConfig() {
   document.getElementById('content').innerHTML = `
     <div class="panel" id="llm-panel" style="height:calc(100vh - 91px); box-sizing:border-box; display:flex; flex-direction:column; padding:15px 20px; background:rgba(10, 15, 30, 0.4); border:1px solid var(--glass-border); margin-bottom:0; overflow:hidden;">
       
-      <!-- Tab Bar -->
-      <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 10px; flex-shrink: 0;">
-        <button class="settings-tab-btn" id="tab-btn-global" onclick="switchSettingsTab('global')" style="font-family: inherit; font-size: 0.58rem; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0, 150, 255, 0.15); color: #fff; cursor: pointer; transition: var(--transition);" data-help="Verwalte globale Optionen, Systemsprache, Docker-Browser-Modus und API-Schlüssel." data-help-title="Global & API Keys">🔑 Global & API Keys</button>
-        <button class="settings-tab-btn" id="tab-btn-behavior" onclick="switchSettingsTab('behavior')" style="font-family: inherit; font-size: 0.58rem; font-weight: 500; padding: 5px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); background: transparent; color: var(--text-dim); cursor: pointer; transition: var(--transition);" data-help="Passe das Verhalten (Personality, Creativity etc.), die System-Prompts und das Gedächtnis einzelner Agenten an." data-help-title="Agenten-Verhalten & Soul">🧠 Agenten-Verhalten & Soul</button>
-      </div>
-
-      <!-- Tab 1: Global & API Keys Content wrapper -->
+      <!-- Main LLM Container -->
       <div class="llm-container" id="settings-tab-global-content" style="flex:1; min-height:0; display:grid; grid-template-columns:1fr 1.5fr; gap:20px; overflow:hidden;">
         <!-- Left Column: Settings Modules -->
         <div style="display:flex; flex-direction:column; gap:15px; overflow-y:auto; padding-right:5px; height:100%; scrollbar-width:thin;">
@@ -283,7 +277,6 @@ async function showLLMConfig() {
               <button class="btn-primary" onclick="setAllToProvider('openrouter')" title="Alle auf OpenRouter Free Modelle setzen">🌍 Alle OpenRouter</button>
             </div>
           </div>
-          <span class="llm-card-description" style="flex-shrink:0;">Mappe jeden Agenten im System auf einen spezifischen Provider und ein LLM-Modell. Nutze Auto-Routing für eine kosteneffiziente, ausgewogene Zuweisung basierend auf deinen hinterlegten Keys.</span>
           
           <div id="routing-progress-banner" style="display:none; align-items:center; justify-content:space-between; padding:10px 14px; background:rgba(0,229,255,0.08); border:1px solid rgba(0,229,255,0.22); border-radius:10px; font-size:0.8rem; margin-bottom:10px; flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:10px;">
@@ -293,7 +286,7 @@ async function showLLMConfig() {
             <div id="routing-progress-percentage" style="color:#00e5ff; font-family:monospace; font-weight:bold;">0%</div>
           </div>
           
-          <div id="llm-agents-list" style="flex:1; overflow-y:auto; padding-right:5px; scrollbar-width:thin;" data-help="Hier kannst du manuell einstellen, mit welchem Provider und welchem LLM-Modell jeder einzelne Agent antworten soll." data-help-title="LLM-Zuweisung">
+          <div id="llm-agents-list" style="flex:1; overflow-y:auto; padding-right:5px; scrollbar-width:thin;" data-help="Klicke auf den Namen eines Agenten, um sein Verhalten, seine Personality und sein Gedächtnis anzupassen." data-help-title="LLM-Zuweisung">
             Lade Agenten-Zuweisungen...
           </div>
           
@@ -301,155 +294,89 @@ async function showLLMConfig() {
         </div>
       </div>
 
-      <!-- Tab 2: Agenten-Verhalten & Soul Content wrapper -->
-      <div id="settings-tab-behavior-content" style="display: none; flex: 1; min-height: 0; grid-template-columns: 1fr 1.2fr; gap: 20px; overflow: hidden; height: 100%;">
-        <!-- Left Column: Agent Selection & Sliders -->
-        <div style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px; height: 100%; scrollbar-width: thin;">
-          
-          <!-- Module 2: Agenten-Gangs -->
-          <div class="llm-card" style="flex-shrink:0;">
-            <div class="llm-card-header">
-              <h3 class="llm-card-title">👥 Agenten-Gangs</h3>
-            </div>
-            <span class="llm-card-description">Wähle eine vordefinierte Team-Spezialisierung aus, um die Rollenverteilung und Prompts im Schwarm anzupassen.</span>
-            <select id="preset-select" onchange="changePreset(this.value)" class="llm-input-area" style="cursor:pointer;" data-help="Lade ein Preset, um alle Systemprompts und das Zusammenspiel der Agenten auf einen Themenschwerpunkt einzustellen." data-help-title="Gangs & Presets"></select>
-          </div>
-
-          <!-- Module: Auto-Preset-Generator -->
-          <div class="llm-card" style="flex-shrink: 0;">
-            <div class="llm-card-header">
-              <h3 class="llm-card-title">✨ Auto-Preset-Generator</h3>
-            </div>
-            <span class="llm-card-description">Beschreibe das gewünschte Team-Verhalten (z.B. "Webdesign mit HSL-Farben" oder "Backend in Python"). Ein LLM generiert das gesamte Preset automatisch.</span>
-            
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
-              <textarea id="auto-preset-desc" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 8px; font-size: 0.78rem; resize: vertical; min-height: 60px; outline: none;" placeholder="Beschreibe die Spezialisierung..."></textarea>
-              
-              <!-- Question section for clarify state (hidden by default) -->
-              <div id="auto-preset-clarify-section" style="display: none; flex-direction: column; gap: 6px; background: rgba(255, 150, 0, 0.08); border: 1px solid rgba(255, 150, 0, 0.22); border-radius: 8px; padding: 10px;">
-                <div style="font-size: 0.8rem; font-weight: bold; color: #ff9d00;">Gegenfrage vom Gnom:</div>
-                <div id="auto-preset-question-text" style="font-size: 0.78rem; color: #fff; line-height: 1.3;"></div>
-                <input type="text" id="auto-preset-answer" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 6px 10px; color: #fff; font-size: 0.78rem; outline: none;" placeholder="Antwort eingeben...">
-              </div>
-
-              <!-- Preview section for generated presets (hidden by default) -->
-              <div id="auto-preset-preview-section" style="display: none; flex-direction: column; gap: 6px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.15); border-radius: 8px; padding: 10px;">
-                <div style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">Vorschau des generierten Presets:</div>
-                <div id="auto-preset-preview-name" style="font-size: 0.82rem; font-weight: bold; color: #fff;"></div>
-                <div id="auto-preset-preview-desc" style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 6px;"></div>
-                <div id="auto-preset-preview-details" style="font-family: monospace; font-size: 0.7rem; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px; max-height: 150px; overflow-y: auto; white-space: pre-wrap; color: #a5f3fc; scrollbar-width: thin;"></div>
-              </div>
-
-              <div style="display: flex; gap: 8px; margin-top: 4px;">
-                <button class="btn-primary" id="btn-generate-preset" onclick="generateAutoPreset()" style="flex: 1;">✨ Generieren</button>
-                <button class="btn-primary" id="btn-save-generated-preset" onclick="saveGeneratedPreset()" style="flex: 1; display: none; background: #10b981; border-color: #059669;">💾 Speichern</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="llm-card" style="flex-shrink: 0;">
-            <div class="llm-card-header">
-              <h3 class="llm-card-title">🤖 Agenten-Auswahl</h3>
-            </div>
-            <span class="llm-card-description">Wähle einen Agenten aus, um seine Charaktereigenschaften und Prompts anzupassen.</span>
-            <select id="settings-agent-select" class="llm-input-area" style="cursor: pointer; font-weight: 500;" onchange="changeSettingsAgent(this.value)" data-help="Wähle einen Agenten aus der Liste, um seine Regler (Creativity, Risk etc.) und sein Gedächtnis anzupassen." data-help-title="Agent auswählen">
-              <!-- Dynamically populated -->
-            </select>
-          </div>
-          
-          <!-- Sliders and config card -->
-          <div class="llm-card" id="settings-sliders-card" style="display: none; flex-shrink: 0;">
-            <div class="llm-card-header">
-              <h3 class="llm-card-title">⚙️ Regler & Modell-Zuweisung</h3>
-            </div>
-
-            <!-- Avatar Display Container -->
-            <div id="settings-agent-avatar-container" style="display: none; align-items: center; gap: 15px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-              <img id="settings-agent-avatar-img" src="" style="width: 65px; height: 65px; border-radius: 50%; border: 2px solid var(--primary); box-shadow: 0 0 15px rgba(0, 150, 255, 0.25); object-fit: cover;">
+      <!-- Agent Behavior Modal Overlay -->
+      <div id="agent-behavior-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); z-index:1000; align-items:center; justify-content:center;">
+        <div class="llm-card" style="width:750px; max-width:90%; height:550px; display:flex; flex-direction:column; overflow:hidden; background:rgba(15,22,40,0.95); border:1px solid var(--glass-border); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.5); padding:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px; margin-bottom:15px; flex-shrink:0;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <img id="modal-agent-avatar" style="width:45px; height:45px; border-radius:50%; border:2px solid var(--primary); object-fit:cover;">
               <div>
-                <h4 id="settings-agent-avatar-name" style="margin: 0 0 4px 0; color: #fff; font-size: 0.95rem; font-weight: 600;">Agent Name</h4>
-                <span id="settings-agent-avatar-role" style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Rolle</span>
+                <h3 id="modal-agent-name" style="margin:0; font-size:1.1rem; color:#fff; font-weight:600;">Agent Name</h3>
+                <span id="modal-agent-role" style="font-size:0.75rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">Rolle</span>
               </div>
             </div>
-
-            <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">
-              <div class="slider-group" data-help="Beeinflusst den Tonfall des Agenten von formal und geschäftsmäßig (1) bis locker und informell (5)." data-help-title="Regler: Personality">
-                <label style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; font-weight: 500;">
+            <button onclick="closeAgentBehaviorModal()" class="btn-primary" style="padding:4px 10px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); cursor:pointer;">&times; Schließen</button>
+          </div>
+          
+          <div style="flex:1; display:grid; grid-template-columns:1fr 1.2fr; gap:20px; overflow:hidden; min-height:0;">
+            <!-- Left Column: Sliders and System Prompt -->
+            <div style="overflow-y:auto; padding-right:5px; display:flex; flex-direction:column; gap:14px; scrollbar-width:thin;">
+              <div class="slider-group">
+                <label style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; font-weight:500;">
                   <span>Personality</span>
-                  <span id="settings-label-personality" style="color: var(--cyan); font-weight: bold;">-</span>
+                  <span id="modal-label-personality" style="color:var(--cyan); font-weight:bold;">-</span>
                 </label>
-                <input type="range" id="settings-opt-personality" min="1" max="5" value="3" oninput="updateSettingsSliderLabel('personality', this.value)" style="cursor: pointer;">
+                <input type="range" id="modal-opt-personality" min="1" max="5" value="3" oninput="updateModalSliderLabel('personality', this.value)" style="cursor:pointer; width:100%;">
               </div>
-              
-              <div class="slider-group" data-help="Steuert die Länge und Detailtiefe der Antworten von sehr präzise/knapp (1) bis sehr detailliert (5)." data-help-title="Regler: Response Style">
-                <label style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; font-weight: 500;">
+              <div class="slider-group">
+                <label style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; font-weight:500;">
                   <span>Response Style</span>
-                  <span id="settings-label-response" style="color: var(--cyan); font-weight: bold;">-</span>
+                  <span id="modal-label-response" style="color:var(--cyan); font-weight:bold;">-</span>
                 </label>
-                <input type="range" id="settings-opt-response" min="1" max="5" value="3" oninput="updateSettingsSliderLabel('response', this.value)" style="cursor: pointer;">
+                <input type="range" id="modal-opt-response" min="1" max="5" value="3" oninput="updateModalSliderLabel('response', this.value)" style="cursor:pointer; width:100%;">
               </div>
-              
-              <div class="slider-group" data-help="Bestimmt, wie viele Fakten und Erinnerungen (top-k) SoulAG bei Anfragen in den Kontext lädt." data-help-title="Regler: Memory Strength">
-                <label style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; font-weight: 500;">
+              <div class="slider-group">
+                <label style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; font-weight:500;">
                   <span>Memory Strength</span>
-                  <span id="settings-label-memory" style="color: var(--cyan); font-weight: bold;">-</span>
+                  <span id="modal-label-memory" style="color:var(--cyan); font-weight:bold;">-</span>
                 </label>
-                <input type="range" id="settings-opt-memory" min="1" max="5" value="3" oninput="updateSettingsSliderLabel('memory', this.value)" style="cursor: pointer;">
+                <input type="range" id="modal-opt-memory" min="1" max="5" value="3" oninput="updateModalSliderLabel('memory', this.value)" style="cursor:pointer; width:100%;">
               </div>
-              
-              <div class="slider-group" data-help="Regelt die LLM-Temperatur: Niedrig (1) für logischen, stabilen Code; Hoch (5) für kreative Lösungswege." data-help-title="Regler: Creativity">
-                <label style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; font-weight: 500;">
+              <div class="slider-group">
+                <label style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; font-weight:500;">
                   <span>Creativity</span>
-                  <span id="settings-label-creativity" style="color: var(--cyan); font-weight: bold;">-</span>
+                  <span id="modal-label-creativity" style="color:var(--cyan); font-weight:bold;">-</span>
                 </label>
-                <input type="range" id="settings-opt-creativity" min="1" max="5" value="3" oninput="updateSettingsSliderLabel('creativity', this.value)" style="cursor: pointer;">
+                <input type="range" id="modal-opt-creativity" min="1" max="5" value="3" oninput="updateModalSliderLabel('creativity', this.value)" style="cursor:pointer; width:100%;">
               </div>
-              
-              <div class="slider-group" data-help="Steuert die Entscheidungsfreudigkeit und Risikobereitschaft des Agenten bei der Befehlsausführung." data-help-title="Regler: Risk Tolerance">
-                <label style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px; font-weight: 500;">
+              <div class="slider-group">
+                <label style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; font-weight:500;">
                   <span>Risk Tolerance</span>
-                  <span id="settings-label-risk" style="color: var(--cyan); font-weight: bold;">-</span>
+                  <span id="modal-label-risk" style="color:var(--cyan); font-weight:bold;">-</span>
                 </label>
-                <input type="range" id="settings-opt-risk" min="1" max="5" value="3" oninput="updateSettingsSliderLabel('risk', this.value)" style="cursor: pointer;">
+                <input type="range" id="modal-opt-risk" min="1" max="5" value="3" oninput="updateModalSliderLabel('risk', this.value)" style="cursor:pointer; width:100%;">
               </div>
-              
-              <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;" data-help="Diese Anweisung wird dauerhaft an das System-Prompt des Agenten angehängt (z.B. 'Schreibe Code nur in Python')." data-help-title="System Prompt Suffix">
-                <label style="font-size: 0.8rem; font-weight: 500; display: flex; justify-content: space-between;">
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+                <label style="font-size:0.8rem; font-weight:500; display:flex; justify-content:space-between;">
                   <span>Custom System Prompt Suffix</span>
-                  <span style="opacity: 0.5; font-size: 0.7rem;">Ergänzt System-Instruktionen</span>
                 </label>
-                <textarea id="settings-opt-custom-prompt" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 8px; font-family: monospace; font-size: 0.75rem; resize: vertical; outline: none; min-height: 100px;" placeholder="Prompt-Erweiterung eingeben..."></textarea>
+                <textarea id="modal-opt-custom-prompt" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.12); color:#fff; border-radius:6px; padding:6px; font-family:monospace; font-size:0.75rem; resize:vertical; outline:none; min-height:80px;" placeholder="Prompt-Erweiterung eingeben..."></textarea>
               </div>
-              
-              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
-                <button class="btn-primary" style="flex: 1;" id="settings-save-behavior-btn" data-help="Speichert alle Reglerwerte und Prompt-Erweiterungen für diesen Agenten." data-help-title="Speichern">Speichern</button>
+              <div style="display:flex; gap:8px; margin-top:4px;">
+                <button class="btn-primary" style="flex:1;" id="modal-save-behavior-btn">Speichern</button>
               </div>
             </div>
-          </div>
-        </div>
-        
-        <!-- Right Column: Soul & Memories -->
-        <div class="llm-card" id="settings-memories-card" style="display: none; height: 100%; flex-direction: column; overflow: hidden;" data-help="Durchsuche und verwalte die im FAISS-Vektorindex hinterlegten Langzeitgedächtnis-Fakten des Agenten." data-help-title="Agenten-Gedächtnis">
-          <div class="llm-card-header" style="flex-shrink: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center;">
-            <h3 class="llm-card-title">🧠 Gedächtnis & Soul Facts</h3>
-            <button class="btn-danger" id="settings-clear-memories-btn" data-help="Löscht das gesamte Vektorgedächtnis dieses Agenten unwiderruflich aus der Datenbank." data-help-title="Alle löschen">Alle löschen</button>
-          </div>
-          
-          <div style="padding: 10px 0; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
-            <textarea id="settings-new-mem" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 8px; font-size: 0.78rem; resize: none; min-height: 48px; outline: none;" placeholder="Neuen Eintrag für Langzeitgedächtnis hinzufügen..." data-help="Schreibe hier einen Fakt oder eine Anweisung auf, die dieser Agent dauerhaft im Gedächtnis behalten soll." data-help-title="Neues Wissen"></textarea>
-            <button class="btn-primary" style="align-self: flex-end;" id="settings-add-mem-btn" data-help="Speichert den Text dauerhaft im Langzeitgedächtnis des Agenten." data-help-title="Wissen hinzufügen">Hinzufügen</button>
-          </div>
-          
-          <div style="padding: 8px 0; flex-shrink: 0;">
-            <input id="settings-search-mem" style="width: 100%; padding: 6px 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; color: #fff; font-size: 0.78rem; outline: none;" placeholder="Suchen in Erinnerungen..." data-help="Filtere die gelernten Fakten des Agenten live nach Suchbegriffen." data-help-title="Fakten durchsuchen">
-          </div>
-          
-          <div id="settings-mem-list" style="flex: 1; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 6px; scrollbar-width: thin;">
-            <div class="empty">Bitte lade einen Agenten.</div>
+            
+            <!-- Right Column: Memories & Soul Facts -->
+            <div style="display:flex; flex-direction:column; overflow:hidden; height:100%;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-shrink:0;">
+                <h4 style="margin:0; font-size:0.85rem; color:#fff; font-weight:600;">🧠 Gedächtnis & Soul Facts</h4>
+                <button class="btn-danger" id="modal-clear-memories-btn" style="font-size:0.7rem; padding:2px 6px;">Alle löschen</button>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0; border-bottom:1px solid rgba(255,255,255,0.04); padding-bottom:8px;">
+                <textarea id="modal-new-mem" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.12); color:#fff; border-radius:6px; padding:6px; font-size:0.75rem; resize:none; min-height:40px; outline:none;" placeholder="Neuen Eintrag für Langzeitgedächtnis hinzufügen..."></textarea>
+                <button class="btn-primary" style="align-self:flex-end; font-size:0.75rem; padding:2px 8px;" id="modal-add-mem-btn">Hinzufügen</button>
+              </div>
+              <div style="padding:6px 0; flex-shrink:0;">
+                <input id="modal-search-mem" style="width:100%; padding:4px 8px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:6px; color:#fff; font-size:0.75rem; outline:none;" placeholder="Suchen in Erinnerungen...">
+              </div>
+              <div id="modal-mem-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; scrollbar-width:thin;">
+                <div class="empty">Keine Erinnerungen geladen.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
   `;
   loadLLMConfig();
@@ -687,7 +614,7 @@ function loadLLMAgentsListState(agentsRes, llmAgentsRes, models, providers) {
       }
       
       html += `<div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; padding:4px 8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:6px; font-size:0.8rem;">
-        <div style="width:100px; font-weight:bold; overflow:hidden; text-overflow:ellipsis;">${a.name}</div>
+        <div style="width:100px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; cursor:pointer; text-decoration:underline;" onclick="openAgentBehaviorModal('${a.name}')" title="Klicke hier, um Verhalten und Gedächtnis von ${a.name} anzupassen">${a.name}</div>
         <select id="prov-${a.name}" onchange="updateModels('${a.name}')" style="background:var(--bg); color:white; border:1px solid rgba(255,255,255,0.15); padding:2px 4px; border-radius:4px; width:100px; font-size:0.75rem;">
           ${providers.map(p => `<option value="${p}" ${p === pSel ? 'selected':''}>${getProviderDisplayName(p)}</option>`).join('')}
         </select>
@@ -748,7 +675,7 @@ async function loadLLMConfig() {
   const providers = ['deepseek', 'openrouter', 'openai', 'anthropic', 'gemini', 'mistral', 'lokal'];
   let models = {
     'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
-    'openrouter': ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+    'openrouter': ['nousresearch/hermes-3-llama-3.1-405b:free', 'qwen/qwen3-coder:free', 'meta-llama/llama-3.3-70b-instruct:free'],
     'openai': ['gpt-4o', 'gpt-4o-mini', 'o1-mini', 'o1-preview'],
     'anthropic': ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
     'gemini': ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp'],
@@ -1703,129 +1630,69 @@ window.saveGeneratedPreset = async function() {
   }
 };
 
-// ── Settings Hub / Behavior Tab Handlers ──
+// ── Agent Behavior Modal Handlers ──
 
-window.switchSettingsTab = function(tab) {
-  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
-    btn.style.background = 'transparent';
-    btn.style.borderColor = 'rgba(255,255,255,0.08)';
-    btn.style.color = 'var(--text-dim)';
-  });
+window.openAgentBehaviorModal = async function(agentId) {
+  const modal = document.getElementById('agent-behavior-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
   
-  const activeBtn = document.getElementById('tab-btn-' + tab);
-  if (activeBtn) {
-    activeBtn.style.background = 'rgba(0, 150, 255, 0.15)';
-    activeBtn.style.borderColor = 'var(--glass-border)';
-    activeBtn.style.color = '#fff';
-  }
-  
-  if (tab === 'global') {
-    document.getElementById('settings-tab-global-content').style.display = 'grid';
-    document.getElementById('settings-tab-behavior-content').style.display = 'none';
-  } else {
-    document.getElementById('settings-tab-global-content').style.display = 'none';
-    document.getElementById('settings-tab-behavior-content').style.display = 'grid';
-    loadSettingsAgentsList();
-  }
-};
-
-async function loadSettingsAgentsList() {
-  const select = document.getElementById('settings-agent-select');
-  if (!select) return;
-  
-  const res = await api('GET', '/agents');
-  const systemAgents = [
-    { id: 'soulag', name: 'SoulAG', description: 'Gedächtnis-Agent' },
-    { id: 'generalag', name: 'GeneralAG', description: 'Koordinator' },
-    { id: 'securityag', name: 'SecurityAG', description: 'Sicherheits-Agent' },
-    { id: 'watchdogag', name: 'WatchdogAG', description: 'Regel-Wächter' }
-  ];
-  
-  const activeAgents = Array.isArray(res) ? res : (res?.agents || []);
-  const allList = [...activeAgents];
-  systemAgents.forEach(sys => {
-    if (!allList.find(a => a.name.toLowerCase() === sys.name.toLowerCase())) {
-      allList.push(sys);
-    }
-  });
-
-  const currentVal = select.value;
-  select.innerHTML = '<option value="">-- Wähle einen Agenten --</option>' + 
-    allList.map(a => `<option value="${a.id || a.name.toLowerCase()}">${a.name} (${a.description || 'System-Agent'})</option>`).join('');
-    
-  if (currentVal && allList.find(a => (a.id || a.name.toLowerCase()) === currentVal)) {
-    select.value = currentVal;
-  }
-}
-
-window.changeSettingsAgent = async function(agentId) {
-  const slidersCard = document.getElementById('settings-sliders-card');
-  const memoriesCard = document.getElementById('settings-memories-card');
-  const avatarContainer = document.getElementById('settings-agent-avatar-container');
-  if (!agentId) {
-    if (slidersCard) slidersCard.style.display = 'none';
-    if (memoriesCard) memoriesCard.style.display = 'none';
-    if (avatarContainer) avatarContainer.style.display = 'none';
-    return;
-  }
-  
-  if (slidersCard) slidersCard.style.display = 'block';
-  if (memoriesCard) memoriesCard.style.display = 'flex';
-  
-  if (avatarContainer) {
-    avatarContainer.style.display = 'flex';
-    const meta = window.getAgentMeta(agentId);
-    const avatarUrl = window.getAgentAvatarUrl(agentId);
-    document.getElementById('settings-agent-avatar-img').src = avatarUrl;
-    document.getElementById('settings-agent-avatar-name').innerText = meta.name;
-    document.getElementById('settings-agent-avatar-role').innerText = meta.desc;
-  }
+  const meta = window.getAgentMeta(agentId);
+  const avatarUrl = window.getAgentAvatarUrl(agentId);
+  document.getElementById('modal-agent-avatar').src = avatarUrl;
+  document.getElementById('modal-agent-name').innerText = meta.name;
+  document.getElementById('modal-agent-role').innerText = meta.desc;
   
   try {
     const settings = await api('GET', `/agents/${agentId}/settings`);
     if (settings) {
-      document.getElementById('settings-opt-personality').value = settings.personality ?? 3;
-      document.getElementById('settings-opt-response').value = settings.response_style ?? 3;
-      document.getElementById('settings-opt-memory').value = settings.memory_strength ?? 3;
-      document.getElementById('settings-opt-creativity').value = settings.creativity ?? 3;
-      document.getElementById('settings-opt-risk').value = settings.risk_tolerance ?? 3;
-      document.getElementById('settings-opt-custom-prompt').value = settings.custom_prompt ?? '';
+      document.getElementById('modal-opt-personality').value = settings.personality ?? 3;
+      document.getElementById('modal-opt-response').value = settings.response_style ?? 3;
+      document.getElementById('modal-opt-memory').value = settings.memory_strength ?? 3;
+      document.getElementById('modal-opt-creativity').value = settings.creativity ?? 3;
+      document.getElementById('modal-opt-risk').value = settings.risk_tolerance ?? 3;
+      document.getElementById('modal-opt-custom-prompt').value = settings.custom_prompt ?? '';
       
-      updateSettingsSliderLabel('personality', settings.personality ?? 3);
-      updateSettingsSliderLabel('response', settings.response_style ?? 3);
-      updateSettingsSliderLabel('memory', settings.memory_strength ?? 3);
-      updateSettingsSliderLabel('creativity', settings.creativity ?? 3);
-      updateSettingsSliderLabel('risk', settings.risk_tolerance ?? 3);
+      updateModalSliderLabel('personality', settings.personality ?? 3);
+      updateModalSliderLabel('response', settings.response_style ?? 3);
+      updateModalSliderLabel('memory', settings.memory_strength ?? 3);
+      updateModalSliderLabel('creativity', settings.creativity ?? 3);
+      updateModalSliderLabel('risk', settings.risk_tolerance ?? 3);
     }
   } catch (err) {
-    console.error('Error loading settings in Settings Hub:', err);
+    console.error('Error loading settings in modal:', err);
   }
   
-  const saveBtn = document.getElementById('settings-save-behavior-btn');
+  const saveBtn = document.getElementById('modal-save-behavior-btn');
   if (saveBtn) {
-    saveBtn.onclick = () => saveSettingsAgentBehavior(agentId);
+    saveBtn.onclick = () => saveModalAgentBehavior(agentId);
   }
   
-  const clearMemBtn = document.getElementById('settings-clear-memories-btn');
+  const clearMemBtn = document.getElementById('modal-clear-memories-btn');
   if (clearMemBtn) {
-    clearMemBtn.onclick = () => clearSettingsMemory(agentId);
+    clearMemBtn.onclick = () => clearModalMemory(agentId);
   }
   
-  const addMemBtn = document.getElementById('settings-add-mem-btn');
+  const addMemBtn = document.getElementById('modal-add-mem-btn');
   if (addMemBtn) {
-    addMemBtn.onclick = () => addSettingsMemory(agentId);
+    addMemBtn.onclick = () => addModalMemory(agentId);
   }
   
-  const searchInput = document.getElementById('settings-search-mem');
+  const searchInput = document.getElementById('modal-search-mem');
   if (searchInput) {
     searchInput.value = '';
-    searchInput.oninput = (e) => searchSettingsMem(agentId, e.target.value);
+    searchInput.oninput = (e) => searchModalMem(agentId, e.target.value);
   }
   
-  loadSettingsAgentMemory(agentId);
+  loadModalAgentMemory(agentId);
 };
 
-window.updateSettingsSliderLabel = function(type, val) {
+window.closeAgentBehaviorModal = function() {
+  const modal = document.getElementById('agent-behavior-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.updateModalSliderLabel = function(type, val) {
   const v = parseInt(val);
   let txt = '';
   if (type === 'personality') {
@@ -1844,22 +1711,22 @@ window.updateSettingsSliderLabel = function(type, val) {
     const map = { 1: 'Sehr vorsichtig (1)', 2: 'Vorsichtig (2)', 3: 'Ausgeglichen (3)', 4: 'Mutig (4)', 5: 'Sehr mutig (5)' };
     txt = map[v] || v;
   }
-  const el = document.getElementById('settings-label-' + type);
+  const el = document.getElementById('modal-label-' + type);
   if (el) el.innerText = txt;
 };
 
-async function saveSettingsAgentBehavior(agentId) {
-  const personality = parseInt(document.getElementById('settings-opt-personality').value);
-  const response_style = parseInt(document.getElementById('settings-opt-response').value);
-  const memory_strength = parseInt(document.getElementById('settings-opt-memory').value);
-  const creativity = parseInt(document.getElementById('settings-opt-creativity').value);
-  const risk_tolerance = parseInt(document.getElementById('settings-opt-risk').value);
-  const custom_prompt = document.getElementById('settings-opt-custom-prompt').value;
+async function saveModalAgentBehavior(agentId) {
+  const personality = parseInt(document.getElementById('modal-opt-personality').value);
+  const response_style = parseInt(document.getElementById('modal-opt-response').value);
+  const memory_strength = parseInt(document.getElementById('modal-opt-memory').value);
+  const creativity = parseInt(document.getElementById('modal-opt-creativity').value);
+  const risk_tolerance = parseInt(document.getElementById('modal-opt-risk').value);
+  const custom_prompt = document.getElementById('modal-opt-custom-prompt').value;
   try {
     const res = await api('PUT', `/agents/${agentId}/settings`, { personality, response_style, memory_strength, creativity, risk_tolerance, custom_prompt });
     if (res !== null) {
       toast('Einstellungen erfolgreich gespeichert!', 'success');
-      changeSettingsAgent(agentId);
+      closeAgentBehaviorModal();
     } else {
       toast('Fehler beim Speichern der Einstellungen.', 'error');
     }
@@ -1868,76 +1735,76 @@ async function saveSettingsAgentBehavior(agentId) {
   }
 }
 
-async function loadSettingsAgentMemory(agentId) {
-  const el = document.getElementById('settings-mem-list');
+async function loadModalAgentMemory(agentId) {
+  const el = document.getElementById('modal-mem-list');
   if (!el) return;
   const mems = await api('GET', `/agents/${agentId}/memory`);
-  renderSettingsMemories(el, mems, agentId);
+  renderModalMemories(el, mems, agentId);
 }
 
-async function searchSettingsMem(agentId, q) {
-  const el = document.getElementById('settings-mem-list');
+async function searchModalMem(agentId, q) {
+  const el = document.getElementById('modal-mem-list');
   if (!el) return;
-  if (!q) return loadSettingsAgentMemory(agentId);
+  if (!q) return loadModalAgentMemory(agentId);
   const all = await api('GET', `/agents/${agentId}/memory`);
   const filtered = (all || []).filter(m => (m.content || '').toLowerCase().includes(q.toLowerCase()));
-  renderSettingsMemories(el, filtered, agentId);
+  renderModalMemories(el, filtered, agentId);
 }
 
-function renderSettingsMemories(el, mems, agentId) {
+function renderModalMemories(el, mems, agentId) {
   if (!mems || !mems.length) { el.innerHTML = '<div class="empty">Keine Einträge im Gedächtnis.</div>'; return; }
   el.innerHTML = mems.map(m => {
     const d = m.timestamp ? new Date(m.timestamp).toLocaleString() : '';
-    return `<div class="mem-item" id="settings-mem-${m.id}" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+    return `<div class="mem-item" id="modal-mem-${m.id}" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
       <div class="mem-head" style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-dim); margin-bottom: 6px;">
         <span>${d}</span>
         <div style="display: flex; gap: 6px;">
-          <button onclick="editSettingsMem('${m.id}', '${agentId}')" style="cursor: pointer; background: transparent; border: none; color: var(--cyan); padding: 0 4px;">✏</button>
-          <button onclick="deleteSettingsMem('${m.id}', '${agentId}')" style="cursor: pointer; background: transparent; border: none; color: var(--red); padding: 0 4px;">✕</button>
+          <button onclick="editModalMem('${m.id}', '${agentId}')" style="cursor: pointer; background: transparent; border: none; color: var(--cyan); padding: 0 4px;">✏</button>
+          <button onclick="deleteModalMem('${m.id}', '${agentId}')" style="cursor: pointer; background: transparent; border: none; color: var(--red); padding: 0 4px;">✕</button>
         </div>
       </div>
-      <div class="mem-content" id="settings-mc-${m.id}" style="font-size: 0.82rem; color: #fff; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">${escapeHtml(m.content)}</div>
+      <div class="mem-content" id="modal-mc-${m.id}" style="font-size: 0.82rem; color: #fff; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">${escapeHtml(m.content)}</div>
     </div>`;
   }).join('');
 }
 
-async function addSettingsMemory(agentId) {
-  const ta = document.getElementById('settings-new-mem');
+async function addModalMemory(agentId) {
+  const ta = document.getElementById('modal-new-mem');
   const c = ta.value.trim();
   if (!c) return;
   await api('POST', '/memory', { agent_id: agentId, content: c });
   ta.value = '';
-  loadSettingsAgentMemory(agentId);
+  loadModalAgentMemory(agentId);
   toast('Erinnerung hinzugefügt', 'success');
 }
 
-window.editSettingsMem = function(id, agentId) {
-  const el = document.getElementById('settings-mc-' + id);
+window.editModalMem = function(id, agentId) {
+  const el = document.getElementById('modal-mc-' + id);
   const old = el.innerText;
-  el.innerHTML = `<textarea id="settings-ed-${id}" style="width: 100%; min-height: 60px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 6px; font-size: 0.8rem; outline: none; resize: vertical;">${old}</textarea>
+  el.innerHTML = `<textarea id="modal-ed-${id}" style="width: 100%; min-height: 60px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 6px; font-size: 0.8rem; outline: none; resize: vertical;">${old}</textarea>
     <div style="margin-top:6px;display:flex;gap:6px;justify-content:flex-end">
-      <button onclick="loadSettingsAgentMemory('${agentId}')" style="padding: 3px 8px; font-size: 0.72rem; cursor: pointer;">Abbrechen</button>
-      <button class="btn-primary" onclick="saveSettingsMem('${id}', '${agentId}')" style="padding: 3px 8px; font-size: 0.72rem; cursor: pointer;">Speichern</button>
+      <button onclick="loadModalAgentMemory('${agentId}')" style="padding: 3px 8px; font-size: 0.72rem; cursor: pointer;">Abbrechen</button>
+      <button class="btn-primary" onclick="saveModalMem('${id}', '${agentId}')" style="padding: 3px 8px; font-size: 0.72rem; cursor: pointer;">Speichern</button>
     </div>`;
 };
 
-window.saveSettingsMem = async function(id, agentId) {
-  const c = document.getElementById('settings-ed-' + id).value;
+window.saveModalMem = async function(id, agentId) {
+  const c = document.getElementById('modal-ed-' + id).value;
   await api('PUT', `/memory/${id}`, { content: c });
-  loadSettingsAgentMemory(agentId);
+  loadModalAgentMemory(agentId);
   toast('Erinnerung aktualisiert', 'success');
 };
 
-window.deleteSettingsMem = async function(id, agentId) {
+window.deleteModalMem = async function(id, agentId) {
   if (!confirm('Erinnerung löschen?')) return;
   await api('DELETE', `/memory/${id}`);
   toast('Erinnerung gelöscht', 'info');
-  loadSettingsAgentMemory(agentId);
+  loadModalAgentMemory(agentId);
 };
 
-async function clearSettingsMemory(agentId) {
+async function clearModalMemory(agentId) {
   if (!confirm('Wirklich das gesamte Gedächtnis des Agenten löschen?')) return;
   await api('DELETE', `/agents/${agentId}/memory`);
   toast('Gedächtnis vollständig gelöscht', 'warning');
-  loadSettingsAgentMemory(agentId);
+  loadModalAgentMemory(agentId);
 }

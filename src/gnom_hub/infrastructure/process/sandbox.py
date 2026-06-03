@@ -10,10 +10,14 @@ def is_docker_running():
     except Exception as e: logging.getLogger(__name__).error('Fehler in Docker-Verfügbarkeitsprüfung: %s', e); return False
 
 def run_in_sandbox(command: str, agent=None, timeout: int = 30):
-    if agent:
+    from gnom_hub.core.config import Config
+    if Config.ENABLE_WORKSPACE_SANDBOX and agent:
         from gnom_hub.core.security.gatekeeper import verify_cmd
         if not verify_cmd(agent, command): raise PermissionError("Befehlsausführung verweigert.")
     wd = os.path.abspath(str(WORKSPACE_DIR))
+    if not Config.ENABLE_WORKSPACE_SANDBOX:
+        r = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=timeout, cwd=wd)
+        return r
     if is_docker_running():
         # Mount workspace as read-only; create a writable /tmp dir for agent outputs
         cmd = ["docker", "run", "--rm", "--network=none", "--memory=512m", "--cpus=1",
@@ -28,7 +32,12 @@ def run_in_sandbox(command: str, agent=None, timeout: int = 30):
     return run_sandboxed(command, wd, timeout=timeout)
 
 def run_browser_in_sandbox(code_path: str, net: str, timeout: int = 30):
+    from gnom_hub.core.config import Config
     wd = os.path.abspath(str(WORKSPACE_DIR))
+    if not Config.ENABLE_WORKSPACE_SANDBOX:
+        import sys
+        py_exec = sys.executable or "python3"
+        return subprocess.run([py_exec, code_path], capture_output=True, text=True, timeout=timeout, cwd=wd)
     if is_docker_running():
         cmd = ["docker", "run", "--rm", f"--network={net}", "--memory=512m",
                "-v", f"{wd}:/workspace:ro",
@@ -38,4 +47,5 @@ def run_browser_in_sandbox(code_path: str, net: str, timeout: int = 30):
     import sys
     py_exec = sys.executable or "python3"
     return run_sandboxed([py_exec, code_path], wd, timeout=timeout)
+
 
