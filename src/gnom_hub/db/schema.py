@@ -125,6 +125,9 @@ CREATE INDEX IF NOT EXISTS idx_agent_event ON audit_log(agent, event_type);
 CREATE INDEX IF NOT EXISTS idx_timestamp ON audit_log(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_soul_memory_key ON soul_memory(key);
 CREATE INDEX IF NOT EXISTS idx_soul_memory_timestamp ON soul_memory(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_project_ts ON chat(project, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_agent ON chat(agent_id);
+CREATE INDEX IF NOT EXISTS idx_chat_project_agent ON chat(project, agent_id);
 """
 
 def _seed_agents(conn):

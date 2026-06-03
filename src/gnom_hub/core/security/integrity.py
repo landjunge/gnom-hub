@@ -1,3 +1,4 @@
+from __future__ import annotations
 # integrity.py — ZWC-based system file integrity protection
 """
 Schützt Gnom-Systemdateien mit unsichtbaren ZWC-Signaturen (Zero-Width Characters).

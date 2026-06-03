@@ -2,7 +2,9 @@
 import os
 import uuid
 import time
-import json, logging
+import logging
+import json
+from html import escape as html_escape
 from gnom_hub.db import (
     add_chat_message, 
     get_state_value, 
@@ -16,10 +18,14 @@ import gnom_hub.infrastructure.router.router as router
 from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
 from gnom_hub.agents.capability_manager import check_capability, request_capability
 
+# Injectable clock functions for testability (C1 fix)
+_clock_time = time.time
+_clock_sleep = time.sleep
+
 def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     # Auto-approve if confirmations are disabled (default is False/disabled as requested by user)
     from gnom_hub.db import get_state_value
-    if not get_state_value("enable_confirmations", False):
+    if not get_state_value("enable_confirmations", True):
         proj = get_active_project()
         add_chat_message(
             proj, 
@@ -44,7 +50,6 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
 
     # 2. Register the pending decision
     pending = get_state_value("pending_decisions", {})
-    import time
     pending[decision_id] = {
         "agent_name": agent_name,
         "action_type": action_type,
@@ -57,18 +62,24 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     set_state_value("pending_decisions", pending)
     
     # 3. Build HTML content for Showbox slide (Super compact - no LLM queries, extremely direct)
+    # Escape all user-supplied values to prevent XSS in the Showbox HTML
+    safe_agent = html_escape(str(agent_name))
+    safe_action = html_escape(str(action_type))
+    safe_detail = html_escape(str(detail))
+    safe_rule = html_escape(str(rule))
+    safe_blocker = html_escape(str(blocker_name))
     html_content = (
         f"<div style='padding: 12px; font-family: sans-serif; color: #fff; background: rgba(10, 10, 15, 0.96); height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);'>"
         f"  <div>"
         f"    <h2 style='color: #ff3333; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.5px;'>"
-        f"      🛑 Blockade: {blocker_name}"
+        f"      🛑 Blockade: {safe_blocker}"
         f"    </h2>"
         f"    <div style='font-size: 0.8rem; color: rgba(255,255,255,0.7); margin-bottom: 6px; line-height: 1.35;'>"
-        f"      <strong>Wer:</strong> {agent_name}<br>"
-        f"      <strong>Aktion:</strong> <code style='background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 3px; color: #00e5ff; font-family: monospace; font-size: 0.75rem;'>{action_type}: {detail}</code>"
+        f"      <strong>Wer:</strong> {safe_agent}<br>"
+        f"      <strong>Aktion:</strong> <code style='background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 3px; color: #00e5ff; font-family: monospace; font-size: 0.75rem;'>{safe_action}: {safe_detail}</code>"
         f"    </div>"
         f"    <div style='background: rgba({blocker_rgb}, 0.05); border-left: 3px solid {blocker_color}; padding: 6px 8px; border-radius: 4px; font-size: 0.78rem; line-height: 1.3; color: #f8fafc;'>"
-        f"      <strong>Grund:</strong> {rule}"
+        f"      <strong>Grund:</strong> {safe_rule}"
         f"    </div>"
         f"  </div>"
         f"  <div style='display: flex; gap: 10px; margin-top: 8px;'>"
@@ -103,9 +114,9 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     set_agent_status(agent_name, "paused")
     
     max_wait_seconds = 300  # 5 minute timeout
-    start_time = time.time()
+    start_time = _clock_time()
     while True:
-        if time.time() - start_time > max_wait_seconds:
+        if _clock_time() - start_time > max_wait_seconds:
             # Auto-reject on timeout
             set_agent_status(agent_name, "busy")
             add_chat_message(
@@ -131,7 +142,7 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
         if current_agent and current_agent.get("status") not in ["paused", "offline"]:
             break
             
-        time.sleep(0.3)  # NOTE: Blocking poll — runs in worker thread via asyncio.to_thread
+        _clock_sleep(0.3)  # NOTE: Blocking poll — runs in worker thread via asyncio.to_thread
         
     set_agent_status(agent_name, "busy")
     return False
@@ -142,7 +153,7 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
     
     # 0. Bypass ALL blockades if enable_confirmations is False!
     from gnom_hub.db import get_state_value, get_active_project
-    if not get_state_value("enable_confirmations", False):
+    if not get_state_value("enable_confirmations", True):
         proj = get_active_project()
         add_chat_message(
             proj, 
@@ -240,15 +251,8 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
         }
 
         if exec_name not in allowed_execs:
-            # Soft-block: nur hard-blocken wenn kein godmode
-            agent_perms = (agent or {}).get("permissions", []) if isinstance(agent, dict) else []
-            if "godmode" in agent_perms:
-                # godmode-Agent: trotzdem erlauben mit Log
-                logging.getLogger(__name__).warning(
-                    "gatekeeper: godmode-Agent %s führt unbekannten Befehl aus: %s",
-                    (agent or {}).get("name", "?"), exec_name
-                )
-                continue
+            # C2 fix: godmode darf KEINE unbekannten Binaries ausführen.
+            # godmode erweitert nur Argument-Freiheiten, nicht die Executable-Whitelist.
             return False, f"Befehl '{exec_name}' ist nicht auf der Whitelist erlaubter Programme."
 
         # 3. Argument-Validierung für spezifische Befehle
@@ -297,13 +301,24 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                 return False, f"Gefährliche Verkettung in npm-Befehl erkannt."
                         
         elif exec_name == "rm":
-            if "/" in args_tokens or any(arg.strip() == "/" for arg in args_tokens):
-                return False, "Befehl 'rm' auf Root-Ebene ist nicht erlaubt."
-            # rm -rf auf Systemdateien blockieren
+            # C3 fix: Resolve ALL paths to catch ~/, ../../../, symlinks etc.
+            dangerous_roots = {"/", os.path.expanduser("~")}
+            system_prefixes = (
+                "/etc", "/usr", "/bin", "/sbin", "/var", "/boot", "/proc", "/sys", "/lib",
+                "/private/etc", "/private/var"
+            )
+            for arg in args_tokens:
+                if arg.startswith("-"): continue
+                resolved = os.path.realpath(os.path.expanduser(arg))
+                if resolved in dangerous_roots:
+                    return False, f"rm auf '{resolved}' ist nicht erlaubt."
+                if resolved.startswith(system_prefixes):
+                    return False, f"rm auf Systempfad '{resolved}' ist nicht erlaubt."
+            # rm -rf auf Gnom-Systemdateien blockieren
             if "-rf" in args_tokens or "-fr" in args_tokens:
                 for arg in args_tokens:
                     if arg.startswith("-"): continue
-                    abs_arg = os.path.realpath(arg) if os.path.isabs(arg) else arg
+                    abs_arg = os.path.realpath(os.path.expanduser(arg))
                     if any(sys_path in abs_arg for sys_path in ["src/gnom_hub", "run.sh", ".env"]):
                         return False, f"rm -rf auf Systemdatei '{arg}' ist nicht erlaubt."
 
@@ -331,7 +346,7 @@ def verify_cmd(agent, cmd):
     
     # 0. Bypass ALL blockades if enable_confirmations is False!
     from gnom_hub.db import get_state_value, get_active_project
-    if not get_state_value("enable_confirmations", False):
+    if not get_state_value("enable_confirmations", True):
         proj = get_active_project()
         add_chat_message(
             proj, 

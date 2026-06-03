@@ -47,5 +47,3 @@ def get_db_conn():
     finally:
         conn.close()
 
-async def get_db_connection_async() -> sqlite3.Connection:
-    return get_db_connection()

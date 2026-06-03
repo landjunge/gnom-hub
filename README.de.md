@@ -41,15 +41,21 @@
 
 ---
 
-## 🚀 Quick Start (Ein-Klick-Installation)
+## 🚀 Quick Start (Plattformübergreifende Installation)
 
-Kopiere einfach diesen Befehl und füge ihn in dein macOS-Terminal ein:
+### macOS / Linux / Windows
+Klone das Repository und führe das neue, plattformübergreifende Installationsskript aus:
 
 ```bash
-git clone https://github.com/landjunge/gnom-hub.git && cd gnom-hub && bash scripts/install.sh && open /Applications/Gnom-Hub.app
+git clone https://github.com/landjunge/gnom-hub.git && cd gnom-hub && python3 install.py
 ```
 
-Dieser Befehl klont das Repository, erstellt die virtuelle Umgebung, installiert alle Abhängigkeiten (inklusive automatischer Intel-Mac-Kompatibilitätspatches), baut das macOS App Bundle und startet den Gnom-Hub automatisch!
+Dieser Installer erstellt die virtuelle Umgebung, installiert alle Abhängigkeiten, konfiguriert Ordnerstrukturen und:
+- **Unter macOS:** Baut vollautomatisch das native App Bundle (`/Applications/Gnom-Hub.app`) und fügt eine Dock-Verknüpfung hinzu.
+- **Unter Windows:** Generiert komfortable Batch-Launcher (`start_gnom_hub.bat` und `stop_gnom_hub.bat`), um die Hintergrundprozesse sauber zu steuern.
+- **Unter Linux:** Generiert Command-Line-Skripte (`start_gnom_hub.sh` und `stop_gnom_hub.sh`).
+
+*(Nutze `python install.py` auf Windows, falls `python3` nicht in deinem Pfad registriert ist).*
 
 ---
 

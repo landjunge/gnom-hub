@@ -13,15 +13,23 @@ from gnom_hub.db.showbox_repo import (  # noqa: F401
     get_active_showbox, set_active_showbox,
 )
 
-from gnom_hub.db.legacy_db import (  # noqa: F401
-    add_chat_message, add_to_soul_memory,
-    get_all_agents, set_agent_status,
-    update_agent_active_job, clear_agent_jobs,
-    delete_project_completely,
-    get_chat_history, clear_project_chat,
-    clear_project_chat_by_sender, delete_non_system_agents,
-    save_soul_fact, search_memories,
+from gnom_hub.db.chat_repo import (  # noqa: F401
+    add_chat_message, get_chat_history,
+    get_agent_memories, count_agent_memories, add_agent_memory,
+    update_memory_content, delete_memory_by_id, delete_agent_memories,
+    search_memories, get_chat_count,
+    clear_project_chat, delete_project_completely, clear_project_chat_by_sender,
+)
+
+from gnom_hub.db.agent_repo import (  # noqa: F401
+    validate_agent_limit_db, create_agent_record, get_all_agents,
+    agent_exists, set_agent_status, update_agent_status,
+    delete_agent_by_id, delete_non_system_agents, delete_offline_agents,
     set_agent_role, update_agent_role_memory,
-    get_relevant_facts, update_agent_status,
-    agent_exists,
+    register_agent_in_db, pulse_agent_alive,
+    clear_agent_jobs, update_agent_active_job,
+)
+
+from gnom_hub.db.soul_repo import (  # noqa: F401
+    save_soul_fact, add_to_soul_memory, get_relevant_facts,
 )

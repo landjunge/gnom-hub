@@ -1,3 +1,10 @@
+"""Chat & memory repository — CRUD operations for chat messages and agent memories.
+
+This module contains two layers:
+1. The OOP ChatRepository / SQLiteChatRepository (used by newer code paths)
+2. Legacy functional API (re-exported from legacy_db.py for backward compatibility)
+"""
+
 import json; from datetime import datetime; from uuid import UUID; from typing import List, Optional
 from abc import ABC, abstractmethod
 from gnom_hub.chat.entities import ChatMessage, FlexSoul
@@ -80,3 +87,190 @@ class SQLiteChatRepository(ChatRepository):
             conn.execute("DELETE FROM chat WHERE agent_id = ? OR sender = ?", (str(agent_id), str(agent_id)))
             conn.commit()
             return Await(True)
+
+
+# =====================================================================
+# LEGACY FUNCTIONAL API
+# Functions moved here from legacy_db.py for decomposition.
+# =====================================================================
+
+import sqlite3
+import uuid
+from datetime import timezone
+
+from gnom_hub.core.logger import get_logger
+from gnom_hub.db.connection import get_db_conn
+
+_logger = get_logger("db")
+
+
+def _legacy_row_to_msg(row):
+    """Konvertiert eine Zeile der chat-Tabelle in ein Message-Dictionary."""
+    d = dict(row)
+    try:
+        meta = json.loads(d["metadata"])
+        if isinstance(meta, str):
+            meta = json.loads(meta)
+        d["metadata"] = meta if isinstance(meta, dict) else {}
+    except (json.JSONDecodeError, TypeError) as e:
+        _logger.error(f"[DB] Failed to parse metadata JSON for message {d.get('id')}: {e}")
+        d["metadata"] = {}
+    return d
+
+def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, content: str, metadata: dict = None):
+    """Fügt eine Nachricht direkt und relational in die chat-Tabelle ein (transaktionssicher)."""
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                msg_id = str(uuid.uuid4())
+                meta_val = metadata or {}
+                if isinstance(meta_val, str):
+                    try:
+                        meta_val = json.loads(meta_val)
+                    except Exception:
+                        meta_val = {}
+                conn.execute("""
+                    INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (msg_id, project, sender, agent_id, msg_type, content,
+                      datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                      json.dumps(meta_val)))
+                try:
+                    from gnom_hub.db.passive_db import archive_record
+                    archive_record("chat", sender, content, {"project": project, "agent_id": agent_id, "msg_type": msg_type})
+                except Exception as ex:
+                    _logger.warning(f"[DB] Passive archive message logging failed: {ex}")
+                return msg_id
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to add chat message: {e}")
+        return None
+
+def get_chat_history(project: str = "default", limit: int = 30):
+    """Lädt die letzten X Nachrichten eines Projekts aus der chat-Tabelle."""
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute("""
+                SELECT * FROM chat 
+                WHERE project = ? 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            """, (project, limit)).fetchall()
+            return [_legacy_row_to_msg(r) for r in rows]
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to retrieve chat history: {e}")
+        return []
+
+def get_agent_memories(agent_id: str, limit: int = 100) -> list:
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute("""
+                SELECT * FROM chat 
+                WHERE agent_id = ? 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            """, (agent_id, limit)).fetchall()
+            return [_legacy_row_to_msg(r) for r in rows]
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to get agent memories: {e}")
+        return []
+
+def count_agent_memories(agent_id: str) -> int:
+    try:
+        with get_db_conn() as conn:
+            row = conn.execute("SELECT COUNT(*) FROM chat WHERE agent_id = ?", (agent_id,)).fetchone()
+            return row[0] if row else 0
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to count agent memories: {e}")
+        return 0
+
+def add_agent_memory(agent_id: str, content: str, timestamp: str = None, sender: str = "user", project: str = "default", msg_type: str = "chat", metadata: dict = None) -> dict:
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                msg_id = str(uuid.uuid4())
+                ts = timestamp or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                meta = metadata or {"sender": sender, "type": msg_type}
+                conn.execute("""
+                    INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (msg_id, project, sender, agent_id, msg_type, content, ts, json.dumps(meta)))
+                return {"id": msg_id, "agent_id": agent_id, "content": content, "timestamp": ts, "project": project, "metadata": meta}
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to add agent memory: {e}")
+        return None
+
+def update_memory_content(msg_id: str, content: str) -> dict:
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("UPDATE chat SET content = ? WHERE id = ?", (content, msg_id))
+                row = conn.execute("SELECT * FROM chat WHERE id = ?", (msg_id,)).fetchone()
+                return _legacy_row_to_msg(row) if row else None
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to update memory content: {e}")
+        return None
+
+def delete_memory_by_id(msg_id: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE id = ?", (msg_id,))
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to delete memory {msg_id}: {e}")
+
+def delete_agent_memories(agent_id: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE agent_id = ?", (agent_id,))
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to delete agent memories for {agent_id}: {e}")
+
+def search_memories(query: str, project: str = "default") -> list:
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute("""
+                SELECT * FROM chat 
+                WHERE project = ? AND content LIKE ? 
+                ORDER BY timestamp DESC
+            """, (project, f"%{query}%")).fetchall()
+            return [_legacy_row_to_msg(r) for r in rows]
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to search memories: {e}")
+        return []
+
+def get_chat_count(agent_id: str = None) -> int:
+    try:
+        with get_db_conn() as conn:
+            if agent_id:
+                row = conn.execute("SELECT COUNT(*) FROM chat WHERE agent_id = ?", (agent_id,)).fetchone()
+            else:
+                row = conn.execute("SELECT COUNT(*) FROM chat").fetchone()
+            return row[0] if row else 0
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to count chat messages: {e}")
+        return 0
+
+def clear_project_chat(project: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE agent_id = 'war-room' AND project = ?", (project,))
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to clear project chat: {e}")
+
+def delete_project_completely(project: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE project = ?", (project,))
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to delete project completely: {e}")
+
+def clear_project_chat_by_sender(project: str, sender: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM chat WHERE agent_id = 'war-room' AND project = ? AND LOWER(sender) = ?", (project, sender.lower()))
+    except sqlite3.Error as e:
+        _logger.error(f"[DB] Failed to clear project chat by sender: {e}")

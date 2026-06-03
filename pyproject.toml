@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gnom-hub"
-version = "1.0.0"
+version = "1.1.0"
 description = "Gnom-Hub - Minimalistischer Orchestrator"
 readme = "README.md"
 requires-python = ">=3.9"
