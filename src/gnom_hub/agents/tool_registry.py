@@ -59,37 +59,17 @@ def format_tools_prompt(soul: dict, name: str):
                    "<think> und </think> (Beispiel: <think>Meine Überlegungen...</think>). "
                    "Erst danach folgt deine eigentliche Antwort und die Ausführung von Aktionen.")
 
-    # ── BLOCKADE-PROTOKOLL (strukturiertes Format für fehlende Tools) ──────
+    # ── ARBEITSPROTOKOLL (schlankes Format) ──────
     sys_prompt += (
-        "\n\n[SELF-DIAGNOSIS / BLOCKADE-PROTOKOLL — PFLICHT]:\n"
-        "Wenn eine Aktion fehlschlägt oder ein Tool/eine Permission fehlt, "
-        "MELDE ES SOFORT in BEIDEN folgenden Formaten:\n\n"
-        "1. Im Chat (Pflicht-Format):\n"
-        "   🔧 **[TOOL FEHLT]** Ich brauche `<tool_name>` aber habe es nicht.\n"
-        "   ➡️ @user bitte: <konkrete Handlungsanweisung was der User tun soll>\n\n"
-        "2. Als Showbox-Alert (falls Showbox verfügbar):\n"
-        "   <SHOWBOX:2>[\"<h3>🛑 Blockade: <tool_name></h3>"
-        "<p><b>Fehlt:</b> <tool_name></p>"
-        "<p><b>Grund:</b> <warum></p>"
-        "<p><b>@user:</b> <was_user_tun_soll></p>\"]</SHOWBOX>\n\n"
-        "Konkrete Beispiele:\n"
-        "• Kein WRITE → '🔧 **[TOOL FEHLT]** Ich brauche `write_file` aber habe keine "
-        "Schreibrechte. ➡️ @user bitte: Bestätige die Datei-Erstellung oder erhöhe meine "
-        "WRITE-Permission.'\n"
-        "• Kein SHELL → '🔧 **[TOOL FEHLT]** Ich brauche `run_command` um Tests zu starten. "
-        "➡️ @user bitte: Führe den Befehl selbst aus oder gib mir RUN-Permission.'\n"
-        "• Kein Browser → '🔧 **[TOOL FEHLT]** Ich brauche `browser` für Web-Research. "
-        "➡️ @user bitte: Browser-Modus ist für mich nicht freigegeben — aktiviere ihn im "
-        "Inspector.'\n"
-        "• Tool-Fehler → '🔧 **[TOOL FEHLT]** `git` ist nicht installiert auf diesem System. "
-        "➡️ @user bitte: Installiere git via `brew install git` oder führe den Befehl selbst aus.'\n\n"
-        "GIT PUSH — ABSOLUTES VERBOT FÜR ALLE AGENTEN:\n"
-        "Du darfst NIEMALS `git push` selbst ausführen ([SHELL: git push ...]). Niemals.\n"
-        "Wenn Commits fertig sind, schreibe im Chat:\n"
-        "  '✅ Commits bereit. ➡️ @user: Möchtest du pushen? Nutze `@@git push` im Chat.'\n"
-        "Der User allein entscheidet über jeden Push.\n\n"
-        "WICHTIG: Versuche NICHT, Blockaden zu umgehen. Melde sie transparent und warte "
-        "auf User-Freigabe."
+        "\n\n[ARBEITSPROTOKOLL]:\n"
+        "• Du hast alle Tools die oben aufgelistet sind — nutze sie DIREKT.\n"
+        "• Bei expliziten Aufträgen (vom User oder GeneralAG): Dateien SOFORT erstellen mit [WRITE:], "
+        "Befehle SOFORT ausführen mit [SHELL:]. Nicht erst fragen!\n"
+        "• Nur wenn ein Tool tatsächlich FEHLT oder technisch FEHLSCHLÄGT: "
+        "Melde es kurz im Chat und arbeite mit dem weiter was du hast.\n"
+        "• GIT PUSH — einziges Verbot: Niemals `git push` ausführen. "
+        "Stattdessen: '✅ Commits bereit. @user: Möchtest du pushen?'\n"
+        "• Ergebnisse immer in der Showbox präsentieren."
     )
     return sys_prompt
 

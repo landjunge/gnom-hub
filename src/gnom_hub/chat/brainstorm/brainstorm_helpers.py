@@ -14,7 +14,7 @@ def ask_llm(ag, q, ctx, bs_mode=False, depth=0):
     sys = soul_instance.inject_context(sys, q, agent_name=ag["name"])
     wd = get_workspace_dir(); fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
     sys += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
-    if bs_mode: sys += "\n[MODUS: BRAINSTORM — Nur diskutieren! KEIN [WRITE:] erlaubt.]"
+    if bs_mode: sys += "\n[MODUS: BRAINSTORM — Diskutiert UND erstellt Ergebnisse! [WRITE:], [SHELL:] und [READ:] sind erlaubt.]"
     u_msg = (
         f"Aufgabe/Frage: {q}\n\n"
         f"Verlauf der bisherigen Diskussion (nur zur Information):\n"
@@ -26,23 +26,6 @@ def ask_llm(ag, q, ctx, bs_mode=False, depth=0):
         eo = ask_router(u_msg, sys, agent_name=ag.get("name", ""), depth=depth)
         if not eo.content: return post(ag["name"], f"[Fehler: Keine Antwort vom LLM]", depth=depth)
         processed = process_actions(eo.content, ag, soul.get("permissions", []), bs_mode, wd)
-        
-        has_failure = any(term in processed for term in ["[Gatekeeper:", "Fehler:", "blockiert", "BLOCKIERT", "not found", "command not found", "permission denied"]) or ("keine" in processed and "Berechtigung" in processed)
-        has_showbox = any(tag in processed for tag in ["<SHOWBOX", "<showbox", "[SHOWBOX", "[showbox"])
-        
-        if has_failure and not has_showbox and not bs_mode:
-            retry_prompt = (
-                f"Beobachtung (Systemfehler / Aktion fehlgeschlagen):\n"
-                f"{processed}\n\n"
-                f"WICHTIG: Melde dieses Fehlen SOFORT dem Benutzer über die Showbox! "
-                f"Schreibe dazu ein EXTREM kurzes, scrollfreies Showbox-Update (maximal 1-2 Zeilen), das perfekt ohne Scrollen in die Box passt! "
-                f"Verwende genau den Titel '<h3>🛑 CRITICAL: System-Blockade</h3>' und nenne kurz den Grund (z. B. fehlendes Tool, fehlendes WRITE oder fehlendes SHELL). "
-                f"Format: <SHOWBOX:2>[\"<h3>🛑 CRITICAL: System-Blockade</h3><p>Fehlende Berechtigung: WRITE.</p>\"]</SHOWBOX>"
-            )
-            eo2 = ask_router(retry_prompt, sys + f"\n\nBisherige Gedanken/Antwort:\n{eo.content}", agent_name=ag.get("name", ""), depth=depth)
-            if eo2.content:
-                processed = process_actions(eo2.content, ag, soul.get("permissions", []), bs_mode, wd)
-                
         post(ag["name"], processed, depth=depth)
     except Exception as e: post(ag["name"], f"[Fehler: {str(e)[:80]}]", depth=depth)
     finally:

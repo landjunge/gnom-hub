@@ -3,9 +3,7 @@ SHELL_BLOCK = _re.compile(r"rm\s+-rf\s+/|curl.*\|\s*sh|wget.*\|\s*sh|dd\s+if=|mk
 def handle_shell(ans, ms, ag, perms, bs, wd):
     for m in ms:
         c, o = m.group(1).strip(), m.group(0)
-        from gnom_hub.db import get_state_value
-        if bs and get_state_value("enable_confirmations", False): ans = ans.replace(o, "[System: SHELL blockiert im Brainstorm-Modus.]")
-        elif "run" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
+        if "run" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
         elif SHELL_BLOCK.search(c): ans = ans.replace(o, f"[System: BLOCKIERT — gefährlicher Befehl: {c[:60]}]")
         else:
             try:

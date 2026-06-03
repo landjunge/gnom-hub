@@ -4,7 +4,7 @@
 # Format: agent_name = provider | model
 #
 # Examples:
-#   coderag = openrouter | deepseek/deepseek-chat
+#   coderag = openrouter | deepseek/deepseek-v4-flash
 #   researcherag = lokal | llama3.2
 #   writerag = gemini | gemini-1.5-flash
 #   editorag = auto | stage_2

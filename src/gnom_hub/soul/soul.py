@@ -15,8 +15,8 @@ class SoulAG:
             return
         m_lower = m.lower()
         if (s.lower() == "user" or 
-            any(x in m_lower for x in ["abschluss", "zusammenfassung", "[write:", "blockiert", "fehlt", "fehler", "berechtigung", "verweigert", "schreibrechte"]) or
-            ("kann" in m_lower and "nicht" in m_lower)):
+            any(x in m_lower for x in ["abschluss", "zusammenfassung", "[write:"]) or
+            ("fertig" in m_lower and "gestellt" in m_lower)):
             threading.Thread(target=self._ex, args=(m,), daemon=True).start()
     def _val(self, k: str, v: str) -> int:
         kl = k.lower()

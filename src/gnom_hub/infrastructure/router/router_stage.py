@@ -64,8 +64,8 @@ class SmartRouter:
     @staticmethod
     def get_best_model(stage: str, available_models: list) -> str:
         preferred = {
-            "stage_4": ["claude-3-5-sonnet-20241022", "claude-3.5-sonnet", "gpt-4o", "deepseek-reasoner", "gemini-1.5-pro"],
-            "stage_3": ["deepseek-chat", "gemini-1.5-flash", "gpt-4o-mini", "mistral-large-latest", "llama-3.1-8b-instruct", "llama3.1"],
+            "stage_4": ["claude-3-5-sonnet-20241022", "claude-3.5-sonnet", "gpt-4o", "deepseek-v4-pro", "gemini-1.5-pro"],
+            "stage_3": ["deepseek-v4-flash", "gemini-1.5-flash", "gpt-4o-mini", "mistral-large-latest", "llama-3.1-8b-instruct", "llama3.1"],
             "stage_2": ["meta-llama/llama-3.3-70b-instruct:free", "qwen/qwen3-coder:free", "nousresearch/hermes-3-llama-3.1-405b:free", "google/gemma-4-31b-it:free", "meta-llama/llama-3.2-3b-instruct:free", "liquid/lfm-2.5-1.2b-instruct:free", "openai/gpt-oss-120b:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "poolside/laguna-xs.2:free", "poolside/laguna-m.1:free", "llama3", "gemma2"],
             "stage_1": ["llama3", "phi3", "mistral"]
         }.get(stage, ["llama3"])
@@ -148,7 +148,7 @@ class SmartRouter:
             if has_anthropic:
                 return "anthropic", "claude-3-5-sonnet-20241022"
             if has_deepseek:
-                return "deepseek", "deepseek-reasoner"
+                return "deepseek", "deepseek-v4-pro"
             if has_openai:
                 return "openai", "gpt-4o"
             if has_gemini:
@@ -166,7 +166,7 @@ class SmartRouter:
         # 2. RESEARCHER
         elif role == "researcher":
             if has_deepseek:
-                return "deepseek", "deepseek-reasoner"
+                return "deepseek", "deepseek-v4-pro"
             if has_anthropic:
                 return "anthropic", "claude-3-5-sonnet-20241022"
             if has_openai:
@@ -188,7 +188,7 @@ class SmartRouter:
             if has_openai:
                 return "openai", "gpt-4o-mini"
             if has_deepseek:
-                return "deepseek", "deepseek-chat"
+                return "deepseek", "deepseek-v4-flash"
             if has_gemini:
                 return "gemini", "gemini-1.5-flash"
             if has_openrouter:
@@ -202,7 +202,7 @@ class SmartRouter:
         # 4. SOUL
         elif role == "soul":
             if has_deepseek:
-                return "deepseek", "deepseek-chat"
+                return "deepseek", "deepseek-v4-flash"
             if has_gemini:
                 return "gemini", "gemini-1.5-flash"
             if has_openai:
@@ -218,7 +218,7 @@ class SmartRouter:
         # 5. GENERAL / NORMAL / OTHERS
         else:
             if has_deepseek:
-                return "deepseek", "deepseek-chat"
+                return "deepseek", "deepseek-v4-flash"
             if has_gemini:
                 return "gemini", "gemini-1.5-flash"
             if has_openai:
@@ -237,7 +237,7 @@ class SmartRouter:
         if role_lower in ("coder", "researcher", "security"):
             s4 = [
                 ("anthropic", "claude-3-5-sonnet-20241022"),
-                ("deepseek", "deepseek-reasoner"),
+                ("deepseek", "deepseek-v4-pro"),
                 ("openai", "gpt-4o"),
                 ("gemini", "gemini-1.5-pro")
             ]
@@ -246,11 +246,11 @@ class SmartRouter:
                 ("anthropic", "claude-3-5-sonnet-20241022"),
                 ("openai", "gpt-4o"),
                 ("gemini", "gemini-1.5-pro"),
-                ("deepseek", "deepseek-chat")
+                ("deepseek", "deepseek-v4-flash")
             ]
             
         s3 = [
-            ("deepseek", "deepseek-chat"),
+            ("deepseek", "deepseek-v4-flash"),
             ("gemini", "gemini-1.5-flash"),
             ("openrouter", or_model),
             ("openai", "gpt-4o-mini"),
@@ -258,7 +258,7 @@ class SmartRouter:
         ]
         s2 = [
             ("openrouter", or_model),
-            ("deepseek", "deepseek-chat")
+            ("deepseek", "deepseek-v4-flash")
         ]
         s1 = [
             ("lokal", "llama3"),
