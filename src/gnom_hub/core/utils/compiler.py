@@ -6,6 +6,59 @@ import json, logging
 from pathlib import Path
 from gnom_hub.core.config import PROJECT_ROOT, DB_PATH
 
+def to_yaml(data, indent=0) -> str:
+    lines = []
+    spacer = " " * indent
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, (dict, list)):
+                lines.append(f"{spacer}{k}:")
+                lines.append(to_yaml(v, indent + 2))
+            else:
+                if isinstance(v, str) and ("\n" in v or ":" in v or "#" in v or " " in v):
+                    lines.append(f"{spacer}{k}: '{v}'")
+                else:
+                    lines.append(f"{spacer}{k}: {v}")
+    elif isinstance(data, list):
+        for item in data:
+            if isinstance(item, (dict, list)):
+                lines.append(f"{spacer}-")
+                lines.append(to_yaml(item, indent + 2))
+            else:
+                if isinstance(item, str) and ("\n" in item or ":" in item or "#" in item or " " in item):
+                    lines.append(f"{spacer}- '{item}'")
+                else:
+                    lines.append(f"{spacer}- {item}")
+    return "\n".join(lines)
+
+def get_dependencies() -> list:
+    deps = []
+    try:
+        with open(PROJECT_ROOT / "pyproject.toml", "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        in_deps = False
+        for line in lines:
+            line = line.strip()
+            if "dependencies = [" in line:
+                in_deps = True
+                continue
+            if in_deps:
+                if "]" in line:
+                    break
+                # Extract package name (remove quotes, commas, trailing comments)
+                clean = line.replace('"', '').replace("'", "").replace(",", "").split("#")[0].strip()
+                if clean:
+                    deps.append(clean)
+    except Exception:
+        # Fallback default dependencies
+        deps = [
+            "fastapi>=0.100.0", "uvicorn>=0.20.0", "pydantic>=2.0.0", 
+            "requests>=2.28.0", "psutil>=5.9.0", "python-dotenv>=1.0.0", 
+            "httpx>=0.24.0", "sentence-transformers>=3.0.0", 
+            "faiss-cpu>=1.7.0", "numpy<2", "transformers<5.0"
+        ]
+    return deps
+
 def bake_supergnom(name: str, template: str = "chat") -> str:
     # 1. Normalise name
     safe_name = "".join([c if c.isalnum() or c == "_" else "" for c in name.lower()]).strip("_")
@@ -101,7 +154,7 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
     # Copy package configurations
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", dist_dir / "pyproject.toml")
 
-    # Generate custom static configuration file
+    # Generate custom static configuration file (for backward compatibility)
     config_data = {
         "name": safe_name,
         "template": template,
@@ -109,6 +162,34 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
     }
     with open(dist_dir / "supergnom_config.json", "w", encoding="utf-8") as f:
         json.dump(config_data, f, indent=2, ensure_ascii=False)
+
+    # Generate cross-platform yaml configuration file containing locked models & dependencies
+    try:
+        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+        try:
+            from gnom_hub.db import get_state_value
+            custom_models = get_state_value("llm_agents") or {}
+        except Exception:
+            custom_models = {}
+        
+        models_lock = {}
+        for k, v in AGENT_DEFINITIONS.items():
+            agent_name = v["name"]
+            model_info = custom_models.get(agent_name.lower(), {})
+            models_lock[agent_name] = model_info.get("model") or v.get("model", "ollama/deepseek-r1")
+    except Exception:
+        models_lock = {}
+
+    supergnom_yaml_data = {
+        "name": safe_name,
+        "template": template,
+        "baked_at": config_data["baked_at"],
+        "models": models_lock,
+        "dependencies": get_dependencies(),
+        "prompt_hashes": prompt_hashes if 'prompt_hashes' in locals() else {}
+    }
+    with open(dist_dir / "supergnom.yaml", "w", encoding="utf-8") as f:
+        f.write(to_yaml(supergnom_yaml_data))
 
     # Write custom portable .env configuration file
     env_content = (
@@ -126,7 +207,7 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
     with open(cfg_dest / ".env", "w", encoding="utf-8") as f:
         f.write(env_content)
 
-    # Write execution startup script (run.sh)
+    # Write Unix execution startup script (run.sh)
     run_sh_content = (
         "#!/bin/bash\n"
         "DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" >/dev/null 2>&1 && pwd )\"\n"
@@ -135,7 +216,7 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
         "export SUPERGNOM_MODE=True\n"
         "export GNOM_HUB_PORT=3003\n"
         "export PORT=3003\n"
-        "export PYTHONPATH=\"src:.:\$PYTHONPATH\"\n"
+        "export PYTHONPATH=\"src:.:\\$PYTHONPATH\"\n"
         "if [ ! -d \".venv\" ]; then\n"
         "  echo 'Erstelle venv...'\n"
         "  python3 -m venv .venv\n"
@@ -151,5 +232,29 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
     with open(run_sh_path, "w", encoding="utf-8") as f:
         f.write(run_sh_content)
     os.chmod(run_sh_path, 0o755)
+
+    # Write Windows execution startup script (run.bat)
+    run_bat_content = (
+        "@echo off\n"
+        "cd /d \"%~dp0\"\n"
+        "set GNOM_HUB_HOME=%~dp0.gnom-hub\n"
+        "set SUPERGNOM_MODE=True\n"
+        "set GNOM_HUB_PORT=3003\n"
+        "set PORT=3003\n"
+        "set PYTHONPATH=src;%PYTHONPATH%\n"
+        "if not exist .venv (\n"
+        "  echo Erstelle venv...\n"
+        "  python -m venv .venv\n"
+        "  call .venv\\Scripts\\activate.bat\n"
+        "  pip install fastapi uvicorn pydantic requests python-dotenv psutil httpx python-multipart\n"
+        ") else (\n"
+        "  call .venv\\Scripts\\activate.bat\n"
+        ")\n"
+        "echo Starte SuperGNOM...\n"
+        "python -m uvicorn gnom_hub.api.app:app --host 127.0.0.1 --port 3003\n"
+    )
+    run_bat_path = dist_dir / "run.bat"
+    with open(run_bat_path, "w", encoding="utf-8") as f:
+        f.write(run_bat_content)
 
     return str(dist_dir)

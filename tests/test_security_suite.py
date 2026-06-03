@@ -793,6 +793,70 @@ class TestBakeSupergnom:
         # The bake keeps the last 1000 messages
         assert count <= 1000
 
+    def test_bake_creates_supergnom_yaml(self, tmp_path):
+        """supergnom.yaml muss name, template, models, dependencies und prompt_hashes enthalten"""
+        from gnom_hub.core.utils.compiler import bake_supergnom
+
+        fake_src = tmp_path / "src" / "gnom_hub" / "agents"
+        fake_src.mkdir(parents=True)
+        (tmp_path / "agents").mkdir()
+        (tmp_path / "config").mkdir()
+        fake_db = tmp_path / "gnomhub.db"
+        conn = sqlite3.connect(str(fake_db))
+        conn.execute("CREATE TABLE state (key TEXT, value TEXT)")
+        conn.execute("CREATE TABLE soul_memory (key TEXT)")
+        conn.commit()
+        conn.close()
+        (tmp_path / "pyproject.toml").write_text("[project]\nname='test'\ndependencies = [\n    'fastapi>=0.100.0',\n]\n")
+
+        fake_defs = {
+            "coder": {"name": "CoderAG", "sys_prompt": "Du bist CoderAG."}
+        }
+
+        with patch("gnom_hub.core.utils.compiler.PROJECT_ROOT", tmp_path), \
+             patch("gnom_hub.core.utils.compiler.DB_PATH", fake_db), \
+             patch("gnom_hub.core.utils.evolution_v2.get_active_version", return_value=None), \
+             patch("gnom_hub.agents.agent_definitions.AGENT_DEFINITIONS", fake_defs):
+            bake_supergnom("yamltest", template="agent_chat")
+
+        yaml_file = tmp_path / "dist" / "supergnom_yamltest" / "supergnom.yaml"
+        assert yaml_file.exists()
+        content = yaml_file.read_text()
+        assert "name: yamltest" in content
+        assert "template: agent_chat" in content
+        assert "dependencies:" in content
+        assert "- fastapi>=0.100.0" in content
+        assert "models:" in content
+        assert "prompt_hashes:" in content
+
+    def test_bake_creates_run_bat(self, tmp_path):
+        """run.bat launcher muss existieren"""
+        from gnom_hub.core.utils.compiler import bake_supergnom
+
+        fake_src = tmp_path / "src"
+        fake_src.mkdir()
+        (tmp_path / "agents").mkdir()
+        (tmp_path / "config").mkdir()
+        fake_db = tmp_path / "gnomhub.db"
+        conn = sqlite3.connect(str(fake_db))
+        conn.execute("CREATE TABLE state (key TEXT, value TEXT)")
+        conn.execute("CREATE TABLE soul_memory (key TEXT)")
+        conn.commit()
+        conn.close()
+        (tmp_path / "pyproject.toml").write_text("[project]\nname='test'")
+
+        with patch("gnom_hub.core.utils.compiler.PROJECT_ROOT", tmp_path), \
+             patch("gnom_hub.core.utils.compiler.DB_PATH", fake_db), \
+             patch("gnom_hub.core.utils.compiler.get_active_version", return_value=None, create=True):
+            bake_supergnom("battest")
+
+        run_bat = tmp_path / "dist" / "supergnom_battest" / "run.bat"
+        assert run_bat.exists()
+        content = run_bat.read_text()
+        assert "set SUPERGNOM_MODE=True" in content
+        assert "uvicorn" in content
+
+
 
 # ==============================================================================
 # 8. WAIT_FOR_DECISION — Timeout-Verhalten (C1 fix: injectable clock)
