@@ -42,6 +42,7 @@ def main():
 
     # User Input
     keep_data = input(f"  {Colors.BOLD}Keep user database and memory files at '{data_dir}'? [Y/n]: {Colors.RESET}").strip().lower()
+    keep_config = input(f"  {Colors.BOLD}Keep local configuration and token files in 'config/'? [Y/n]: {Colors.RESET}").strip().lower()
     confirm = input(f"  {Colors.RED}{Colors.BOLD}Are you sure you want to uninstall Gnom-Hub? [y/N]: {Colors.RESET}").strip().lower()
 
     if confirm not in ['y', 'yes', 'j', 'ja']:
@@ -144,6 +145,21 @@ def main():
             print(f"  Deleted {data_dir} {Colors.GREEN}✓{Colors.RESET}")
     else:
         print(f"\n  Database and user memory files preserved in: {data_dir}")
+
+    # 7. Optional Config & Secrets Deletion
+    if keep_config in ['n', 'no', 'nein']:
+        print(f"\n{Colors.BOLD}▸ Removing configuration and token files...{Colors.RESET}")
+        config_dir = os.path.join(repo_dir, "config")
+        if os.path.exists(config_dir):
+            for f in os.listdir(config_dir):
+                if f in (".env", ".hub_secret") or ".gnom-hub-tokens" in f:
+                    try:
+                        os.remove(os.path.join(config_dir, f))
+                        print(f"  Deleted config/{f} {Colors.GREEN}✓{Colors.RESET}")
+                    except Exception:
+                        pass
+    else:
+        print(f"\n  Configuration and token files preserved in: config/")
 
     print(f"\n{Colors.GREEN}═══════════════════════════════════════════════════════{Colors.RESET}")
     print(f"{Colors.BOLD}  ✅ Uninstallation completed successfully!{Colors.RESET}")
