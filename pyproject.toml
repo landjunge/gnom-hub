@@ -20,6 +20,7 @@ dependencies = [
     "faiss-cpu>=1.7.0",
     "numpy<2",
     "transformers<5.0",
+    "python-multipart",
 ]
 
 [project.scripts]
