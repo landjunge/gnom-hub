@@ -28,7 +28,7 @@ class Config:
     WORKSPACE_DIR, DB_PATH = WORKSPACE_DIR, DB_PATH
     DB_ECHO = os.getenv("DB_ECHO", "False").lower() == "true"
     DEFAULT_LLM_PROVIDER = os.getenv("DEFAULT_LLM_PROVIDER", "ollama")
-    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_KEY_FREE_1")
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     HOST, PORT = os.getenv("HOST", "127.0.0.1"), int(os.getenv("PORT", 8000))
     DEBUG = os.getenv("DEBUG", "True").lower() == "true"

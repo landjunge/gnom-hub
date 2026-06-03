@@ -9,5 +9,7 @@ def get_keys(pvd, kdb):
     if pvd == "deepseek" and DS_KEY: ks.append(DS_KEY)
     elif pvd == "openrouter":
         ks.extend([os.environ.get(f"OPENROUTER_KEY_FREE_{i}") for i in range(1, 6) if os.environ.get(f"OPENROUTER_KEY_FREE_{i}")])
+        or_api_key = os.environ.get("OPENROUTER_API_KEY")
+        if or_api_key: ks.append(or_api_key)
         if OR_KEY: ks.append(OR_KEY)
     return list(dict.fromkeys(ks))

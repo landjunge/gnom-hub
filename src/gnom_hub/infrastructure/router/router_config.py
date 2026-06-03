@@ -6,7 +6,7 @@ _env = CONFIG_DIR / ".env"
 if _env.exists():
     load_dotenv(dotenv_path=str(_env))
 
-OR_KEY = os.getenv("OPENROUTER_KEY_FREE_1")
+OR_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_KEY_FREE_1")
 DS_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 AGENT_MODELS = {

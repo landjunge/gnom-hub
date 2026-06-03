@@ -12,7 +12,35 @@ def _track(pvd, mdl, n, r_json, msgs, ans):
         track_tokens(n or "?", mdl, {"prompt_tokens": p_t, "completion_tokens": c_t})
     except Exception as e: logging.getLogger(__name__).error('Fehler in Token-Tracking: %s', e)
 
+def resolve_local_model(requested_model: str) -> str:
+    try:
+        import requests
+        r = requests.get("http://127.0.0.1:11434/api/tags", timeout=2.0)
+        if r.status_code == 200:
+            models_data = r.json().get("models", [])
+            installed_models = [m["name"] for m in models_data]
+            if not installed_models:
+                return requested_model
+            # 1. Exact match
+            if requested_model in installed_models:
+                return requested_model
+            # 2. Match without tag (e.g. "llama3" matches "llama3:latest")
+            for m in installed_models:
+                if m.split(":")[0] == requested_model:
+                    return m
+            # 3. Match substring (e.g. "llama3" matches "llama3.1")
+            for m in installed_models:
+                if requested_model.lower() in m.lower():
+                    return m
+            # 4. Fallback to first installed model
+            return installed_models[0]
+    except Exception:
+        pass
+    return requested_model
+
 def _call(pvd, mdl, key, msgs, n):
+    if pvd == "lokal":
+        mdl = resolve_local_model(mdl)
     h, urls = {"Content-Type": "application/json"}, {"openai": "https://api.openai.com/v1/chat/completions", "mistral": "https://api.mistral.ai/v1/chat/completions", "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "deepseek": "https://api.deepseek.com/chat/completions", "openrouter": "https://openrouter.ai/api/v1/chat/completions", "lokal": "http://127.0.0.1:11434/api/chat", "anthropic": "https://api.anthropic.com/v1/messages"}
     url = urls.get(pvd, urls["openrouter"])
     limit = 1500 if n and n.lower() == "generalag" else (1000 if n and n.lower() == "soulag" else None)
