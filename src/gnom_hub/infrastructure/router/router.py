@@ -91,7 +91,7 @@ def _resolve(pvd, mdl, kdb, n):
     if pvd == "lokal":
         return [("lokal", mdl)]
     
-    candidates = [(pvd, mdl)]
+    candidates = []
     if pvd == "openrouter":
         try:
             working = SQLiteStateRepository().get_value("openrouter_working_models") or []
@@ -101,9 +101,23 @@ def _resolve(pvd, mdl, kdb, n):
             working = list(Config.OPENROUTER_FREE_MODELS)
         
         ordered_working = SmartRouter._order_working_models(working)
-        for wm in ordered_working:
-            if wm != mdl:
-                candidates.append(("openrouter", wm))
+        if mdl in working:
+            candidates.append((pvd, mdl))
+            for wm in ordered_working:
+                if wm != mdl:
+                    candidates.append(("openrouter", wm))
+        else:
+            # If the requested model is offline, prioritize the best working model instead
+            if ordered_working:
+                best_fallback = ordered_working[0]
+                candidates.append(("openrouter", best_fallback))
+                for wm in ordered_working:
+                    if wm != best_fallback:
+                        candidates.append(("openrouter", wm))
+            else:
+                candidates.append((pvd, mdl))
+    else:
+        candidates.append((pvd, mdl))
                 
     candidates.append(("lokal", "llama3"))
     return candidates
