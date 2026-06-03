@@ -682,6 +682,8 @@ async function refreshChat() {
   if (!msgs || !msgs.length) { 
     el.innerHTML = '<div class="empty">No messages yet.</div>'; 
     if (thoughtEl) thoughtEl.innerHTML = '<div class="empty" style="padding:10px; font-size:0.7rem;">Keine Denkprozesse aktiv.</div>';
+    localStorage.removeItem('chatHistory');
+    localStorage.removeItem('gnom_tested_agent_status');
     return; 
   }
   
