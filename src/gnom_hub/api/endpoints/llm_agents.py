@@ -30,6 +30,18 @@ async def test_agent(req: Request):
     if p == "auto":
         from gnom_hub.infrastructure.router.router_stage import SmartRouter
         p, m = SmartRouter.resolve_stage(m, kdb, j.get("agent", "Test"))
+    
+    if p == "openrouter":
+        try:
+            working = SQLiteStateRepository().get_value("openrouter_working_models") or []
+        except Exception:
+            working = []
+        if working and m not in working:
+            from gnom_hub.infrastructure.router.router_stage import SmartRouter
+            ordered = SmartRouter._order_working_models(working)
+            if ordered:
+                m = ordered[0]
+
     k = next((x.get("key") for x in (kdb.values() if isinstance(kdb, dict) else kdb) if x.get("provider") == p and x.get("valid")), None)
     if not k:
         k = next((x.get("key") for x in (kdb.values() if isinstance(kdb, dict) else kdb) if x.get("provider") == p), None)
