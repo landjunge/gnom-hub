@@ -13,6 +13,22 @@ def handle_worker(q):
 CMDS = {"clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs, "resume": handle_resume, "approve_decision": handle_approve_decision, "reject_decision": handle_reject_decision, "bake": handle_bake, "emergency": handle_emergency, "notfall": handle_emergency, "diagnose": handle_diagnose, "confirmations": handle_confirmations, "spass": handle_spass, "worker": handle_worker, "workers": handle_worker, "blockade": handle_blockade, "blokade": handle_blockade}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
+    if msg.sender == "user":
+        from gnom_hub.core.security.injection_validator import validate_input
+        is_safe, reason = validate_input(msg.content)
+        if not is_safe:
+            proj = get_active_project()
+            add_chat_message(proj, "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
+            add_chat_message(
+                proj,
+                "SecurityAG",
+                "securityag",
+                "chat",
+                f"🚨 **Sicherheitswarnung:** Prompt-Injection-Muster erkannt und geblockt ({reason}).",
+                {"type": "chat", "sender": "SecurityAG", "security_threat": True}
+            )
+            return {"status": "blocked", "msg": f"Prompt-Injection blockiert: {reason}", "message": reason}
+
     if msg.sender == "user" and "@merken" in msg.content.lower():
         import re, uuid
         from gnom_hub.db import save_soul_fact
