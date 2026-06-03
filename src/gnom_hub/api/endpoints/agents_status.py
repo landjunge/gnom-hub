@@ -26,7 +26,8 @@ DEFAULT_SETTINGS = {
     "memory_strength": 3,
     "creativity": 3,
     "risk_tolerance": 3,
-    "custom_prompt": ""
+    "custom_prompt": "",
+    "sys_prompt": ""
 }
 
 class AgentSettings(BaseModel):
@@ -36,6 +37,7 @@ class AgentSettings(BaseModel):
     creativity: int
     risk_tolerance: int
     custom_prompt: str
+    sys_prompt: str
 
 class ImportData(BaseModel):
     settings: Optional[dict] = None
@@ -108,7 +110,11 @@ def get_agent_settings(a_id: str):
     if not agent: raise HTTPException(404, "Agent not found")
     all_settings = get_state_value("agent_settings", {})
     agent_settings = all_settings.get(agent.name.lower(), {})
-    return {k: agent_settings.get(k, v) for k, v in DEFAULT_SETTINGS.items()}
+    res = {k: agent_settings.get(k, v) for k, v in DEFAULT_SETTINGS.items()}
+    if not res.get("sys_prompt"):
+        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+        res["sys_prompt"] = AGENT_DEFINITIONS.get(agent.name.lower(), {}).get("sys_prompt", "")
+    return res
 
 @router.put("/api/agents/{a_id}/settings")
 def update_agent_settings(a_id: str, settings: AgentSettings):

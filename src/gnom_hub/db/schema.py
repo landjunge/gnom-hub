@@ -198,6 +198,7 @@ def init_database() -> None:
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('active_project', '\"default\"')")
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('language', '\"en\"')")
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('active_showbox', '\"\"')")
+                conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('enable_confirmations', 'false')")
                 
                 # Seeding agents
                 if not conn.execute("SELECT 1 FROM agents").fetchone():

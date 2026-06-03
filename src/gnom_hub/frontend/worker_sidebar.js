@@ -192,8 +192,16 @@ async function selectAgent(id) {
 
           <div style="display: flex; flex-direction: column; flex-grow: 1;">
             <label style="font-size: 0.8rem; margin-bottom: 6px; display: flex; justify-content: space-between; font-weight: 500;">
+              <span>Rollen-Direktive (Base System Prompt)</span>
+              <span style="opacity: 0.5; font-size: 0.7rem;">Definiert Kernverhalten und Regeln</span>
+            </label>
+            <textarea id="opt-sys-prompt" style="flex-grow: 1; min-height: 120px; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.75rem; resize: vertical; outline: none; transition: border-color 0.2s;" placeholder="Standard System Prompt..." oninput="_markOptimizerDirty()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"></textarea>
+          </div>
+
+          <div style="display: flex; flex-direction: column; flex-grow: 1; margin-top: 10px;">
+            <label style="font-size: 0.8rem; margin-bottom: 6px; display: flex; justify-content: space-between; font-weight: 500;">
               <span>Custom System Prompt Suffix</span>
-              <span style="opacity: 0.5; font-size: 0.7rem;">Overrides base prompt</span>
+              <span style="opacity: 0.5; font-size: 0.7rem;">Wird an den Base Prompt angehängt</span>
             </label>
             <textarea id="opt-custom-prompt" style="flex-grow: 1; min-height: 110px; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.75rem; resize: vertical; outline: none; transition: border-color 0.2s;" placeholder="Ggf. benutzerdefinierten Prompt-Suffix eintragen..." oninput="_markOptimizerDirty()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"></textarea>
           </div>
@@ -390,6 +398,7 @@ async function loadAgentOptimizerData(agentId) {
       document.getElementById('opt-memory').value      = settings.memory_strength ?? 3;
       document.getElementById('opt-creativity').value  = settings.creativity ?? 3;
       document.getElementById('opt-risk').value        = settings.risk_tolerance ?? 3;
+      document.getElementById('opt-sys-prompt').value = settings.sys_prompt ?? '';
       document.getElementById('opt-custom-prompt').value = settings.custom_prompt ?? '';
 
       // Alle Labels + Subtexte sofort rendern (kein Dirty-Badge)
@@ -515,13 +524,14 @@ async function saveAgentOptimizerSettings(agentId) {
   const creativity      = parseInt(document.getElementById('opt-creativity').value);
   const risk_tolerance  = parseInt(document.getElementById('opt-risk').value);
   const custom_prompt   = document.getElementById('opt-custom-prompt').value;
+  const sys_prompt      = document.getElementById('opt-sys-prompt').value;
 
   // Button-Feedback
   const btn = document.getElementById('btn-apply-optimizer');
   if (btn) { btn.textContent = '⏳ Speichere…'; btn.disabled = true; }
 
   try {
-    const res = await api('PUT', `/agents/${agentId}/settings`, { personality, response_style, memory_strength, creativity, risk_tolerance, custom_prompt });
+    const res = await api('PUT', `/agents/${agentId}/settings`, { personality, response_style, memory_strength, creativity, risk_tolerance, custom_prompt, sys_prompt });
     if (res !== null) {
       toast('Einstellungen erfolgreich gespeichert!', 'success');
       _clearOptimizerDirty();

@@ -56,6 +56,8 @@ def _get_behavioral_instructions(settings: dict) -> str:
 def _build_sys(n, sys, agent_name):
     """Inject preset + evolution rules into system prompt."""
     settings = get_state_value("agent_settings", {}).get(n.lower(), {}) if n else {}
+    if settings.get("sys_prompt"):
+        sys = settings["sys_prompt"]
     if settings.get("custom_prompt"):
         sys += "\n\n=== BENUTZERDEFINIERTER SUFFIX ===\n" + settings["custom_prompt"]
     if settings:

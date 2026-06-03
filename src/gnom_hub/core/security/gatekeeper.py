@@ -25,7 +25,7 @@ _clock_sleep = time.sleep
 def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     # Auto-approve if confirmations are disabled (default is False/disabled as requested by user)
     from gnom_hub.db import get_state_value
-    if not get_state_value("enable_confirmations", True):
+    if not get_state_value("enable_confirmations", False):
         proj = get_active_project()
         add_chat_message(
             proj, 
@@ -153,7 +153,7 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
     
     # 0. Bypass ALL blockades if enable_confirmations is False!
     from gnom_hub.db import get_state_value, get_active_project
-    if not get_state_value("enable_confirmations", True):
+    if not get_state_value("enable_confirmations", False):
         proj = get_active_project()
         add_chat_message(
             proj, 
@@ -346,7 +346,7 @@ def verify_cmd(agent, cmd):
     
     # 0. Bypass ALL blockades if enable_confirmations is False!
     from gnom_hub.db import get_state_value, get_active_project
-    if not get_state_value("enable_confirmations", True):
+    if not get_state_value("enable_confirmations", False):
         proj = get_active_project()
         add_chat_message(
             proj, 

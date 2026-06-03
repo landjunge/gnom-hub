@@ -266,7 +266,13 @@ class TestVerifyWrite:
 
     def _call(self, agent, fn, content="", wd="/workspace", perms=None):
         from gnom_hub.core.security.gatekeeper import verify_write
-        return verify_write(agent, fn, content, wd, perms or ["read", "write"])
+        def fake_get_state(key, default=None):
+            if key == "enable_confirmations":
+                return True
+            return default
+        with patch("gnom_hub.core.security.gatekeeper.get_state_value", side_effect=fake_get_state), \
+             patch("gnom_hub.db.get_state_value", side_effect=fake_get_state):
+            return verify_write(agent, fn, content, wd, perms or ["read", "write"])
 
     def test_generalag_always_blocked(self):
         """GeneralAG darf nie schreiben"""
@@ -355,7 +361,13 @@ class TestVerifyCmd:
 
     def _call(self, agent, cmd):
         from gnom_hub.core.security.gatekeeper import verify_cmd
-        return verify_cmd(agent, cmd)
+        def fake_get_state(key, default=None):
+            if key == "enable_confirmations":
+                return True
+            return default
+        with patch("gnom_hub.core.security.gatekeeper.get_state_value", side_effect=fake_get_state), \
+             patch("gnom_hub.db.get_state_value", side_effect=fake_get_state):
+            return verify_cmd(agent, cmd)
 
     def test_generalag_shell_blocked(self):
         with patch("gnom_hub.core.security.gatekeeper.add_chat_message"):
