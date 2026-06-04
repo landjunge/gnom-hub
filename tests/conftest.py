@@ -48,7 +48,9 @@ def isolated_db(tmp_path):
                             name TEXT PRIMARY KEY, id TEXT UNIQUE, port INTEGER DEFAULT 0,
                             description TEXT DEFAULT '', status TEXT DEFAULT 'offline',
                             capabilities TEXT DEFAULT '[]', role TEXT DEFAULT 'normal',
-                            active_job TEXT, last_seen TEXT
+                            active_job TEXT, last_seen TEXT,
+                            circuit_state TEXT DEFAULT 'CLOSED',
+                            consecutive_failures INTEGER DEFAULT 0
                         );
                         CREATE TABLE IF NOT EXISTS chat (
                             id TEXT PRIMARY KEY, project TEXT DEFAULT 'default',
@@ -76,7 +78,9 @@ def isolated_db(tmp_path):
                             sender TEXT, recipient TEXT, payload TEXT,
                             priority INTEGER DEFAULT 5, status TEXT DEFAULT 'pending',
                             retry_count INTEGER DEFAULT 0, created_at REAL,
-                            deliver_after REAL DEFAULT 0, context_id TEXT, depth INTEGER DEFAULT 0
+                            deliver_after REAL DEFAULT 0, context_id TEXT, depth INTEGER DEFAULT 0,
+                            processing_since REAL DEFAULT NULL,
+                            parent_msg_id INTEGER DEFAULT NULL
                         );
                     """)
         

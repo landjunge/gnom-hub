@@ -124,7 +124,7 @@ def _resolve(pvd, mdl, kdb, n):
     candidates.append(("lokal", "llama3"))
     return candidates
 
-def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0):
+def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent_msg_id=None):
     """Einzige Routing-Funktion. Gibt immer ExplainableOutput zurück."""
     old_status = "online"
     if agent_name:
@@ -168,7 +168,7 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0):
                     # router -> swarm_comms -> brainstorm -> brainstorm_helpers -> router
                     # Therefore we keep this specific import local to break the loop.
                     from gnom_hub.agents.swarm.swarm_comms import process_swarm_mentions
-                    process_swarm_mentions(agent_name or n, ans, depth=depth)
+                    process_swarm_mentions(agent_name or n, ans, depth=depth, parent_msg_id=parent_msg_id)
                 return wrap_response(ans, agent_name or n, p, lat, cp, cm, idx > 0)
                 
         lat = (time.time() - t0) * 1000

@@ -314,6 +314,48 @@ def swarm_complete(data: SwarmCompletePayload):
                 (idempotency_key, context_id, agent_name, result_json, received_at)
             VALUES (?, ?, ?, ?, ?)
         """, (key, data.context_id, data.agent_name, json.dumps(data.result), time.time()))
+
+        # Circuit Breaker Logic
+        is_error = data.result.get("status") == "error"
+        if is_error:
+            conn.execute("""
+                UPDATE agents 
+                SET consecutive_failures = consecutive_failures + 1
+                WHERE name = ?
+            """, (data.agent_name,))
+            failures = conn.execute(
+                "SELECT consecutive_failures FROM agents WHERE name = ?", 
+                (data.agent_name,)
+            ).fetchone()
+            if failures and failures["consecutive_failures"] >= 5:
+                conn.execute("""
+                    UPDATE agents 
+                    SET circuit_state = 'OPEN', status = 'degraded'
+                    WHERE name = ?
+                """, (data.agent_name,))
+                logging.getLogger(__name__).warning(
+                    "🚨 [CIRCUIT BREAKER] Agent %s hat 5 aufeinanderfolgende Fehler erreicht. Circuit OPEN, Status degraded.",
+                    data.agent_name
+                )
+        else:
+            agent_row = conn.execute(
+                "SELECT status FROM agents WHERE name = ?", 
+                (data.agent_name,)
+            ).fetchone()
+            if agent_row:
+                if agent_row["status"] == "degraded":
+                    conn.execute("""
+                        UPDATE agents 
+                        SET consecutive_failures = 0, circuit_state = 'CLOSED', status = 'online'
+                        WHERE name = ?
+                    """, (data.agent_name,))
+                else:
+                    conn.execute("""
+                        UPDATE agents 
+                        SET consecutive_failures = 0, circuit_state = 'CLOSED'
+                        WHERE name = ?
+                    """, (data.agent_name,))
+
         conn.commit()
 
     signal_completion(data.context_id, data.agent_name, data.result)

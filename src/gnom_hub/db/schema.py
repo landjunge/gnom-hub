@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS agents (
     capabilities TEXT DEFAULT '[]',
     role TEXT DEFAULT 'normal',
     active_job TEXT DEFAULT NULL,
-    last_seen TEXT NOT NULL
+    last_seen TEXT NOT NULL,
+    circuit_state TEXT DEFAULT 'CLOSED',
+    consecutive_failures INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS chat (
@@ -141,7 +143,8 @@ CREATE TABLE IF NOT EXISTS agent_messages (
     deliver_after REAL    NOT NULL DEFAULT 0,
     context_id    TEXT,
     depth         INTEGER NOT NULL DEFAULT 0,
-    processing_since REAL DEFAULT NULL
+    processing_since REAL DEFAULT NULL,
+    parent_msg_id INTEGER DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_aq_recipient_status ON agent_messages(recipient, status, deliver_after);
 CREATE INDEX IF NOT EXISTS idx_aq_context ON agent_messages(context_id, depth);
@@ -231,6 +234,20 @@ def init_database() -> None:
                 # Dynamic migration to add processing_since to agent_messages if it is missing
                 try:
                     conn.execute("ALTER TABLE agent_messages ADD COLUMN processing_since REAL DEFAULT NULL")
+                except sqlite3.OperationalError:
+                    pass
+                
+                # Dynamic migration for Phase 4 columns
+                try:
+                    conn.execute("ALTER TABLE agents ADD COLUMN circuit_state TEXT DEFAULT 'CLOSED'")
+                except sqlite3.OperationalError:
+                    pass
+                try:
+                    conn.execute("ALTER TABLE agents ADD COLUMN consecutive_failures INTEGER DEFAULT 0")
+                except sqlite3.OperationalError:
+                    pass
+                try:
+                    conn.execute("ALTER TABLE agent_messages ADD COLUMN parent_msg_id INTEGER DEFAULT NULL")
                 except sqlite3.OperationalError:
                     pass
                 

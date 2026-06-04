@@ -3,9 +3,17 @@ import time
 import json
 import threading
 import logging
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 import sqlite3
 from gnom_hub.db.connection import get_db_connection
+
+PRIORITY_MAPPING = {
+    "critical": 1,
+    "high": 3,
+    "normal": 5,
+    "low": 7
+}
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +50,8 @@ def dispatch_mention(
     context_id: str,
     db_path: str,
     current_depth: int = 0,
+    parent_msg_id: Optional[int] = None,
+    priority: Optional[Union[str, int]] = None,
 ) -> List[str]:
     """
     Parst @Mentions und legt Nachrichten in die persistente Queue.
@@ -110,30 +120,38 @@ def dispatch_mention(
                 WHERE recipient = ? AND status = 'processing'
             """, (tgt_name,)).fetchone()[0]
 
-            # Ausgelasteter Agent: trotzdem einreihen, aber mit niedrigerer Priorität
-            priority = 7 if active_count >= MAX_CONCURRENT else 5
+            # Priorität ermitteln
+            prio_val = None
+            if priority is not None:
+                if isinstance(priority, str):
+                    prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
+                elif isinstance(priority, int):
+                    prio_val = priority
+            if prio_val is None:
+                prio_val = 7 if active_count >= MAX_CONCURRENT else 5
 
             if active_count >= MAX_CONCURRENT:
                 logger.info(
                     "Agent '%s' ausgelastet (%d Jobs) – Nachricht wird gepuffert (Prio %d)",
-                    tgt_name, active_count, priority
+                    tgt_name, active_count, prio_val
                 )
 
             # Nachricht persistent speichern
             conn.execute("""
                 INSERT INTO agent_messages
                     (sender, recipient, payload, priority, created_at,
-                     deliver_after, context_id, depth)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                     deliver_after, context_id, depth, parent_msg_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 sender,
                 tgt_name,
                 json.dumps({"text": text, "mention": mention}),
-                priority,
+                prio_val,
                 time.time(),
                 0.0,           # sofort zustellbar
                 context_id,
                 current_depth,
+                parent_msg_id,
             ))
             conn.commit()
 
@@ -253,14 +271,14 @@ def nack_message(msg_id: int, db_path: str, reason: str = "") -> None:
         conn.close()
 
 
-def process_swarm_mentions(sender: str, text: str, depth: int = 0):
+def process_swarm_mentions(sender: str, text: str, depth: int = 0, parent_msg_id: Optional[int] = None):
     """
     Kompatibilitäts-Schnittstelle für den Router.
     """
     from gnom_hub.core.config import DB_PATH
     from gnom_hub.db import get_active_project
     proj = get_active_project() or "default"
-    dispatch_mention(sender, text, proj, str(DB_PATH), depth)
+    dispatch_mention(sender, text, proj, str(DB_PATH), depth, parent_msg_id=parent_msg_id)
 
 
 def find_best_agent_for(task_type: str, conn: sqlite3.Connection) -> Optional[str]:
@@ -297,6 +315,8 @@ def dispatch_by_capability(
     context_id: str,
     db_path: str,
     current_depth: int = 0,
+    parent_msg_id: Optional[int] = None,
+    priority: Optional[Union[str, int]] = None,
 ) -> Optional[str]:
     """
     Routet eine Aufgabe basierend auf den Fähigkeiten der Agenten statt über direkten Namen.
@@ -315,6 +335,8 @@ def dispatch_by_capability(
             context_id=context_id,
             db_path=db_path,
             current_depth=current_depth,
+            parent_msg_id=parent_msg_id,
+            priority=priority,
         )
         return target
     finally:

@@ -106,7 +106,7 @@ class BaseAgent:
                 fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
                 sys_prompt += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
 
-                r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"])
+                r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
 
                 processed = ""
                 if r.content and not r.content.startswith("[ROUTER-FEHLER]"):

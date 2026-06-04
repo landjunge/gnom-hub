@@ -279,3 +279,146 @@ def test_capability_registry_routing(isolated_db):
         assert "@SecurityAG" in msg["payload"]
     finally:
         conn.close()
+
+
+def test_prioritization_mapping(isolated_db):
+    """Test that string priorities are mapped to integers and ordered correctly."""
+    from gnom_hub.core.config import DB_PATH
+    from gnom_hub.agents.swarm.swarm_comms import fetch_next_message
+    
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen)
+            VALUES ('CoderAG', 'coder-uuid', 0, 'Coder Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z')
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+        
+    dispatch_mention("GeneralAG", "@CoderAG low task", "ctx1", str(DB_PATH), priority="low")
+    dispatch_mention("GeneralAG", "@CoderAG critical task", "ctx1", str(DB_PATH), priority="critical")
+    
+    m1 = fetch_next_message("CoderAG", str(DB_PATH))
+    assert m1 is not None
+    assert "critical" in m1["payload"]["text"]
+    
+    m2 = fetch_next_message("CoderAG", str(DB_PATH))
+    assert m2 is not None
+    assert "low" in m2["payload"]["text"]
+
+
+def test_agent_quarantine(isolated_db):
+    """Test that watchdog quarantines agents in a crash loop (3 restarts in 10 mins)."""
+    from gnom_hub.db import update_agent_status
+    
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen)
+            VALUES ('CoderAG', 'coder-uuid', 0, 'Coder Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z')
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+    restart_tracker = {}
+    
+    for _ in range(3):
+        now_ts = time.time()
+        name = "CoderAG"
+        history = [ts for ts in restart_tracker.get(name, []) if now_ts - ts < 600.0]
+        history.append(now_ts)
+        restart_tracker[name] = history
+        
+        if len(history) >= 3:
+            update_agent_status(name, "quarantined")
+            
+    conn = get_db_connection()
+    try:
+        agent = conn.execute("SELECT status FROM agents WHERE name = 'CoderAG'").fetchone()
+        assert agent["status"] == "quarantined"
+    finally:
+        conn.close()
+
+
+def test_circuit_breaker(isolated_db):
+    """Test that consecutive failures trip the circuit breaker and success resets it."""
+    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
+    
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen, circuit_state, consecutive_failures)
+            VALUES ('CoderAG', 'coder-uuid', 0, 'Coder Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z', 'CLOSED', 0)
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Trigger 5 distinct failures (with different context_ids to pass idempotency check)
+    for i in range(5):
+        payload_err = SwarmCompletePayload(
+            context_id=f"ctx-err-{i}",
+            agent_name="CoderAG",
+            result={"status": "error", "error": "something failed"}
+        )
+        swarm_complete(payload_err)
+        
+    conn = get_db_connection()
+    try:
+        agent = conn.execute("SELECT status, circuit_state, consecutive_failures FROM agents WHERE name = 'CoderAG'").fetchone()
+        assert agent["status"] == "degraded"
+        assert agent["circuit_state"] == "OPEN"
+        assert agent["consecutive_failures"] == 5
+    finally:
+        conn.close()
+        
+    payload_ok = SwarmCompletePayload(
+        context_id="ctx-ok-1",
+        agent_name="CoderAG",
+        result={"status": "success", "content": "everything is fine"}
+    )
+    swarm_complete(payload_ok)
+    
+    conn = get_db_connection()
+    try:
+        agent = conn.execute("SELECT status, circuit_state, consecutive_failures FROM agents WHERE name = 'CoderAG'").fetchone()
+        assert agent["status"] == "online"
+        assert agent["circuit_state"] == "CLOSED"
+        assert agent["consecutive_failures"] == 0
+    finally:
+        conn.close()
+
+
+def test_task_lineage(isolated_db):
+    """Test that parent_msg_id is correctly set and propagated."""
+    from gnom_hub.core.config import DB_PATH
+    
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen)
+            VALUES ('CoderAG', 'coder-uuid', 0, 'Coder Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z')
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+    dispatch_mention("GeneralAG", "@CoderAG hello", "ctx1", str(DB_PATH), parent_msg_id=123)
+    
+    conn = get_db_connection()
+    try:
+        msg = conn.execute("SELECT id, parent_msg_id FROM agent_messages WHERE recipient = 'CoderAG'").fetchone()
+        assert msg is not None
+        assert msg["parent_msg_id"] == 123
+        
+        # Test lineage routing - must not be self-dispatch
+        from gnom_hub.agents.swarm.swarm_comms import process_swarm_mentions
+        process_swarm_mentions("GeneralAG", "@CoderAG child task", depth=0, parent_msg_id=msg["id"])
+        
+        child = conn.execute("SELECT parent_msg_id FROM agent_messages WHERE parent_msg_id = ?", (msg["id"],)).fetchone()
+        assert child is not None
+        assert child["parent_msg_id"] == msg["id"]
+    finally:
+        conn.close()

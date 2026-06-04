@@ -26,12 +26,13 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
     import time
     from gnom_hub.agents.swarm.swarm_comms import recover_stuck_messages
     from gnom_hub.infrastructure.process.process_manager import _get_proc, restart_single_agent
-    from gnom_hub.db import get_all_agents
+    from gnom_hub.db import get_all_agents, update_agent_status
     from gnom_hub.db.connection import get_db_connection
     from datetime import datetime, timezone
 
     check_interval = 30.0
     checkpoint_counter = 0
+    restart_tracker = {}
 
     while True:
         try:
@@ -58,14 +59,45 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                 drift = (now - last_seen).total_seconds() if last_seen else 999999
                 should_be_online = status in ("online", "busy", "running")
 
-                if should_be_online:
+                if status == "degraded":
+                    if drift > 60.0:
+                        print(f"🔄 [WATCHDOG] Cooldown abgelaufen für Agent {name}. Setze zurück auf online (HALF_OPEN).")
+                        def recover_degraded(n):
+                            conn = get_db_connection()
+                            try:
+                                conn.execute("""
+                                    UPDATE agents
+                                    SET status = 'online', circuit_state = 'HALF_OPEN', consecutive_failures = 0, last_seen = ?
+                                    WHERE name = ?
+                                """, (datetime.now(timezone.utc).isoformat(), n))
+                                conn.commit()
+                            finally:
+                                conn.close()
+                        await loop.run_in_executor(None, recover_degraded, name)
+
+                elif should_be_online:
                     proc = _get_proc(name)
+                    need_restart = False
+                    reason = ""
                     if not proc:
-                        print(f"⚠️ [WATCHDOG] Agent {name} Prozess fehlt. Starte neu...")
-                        await loop.run_in_executor(None, restart_single_agent, name)
+                        need_restart = True
+                        reason = "Prozess fehlt"
                     elif drift > 120.0:
-                        print(f"⚠️ [WATCHDOG] Agent {name} reagiert nicht mehr (Drift: {int(drift)}s). Starte Prozess neu...")
-                        await loop.run_in_executor(None, restart_single_agent, name)
+                        need_restart = True
+                        reason = f"reagiert nicht mehr (Drift: {int(drift)}s)"
+
+                    if need_restart:
+                        now_ts = time.time()
+                        history = [ts for ts in restart_tracker.get(name, []) if now_ts - ts < 600.0]
+                        history.append(now_ts)
+                        restart_tracker[name] = history
+
+                        if len(history) >= 3:
+                            print(f"🚨 [WATCHDOG] Agent {name} ist in einer Crash-Schleife (3 Restarts in 10 Min). Versetze in Quarantäne...")
+                            await loop.run_in_executor(None, update_agent_status, name, "quarantined")
+                        else:
+                            print(f"⚠️ [WATCHDOG] Agent {name} {reason}. Starte neu (Restart {len(history)}/3 in 10 Min)...")
+                            await loop.run_in_executor(None, restart_single_agent, name)
 
             # 3. WAL Checkpoint (TRUNCATE) every 10 minutes
             checkpoint_counter += 1
