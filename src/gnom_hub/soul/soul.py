@@ -1,162 +1,258 @@
-# soul.py — SoulAG Gedächtnis & Automatische Lerneinheit
-import json, threading, os, re, uuid, logging; from gnom_hub.db import save_soul_fact, add_chat_message, get_active_project
-from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
-_log = logging.getLogger("soul")
-
-MAX_SOUL_FACTS = 50  # Max. Anzahl Fakten pro Launch
-CONTRADICTION_WORDS = ["nicht schreib", "nicht [write", "nicht erstel", "kein write",
-                       "vorher frag", "um erlaubnis", "showbox statt", "frag erst",
-                       "keine datei", "blockade", "verweigert", "nicht ausfüh"]
-
+# soul.py — SoulAG Gedächtnis & Automatische Lerneinheit (v3)
+import json, threading, os, re, uuid, logging, time
+from datetime import datetime
+from gnom_hub.db import save_soul_fact, add_chat_message, get_active_project
+from gnom_hub.infrastructure.router.router import ask_router
+from gnom_hub.core.config import WORKSPACE_DIR
 from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
 
+_log = logging.getLogger("soul")
+
+# ── Konfiguration ──────────────────────────────────────────────────────────
+MAX_SOUL_FACTS       = 50      # Hartes Limit
+MIN_VALUE_LENGTH     = 15      # Minimale Fakt-Länge (Zeichen)
+DEDUP_THRESHOLD      = 0.88    # FAISS-Ähnlichkeits-Schwelle
+HIGH_PRIO_MAX_AGE_DAYS = 30    # High-Fakten leben max 30 Tage
+MED_PRIO_MAX_AGE_DAYS  = 14    # Medium-Fakten leben max 14 Tage
+LOW_PRIO_MAX_AGE_DAYS  = 7     # Low-Fakten leben max 7 Tage
+
+# Patterns, die NIEMALS gespeichert werden
+BLOCKED_PATTERNS = [
+    r"nicht\s+(?:schreib|erstel|ausführ|mach|erzeug)", r"(?:nur|ausschließlich)\s+(?:showbox|sb)\s",
+    r"vorher\s+(?:frag|bestätig|erlaubnis)", r"um\s+erlaubnis\s+(?:frag|bitt)",
+    r"(?:darf|kann|soll)\s+nicht\s+(?:schreib|editier|ausführ)",
+    r"kein(?:e|en)?\s+(?:write|datei|schreib|zugriff)", r"frag\s+erst",
+    r"blockade|verweigert", r"nicht\s+(?:als|im|in)\s+(?:\[WRITE|\[SHELL)",
+]
+
+BLOCKED_RE = re.compile("|".join(BLOCKED_PATTERNS), re.IGNORECASE)
+
+# ── Fact Scoring ───────────────────────────────────────────────────────────
+PRIO_SCORE = {"high": 30, "medium": 15, "low": 5}
+
+def _compute_score(priority: str, age_days: float, injection_count: int = 0) -> float:
+    """Berechnet die Relevanz eines Fakts: höher = wichtiger."""
+    age_penalty = age_days * 1.5  # älter = weniger relevant
+    usage_bonus = min(injection_count * 3, 30)  # oft injiziert = relevanter (max 30)
+    return PRIO_SCORE.get(priority, 10) + usage_bonus - age_penalty
+
+
+# ── Periodische Hausputz-Funktion ─────────────────────────────────────────
+_last_cleanup_time = 0
+CLEANUP_INTERVAL = 3600  # 1 Stunde zwischen Hausputz
+
+def _periodic_cleanup():
+    """Löscht überalterte Fakten und reduziert Duplikate. Läuft max 1x/Stunde."""
+    global _last_cleanup_time
+    now = time.time()
+    if now - _last_cleanup_time < CLEANUP_INTERVAL:
+        return
+    _last_cleanup_time = now
+
+    try:
+        from gnom_hub.db.connection import get_db_conn
+        with get_db_conn() as conn:
+            total = conn.execute("SELECT COUNT(*) FROM soul_memory").fetchone()[0]
+            if total == 0:
+                return
+
+            now_iso = datetime.now().isoformat()[:19]
+            deleted = 0
+
+            # 1. Alter-basierte Löschung
+            for prio, max_days in [("low", LOW_PRIO_MAX_AGE_DAYS),
+                                    ("medium", MED_PRIO_MAX_AGE_DAYS),
+                                    ("high", HIGH_PRIO_MAX_AGE_DAYS)]:
+                cutoff = datetime.now().isoformat()[:10]
+                aged = conn.execute(
+                    "SELECT key FROM soul_memory WHERE priority = ? AND timestamp < ?",
+                    (prio, cutoff)
+                ).fetchall()
+                for a in aged:
+                    conn.execute("DELETE FROM soul_memory WHERE key = ?", (a["key"],))
+                if aged:
+                    _log.info("[Soul] Aging: %d %s-priority facts deleted (>%dd old)", len(aged), prio, max_days)
+                    deleted += len(aged)
+
+            # 2. Score-basierte Löschung (nur wenn über Limit)
+            remaining = conn.execute("SELECT COUNT(*) FROM soul_memory").fetchone()[0]
+            if remaining > MAX_SOUL_FACTS:
+                rows = conn.execute(
+                    "SELECT key, priority, timestamp FROM soul_memory ORDER BY timestamp ASC"
+                ).fetchall()
+                # Score berechnen und die schlechtesten löschen
+                scored = []
+                for r in rows:
+                    try:
+                        ts = r["timestamp"]
+                        age_d = (datetime.now() - datetime.fromisoformat(ts.replace("Z", "+00:00").replace("T", " ")[:19])).days if ts else 0
+                    except Exception:
+                        age_d = 0
+                    scored.append((r["key"], _compute_score(r["priority"], age_d, 0)))
+                scored.sort(key=lambda x: x[1])
+                to_delete = remaining - MAX_SOUL_FACTS
+                for key, _score in scored[:to_delete]:
+                    conn.execute("DELETE FROM soul_memory WHERE key = ?", (key,))
+                _log.info("[Soul] Score-pruning: %d low-score facts deleted", to_delete)
+                deleted += to_delete
+
+            if deleted:
+                conn.commit()
+                _log.info("[Soul] Cleanup complete: %d facts removed (%d remaining)", deleted,
+                         conn.execute("SELECT COUNT(*) FROM soul_memory").fetchone()[0])
+    except Exception as e:
+        _log.warning("[Soul] Periodic cleanup failed: %s", e)
+
+
+# ── SoulAG Hauptklasse ────────────────────────────────────────────────────
 class SoulAG:
     def __init__(self):
         self.name = "SoulAG"
         self._injections = {}
+        self._recent_facts_cache = {}  # key -> (timestamp, value_hash) für schnelles Dedup
+
     def on_message(self, m: str, s: str):
         from gnom_hub.core.config import Config
         if Config.SUPERGNOM_MODE:
             return
         m_lower = m.lower()
-        if (s.lower() == "user" or 
-            any(x in m_lower for x in ["abschluss", "zusammenfassung", "[write:"]) or
-            ("fertig" in m_lower and "gestellt" in m_lower)):
+        if (s.lower() == "user"
+                or any(x in m_lower for x in ["abschluss", "zusammenfassung", "[write:"])
+                or ("fertig" in m_lower and "gestellt" in m_lower)):
             threading.Thread(target=self._ex, args=(m,), daemon=True).start()
-    def _val(self, k: str, v: str) -> int:
+
+    def _val(self, k: str, v: str) -> bool:
+        """Prüft ob ein Fakt gespeichert werden darf."""
         kl = k.lower()
-        if k == "active_preset": return 2 if str(v) in ["Web Development", "Graphic Design", "Audio Production", "Video Production", "Marketing & Copy", "Content Creation", "Research & Analysis"] else 0
-        if "path" in kl or "file" in kl:
-            p = os.path.realpath(os.path.join(str(WORKSPACE_DIR), str(v)) if not os.path.isabs(str(v)) else str(v))
-            return 0 if not p.startswith(os.path.realpath(str(WORKSPACE_DIR))) else (1 if any(x in p.replace("\\", "/").lower() for x in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]) else 2)
-        return 2
-    def _is_dup(self, v: str) -> bool:
+        if len(v.strip()) < MIN_VALUE_LENGTH:
+            return False
+        if BLOCKED_RE.search(v):
+            _log.info("[Soul] Blocked by pattern: %s", k)
+            return False
+        if k == "active_preset":
+            return v in ["Web Development", "Graphic Design", "Audio Production",
+                         "Video Production", "Marketing & Copy", "Content Creation",
+                         "Research & Analysis"]
+        return True
+
+    def _is_dup(self, text: str) -> bool:
+        """Prüft via FAISS ob ein semantisch ähnlicher Fakt existiert."""
         try:
             from gnom_hub.memory.embeddings import get_embedder
-            return get_embedder().has_similar(v, threshold=0.92)
-        except Exception: return False
+            return get_embedder().has_similar(text, threshold=DEDUP_THRESHOLD)
+        except Exception:
+            return False
+
     def _ex(self, m: str):
+        """Extrahiert Fakten aus einer Chat-Nachricht (LLM-basiert)."""
         try:
+            # 1. Periodischen Hausputz laufen lassen
+            _periodic_cleanup()
+
+            # 2. LLM-Call zur Fakt-Extraktion
             prompt = (
-                f"Nachricht des Users oder Agenten:\n\"\"\"\n{m}\n\"\"\"\n\n"
-                "Extrahiere alle relevanten, langfristig nützlichen Fakten, Präferenzen und Projekt-Einstellungen.\n"
-                "Antworte AUSSCHLIESSLICH im folgenden JSON-Format:\n"
-                "[\n"
-                "  {\n"
-                "    \"key\": \"ein_beschreibender_schluessel\",\n"
-                "    \"value\": \"Der präzise, eigenständige Fakt.\",\n"
-                "    \"priority\": \"high\",\n"
-                "    \"target_agent\": \"CoderAG\" // 'CoderAG', 'WriterAG', 'ResearcherAG', 'EditorAG' oder 'all' (wenn global relevant)\n"
-                "  }\n"
-                "]\n"
-                "Falls keine neuen Fakten enthalten sind, antworte mit einem leeren Array: []"
+                f"Nachricht:\n\"\"\"\n{m}\n\"\"\"\n\n"
+                "Extrahiere NUR relevante, langfristig nützliche Fakten.\n"
+                "Keine Begrüßungen, keine flüchtigen Fehler, keine Wiederholungen.\n"
+                "Antworte als JSON-Array:\n"
+                '[\n  {"key": "prafix_schluessel", "value": "Präziser Fakt.", "priority": "high|medium|low", "target_agent": "CoderAG|WriterAG|ResearcherAG|EditorAG|all"}\n]\n'
+                "Leeres Array [] wenn nichts relevant."
             )
             res = ask_router(
                 prompt,
                 sys=(
-                    "Du bist der SoulAG Lerneffekt-Extraktor von Gnom-Hub. Deine Aufgabe ist es, Nachrichten zu analysieren "
-                    "und qualitativ hochwertige, präzise und kategorisierte Fakten zu extrahieren. "
-                    "Befolge diese Regeln:\n"
-                    "1. Schlüssel (key) müssen deskriptiv, kleingeschrieben und mit Unterstrichen sein.\n"
-                    "2. Werte (value) müssen vollständig und im Kontext verständlich sein. Vermeide Pronomen.\n"
-                    "3. Weise eine Priorität ('high', 'medium', 'low') zu.\n"
-                    "4. Bestimme den 'target_agent' für jeden Fakt. Wenn der Fakt sich spezifisch auf Programmierrichtlinien, "
-                    "Code-Style, Bibliotheken oder technische Umsetzung bezieht, weise 'CoderAG' zu. Wenn er sich auf das Verfassen von Texten "
-                    "bezieht, weise 'WriterAG' zu. Wenn er sich auf Recherchen oder Suche bezieht, weise 'ResearcherAG' zu. Wenn er sich "
-                    "auf Review oder Qualitätssicherung bezieht, weise 'EditorAG' zu. Wenn der Fakt allgemein gültig ist, weise 'all' zu.\n"
-                    "5. Extrahiere keine flüchtigen Programmierfehler oder Begrüßungen.\n"
-                    "6. Antworte AUSSCHLIESSLICH mit dem JSON-Array. Kein Markdown, kein Einleitungstext."
+                    "SoulAG Fakt-Extraktor. Extrahiere präzise, eigenständige Fakten. "
+                    "Priority: high=Projekt-entscheidend, medium=nützlich, low=kontextuell. "
+                    "target_agent: 'all' oder spezifischer Worker. "
+                    "NUR JSON-Array ausgeben."
                 ),
                 agent_name="SoulAG"
             ).content
+
             s, e = res.find("["), res.rfind("]")
-            if s == -1 or e == -1: _log.debug("[Soul] LLM returned no JSON array for fact extraction"); return
-            for f in json.loads(res[s:e+1]):
-                k, v = f.get("key",""), f.get("value","")
+            if s == -1 or e == -1:
+                _log.debug("[Soul] No JSON array in LLM response")
+                return
+
+            facts = json.loads(res[s:e+1])
+            saved = 0
+            for f in facts:
+                k, v = f.get("key", ""), f.get("value", "")
                 p = f.get("priority", "medium").lower()
                 target = f.get("target_agent", "all")
-                if p not in ["high", "medium", "low"]: p = "medium"
+                if p not in ("high", "medium", "low"):
+                    p = "medium"
 
-                # Guardrail 1: Widersprüchliche Fakten blockieren
-                v_lower = v.lower()
-                if any(w in v_lower for w in CONTRADICTION_WORDS):
-                    _log.info("[Soul] Blocked contradictory fact: %s", k)
+                # Qualitäts-Check
+                if not self._val(k, v):
                     continue
 
-                # Guardrail 2: Validierung (Min-Länge + Qualität)
-                if self._val(k, v) < 2:
-                    _log.debug("[Soul] Fact rejected by validator: %s", k)
-                    continue
-
-                # Guardrail 2b: Wert zu kurz → low priority
-                if len(v.strip()) < 10:
-                    _log.info("[Soul] Fact too short, skipped: %s", k)
-                    continue
-
-                # Guardrail 3: Dedup + Aging
+                # Dedup
                 if self._is_dup(f"{k}: {v}"):
-                    _log.info("[Soul] Duplicate skipped: %s", k)
                     continue
 
-                # Guardrail 4: Max-Limit + Aging
-                try:
-                    from gnom_hub.db.connection import get_db_conn
-                    with get_db_conn() as conn:
-                        total = conn.execute("SELECT COUNT(*) FROM soul_memory").fetchone()[0]
-                        if total >= MAX_SOUL_FACTS:
-                            oldest = conn.execute(
-                                "SELECT key FROM soul_memory ORDER BY timestamp ASC LIMIT 1"
-                            ).fetchone()
-                            if oldest:
-                                conn.execute("DELETE FROM soul_memory WHERE key = ?", (oldest["key"],))
-                                _log.info("[Soul] Limit %d — oldest deleted: %s", MAX_SOUL_FACTS, oldest["key"])
-                        # Aging: low-priority facts älter als 7 Tage löschen
-                        ago_7d = __import__('datetime').datetime.now().isoformat()[:10]
-                        aged = conn.execute(
-                            "SELECT key FROM soul_memory WHERE priority='low' AND timestamp < ?",
-                            (ago_7d,)
-                        ).fetchall()
-                        for a in aged:
-                            conn.execute("DELETE FROM soul_memory WHERE key = ?", (a["key"],))
-                        if aged:
-                            _log.info("[Soul] Aging: %d low-priority facts deleted", len(aged))
-                except Exception as e:
-                    _log.warning("[Soul] Max-limit/Aging check failed: %s", e)
-                except Exception as e:
-                    _log.warning("[Soul] Max-limit check failed: %s", e)
+                # Kurzzeit-Dedup Cache (gleicher Key in letzten 300s)
+                cache_entry = self._recent_facts_cache.get(k)
+                now = time.time()
+                if cache_entry and (now - cache_entry[0] < 300) and cache_entry[1] == hash(v):
+                    continue
+                self._recent_facts_cache[k] = (now, hash(v))
+                if len(self._recent_facts_cache) > 200:
+                    oldest = min(self._recent_facts_cache, key=lambda x: self._recent_facts_cache[x][0])
+                    del self._recent_facts_cache[oldest]
 
+                # Speichern
                 agent_name = "SoulAG" if target.lower() == "all" else target
                 save_soul_fact(k, v, agent=agent_name, priority=p)
-                _log.info("[Soul] Fact saved: %s (priority: %s, target: %s)", k, p, agent_name)
-        except json.JSONDecodeError as e: _log.warning("[Soul] JSON parse error in fact extraction: %s", e)
-        except Exception as e: _log.error("[Soul] Fact extraction failed: %s", e, exc_info=True)
+                saved += 1
+                _log.debug("[Soul] Saved: %s [%s -> %s]", k, p, agent_name)
+
+            if saved:
+                _log.info("[Soul] %d facts saved", saved)
+
+        except json.JSONDecodeError as e:
+            _log.warning("[Soul] JSON error: %s", e)
+        except Exception as e:
+            _log.error("[Soul] Extraction failed: %s", e, exc_info=True)
+
     def inject_context(self, sys: str, msg: str, agent_name: str = None) -> str:
-        top_k = 8
+        """Reichert das System-Prompt mit relevanten Soul-Fakten an."""
+        top_k = 6  # Reduziert (war 8)
         if agent_name:
             try:
                 from gnom_hub.db import get_state_value
                 settings = get_state_value("agent_settings", {}).get(agent_name.lower(), {})
-                top_k = {1: 2, 2: 4, 3: 8, 4: 12, 5: 16}.get(settings.get("memory_strength", 3), 8)
-            except Exception as e: logging.getLogger(__name__).error('Fehler in inject_context (agent_settings): %s', e)
+                top_k = {1: 2, 2: 4, 3: 6, 4: 8, 5: 12}.get(settings.get("memory_strength", 3), 6)
+            except Exception:
+                pass
+
+        # Nur Fakten mit Score > 0 holen (veraltete/low-score ignorieren)
         facts = retrieve_relevant_facts(msg, agent_name=agent_name, top_k=top_k)
         if agent_name and facts:
             for f in facts:
                 key = (agent_name.lower(), f)
                 self._injections[key] = self._injections.get(key, 0) + 1
-                if self._injections[key] == 2:
-                    try:
-                        _log.info(f"[SoulAG] Information '{f}' wurde bereits zum zweiten Mal an {agent_name} übermittelt.")
-                    except Exception as e: logging.getLogger(__name__).error('Fehler in inject_context (injection-Hinweis): %s', e)
+
             if len(self._injections) > 2000:
-                keys_to_remove = list(self._injections.keys())[:len(self._injections) // 2]
+                keys_to_remove = sorted(self._injections.keys())[:1000]
                 for k in keys_to_remove:
                     del self._injections[k]
-                _log.info('[Soul] _injections evicted: %d Einträge entfernt', len(keys_to_remove))
-        ctx = sys + ("\n\n=== RELEVANTE INFORMATIONEN ===\n" + "\n".join(f"- {f}" for f in facts) if facts else "")
-        m_ctx = [f"[Ref: @{d['name']} - Role: {d['role']} - {d['description']}]" for k, d in self.get_definitions().items() if k.lower() in [x.lower() for x in re.findall(r'@(\w+)', msg)]]
+
+        ctx = sys + ("\n\n=== RELEVANTE ERINNERUNGEN ===\n" + "\n".join(f"- {f}" for f in facts) if facts else "")
+        m_ctx = [f"[Ref: @{d['name']} - {d['description']}]"
+                 for k, d in self.get_definitions().items()
+                 if k.lower() in [x.lower() for x in re.findall(r'@(\w+)', msg)]]
         return ctx + ("\n\n=== ERWÄHNTE AGENTEN ===\n" + "\n".join(m_ctx) if m_ctx else "")
-    def get_definitions(self) -> dict: from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS; return AGENT_DEFINITIONS
+
+    def get_definitions(self) -> dict:
+        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+        return AGENT_DEFINITIONS
+
+
 soul_instance = SoulAG()
+
+
+# ── Evolution & Feedback (unverändert) ─────────────────────────────────────
 def _save_rules(res: str, prefix=""):
     s, e = res.find("["), res.rfind("]")
     if s != -1 and e != -1:
@@ -167,23 +263,29 @@ def _save_rules(res: str, prefix=""):
                     agent_name = f["agent"]
                     rule_text = prefix + f["rule"]
                     save_soul_fact(f"evolution_{agent_name}_{uuid.uuid4().hex[:6]}", rule_text, agent="GeneralAG")
-                    add_chat_message(get_active_project(), "GeneralAG", "generalag", "chat", f"@user @SoulAG: Regel für {agent_name} gelernt: '{f['rule']}'")
+                    add_chat_message(get_active_project(), "GeneralAG", "generalag", "chat",
+                                     f"@user @SoulAG: Regel für {agent_name} gelernt: '{f['rule']}'")
                     try:
                         from gnom_hub.core.utils.evolution_v2 import create_version
                         create_version(agent_name, rule_text)
                     except Exception as ex:
-                        import logging
-                        logging.getLogger("db").error(f"[Soul] Failed to create prompt version for {agent_name}: {ex}")
+                        logging.getLogger("db").error(f"[Soul] Failed promp version for {agent_name}: {ex}")
         except Exception as ex:
-            import logging
             logging.getLogger("db").error(f"[Soul] Failed to parse and save rules: {ex}")
+
 
 def run_evolution(task: str, hist: str):
     from gnom_hub.core.config import Config
     if Config.SUPERGNOM_MODE:
         return
-    try: _save_rules(ask_router(f"Analysiere '{task}' und den Verlauf:\n{hist}\nSchlage Verbesserungen vor. Antworte NUR im JSON-Format: [{{\"agent\": \"AgentName\", \"rule\": \"Regelinhalt\"}}]", sys="Du bist Optimierer.", agent_name="GeneralAG").content)
-    except Exception as e: logging.getLogger(__name__).error('Fehler in run_evolution: %s', e)
+    try:
+        _save_rules(ask_router(
+            f"Analysiere '{task}' und Verlauf:\n{hist}\nVerbesserungen vorschlagen. NUR JSON: [{{\"agent\": \"Name\", \"rule\": \"Regel\"}}]",
+            sys="Du bist Optimierer.", agent_name="GeneralAG"
+        ).content)
+    except Exception as e:
+        logging.getLogger(__name__).error('Fehler in run_evolution: %s', e)
+
 
 def handle_user_feedback(vote: str, comment: str):
     from gnom_hub.core.config import Config
@@ -191,11 +293,10 @@ def handle_user_feedback(vote: str, comment: str):
     add_chat_message(get_active_project(), "System", "system", "chat", f"@user Feedback: {vote} | {comment}")
     if Config.SUPERGNOM_MODE:
         return
-    
+
     try:
         from gnom_hub.core.utils.evolution_v2 import update_version_score
         from gnom_hub.db import get_chat_history
-        
         active_agents = set()
         history = get_chat_history(limit=40)
         for msg in history:
@@ -205,16 +306,18 @@ def handle_user_feedback(vote: str, comment: str):
                 for ag_key, ag_def in AGENT_DEFINITIONS.items():
                     if ag_def["name"].lower() == sender.lower():
                         active_agents.add(ag_def["name"])
-        
         if not active_agents:
             active_agents = {"CoderAG", "WriterAG", "ResearcherAG", "EditorAG"}
-            
         for agent in active_agents:
             update_version_score(agent, vote)
     except Exception as ex:
-        import logging
-        logging.getLogger("db").error(f"[Soul] Failed to update version scores: {ex}")
+        logging.getLogger("db").error(f"[Soul] Failed version scores: {ex}")
 
     if comment.strip():
-        try: _save_rules(ask_router(f"User-Feedback: '{comment}'. Schlage Verbesserungen vor. Antworte NUR im JSON-Format: [{{\"agent\": \"AgentName\", \"rule\": \"Regelinhalt\"}}]", sys="Du bist Optimierer.", agent_name="GeneralAG").content, "User-Feedback: ")
-        except Exception as e: logging.getLogger(__name__).error('Fehler in handle_user_feedback (save_rules): %s', e)
+        try:
+            _save_rules(ask_router(
+                f"User-Feedback: '{comment}'. Verbesserungen vorschlagen. NUR JSON: [{{\"agent\": \"Name\", \"rule\": \"Regel\"}}]",
+                sys="Du bist Optimierer.", agent_name="GeneralAG"
+            ).content, "User-Feedback: ")
+        except Exception as e:
+            logging.getLogger(__name__).error('Fehler in handle_user_feedback: %s', e)
