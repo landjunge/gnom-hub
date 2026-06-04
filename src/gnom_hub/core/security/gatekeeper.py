@@ -319,11 +319,16 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
 def verify_cmd(agent, cmd):
     """
     Nicht-blockierende Prüfung vor Shell-Befehlen.
+    - GeneralAG (role=general): KEINE Shell-Befehle erlaubt
     - Whitelist-Prüfung (erlaubte Befehle)
     - System-Pfad-Schutz (kein Zugriff auf src/gnom_hub, config/, .env, ...)
     - Keine Warte-Dialoge.
     """
     name = (agent or {}).get("name", "Unknown")
+    role = (agent or {}).get("role", "")
+
+    if role == "general" or name.lower() == "generalag":
+        return False
 
     from gnom_hub.core.config import WORKSPACE_DIR
     from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir

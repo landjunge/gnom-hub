@@ -83,26 +83,45 @@ class SoulAG:
                     _log.info("[Soul] Blocked contradictory fact: %s", k)
                     continue
 
-                # Guardrail 2: Validierung
+                # Guardrail 2: Validierung (Min-Länge + Qualität)
                 if self._val(k, v) < 2:
                     _log.debug("[Soul] Fact rejected by validator: %s", k)
                     continue
 
-                # Guardrail 3: Dedup-Prüfung
+                # Guardrail 2b: Wert zu kurz → low priority
+                if len(v.strip()) < 10:
+                    _log.info("[Soul] Fact too short, skipped: %s", k)
+                    continue
+
+                # Guardrail 3: Dedup + Aging
                 if self._is_dup(f"{k}: {v}"):
                     _log.info("[Soul] Duplicate skipped: %s", k)
                     continue
 
-                # Guardrail 4: Max-Limit — ältesten Fakt löschen wenn voll
+                # Guardrail 4: Max-Limit + Aging
                 try:
                     from gnom_hub.db.connection import get_db_conn
                     with get_db_conn() as conn:
                         total = conn.execute("SELECT COUNT(*) FROM soul_memory").fetchone()[0]
                         if total >= MAX_SOUL_FACTS:
-                            oldest = conn.execute("SELECT key FROM soul_memory ORDER BY timestamp ASC LIMIT 1").fetchone()
+                            oldest = conn.execute(
+                                "SELECT key FROM soul_memory ORDER BY timestamp ASC LIMIT 1"
+                            ).fetchone()
                             if oldest:
                                 conn.execute("DELETE FROM soul_memory WHERE key = ?", (oldest["key"],))
-                                _log.info("[Soul] Limit erreicht (%d) — ältesten Fakt gelöscht: %s", MAX_SOUL_FACTS, oldest["key"])
+                                _log.info("[Soul] Limit %d — oldest deleted: %s", MAX_SOUL_FACTS, oldest["key"])
+                        # Aging: low-priority facts älter als 7 Tage löschen
+                        ago_7d = __import__('datetime').datetime.now().isoformat()[:10]
+                        aged = conn.execute(
+                            "SELECT key FROM soul_memory WHERE priority='low' AND timestamp < ?",
+                            (ago_7d,)
+                        ).fetchall()
+                        for a in aged:
+                            conn.execute("DELETE FROM soul_memory WHERE key = ?", (a["key"],))
+                        if aged:
+                            _log.info("[Soul] Aging: %d low-priority facts deleted", len(aged))
+                except Exception as e:
+                    _log.warning("[Soul] Max-limit/Aging check failed: %s", e)
                 except Exception as e:
                     _log.warning("[Soul] Max-limit check failed: %s", e)
 

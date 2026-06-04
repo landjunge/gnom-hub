@@ -362,10 +362,10 @@ class TestVerifyCmd:
              patch("gnom_hub.db.get_state_value", side_effect=fake_get_state):
             return verify_cmd(agent, cmd)
 
-    def test_generalag_shell_now_allowed(self):
-        """GeneralAG darf jetzt whitelisted Befehle ausführen"""
+    def test_generalag_shell_blocked(self):
+        """GeneralAG darf KEINE Shell-Befehle ausführen (auch keine whitelisted)"""
         result = self._call(make_general_agent(), "ls")
-        assert result is True
+        assert result is False
 
     def test_protected_path_instant_blocked(self):
         """Zugriff auf src/gnom_hub → sofort blockiert (kein wait_for_decision)"""
