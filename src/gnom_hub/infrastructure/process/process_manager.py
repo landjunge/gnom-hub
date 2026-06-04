@@ -40,8 +40,22 @@ def process_status() -> str:
     return "\n".join(f"{a}: {'RUNNING' if _get_proc(a) else 'STOPPED'}" for a in AGENTS)
 
 def restart_hub() -> None:
-    import os
-    os._exit(42)
+    import os, signal
+    os.environ["GNOM_HUB_RESTART"] = "true"
+    os.kill(os.getpid(), signal.SIGINT)
+
+def restart_single_agent(name: str) -> None:
+    matched = next((a for a in AGENTS if a.lower() == name.lower()), None)
+    if not matched:
+        logging.getLogger(__name__).warning("Restart abgelehnt: Agent '%s' unbekannt.", name)
+        return
+    _kill_proc(matched)
+    log_dir = PROJECT_ROOT / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    with open(log_dir / f"logs_{matched}.txt", "a") as f:
+        p = subprocess.Popen([sys.executable, "-u", "-m", f"agents.{matched}"], stdout=f, stderr=subprocess.STDOUT, cwd=str(PROJECT_ROOT))
+        (RUN_DIR / f"{matched}.pid").write_text(str(p.pid))
+    logging.getLogger(__name__).info("Watchdog hat Agent '%s' (PID %d) neu gestartet.", matched, p.pid)
 
 class ProcessManager:
     async def start_agent_process(self, agent) -> int:

@@ -128,6 +128,23 @@ CREATE INDEX IF NOT EXISTS idx_soul_memory_timestamp ON soul_memory(timestamp DE
 CREATE INDEX IF NOT EXISTS idx_chat_project_ts ON chat(project, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_agent ON chat(agent_id);
 CREATE INDEX IF NOT EXISTS idx_chat_project_agent ON chat(project, agent_id);
+
+CREATE TABLE IF NOT EXISTS agent_messages (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender        TEXT    NOT NULL,
+    recipient     TEXT    NOT NULL,
+    payload       TEXT    NOT NULL,
+    priority      INTEGER NOT NULL DEFAULT 5,
+    status        TEXT    NOT NULL DEFAULT 'pending',
+    retry_count   INTEGER NOT NULL DEFAULT 0,
+    created_at    REAL    NOT NULL,
+    deliver_after REAL    NOT NULL DEFAULT 0,
+    context_id    TEXT,
+    depth         INTEGER NOT NULL DEFAULT 0,
+    processing_since REAL DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_aq_recipient_status ON agent_messages(recipient, status, deliver_after);
+CREATE INDEX IF NOT EXISTS idx_aq_context ON agent_messages(context_id, depth);
 """
 
 def _seed_agents(conn):
@@ -193,6 +210,12 @@ def init_database() -> None:
         with get_db_connection() as conn:
             with conn:
                 conn.executescript(SCHEMA_SQL)
+                
+                # Dynamic migration to add processing_since to agent_messages if it is missing
+                try:
+                    conn.execute("ALTER TABLE agent_messages ADD COLUMN processing_since REAL DEFAULT NULL")
+                except sqlite3.OperationalError:
+                    pass
                 
                 # Default states
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('active_project', '\"default\"')")

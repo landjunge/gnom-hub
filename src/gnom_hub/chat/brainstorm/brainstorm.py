@@ -10,7 +10,7 @@ def _collect_worker_responses(worker_names):
         if resp: out.append(f"[{n}] {strip_zwc(resp['content'])[:800]}")
     return "\n\n".join(out)
 def dispatch(q, target=None, depth=0):
-    from gnom_hub.db import get_all_agents; ao = [a for a in get_all_agents() if a.get("status") == "online"]
+    from gnom_hub.db import get_all_agents; ao = [a for a in get_all_agents() if a.get("status") in ("online", "busy", "running")]
     if target:
         t_low = target.lower()
         sys_names = {"soulag", "generalag", "securityag", "watchdogag"}
@@ -22,7 +22,12 @@ def dispatch(q, target=None, depth=0):
             s = ao
         else:
             s = [a for a in ao if a["name"].lower() == t_low]
-        for a in s: threading.Thread(target=ask_llm, args=(a, q, get_ctx(), False, depth), daemon=True).start()
+        from gnom_hub.agents.swarm.swarm_comms import dispatch_mention
+        from gnom_hub.core.config import DB_PATH
+        from gnom_hub.db import get_active_project
+        proj = get_active_project() or "default"
+        for a in s:
+            dispatch_mention("GeneralAG", f"@{a['name']} {q}", proj, str(DB_PATH), depth)
         return [a["name"] for a in s]
     w = [a for a in ao if a["name"].lower() not in ("soulag", "generalag", "securityag", "watchdogag")]
     g = [a for a in ao if a["name"] == "GeneralAG"]

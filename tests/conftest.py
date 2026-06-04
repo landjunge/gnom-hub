@@ -71,6 +71,13 @@ def isolated_db(tmp_path):
                             timestamp TEXT, agent TEXT, event_type TEXT,
                             details TEXT, trace_id TEXT
                         );
+                        CREATE TABLE IF NOT EXISTS agent_messages (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            sender TEXT, recipient TEXT, payload TEXT,
+                            priority INTEGER DEFAULT 5, status TEXT DEFAULT 'pending',
+                            retry_count INTEGER DEFAULT 0, created_at REAL,
+                            deliver_after REAL DEFAULT 0, context_id TEXT, depth INTEGER DEFAULT 0
+                        );
                     """)
         
         yield db_file

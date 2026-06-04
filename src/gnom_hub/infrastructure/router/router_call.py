@@ -41,8 +41,11 @@ def resolve_local_model(requested_model: str) -> str:
 def _call(pvd, mdl, key, msgs, n):
     if pvd == "lokal":
         mdl = resolve_local_model(mdl)
-    elif pvd == "deepseek" and mdl.startswith("deepseek-v4"):
-        mdl = "deepseek-chat"
+    elif pvd == "deepseek":
+        if mdl == "deepseek-v4-pro":
+            mdl = "deepseek-reasoner"
+        elif mdl.startswith("deepseek-v4"):
+            mdl = "deepseek-chat"
     h, urls = {"Content-Type": "application/json"}, {"openai": "https://api.openai.com/v1/chat/completions", "mistral": "https://api.mistral.ai/v1/chat/completions", "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "deepseek": "https://api.deepseek.com/chat/completions", "openrouter": "https://openrouter.ai/api/v1/chat/completions", "lokal": "http://127.0.0.1:11434/api/chat", "anthropic": "https://api.anthropic.com/v1/messages"}
     url = urls.get(pvd, urls["openrouter"])
     limit = 1500 if n and n.lower() == "generalag" else (1000 if n and n.lower() == "soulag" else None)

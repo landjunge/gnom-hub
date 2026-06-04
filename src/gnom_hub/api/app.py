@@ -21,10 +21,80 @@ async def start_openrouter_updater():
             print(f"Error in background openrouter updater: {e}")
         await asyncio.sleep(2 * 3600)
 
+async def start_recovery_and_watchdog_loop(db_path: Path):
+    import asyncio
+    import time
+    from gnom_hub.agents.swarm.swarm_comms import recover_stuck_messages
+    from gnom_hub.infrastructure.process.process_manager import _get_proc, restart_single_agent
+    from gnom_hub.db import get_all_agents
+    from gnom_hub.db.connection import get_db_connection
+    from datetime import datetime, timezone
+
+    check_interval = 30.0
+    checkpoint_counter = 0
+
+    while True:
+        try:
+            loop = asyncio.get_running_loop()
+            # 1. Stuck messages recovery (Visibility Timeout)
+            await loop.run_in_executor(None, recover_stuck_messages, str(db_path), 300.0)
+
+            # 2. Watchdog / heartbeats check
+            agents = await loop.run_in_executor(None, get_all_agents)
+            now = datetime.now(timezone.utc)
+
+            for agent in agents:
+                name = agent.get("name")
+                status = agent.get("status")
+                last_seen_str = agent.get("last_seen")
+
+                last_seen = None
+                if last_seen_str:
+                    try:
+                        last_seen = datetime.fromisoformat(last_seen_str).replace(tzinfo=timezone.utc)
+                    except Exception:
+                        pass
+
+                drift = (now - last_seen).total_seconds() if last_seen else 999999
+                should_be_online = status in ("online", "busy", "running")
+
+                if should_be_online:
+                    proc = _get_proc(name)
+                    if not proc:
+                        print(f"⚠️ [WATCHDOG] Agent {name} Prozess fehlt. Starte neu...")
+                        await loop.run_in_executor(None, restart_single_agent, name)
+                    elif drift > 120.0:
+                        print(f"⚠️ [WATCHDOG] Agent {name} reagiert nicht mehr (Drift: {int(drift)}s). Starte Prozess neu...")
+                        await loop.run_in_executor(None, restart_single_agent, name)
+
+            # 3. WAL Checkpoint (TRUNCATE) every 10 minutes
+            checkpoint_counter += 1
+            if checkpoint_counter >= 20:  # 20 * 30s = 10 minutes
+                checkpoint_counter = 0
+                def do_checkpoint():
+                    conn = get_db_connection()
+                    try:
+                        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                        print("✅ [SQLITE] WAL checkpoint (TRUNCATE) erfolgreich ausgeführt.")
+                    except Exception as e:
+                        print(f"Fehler bei SQLite-Checkpoint: {e}")
+                    finally:
+                        conn.close()
+
+                await loop.run_in_executor(None, do_checkpoint)
+
+        except Exception as e:
+            print(f"Fehler im Watchdog/Recovery-Loop: {e}")
+
+        await asyncio.sleep(check_interval)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from gnom_hub.db.schema import init_database
     init_database()
+    from gnom_hub.db.message_queue import init_message_queue
+    init_message_queue()
 
     # ── Datei-Integritätsprüfung (ZWC-Signaturen) ──────────────────────────
     try:
@@ -90,11 +160,14 @@ async def lifespan(app: FastAPI):
     start_background_agents()
     
     import asyncio
+    from gnom_hub.core.config import DB_PATH
     updater_task = asyncio.create_task(start_openrouter_updater())
+    recovery_task = asyncio.create_task(start_recovery_and_watchdog_loop(DB_PATH))
     
     yield
     
     updater_task.cancel()
+    recovery_task.cancel()
     kill_background_agents()
 
 app = FastAPI(title="GNOM-HUB", lifespan=lifespan)

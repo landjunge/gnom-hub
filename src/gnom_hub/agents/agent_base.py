@@ -34,43 +34,83 @@ class BaseAgent:
             while len(self._seen_ids) > self._seen_max:
                 self._seen_ids.popitem(last=False)
     async def run(self):
+        from gnom_hub.agents.swarm.swarm_comms import fetch_next_message, ack_message, nack_message
+        from gnom_hub.core.config import DB_PATH
+        import time
+        import functools
+
+        async def _to_thread(func, *args, **kwargs):
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+
         while not self._req("post", "/api/agents/register", {"name": self.n, "port": 0, "description": self.d, "status": "online", "capabilities": [self.t]}):
             print(f"⚠️ {self.n}: Hub nicht erreichbar. Reconnect in 5s..."); await asyncio.sleep(5)
-        for m in (self._req("get", "/api/chat?limit=10") or []): self._mark_seen(m.get("id"))
-        print(f"🚀 {self.n} aktiv")
+
+        print(f"🚀 {self.n} aktiv (Warteschlange)")
+
         while True:
-            c = self._req("get", "/api/chat?limit=10")
-            if c is None: print(f"⚠️ {self.n}: Hub offline. Versuche Reconnect..."); await asyncio.sleep(5); continue
+            # Heartbeat senden
             self._req("post", f"/api/agents/{self.n}/heartbeat")
-            with self._seen_lock:
-                _seen_copy = set(self._seen_ids.keys())
-            new = [m for m in c if m.get("id") not in _seen_copy and m.get("metadata",{}).get("sender","") in ("user", "GeneralAG") and (self.t.lower() in m.get("content", "").lower() or "@all" in m.get("content", "").lower())]
-            for m in c: self._mark_seen(m.get("id"))
-            if new:
-                self._req("put", f"/api/agents/{self.n}/status?status=busy")
-                try:
-                    for m in new:
-                        try:
-                            from gnom_hub.soul import soul_instance
-                            sys = soul_instance.inject_context(self.sys, m["content"], agent_name=self.n)
-                            r = await asyncio.to_thread(ask_router, m["content"], sys, agent_name=self.n)
-                            if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
-                                from gnom_hub.agents.actions.action_handlers import process_actions
-                                from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
-                                wd = get_workspace_dir()
-                                soul = get_soul(self.n) or {"permissions": ["read"]}
-                                perms = soul.get("permissions", [])
-                                processed = await asyncio.to_thread(process_actions, r.content, {"name": self.n}, perms, False, wd)
-                                import re
-                                think_match = re.search(r'(<think>[\s\S]*?</think>)', r.answer)
-                                if think_match:
-                                    think_prefix = think_match.group(1) + "\n\n"
-                                else:
-                                    # Fallback-Denkprozess aus der reasoning_chain generieren
-                                    steps_str = "\n".join(f"- {step}" for step in r.reasoning_chain)
-                                    think_prefix = f"<think>\n🧠 [Denkprozess & Logik fuer {self.n}]\n{steps_str}\n</think>\n\n"
-                                self._req("post", "/api/chat", {"content": think_prefix + processed, "sender": self.n})
-                        except Exception as e: print(f"[{self.n}] Error: {e}")
-                finally:
-                    self._req("put", f"/api/agents/{self.n}/status?status=online")
-            await asyncio.sleep(self.p)
+
+            # Hole nächste Nachricht aus der DB-Warteschlange (Timeout 5s)
+            msg = await _to_thread(fetch_next_message, self.n, str(DB_PATH), 5.0)
+            if msg is None:
+                await asyncio.sleep(1)
+                continue
+
+            # Status auf beschäftigt setzen
+            self._req("put", f"/api/agents/{self.n}/status?status=busy")
+
+            try:
+                # Payload parsen
+                text = msg["payload"]["text"]
+
+                from gnom_hub.soul import soul_instance
+                sys_prompt = soul_instance.inject_context(self.sys, text, agent_name=self.n)
+
+                # Workspace und Dateien-Kontext für den Agenten hinzufügen
+                from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
+                wd = get_workspace_dir()
+                fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
+                sys_prompt += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
+
+                r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"])
+
+                processed = ""
+                if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
+                    from gnom_hub.agents.actions.action_handlers import process_actions
+                    soul = get_soul(self.n) or {"permissions": ["read"]}
+                    perms = soul.get("permissions", [])
+                    processed = await _to_thread(process_actions, r.content, {"name": self.n}, perms, False, wd)
+
+                    import re
+                    think_match = re.search(r'(<think>[\s\S]*?</think>)', r.answer)
+                    if think_match:
+                        think_prefix = think_match.group(1) + "\n\n"
+                    else:
+                        steps_str = "\n".join(f"- {step}" for step in r.reasoning_chain)
+                        think_prefix = f"<think>\n🧠 [Denkprozess & Logik für {self.n}]\n{steps_str}\n</think>\n\n"
+
+                    self._req("post", "/api/chat", {"content": think_prefix + processed, "sender": self.n})
+
+                # Acknowledge in the queue
+                await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))
+
+                # Signal completion to coordinator (cross-process HTTP)
+                self._req("post", "/api/swarm/complete", {
+                    "context_id": msg["context_id"],
+                    "agent_name": self.n,
+                    "result": {"status": "success", "content": processed}
+                })
+
+            except Exception as e:
+                print(f"[{self.n}] Fehler bei Verarbeitung: {e}")
+                await _to_thread(nack_message, msg["msg_id"], str(DB_PATH), str(e))
+                self._req("post", "/api/swarm/complete", {
+                    "context_id": msg["context_id"],
+                    "agent_name": self.n,
+                    "result": {"status": "error", "error": str(e)}
+                })
+
+            finally:
+                self._req("put", f"/api/agents/{self.n}/status?status=online")

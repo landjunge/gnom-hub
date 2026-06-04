@@ -281,3 +281,17 @@ def save_preset(p: SavePresetPayload):
     with open(preset_file, "w", encoding="utf-8") as f:
         json.dump(preset_data, f, indent=2, ensure_ascii=False)
     return {"status": "success", "file": str(preset_file)}
+
+
+class SwarmCompletePayload(BaseModel):
+    context_id: str
+    agent_name: str
+    result: dict
+
+
+@router.post("/api/swarm/complete")
+def swarm_complete(data: SwarmCompletePayload):
+    from gnom_hub.agents.swarm.swarm_coordinator import signal_completion
+    signal_completion(data.context_id, data.agent_name, data.result)
+    return {"status": "ok"}
+

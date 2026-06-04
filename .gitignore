@@ -63,3 +63,6 @@ stop_gnom_hub.sh
 start_gnom_hub.bat
 stop_gnom_hub.bat
 
+# Scratch files
+scratch/
+
