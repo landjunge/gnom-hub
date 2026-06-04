@@ -102,6 +102,56 @@ def delete_agent(a_id: str):
     SQLiteChatRepository().delete_by_agent(a_id)
     return {"status": "deleted"}
 
+class ToolToggle(BaseModel):
+    tool: str
+
+@router.post("/api/agents/{a_id}/tools/toggle")
+def toggle_agent_tool(a_id: str, data: ToolToggle):
+    repo = SQLiteAgentRepository()
+    agent = repo.get_by_id(a_id)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    from gnom_hub.db import get_state_value, set_state_value
+    from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+    from gnom_hub.agents.tool_registry import get_tools_for_agent
+    all_settings = get_state_value("agent_settings", {})
+    key = agent.name.lower()
+    agent_cfg = all_settings.get(key, {})
+
+    # Check if tool is a definition tool
+    defn = AGENT_DEFINITIONS.get(key, {})
+    lang_block = defn.get("de") or defn.get("en") or {}
+    perm_soul = {"role": defn.get("role", "normal"), "permissions": lang_block.get("permissions", []),
+                 "character": "", "directive": ""}
+    def_tools = list(get_tools_for_agent(perm_soul).keys())
+    is_def_tool = data.tool in def_tools
+
+    disabled = agent_cfg.get("tools_disabled", [])
+    enabled = agent_cfg.get("tools_enabled", [])
+
+    if is_def_tool:
+        # Toggle in tools_disabled
+        if data.tool in disabled:
+            disabled.remove(data.tool)
+            enabled_now = True
+        else:
+            disabled.append(data.tool)
+            enabled_now = False
+    else:
+        # Toggle in tools_enabled
+        if data.tool in enabled:
+            enabled.remove(data.tool)
+            enabled_now = False
+        else:
+            enabled.append(data.tool)
+            enabled_now = True
+
+    agent_cfg["tools_disabled"] = disabled
+    agent_cfg["tools_enabled"] = enabled
+    all_settings[key] = agent_cfg
+    set_state_value("agent_settings", all_settings)
+    return {"status": "ok", "tool": data.tool, "enabled": enabled_now}
+
 @router.get("/api/agents/{a_id}/settings")
 def get_agent_settings(a_id: str):
     from gnom_hub.db import get_state_value
@@ -223,6 +273,16 @@ def get_agent_profile(a_id: str):
     soul = {"role": defn.get("role", "normal"), "permissions": permissions,
             "character": lang_block.get("character", ""), "directive": lang_block.get("directive", "")}
     tools = list(get_tools_for_agent(soul).keys())
+    # Apply tool overrides from agent_settings
+    from gnom_hub.db import get_state_value as gsv
+    all_settings = gsv("agent_settings", {})
+    agent_cfg = all_settings.get(key, {})
+    for t in agent_cfg.get("tools_disabled", []):
+        if t in tools:
+            tools.remove(t)
+    for t in agent_cfg.get("tools_enabled", []):
+        if t not in tools:
+            tools.append(t)
     # LLM routing
     state_db = SQLiteStateRepository()
     llm_map = state_db.get_value("llm_agents", {})
@@ -237,7 +297,7 @@ def get_agent_profile(a_id: str):
             ).fetchone()[0]
             top_rows = conn.execute(
                 "SELECT key, value, priority FROM soul_memory WHERE agent = ? "
-                "ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, rowid DESC LIMIT 3",
+                "ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, rowid DESC LIMIT 20",
                 (agent.name,)
             ).fetchall()
             top_facts = [{"key": r["key"], "value": r["value"][:80], "priority": r["priority"]}

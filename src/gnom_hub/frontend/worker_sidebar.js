@@ -4,9 +4,23 @@
 
 async function loadAgents() {
   const res = await api('GET', '/agents');
-  agents = Array.isArray(res) ? res : (res?.agents || []);
+  const newAgents = Array.isArray(res) ? res : (res?.agents || []);
+  
+  // Check if any status changed
+  let changed = newAgents.length !== agents.length;
+  if (!changed) {
+    for (let i = 0; i < newAgents.length; i++) {
+      if (newAgents[i].status !== agents[i]?.status) { changed = true; break; }
+    }
+  }
+  
+  agents = newAgents;
+  if (changed && typeof renderAgentList === 'function') renderAgentList();
   if (typeof updateStats === 'function') updateStats();
-  renderAgentList();
+}
+
+if (typeof _agentRefreshInterval === 'undefined') {
+  window._agentRefreshInterval = setInterval(loadAgents, 10000);
 }
 
 
@@ -43,7 +57,11 @@ async function selectAgent(id) {
   const meta = (window.getAgentMeta ? window.getAgentMeta(agent.name) : null) || { name: agent.name, desc: 'Schwarm-Mitglied' };
   const avatarUrl = window.getAgentAvatarUrl ? window.getAgentAvatarUrl(agent.name) : `/static/avatars/${agent.name.toLowerCase()}.png`;
 
-  const target = document.getElementById('agent-detail-modal-body');
+  window.viewHistory.push('war-room');
+  window.currentView = 'agent-detail';
+  if (window.updateBackButtonState) window.updateBackButtonState();
+
+  const target = document.getElementById('content');
   const titleEl = document.getElementById('agent-detail-title');
   if (titleEl) titleEl.textContent = `${meta.name} - Details & Einstellungen`;
 
@@ -229,7 +247,8 @@ async function selectAgent(id) {
       modalBg.classList.add('show');
     }
   } else {
-    document.getElementById('content').innerHTML = html;
+    const content = document.getElementById('content');
+    if (content) content.innerHTML = html;
   }
 
   loadAgentMemory(agent.id);

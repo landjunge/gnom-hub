@@ -38,3 +38,13 @@ def delete_memory(m_id: str): SQLiteChatRepository().delete_by_id(m_id); return 
 
 @router.delete("/api/agents/{a_id}/memory")
 def clear_agent_memory(a_id: str): SQLiteChatRepository().delete_by_agent(a_id); return {"status": "ok"}
+
+class SoulDeleteRequest(BaseModel):
+    key: str
+
+@router.post("/api/soul/delete")
+def delete_soul_fact(req: SoulDeleteRequest):
+    from gnom_hub.db.connection import get_db_conn
+    with get_db_conn() as conn:
+        conn.execute("DELETE FROM soul_memory WHERE key = ?", (req.key,))
+    return {"status": "ok"}

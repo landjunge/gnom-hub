@@ -18,15 +18,144 @@ PRIORITY_MAPPING = {
 logger = logging.getLogger(__name__)
 
 # ── Konfiguration (statt Magic Numbers im Code) ────────────────────────────
-MAX_DEPTH          = 8        # war: 6 – etwas mehr Spielraum
-MAX_CONCURRENT     = 12       # war: 6 im 15s-Fenster – jetzt Queue-basiert
+MAX_DEPTH          = 8
+MAX_CONCURRENT     = 12
 RETRY_MAX          = 3
-RETRY_BACKOFF_BASE = 5.0      # Sekunden, exponentiell: 5s, 10s, 20s
-MAX_QUEUE_DEPTH    = 50       # Backpressure-Limit für anstehende Nachrichten
+RETRY_BACKOFF_BASE = 5.0
+MAX_QUEUE_DEPTH    = 50
 
 # ── Notification-Bus: Agenten warten auf dieses Event statt zu pollen ──────
 _new_message_event: Dict[str, threading.Event] = {}
 _event_lock = threading.Lock()
+
+
+def parse_agent_sequence(text: str) -> List[Tuple[str, str]]:
+    """
+    Parst mehrzeilige Delegationen im Format:
+      @CoderAG -> Erstelle HTML
+      @WriterAG -> Schreibe Text
+
+    Gibt Liste von (agent_name, aufgabe) Tupeln zurück in der Reihenfolge.
+    Auch gemischt mit Fließtext: erkennt alle @Agent -> task Zeilen.
+    """
+    results = []
+    for line in text.split('\n'):
+        line = line.strip()
+        m = re.match(r'@(\w+)\s*[-–→>]+\s*(.+)', line)
+        if m:
+            agent = m.group(1).lower()
+            task = m.group(2).strip()
+            if task:
+                results.append((agent, task))
+    return results
+
+
+def dispatch_sequence(
+    sender: str,
+    text: str,
+    context_id: str,
+    db_path: str,
+    current_depth: int = 0,
+) -> List[str]:
+    """
+    Zerlegt eine mehrzeilige Delegation in sequenzielle Tasks.
+    Jeder Task hat eine sequence_id und sequence_step.
+    Task N+1 wartet auf Task N (depends_on_msg_id).
+    Gibt Liste der angesprochenen Agenten zurück.
+    """
+    if current_depth >= MAX_DEPTH:
+        logger.warning("dispatch_sequence: MAX_DEPTH=%d erreicht", MAX_DEPTH)
+        return []
+
+    steps = parse_agent_sequence(text)
+    if not steps:
+        return dispatch_mention(sender, text, context_id, db_path, current_depth)
+
+    dispatched = []
+    conn = get_db_connection()
+    try:
+        agent_rows = conn.execute(
+            "SELECT name, status FROM agents WHERE status IN ('online', 'busy', 'running')"
+        ).fetchall()
+        agent_map = {r["name"].lower(): r["name"] for r in agent_rows}
+        offline = {r["name"].lower() for r in conn.execute(
+            "SELECT name FROM agents WHERE status NOT IN ('online', 'busy', 'running')"
+        ).fetchall()}
+
+        seq_id = str(int(time.time() * 1000000))
+        prev_msg_id = None
+
+        for step_idx, (agent_key, task) in enumerate(steps):
+            tgt_name = agent_map.get(agent_key)
+            if not tgt_name:
+                # Fallback: capability-basiert suchen
+                tgt_name = find_best_agent_for_task(task, conn)
+                if not tgt_name:
+                    logger.info("Kein Agent für Task '%s' gefunden", task[:60])
+                    continue
+
+            if agent_key.lower() == sender.lower():
+                continue
+            if agent_key in offline:
+                logger.info("Agent '%s' offline – überspringe", agent_key)
+                continue
+
+            payload = json.dumps({"text": f"@{tgt_name} {task}", "mention": tgt_name})
+
+            cursor = conn.execute("""
+                INSERT INTO agent_messages
+                    (sender, recipient, payload, priority, created_at,
+                     deliver_after, context_id, depth, parent_msg_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                sender, tgt_name, payload, 5, time.time(),
+                0.0, context_id, current_depth + 1,
+                prev_msg_id,
+            ))
+            msg_id = cursor.lastrowid
+
+            # Speichere sequence_id im payload für Logging
+            if step_idx > 0 and prev_msg_id is not None:
+                payload_obj = json.loads(payload)
+                payload_obj["_sequence"] = {"id": seq_id, "step": step_idx, "depends_on_msg": prev_msg_id}
+                conn.execute(
+                    "UPDATE agent_messages SET payload = ? WHERE id = ?",
+                    (json.dumps(payload_obj), msg_id)
+                )
+
+            conn.commit()
+            notify_agent(tgt_name)
+            dispatched.append(tgt_name)
+            prev_msg_id = msg_id
+
+    finally:
+        conn.close()
+
+    return dispatched
+
+
+def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> Optional[str]:
+    """Schlagwort-basierte Capability-Suche als Fallback."""
+    keywords = {
+        "code_generation": ["code", "schreib", "python", "html", "js", "script", "programm"],
+        "web_research": ["recherchier", "suche", "finde", "google", "research"],
+        "content_creation": ["text", "artikel", "blog", "slogan", "schreib"],
+        "editing": ["korrigier", "review", "prüf", "lektorat"],
+        "summarization": ["zusammenfass", "summary"],
+    }
+    task_lower = task.lower()
+    for cap, words in keywords.items():
+        if any(w in task_lower for w in words):
+            row = conn.execute("""
+                SELECT ac.agent_name
+                FROM agent_capabilities ac
+                JOIN agents a ON a.name = ac.agent_name AND a.status IN ('online','busy','running')
+                WHERE ac.capability = ?
+                ORDER BY ac.confidence DESC LIMIT 1
+            """, (cap,)).fetchone()
+            if row:
+                return row["agent_name"]
+    return None
 
 
 def get_agent_event(agent_name: str) -> threading.Event:
@@ -174,7 +303,8 @@ def fetch_next_message(
 ) -> Optional[dict]:
     """
     Blockiert maximal `timeout` Sekunden auf die nächste Nachricht.
-    Nutzt threading.Event mit Fallback-Schlafzeit von 1s für Cross-Prozess-Kommunikation.
+    Prüft parent_msg_id-Abhängigkeiten: Wenn die Eltern-Nachricht noch nicht
+    abgeschlossen ist, wird diese Nachricht zurückgestellt (re-queue mit delay).
     """
     evt = get_agent_event(agent_name)
     deadline = time.time() + timeout
@@ -185,7 +315,8 @@ def fetch_next_message(
             conn.execute('BEGIN IMMEDIATE')
             try:
                 row = conn.execute("""
-                    SELECT id, sender, payload, context_id, depth, retry_count
+                    SELECT id, sender, payload, context_id, depth,
+                           retry_count, parent_msg_id
                     FROM agent_messages
                     WHERE recipient    = ?
                       AND status       = 'pending'
@@ -195,6 +326,26 @@ def fetch_next_message(
                 """, (agent_name, time.time())).fetchone()
 
                 if row:
+                    # Dependency-Check: parent_msg_id muss abgeschlossen sein
+                    parent_id = row["parent_msg_id"]
+                    if parent_id is not None:
+                        parent_status = conn.execute(
+                            "SELECT status FROM agent_messages WHERE id = ?",
+                            (parent_id,)
+                        ).fetchone()
+                        if parent_status and parent_status["status"] != "done":
+                            # Abhängigkeit noch nicht erfüllt – zurückstellen
+                            conn.execute("""
+                                UPDATE agent_messages
+                                SET deliver_after = ?, status = 'pending'
+                                WHERE id = ?
+                            """, (time.time() + 3.0, row["id"]))
+                            conn.commit()
+                            # Kurz warten, dann weitersuchen
+                            conn.close()
+                            time.sleep(1.5)
+                            continue
+
                     conn.execute(
                         "UPDATE agent_messages SET status='processing', processing_since=? WHERE id=?",
                         (time.time(), row["id"])
@@ -207,6 +358,7 @@ def fetch_next_message(
                         "context_id":  row["context_id"],
                         "depth":       row["depth"],
                         "retry_count": row["retry_count"],
+                        "parent_msg_id": row["parent_msg_id"],
                     }
                 else:
                     conn.rollback()
@@ -216,7 +368,6 @@ def fetch_next_message(
         finally:
             conn.close()
 
-        # Cross-Process-Fallback: maximal 1.0 Sekunde blockieren, dann erneut DB prüfen
         remaining = deadline - time.time()
         if remaining <= 0:
             break
@@ -282,12 +433,20 @@ def nack_message(msg_id: int, db_path: str, reason: str = "") -> None:
 
 def process_swarm_mentions(sender: str, text: str, depth: int = 0, parent_msg_id: Optional[int] = None):
     """
-    Kompatibilitäts-Schnittstelle für den Router.
+    Router-Schnittstelle. Erkennt mehrzeilige Delegationen und routet
+    sie entweder als Sequenz oder als einfache Mentions.
     """
     from gnom_hub.core.config import DB_PATH
     from gnom_hub.db import get_active_project
     proj = get_active_project() or "default"
-    dispatch_mention(sender, text, proj, str(DB_PATH), depth + 1, parent_msg_id=parent_msg_id)
+    clean = re.sub(r'<think>[\s\S]*?</think>', '', text)
+    steps = parse_agent_sequence(clean)
+    if len(steps) >= 2:
+        dispatch_sequence(sender, clean, proj, str(DB_PATH), depth)
+    elif len(steps) == 1:
+        dispatch_mention(sender, clean, proj, str(DB_PATH), depth + 1, parent_msg_id=parent_msg_id)
+    else:
+        dispatch_mention(sender, clean, proj, str(DB_PATH), depth + 1, parent_msg_id=parent_msg_id)
 
 
 def find_best_agent_for(task_type: str, conn: sqlite3.Connection) -> Optional[str]:

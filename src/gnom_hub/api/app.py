@@ -198,6 +198,9 @@ async def lifespan(app: FastAPI):
 
     start_background_agents()
     
+    from gnom_hub.infrastructure.pulse import start_pulse
+    start_pulse()
+    
     import asyncio
     from gnom_hub.core.config import DB_PATH
     updater_task = asyncio.create_task(start_openrouter_updater())

@@ -6,14 +6,12 @@
 # Kette pro Request: Provider → OpenRouter Free Models → Ollama (lokal)
 # =====================================================================
 
-# --- Heavy Reasoning (Pro = deepseek-reasoner / R1) ---
+# --- Alle auf DeepSeek Reasoner (R1) ---
 coderag = deepseek | deepseek-v4-pro
 securityag = deepseek | deepseek-v4-pro
 researcherag = deepseek | deepseek-v4-pro
-
-# --- Coordination & Content (Flash = deepseek-chat / V3) ---
-generalag = deepseek | deepseek-v4-flash
-soulag = deepseek | deepseek-v4-flash
-writerag = deepseek | deepseek-v4-flash
-editorag = deepseek | deepseek-v4-flash
-watchdogag = deepseek | deepseek-v4-flash
+generalag = deepseek | deepseek-v4-pro
+soulag = deepseek | deepseek-v4-pro
+writerag = deepseek | deepseek-v4-pro
+editorag = deepseek | deepseek-v4-pro
+watchdogag = deepseek | deepseek-v4-pro

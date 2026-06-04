@@ -16,7 +16,7 @@ def pulse_janitor():
                 diff = (now_utc - last_seen).total_seconds()
             else:
                 diff = (now_local - last_seen).total_seconds()
-            if diff > 300:
+            if diff > 60:
                 agent.status = "online"
                 agent.active_job = None
                 repo.save(agent)
