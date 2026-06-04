@@ -43,7 +43,7 @@ async function selectAgent(id) {
   const meta = (window.getAgentMeta ? window.getAgentMeta(agent.name) : null) || { name: agent.name, desc: 'Schwarm-Mitglied' };
   const avatarUrl = window.getAgentAvatarUrl ? window.getAgentAvatarUrl(agent.name) : `/static/avatars/${agent.name.toLowerCase()}.png`;
 
-  const target = document.getElementById('content');
+  const target = document.getElementById('agent-detail-modal-body');
   const titleEl = document.getElementById('agent-detail-title');
   if (titleEl) titleEl.textContent = `${meta.name} - Details & Einstellungen`;
 
@@ -224,6 +224,12 @@ async function selectAgent(id) {
 
   if (target) {
     target.innerHTML = html;
+    const modalBg = document.getElementById('modal-agent-detail');
+    if (modalBg) {
+      modalBg.classList.add('show');
+    }
+  } else {
+    document.getElementById('content').innerHTML = html;
   }
 
   loadAgentMemory(agent.id);
