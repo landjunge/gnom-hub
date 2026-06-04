@@ -76,8 +76,14 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                     try:
                         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
                         print("✅ [SQLITE] WAL checkpoint (TRUNCATE) erfolgreich ausgeführt.")
+                        # Callbacks älter als 24h löschen
+                        cutoff = time.time() - 86400.0
+                        deleted = conn.execute("DELETE FROM swarm_callbacks WHERE received_at < ?", (cutoff,)).rowcount
+                        if deleted > 0:
+                            print(f"🧹 [SQLITE] {deleted} veraltete Swarm-Callbacks bereinigt.")
+                        conn.commit()
                     except Exception as e:
-                        print(f"Fehler bei SQLite-Checkpoint: {e}")
+                        print(f"Fehler bei SQLite-Checkpoint/Cleanup: {e}")
                     finally:
                         conn.close()
 

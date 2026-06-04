@@ -263,6 +263,64 @@ def process_swarm_mentions(sender: str, text: str, depth: int = 0):
     dispatch_mention(sender, text, proj, str(DB_PATH), depth)
 
 
+def find_best_agent_for(task_type: str, conn: sqlite3.Connection) -> Optional[str]:
+    """
+    Findet den am besten geeigneten verfügbaren Agenten für eine Fähigkeit.
+    Priorisiert Confidence und wählt bei Gleichstand den Agenten mit der kleinsten Queue-Tiefe.
+    """
+    row = conn.execute("""
+        SELECT ac.agent_name,
+               ac.confidence,
+               COALESCE(q.pending_count, 0) AS queue_depth
+        FROM agent_capabilities ac
+        JOIN agents a
+            ON a.name = ac.agent_name
+           AND a.status IN ('online', 'busy', 'running')
+        LEFT JOIN (
+            SELECT recipient, COUNT(*) AS pending_count
+            FROM agent_messages
+            WHERE status = 'pending'
+            GROUP BY recipient
+        ) q ON q.recipient = ac.agent_name
+        WHERE ac.capability = ?
+        ORDER BY queue_depth ASC, ac.confidence DESC
+        LIMIT 1
+    """, (task_type,)).fetchone()
+
+    return row["agent_name"] if row else None
+
+
+def dispatch_by_capability(
+    sender: str,
+    task_type: str,
+    text: str,
+    context_id: str,
+    db_path: str,
+    current_depth: int = 0,
+) -> Optional[str]:
+    """
+    Routet eine Aufgabe basierend auf den Fähigkeiten der Agenten statt über direkten Namen.
+    """
+    conn = get_db_connection()
+    try:
+        target = find_best_agent_for(task_type, conn)
+        if not target:
+            logger.warning("Kein Agent für Capability '%s' verfügbar", task_type)
+            return None
+
+        # Nachricht an den passenden Agenten absenden
+        dispatch_mention(
+            sender=sender,
+            text=f"@{target} {text}",
+            context_id=context_id,
+            db_path=db_path,
+            current_depth=current_depth,
+        )
+        return target
+    finally:
+        conn.close()
+
+
 def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
     """
     Findet blockierte/abgestürzte Nachrichten und gibt sie wieder frei oder schiebt sie in die DLQ.

@@ -44,3 +44,73 @@ async def clean_workspace(request: Request, _=Depends(verify_admin), service=Dep
         return {"status": "ok", "message": "Workspace temporäre Dateien wurden bereinigt"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Clean fehlgeschlagen: {e}")
+
+
+@router.get("/dead-letter")
+def list_dead_letters(request: Request, _=Depends(verify_admin)):
+    """Zeigt alle fehlgeschlagenen Nachrichten (max. 100)."""
+    from gnom_hub.db.connection import get_db_conn
+    with get_db_conn() as db:
+        rows = db.execute("""
+            SELECT id, sender, recipient, payload, retry_count, created_at
+            FROM agent_messages
+            WHERE status = 'dead_letter'
+            ORDER BY created_at DESC
+            LIMIT 100
+        """).fetchall()
+        return [dict(r) for r in rows]
+
+
+@router.post("/dead-letter/{msg_id}/retry")
+def retry_dead_letter(msg_id: int, request: Request, _=Depends(verify_admin)):
+    """Setzt eine DLQ-Nachricht zurück auf 'pending' für manuellen Retry."""
+    from gnom_hub.db.connection import get_db_conn
+    from gnom_hub.agents.swarm.swarm_comms import notify_agent
+
+    with get_db_conn() as db:
+        affected = db.execute("""
+            UPDATE agent_messages
+            SET status='pending', retry_count=0, deliver_after=0
+            WHERE id=? AND status='dead_letter'
+        """, (msg_id,)).rowcount
+        db.commit()
+
+        if affected == 0:
+            raise HTTPException(status_code=404, detail="Nachricht nicht gefunden oder nicht in DLQ")
+
+        row = db.execute(
+            "SELECT recipient FROM agent_messages WHERE id=?", (msg_id,)
+        ).fetchone()
+        if row:
+            notify_agent(row["recipient"])
+
+    return {"status": "requeued", "msg_id": msg_id}
+
+
+@router.delete("/dead-letter/{msg_id}")
+def discard_dead_letter(msg_id: int, request: Request, _=Depends(verify_admin)):
+    """Löscht eine DLQ-Nachricht endgültig."""
+    from gnom_hub.db.connection import get_db_conn
+    with get_db_conn() as db:
+        affected = db.execute(
+            "DELETE FROM agent_messages WHERE id=? AND status='dead_letter'",
+            (msg_id,)
+        ).rowcount
+        db.commit()
+
+        if affected == 0:
+            raise HTTPException(status_code=404, detail="Nachricht nicht gefunden oder nicht in DLQ")
+
+    return {"status": "deleted", "msg_id": msg_id}
+
+
+@router.delete("/dead-letter")
+def purge_dead_letters(request: Request, _=Depends(verify_admin)):
+    """Löscht ALLE DLQ-Nachrichten. Vorsicht: irreversibel."""
+    from gnom_hub.db.connection import get_db_conn
+    with get_db_conn() as db:
+        count = db.execute(
+            "DELETE FROM agent_messages WHERE status='dead_letter'"
+        ).rowcount
+        db.commit()
+    return {"status": "purged", "deleted_count": count}

@@ -19,6 +19,28 @@ class BaseAgent:
             "deine Gedanken dokumentieren. Erst NACH dem schliessenden </think> folgt deine eigentliche Antwort."
         )
         self.sys += think_guideline
+
+        # Map agent name to capabilities
+        name_lower = name.lower()
+        if "coder" in name_lower:
+            self.CAPABILITIES = [("code_generation", 1.0), ("code_review", 0.9), ("debugging", 0.8)]
+        elif "security" in name_lower:
+            self.CAPABILITIES = [("security_audit", 1.0), ("vulnerability_scan", 0.9)]
+        elif "writer" in name_lower:
+            self.CAPABILITIES = [("content_creation", 1.0), ("summarization", 0.9), ("editing", 0.8)]
+        elif "researcher" in name_lower:
+            self.CAPABILITIES = [("web_research", 1.0), ("fact_checking", 0.9), ("summarization", 0.7)]
+        elif "editor" in name_lower:
+            self.CAPABILITIES = [("editing", 1.0), ("summarization", 0.8)]
+        elif "soul" in name_lower:
+            self.CAPABILITIES = [("profile_management", 1.0)]
+        elif "general" in name_lower:
+            self.CAPABILITIES = [("coordination", 1.0)]
+        elif "watchdog" in name_lower:
+            self.CAPABILITIES = [("monitoring", 1.0)]
+        else:
+            self.CAPABILITIES = []
+
     def _req(self, method, p, j=None):
         try:
             r = getattr(requests, method)(f"{HUB_URL}{p}", json=j, timeout=10)
@@ -48,6 +70,8 @@ class BaseAgent:
 
         print(f"🚀 {self.n} aktiv (Warteschlange)")
 
+        await _to_thread(self._register_capabilities)
+
         while True:
             # Heartbeat senden
             self._req("post", f"/api/agents/{self.n}/heartbeat")
@@ -60,6 +84,14 @@ class BaseAgent:
 
             # Status auf beschäftigt setzen
             self._req("put", f"/api/agents/{self.n}/status?status=busy")
+
+            logger = logging.getLogger(__name__)
+            ctx_logger = logging.LoggerAdapter(logger, {
+                "context_id": msg["context_id"],
+                "agent_name": self.n,
+                "msg_id": msg["msg_id"],
+            })
+            ctx_logger.info(f"Agent {self.n} verarbeitet Nachricht {msg['msg_id']}")
 
             try:
                 # Payload parsen
@@ -104,7 +136,7 @@ class BaseAgent:
                 })
 
             except Exception as e:
-                print(f"[{self.n}] Fehler bei Verarbeitung: {e}")
+                ctx_logger.error(f"Fehler bei Verarbeitung: {e}", exc_info=True)
                 await _to_thread(nack_message, msg["msg_id"], str(DB_PATH), str(e))
                 self._req("post", "/api/swarm/complete", {
                     "context_id": msg["context_id"],
@@ -114,3 +146,14 @@ class BaseAgent:
 
             finally:
                 self._req("put", f"/api/agents/{self.n}/status?status=online")
+
+    def _register_capabilities(self):
+        from gnom_hub.db.connection import get_db_conn
+        with get_db_conn() as db:
+            db.execute("DELETE FROM agent_capabilities WHERE agent_name = ?", (self.n,))
+            for capability, confidence in getattr(self, "CAPABILITIES", []):
+                db.execute("""
+                    INSERT OR REPLACE INTO agent_capabilities (agent_name, capability, confidence)
+                    VALUES (?, ?, ?)
+                """, (self.n, capability, confidence))
+            db.commit()

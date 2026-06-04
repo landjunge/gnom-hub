@@ -291,7 +291,31 @@ class SwarmCompletePayload(BaseModel):
 
 @router.post("/api/swarm/complete")
 def swarm_complete(data: SwarmCompletePayload):
+    from gnom_hub.db.connection import get_db_conn
     from gnom_hub.agents.swarm.swarm_coordinator import signal_completion
+    import time
+    import json
+    import logging
+
+    key = f"{data.context_id}:{data.agent_name}"
+
+    with get_db_conn() as conn:
+        existing = conn.execute(
+            "SELECT http_status FROM swarm_callbacks WHERE idempotency_key = ?",
+            (key,)
+        ).fetchone()
+
+        if existing:
+            logging.getLogger(__name__).info("Duplikat-Callback ignoriert: %s", key)
+            return {"status": "already_processed", "code": existing["http_status"]}
+
+        conn.execute("""
+            INSERT INTO swarm_callbacks
+                (idempotency_key, context_id, agent_name, result_json, received_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (key, data.context_id, data.agent_name, json.dumps(data.result), time.time()))
+        conn.commit()
+
     signal_completion(data.context_id, data.agent_name, data.result)
-    return {"status": "ok"}
+    return {"status": "accepted"}
 

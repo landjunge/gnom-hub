@@ -32,3 +32,73 @@ def get_audit_log(agent: str = None, event: str = None, limit: int = 50):
             args.append(limit)
             return [dict(r) for r in conn.execute(q, args).fetchall()]
     except sqlite3.Error: return []
+
+
+@router.get("/metrics")
+def prometheus_metrics():
+    from fastapi.responses import PlainTextResponse
+    import time
+    from datetime import datetime
+    
+    lines = []
+    with get_db_conn() as conn:
+        # 1. Queue depth per agent & status
+        rows = conn.execute("""
+            SELECT recipient, status, COUNT(*) as cnt
+            FROM agent_messages
+            GROUP BY recipient, status
+        """).fetchall()
+
+        lines.append("# HELP gnomhub_queue_depth Nachrichten in der Queue")
+        lines.append("# TYPE gnomhub_queue_depth gauge")
+        for r in rows:
+            lines.append(
+                f'gnomhub_queue_depth{{agent="{r["recipient"]}",status="{r["status"]}"}} {r["cnt"]}'
+            )
+
+        # 2. Dead-letter count
+        dlq = conn.execute(
+            "SELECT COUNT(*) FROM agent_messages WHERE status='dead_letter'"
+        ).fetchone()[0]
+        lines.append("# HELP gnomhub_dead_letter_total Nachrichten in der DLQ")
+        lines.append("# TYPE gnomhub_dead_letter_total counter")
+        lines.append(f"gnomhub_dead_letter_total {dlq}")
+
+        # 3. Agent Heartbeat Drift
+        agents = conn.execute(
+            "SELECT name, last_seen FROM agents"
+        ).fetchall()
+        lines.append("# HELP gnomhub_heartbeat_drift_seconds Sekunden seit letztem Heartbeat")
+        lines.append("# TYPE gnomhub_heartbeat_drift_seconds gauge")
+        now = time.time()
+        for a in agents:
+            last_seen_str = a["last_seen"]
+            drift = 999999.0
+            if last_seen_str:
+                try:
+                    # Parse standard SQLite last_seen (isoformat)
+                    dt = datetime.fromisoformat(last_seen_str.replace("Z", "+00:00"))
+                    drift = now - dt.timestamp()
+                except Exception:
+                    pass
+            lines.append(
+                f'gnomhub_heartbeat_drift_seconds{{agent="{a["name"]}"}} {drift:.1f}'
+            )
+
+        # 4. Throughput: processed messages last 60s
+        throughput = conn.execute("""
+            SELECT recipient, COUNT(*) as cnt
+            FROM agent_messages
+            WHERE status = 'done'
+              AND created_at > ?
+            GROUP BY recipient
+        """, (now - 60.0,)).fetchall()
+
+        lines.append("# HELP gnomhub_throughput_60s Verarbeitete Msgs letzte 60s")
+        lines.append("# TYPE gnomhub_throughput_60s gauge")
+        for t in throughput:
+            lines.append(
+                f'gnomhub_throughput_60s{{agent="{t["recipient"]}"}} {t["cnt"]}'
+            )
+
+    return PlainTextResponse("\n".join(lines))

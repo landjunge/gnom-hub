@@ -29,6 +29,23 @@ def init_message_queue() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_aq_context
                 ON agent_messages(context_id, depth);
+
+            CREATE TABLE IF NOT EXISTS swarm_callbacks (
+                idempotency_key  TEXT PRIMARY KEY,
+                context_id       TEXT NOT NULL,
+                agent_name       TEXT NOT NULL,
+                result_json      TEXT NOT NULL,
+                received_at      REAL NOT NULL,
+                http_status      INTEGER DEFAULT 200
+            );
+            CREATE INDEX IF NOT EXISTS idx_cb_context ON swarm_callbacks(context_id);
+
+            CREATE TABLE IF NOT EXISTS agent_capabilities (
+                agent_name   TEXT NOT NULL,
+                capability   TEXT NOT NULL,
+                confidence   REAL NOT NULL DEFAULT 1.0,
+                PRIMARY KEY (agent_name, capability)
+            );
         """)
         # Dynamic migration to add processing_since if missing
         try:
