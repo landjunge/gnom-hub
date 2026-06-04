@@ -5,6 +5,7 @@ import sqlite3
 import json, logging
 from pathlib import Path
 from gnom_hub.core.config import PROJECT_ROOT, DB_PATH
+from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
 
 def to_yaml(data, indent=0) -> str:
     lines = []
@@ -122,11 +123,10 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
     except Exception as e:
         print(f"Error cleaning DB: {e}")
 
-    # Bake evolved prompts and generate manifest hashes
+    comp_defs_dummy = {}
     try:
         import hashlib
         from gnom_hub.core.utils.evolution_v2 import get_active_version
-        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
         
         compiled_defs = {}
         prompt_hashes = {}
@@ -165,7 +165,6 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
 
     # Generate cross-platform yaml configuration file containing locked models & dependencies
     try:
-        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
         try:
             from gnom_hub.db import get_state_value
             custom_models = get_state_value("llm_agents") or {}

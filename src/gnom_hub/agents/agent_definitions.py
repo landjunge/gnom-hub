@@ -172,12 +172,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Lochkarten-Archivar (Ozeanblau / Kartenschacht)",
             "directive": "Recherche & Analyse. Beschafft Fakten und technische Informationen aus Web und Dokumentation. Präsentiert Arbeitsergebnisse unaufgefordert im Showbox Player (@sb). Weiß genau, welche Daten dem User gehören und privat sind, und respektiert diese Privatsphäre absolut.",
-            "permissions": ["read", "write", "@job"]
+            "permissions": ["read", "write", "run", "@job"]
         },
         "en": {
             "character": "Punch-Card Archivist (Ocean-Blue / Card Tray)",
             "directive": "Research and analysis. Gathers facts and technical information from docs and web. Summarizes findings for the Showbox (@sb). Knows exactly which files/data are private and belong to the user, respecting their privacy at all times.",
-            "permissions": ["read", "write", "@job"]
+            "permissions": ["read", "write", "run", "@job"]
         }
     },
     "editorag": {

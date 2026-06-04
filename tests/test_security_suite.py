@@ -748,7 +748,7 @@ class TestBakeSupergnom:
         with patch("gnom_hub.core.utils.compiler.PROJECT_ROOT", tmp_path), \
              patch("gnom_hub.core.utils.compiler.DB_PATH", fake_db), \
              patch("gnom_hub.core.utils.evolution_v2.get_active_version", return_value=None), \
-             patch("gnom_hub.agents.agent_definitions.AGENT_DEFINITIONS", fake_defs):
+             patch("gnom_hub.core.utils.compiler.AGENT_DEFINITIONS", fake_defs):
             bake_supergnom("manifesttest")
 
         manifest = tmp_path / "dist" / "supergnom_manifesttest" / "config" / "manifest.json"
@@ -828,7 +828,7 @@ class TestBakeSupergnom:
         with patch("gnom_hub.core.utils.compiler.PROJECT_ROOT", tmp_path), \
              patch("gnom_hub.core.utils.compiler.DB_PATH", fake_db), \
              patch("gnom_hub.core.utils.evolution_v2.get_active_version", return_value=None), \
-             patch("gnom_hub.agents.agent_definitions.AGENT_DEFINITIONS", fake_defs):
+             patch("gnom_hub.core.utils.compiler.AGENT_DEFINITIONS", fake_defs):
             bake_supergnom("yamltest", template="agent_chat")
 
         yaml_file = tmp_path / "dist" / "supergnom_yamltest" / "supergnom.yaml"

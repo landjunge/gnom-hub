@@ -1,12 +1,12 @@
 import os; from gnom_hub.core.config import WORKSPACE_DIR
 
 def _safe(wd, f, perms):
-    if "godmode" in perms: perms = [p for p in perms if p != "godmode"] + ["run"]
-    if os.path.isabs(f) and "run" in perms:
-        p = os.path.realpath(f)
-        return p if p.startswith(os.path.realpath(str(WORKSPACE_DIR))) else None
-    p = os.path.realpath(os.path.join(wd, f))
-    return p if p.startswith(os.path.realpath(wd)) else None
+    from gnom_hub.core.config import PROJECT_ROOT
+    p = os.path.realpath(os.path.join(wd, f) if not os.path.isabs(f) else f)
+    root = os.path.realpath(str(PROJECT_ROOT))
+    if p.startswith(root) or p.startswith(os.path.realpath(str(WORKSPACE_DIR))):
+        return p
+    return None
 
 def is_worker_blocked(agent, f, wd, perms):
     from gnom_hub.db import get_state_value

@@ -4,6 +4,7 @@ import uuid
 import time
 import logging
 import json
+import requests
 from html import escape as html_escape
 from gnom_hub.db import (
     add_chat_message, 
@@ -12,7 +13,9 @@ from gnom_hub.db import (
     save_showbox_presentation, 
     set_active_showbox, 
     get_active_project, 
-    set_agent_status
+    set_agent_status,
+    get_all_agents,
+    log_audit_event
 )
 import gnom_hub.infrastructure.router.router as router
 from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
@@ -26,14 +29,7 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     # Auto-approve if confirmations are disabled (default is False/disabled as requested by user)
     from gnom_hub.db import get_state_value
     if not get_state_value("enable_confirmations", False):
-        proj = get_active_project()
-        add_chat_message(
-            proj, 
-            "WatchdogAG", 
-            "watchdogag", 
-            "chat", 
-            f"⚡ [AUTO-APPROVED] Aktion von **{agent_name}** ({action_type}: {detail}) automatisch freigegeben."
-        )
+        log_audit_event("WatchdogAG", "auto_approve", {"agent": agent_name, "action": action_type, "detail": detail})
         return True
 
     decision_id = str(uuid.uuid4())
@@ -152,27 +148,23 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
     role = (agent or {}).get("role", "")
     
     # 0. Bypass ALL blockades if enable_confirmations is False!
-    from gnom_hub.db import get_state_value, get_active_project
+    from gnom_hub.db import get_state_value
     if not get_state_value("enable_confirmations", False):
-        proj = get_active_project()
-        add_chat_message(
-            proj, 
-            "WatchdogAG", 
-            "watchdogag", 
-            "chat", 
-            f"⚡ [AUTO-APPROVED] Aktion von **{name}** (WRITE: {fn}) automatisch freigegeben."
-        )
+        log_audit_event("WatchdogAG", "auto_approve", {"agent": name, "action": "WRITE", "detail": fn})
         request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
         return True
 
     if name.lower() == "generalag" or role == "general":
         add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"🛑 [BLOCKADE] GeneralAG hat keine Berechtigung, Dateien zu schreiben oder zu editieren.")
         return False
+
     if check_capability(name, "WRITE", fn): return True
     if role in ["soul", "watchdog", "security"]: return True
     
     # 1. CHECK APPROVED LIST FIRST!
-    approved_writes = get_state_value("approved_security_writes", []) or []
+    approved_writes = get_state_value("approved_security_writes", [])
+    if not isinstance(approved_writes, list):
+        approved_writes = []
     if fn in approved_writes: return True
     p = _safe(wd, fn, perms)
     if p:
@@ -345,25 +337,20 @@ def verify_cmd(agent, cmd):
     role = (agent or {}).get("role", "")
     
     # 0. Bypass ALL blockades if enable_confirmations is False!
-    from gnom_hub.db import get_state_value, get_active_project
+    from gnom_hub.db import get_state_value
     if not get_state_value("enable_confirmations", False):
-        proj = get_active_project()
-        add_chat_message(
-            proj, 
-            "WatchdogAG", 
-            "watchdogag", 
-            "chat", 
-            f"⚡ [AUTO-APPROVED] Aktion von **{name}** (SHELL: {cmd}) automatisch freigegeben."
-        )
+        log_audit_event("WatchdogAG", "auto_approve", {"agent": name, "action": "SHELL", "detail": cmd})
         request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
         return True
 
     if name.lower() == "generalag" or role == "general":
         add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"🛑 [BLOCKADE] GeneralAG hat keine Berechtigung, Terminal-Befehle auszuführen.")
         return False
+
     if check_capability(name, "SHELL", cmd): return True
     if role in ["soul", "watchdog", "security"]: return True
-    if cmd in (get_state_value("approved_security_commands", []) or []): return True
+    approved_cmds = get_state_value("approved_security_commands", [])
+    if isinstance(approved_cmds, list) and cmd in approved_cmds: return True
     
     # Resolves paths in command relative to workspace to avoid false positives on workspace files
     from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir

@@ -1,6 +1,7 @@
 #!/bin/bash
 echo "Starte alle Gnom-Hub Agenten..."
 source .venv/bin/activate
+export PYTHONPATH=src
 set -a
 [ -f config/.env ] && source config/.env
 set +a

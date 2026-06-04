@@ -52,7 +52,7 @@ ignore = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "httpx>=0.24"]
+dev = ["pytest>=7.0", "httpx>=0.24", "pytest-asyncio"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

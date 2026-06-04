@@ -14,9 +14,8 @@ async def main():
         print("⏳ Waiting for chat input field...")
         await page.wait_for_selector("#chat-input", state="visible", timeout=30000)
         
-        # Exact instructions detailing the files and target directories on the real server
         instruction = (
-            "@coderag: Bitte lies die FTP-Zugangsdaten aus 'apikeys' (relativer Pfad im Workspace) "
+            "@code: Bitte lies die FTP-Zugangsdaten aus 'apikeys' (relativer Pfad im Workspace) "
             "und lade alle geänderten HTML- und SVG-Dateien für netzwerkpunkt.de (Unterverzeichnis netzwerkpunkt.de/httpdocs) "
             "und königlichesfeenreich.de (Unterverzeichnis xn--knigliches-feenreich-39b.de/httpdocs) per FTP "
             "auf die echten Webserver hoch. Verwende index.html.bak als index.html für netzwerkpunkt.de, "

@@ -14,7 +14,9 @@ def run_in_sandbox(command: str, agent=None, timeout: int = 30):
     if Config.ENABLE_WORKSPACE_SANDBOX and agent:
         from gnom_hub.core.security.gatekeeper import verify_cmd
         if not verify_cmd(agent, command): raise PermissionError("Befehlsausführung verweigert.")
-    wd = os.path.abspath(str(WORKSPACE_DIR))
+    from gnom_hub.db.state_repo import SQLiteStateRepository
+    proj = SQLiteStateRepository().get_active_project() or "default"
+    wd = os.path.abspath(os.path.join(str(WORKSPACE_DIR), proj))
     if not Config.ENABLE_WORKSPACE_SANDBOX:
         r = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=timeout, cwd=wd)
         return r
@@ -33,7 +35,9 @@ def run_in_sandbox(command: str, agent=None, timeout: int = 30):
 
 def run_browser_in_sandbox(code_path: str, net: str, timeout: int = 30):
     from gnom_hub.core.config import Config
-    wd = os.path.abspath(str(WORKSPACE_DIR))
+    from gnom_hub.db.state_repo import SQLiteStateRepository
+    proj = SQLiteStateRepository().get_active_project() or "default"
+    wd = os.path.abspath(os.path.join(str(WORKSPACE_DIR), proj))
     if not Config.ENABLE_WORKSPACE_SANDBOX:
         import sys
         py_exec = sys.executable or "python3"

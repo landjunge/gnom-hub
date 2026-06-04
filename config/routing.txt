@@ -20,9 +20,9 @@
 #   - mistral    (Direct Mistral API)
 # =====================================================================
 
-coderag = auto | stage_3
-researcherag = auto | stage_3
-writerag = auto | stage_3
-editorag = auto | stage_3
-generalag = auto | stage_3
-soulag = auto | stage_3
+coderag = lokal | llama3
+researcherag = lokal | llama3
+writerag = lokal | llama3
+editorag = lokal | llama3
+generalag = lokal | llama3
+soulag = lokal | llama3

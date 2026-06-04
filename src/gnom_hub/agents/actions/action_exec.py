@@ -1,9 +1,12 @@
 import json, re as _re
 SHELL_BLOCK = _re.compile(r"rm\s+-rf\s+/|curl.*\|\s*sh|wget.*\|\s*sh|dd\s+if=|mkfs|>\s*/etc/|:(){ :|:& };:", _re.I)
 def handle_shell(ans, ms, ag, perms, bs, wd):
+    from gnom_hub.db import get_state_value
     for m in ms:
         c, o = m.group(1).strip(), m.group(0)
-        if "run" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
+        if bs and get_state_value("enable_confirmations", False):
+            ans = ans.replace(o, "[System: Brainstorm-Modus blockiert Shell-Befehle.]")
+        elif "run" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
         elif SHELL_BLOCK.search(c): ans = ans.replace(o, f"[System: BLOCKIERT — gefährlicher Befehl: {c[:60]}]")
         else:
             try:

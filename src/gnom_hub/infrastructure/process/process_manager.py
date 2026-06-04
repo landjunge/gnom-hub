@@ -40,7 +40,8 @@ def process_status() -> str:
     return "\n".join(f"{a}: {'RUNNING' if _get_proc(a) else 'STOPPED'}" for a in AGENTS)
 
 def restart_hub() -> None:
-    sys.exit(42)
+    import os
+    os._exit(42)
 
 class ProcessManager:
     async def start_agent_process(self, agent) -> int:
