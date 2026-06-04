@@ -48,7 +48,7 @@ def _call(pvd, mdl, key, msgs, n):
             mdl = "deepseek-chat"
     h, urls = {"Content-Type": "application/json"}, {"openai": "https://api.openai.com/v1/chat/completions", "mistral": "https://api.mistral.ai/v1/chat/completions", "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "deepseek": "https://api.deepseek.com/chat/completions", "openrouter": "https://openrouter.ai/api/v1/chat/completions", "lokal": "http://127.0.0.1:11434/api/chat", "anthropic": "https://api.anthropic.com/v1/messages"}
     url = urls.get(pvd, urls["openrouter"])
-    limit = 1500 if n and n.lower() == "generalag" else (1000 if n and n.lower() == "soulag" else None)
+    limit = {"generalag": 2000, "soulag": 1500, "securityag": 1000, "watchdogag": 1000}.get(n.lower() if n else "", 8192)
     temp = None
     if n:
         try:
