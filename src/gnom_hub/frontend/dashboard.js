@@ -1513,6 +1513,19 @@ window.getAgentAvatarUrl = function(agentId) {
   return `/static/avatars/generalag.png`;
 };
 
+window.showAgentTuning = function() {
+  if (selectedId && typeof selectAgent === 'function') {
+    selectAgent(selectedId);
+  } else {
+    const workers = (agents || []).filter(a => ['coderag','writerag','researcherag','editorag'].includes((a.name||'').toLowerCase()));
+    if (workers.length > 0 && typeof selectAgent === 'function') {
+      selectAgent(workers[0].id);
+    } else {
+      toast('Keine Agenten gefunden.', 'warning');
+    }
+  }
+};
+
 window.generateAutoPreset = async function() {
   const desc = document.getElementById('auto-preset-desc').value.trim();
   if (!desc) {
