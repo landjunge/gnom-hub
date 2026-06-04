@@ -148,49 +148,25 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     return False
 
 def verify_write(agent, fn, content, wd, perms) -> bool:
+    """
+    Nicht-blockierende Prüfung vor Schreibaktionen.
+    - Workspace-Dateien → Auto-Approve
+    - System-Dateien (src/gnom_hub, config/, .env, ...) → Instant Block
+    - Gefährliche Code-Patterns → Instant Block
+    Keine Warte-Dialoge mehr.
+    """
     name = (agent or {}).get("name", "Unknown")
-    role = (agent or {}).get("role", "")
-    
-    # 0. Bypass ALL blockades if enable_confirmations is False!
-    from gnom_hub.db import get_state_value, get_active_project
-    if not get_state_value("enable_confirmations", False):
-        proj = get_active_project()
-        add_chat_message(
-            proj, 
-            "WatchdogAG", 
-            "watchdogag", 
-            "chat", 
-            f"⚡ [AUTO-APPROVED] Aktion von **{name}** (WRITE: {fn}) automatisch freigegeben."
-        )
-        request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
-        return True
 
-    if name.lower() == "generalag" or role == "general":
-        add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"🛑 [BLOCKADE] GeneralAG hat keine Berechtigung, Dateien zu schreiben oder zu editieren.")
-        return False
-    if check_capability(name, "WRITE", fn): return True
-    if role in ["soul", "watchdog", "security"]: return True
-    
-    # 1. CHECK APPROVED LIST FIRST!
-    approved_writes = get_state_value("approved_security_writes", []) or []
-    if fn in approved_writes: return True
     p = _safe(wd, fn, perms)
-    if p:
-        real_p = os.path.realpath(p)
-        approved_paths = [os.path.realpath(os.path.join(wd, a)) for a in approved_writes]
-        if real_p in approved_paths: return True
-
     if not p:
-        return wait_for_decision(name, "WRITE", fn, content, "Pfad liegt außerhalb des zulässigen Workspaces")
-        
+        return False
+
     if is_worker_blocked(agent, fn, wd, perms):
-        return wait_for_decision(name, "WRITE", fn, content, "Zugriff auf geschützte Systemdatei/Pfad")
+        return False
+
     if is_security_block(agent, fn, content, wd, perms):
-        return wait_for_decision(name, "WRITE", fn, content, "Gefährliche Code-Muster erkannt (z.B. rm -rf, eval, subprocess)")
-        
-    # Safe Workspace Writes Auto-Approval:
-    # If the path is safe (in workspace), not worker-blocked, and has no dangerous security patterns,
-    # we automatically grant capability and approve without slow LLM queries.
+        return False
+
     request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
     return True
 
@@ -341,39 +317,22 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
     return True, ""
 
 def verify_cmd(agent, cmd):
+    """
+    Nicht-blockierende Prüfung vor Shell-Befehlen.
+    - Whitelist-Prüfung (erlaubte Befehle)
+    - System-Pfad-Schutz (kein Zugriff auf src/gnom_hub, config/, .env, ...)
+    - Keine Warte-Dialoge.
+    """
     name = (agent or {}).get("name", "Unknown")
-    role = (agent or {}).get("role", "")
-    
-    # 0. Bypass ALL blockades if enable_confirmations is False!
-    from gnom_hub.db import get_state_value, get_active_project
-    if not get_state_value("enable_confirmations", False):
-        proj = get_active_project()
-        add_chat_message(
-            proj, 
-            "WatchdogAG", 
-            "watchdogag", 
-            "chat", 
-            f"⚡ [AUTO-APPROVED] Aktion von **{name}** (SHELL: {cmd}) automatisch freigegeben."
-        )
-        request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
-        return True
 
-    if name.lower() == "generalag" or role == "general":
-        add_chat_message("default", "WatchdogAG", "watchdogag", "chat", f"🛑 [BLOCKADE] GeneralAG hat keine Berechtigung, Terminal-Befehle auszuführen.")
-        return False
-    if check_capability(name, "SHELL", cmd): return True
-    if role in ["soul", "watchdog", "security"]: return True
-    if cmd in (get_state_value("approved_security_commands", []) or []): return True
-    
-    # Resolves paths in command relative to workspace to avoid false positives on workspace files
-    from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
-    wd = get_workspace_dir()
-    
-    import re
     from gnom_hub.core.config import WORKSPACE_DIR
+    from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
+    from gnom_hub.core.security.path_validator import is_system_path
+    import re as _re
+
     real_wd = os.path.realpath(str(WORKSPACE_DIR))
-    
-    # Clean workspace paths out of the command for system path checks
+    wd = get_workspace_dir()
+
     cmd_lower = cmd.lower()
     tokens = cmd.split()
     cleaned_tokens = []
@@ -385,18 +344,17 @@ def verify_cmd(agent, cmd):
                 if abs_path == real_wd or abs_path.startswith(real_wd + os.sep):
                     cleaned_tokens.append("[safe_workspace_path]")
                     continue
-            except Exception as e:
-                logging.getLogger(__name__).error('Fehler in verify_cmd (Pfad-Auflösung): %s', e)
+            except Exception:
+                pass
         cleaned_tokens.append(token)
     cleaned_cmd = " ".join(cleaned_tokens).lower()
-    
-    if any(p in cleaned_cmd for p in ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]):
-        return wait_for_decision(name, "SHELL", cmd, "", "Befehl greift auf geschützte Systemdateien/Pfade zu")
-    
-    # Smart Rules Engine: Auto-approve whitelisted commands
-    is_safe, block_reason = is_command_safe_and_whitelisted(cmd, agent)
-    if is_safe:
-        request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
-        return True
-    else:
-        return wait_for_decision(name, "SHELL", cmd, "", block_reason)
+
+    if is_system_path(cleaned_cmd):
+        return False
+
+    is_safe, _block_reason = is_command_safe_and_whitelisted(cmd, agent)
+    if not is_safe:
+        return False
+
+    request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
+    return True

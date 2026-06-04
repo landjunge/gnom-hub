@@ -3,6 +3,11 @@ import json, threading, os, re, uuid, logging; from gnom_hub.db import save_soul
 from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
 _log = logging.getLogger("soul")
 
+MAX_SOUL_FACTS = 50  # Max. Anzahl Fakten pro Launch
+CONTRADICTION_WORDS = ["nicht schreib", "nicht [write", "nicht erstel", "kein write",
+                       "vorher frag", "um erlaubnis", "showbox statt", "frag erst",
+                       "keine datei", "blockade", "verweigert", "nicht ausfüh"]
+
 from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
 
 class SoulAG:
@@ -71,8 +76,36 @@ class SoulAG:
                 p = f.get("priority", "medium").lower()
                 target = f.get("target_agent", "all")
                 if p not in ["high", "medium", "low"]: p = "medium"
-                if self._val(k, v) < 2: _log.debug("[Soul] Fact rejected by validator: %s", k); continue
-                if self._is_dup(f"{k}: {v}"): _log.info("[Soul] Duplicate skipped: %s", k); continue
+
+                # Guardrail 1: Widersprüchliche Fakten blockieren
+                v_lower = v.lower()
+                if any(w in v_lower for w in CONTRADICTION_WORDS):
+                    _log.info("[Soul] Blocked contradictory fact: %s", k)
+                    continue
+
+                # Guardrail 2: Validierung
+                if self._val(k, v) < 2:
+                    _log.debug("[Soul] Fact rejected by validator: %s", k)
+                    continue
+
+                # Guardrail 3: Dedup-Prüfung
+                if self._is_dup(f"{k}: {v}"):
+                    _log.info("[Soul] Duplicate skipped: %s", k)
+                    continue
+
+                # Guardrail 4: Max-Limit — ältesten Fakt löschen wenn voll
+                try:
+                    from gnom_hub.db.connection import get_db_conn
+                    with get_db_conn() as conn:
+                        total = conn.execute("SELECT COUNT(*) FROM soul_memory").fetchone()[0]
+                        if total >= MAX_SOUL_FACTS:
+                            oldest = conn.execute("SELECT key FROM soul_memory ORDER BY timestamp ASC LIMIT 1").fetchone()
+                            if oldest:
+                                conn.execute("DELETE FROM soul_memory WHERE key = ?", (oldest["key"],))
+                                _log.info("[Soul] Limit erreicht (%d) — ältesten Fakt gelöscht: %s", MAX_SOUL_FACTS, oldest["key"])
+                except Exception as e:
+                    _log.warning("[Soul] Max-limit check failed: %s", e)
+
                 agent_name = "SoulAG" if target.lower() == "all" else target
                 save_soul_fact(k, v, agent=agent_name, priority=p)
                 _log.info("[Soul] Fact saved: %s (priority: %s, target: %s)", k, p, agent_name)

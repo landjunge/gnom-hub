@@ -1,7 +1,6 @@
 # action_handlers.py — Dispatcher für alle Action-Tags
 import re; from .action_write import handle_write, handle_read
 from .action_exec import handle_shell, handle_crawl, handle_showbox
-from gnom_hub.core.security.path_validator import is_worker_blocked
 from gnom_hub.core.security.gatekeeper import verify_write, verify_cmd
 from .action_browser import handle_browser
 from .action_desktop import handle_desktop
@@ -22,25 +21,13 @@ def process_actions(ans, agent, perms, bs_mode, wd):
             if verify_write(agent, fn, content, wd, perms): w_ms.append(m)
             else: ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
     for m in re.finditer(r"\[READ:\s*(.*?)\]", ans):
-        name = (agent or {}).get("name", "Unknown")
-        role = (agent or {}).get("role", "")
-        from gnom_hub.db import get_state_value
-        if not get_state_value("enable_confirmations", False):
-            r_ms.append(m)
-        elif name.lower() == "generalag" or role == "general" or is_worker_blocked(agent, m.group(1).strip(), wd, perms): 
-            ans = ans.replace(m.group(0), f"[WatchdogAG: Lesezugriff blockiert.]")
-        else: 
-            r_ms.append(m)
+        r_ms.append(m)
     for m in re.finditer(r"\[SHELL:\s*(.*?)\]", ans):
         cmd = m.group(1).strip()
         if verify_cmd(agent, cmd): sh_ms.append(m)
         else: ans = ans.replace(m.group(0), f"[Gatekeeper: Befehlsausführung verweigert.]")
     for m in re.finditer(r"\[DESKTOP:\s*(.*?)\]", ans, re.DOTALL):
-        from gnom_hub.db import get_state_value
-        if "desktop" not in perms and get_state_value("enable_confirmations", False):
-            ans = ans.replace(m.group(0), f"[System: {agent['name']} hat keine DESKTOP-Berechtigung.]")
-        else:
-            desktop_ms.append(m)
+        desktop_ms.append(m)
     ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)
     ans = handle_read(ans, r_ms, wd, perms)
     ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)

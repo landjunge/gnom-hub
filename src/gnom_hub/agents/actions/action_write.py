@@ -34,9 +34,6 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
             if not fpath: r = f"[System: Pfad '{fname}' blockiert — außerhalb des Workspace.]"
             else:
                 try:
-                    from gnom_hub.soul import check_and_wait_breakpoint
-                    check_and_wait_breakpoint(agent["name"], "before_write", fname)
-                    
                     os.makedirs(os.path.dirname(fpath), exist_ok=True)
                     if os.path.exists(fpath):
                         import shutil; shutil.copy2(fpath, fpath + ".bak")
