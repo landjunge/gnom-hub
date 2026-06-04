@@ -1487,14 +1487,14 @@ async function testAgentLLM(aName) {
 window.getAgentMeta = function(agentId) {
   const key = agentId ? agentId.toLowerCase().trim() : '';
   const roles = {
-    'soulag': { name: 'Memex-50', desc: 'Röhrengehirn-Speicher (Teal/Vakuum-Stil)' },
-    'generalag': { name: 'Commander-V50', desc: 'Schaltpult-Orchestrator (Stahlschrank mit Analoghebeln)' },
-    'securityag': { name: 'Securitron-V50', desc: 'Sicherheits-Auditor (Chrom-Sicherheitsbox)' },
-    'watchdogag': { name: 'Sentry-V50', desc: 'Regel-Wächter (Messing-Sicherheitsbox)' },
-    'coderag': { name: 'Turing-V50', desc: 'Relais-Techniker (Pastell-Teal / Funkenrelais)' },
-    'researcherag': { name: 'Archive-V50', desc: 'Lochkarten-Archivar (Ozeanblau / Kartenschacht)' },
-    'writerag': { name: 'Scribe-V50', desc: 'Tastenschreiber (Pastell-Orange)' },
-    'editorag': { name: 'Audit-V50', desc: 'Signal-Prüfer (Silber / Analoge Zeigerschalter)' }
+    'soulag':       { name: 'SoulAG',       desc: 'Swarm memory & semantic learning' },
+    'generalag':    { name: 'GeneralAG',    desc: 'Coordinator' },
+    'securityag':   { name: 'SecurityAG',   desc: 'Security auditing & scan' },
+    'watchdogag':   { name: 'WatchdogAG',   desc: 'Rules & safety enforcement' },
+    'coderag':      { name: 'CoderAG',      desc: 'Code implementation' },
+    'researcherag': { name: 'ResearcherAG', desc: 'Information gathering & web research' },
+    'writerag':     { name: 'WriterAG',     desc: 'Content creation & text drafting' },
+    'editorag':     { name: 'EditorAG',     desc: 'Quality assurance & refactoring' }
   };
   return roles[key] || { name: agentId.charAt(0).toUpperCase() + agentId.slice(1), desc: 'Schwarm-Mitglied' };
 };
