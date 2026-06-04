@@ -22,7 +22,7 @@ function renderAgentList(filter = '') {
   let filtered = f ? agents.filter(a => a.name.toLowerCase().includes(f)) : agents;
   filtered = filtered.filter(a => !a.name.toLowerCase().includes('hermes'));
 
-  const coreNames = ['coderag', 'writerag', 'researcherag', 'editorag'];
+  const coreNames = ['writerag', 'coderag', 'researcherag', 'editorag'];
   const coreAgents = filtered.filter(a => coreNames.includes(a.name.toLowerCase()) && a.status !== 'sleeping');
   coreAgents.sort((a, b) => coreNames.indexOf(a.name.toLowerCase()) - coreNames.indexOf(b.name.toLowerCase()));
 
