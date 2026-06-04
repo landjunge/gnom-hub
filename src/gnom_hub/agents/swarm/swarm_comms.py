@@ -18,11 +18,13 @@ PRIORITY_MAPPING = {
 logger = logging.getLogger(__name__)
 
 # ── Konfiguration (statt Magic Numbers im Code) ────────────────────────────
-MAX_DEPTH          = 8
-MAX_CONCURRENT     = 12
-RETRY_MAX          = 3
-RETRY_BACKOFF_BASE = 5.0
-MAX_QUEUE_DEPTH    = 50
+MAX_DEPTH           = 8
+MAX_CONCURRENT      = 12
+RETRY_MAX           = 3
+RETRY_BACKOFF_BASE  = 5.0
+MAX_QUEUE_DEPTH     = 50
+DEPENDENCY_TIMEOUT  = 120.0  # Max. Wartezeit auf eine Abhängigkeit (Sekunden)
+DEPENDENCY_POLL_S   = 3.0    # Poll-Intervall für Dependency-Checks
 
 # ── Notification-Bus: Agenten warten auf dieses Event statt zu pollen ──────
 _new_message_event: Dict[str, threading.Event] = {}
@@ -96,9 +98,14 @@ def dispatch_sequence(
 
             if agent_key.lower() == sender.lower():
                 continue
-            if agent_key in offline:
-                logger.info("Agent '%s' offline – überspringe", agent_key)
-                continue
+            if agent_key in offline and agent_key not in agent_map:
+                # Nur überspringen wenn wirklich offline UND kein Fallback gefunden
+                # (tgt_name ist dann der Fallback, nicht der offline Agent)
+                if tgt_name == agent_map.get(agent_key):
+                    tgt_name = find_best_agent_for_task(task, conn)
+                    if not tgt_name:
+                        logger.info("Agent '%s' offline – kein Ersatz", agent_key)
+                        continue
 
             payload = json.dumps({"text": f"@{tgt_name} {task}", "mention": tgt_name})
 
@@ -135,17 +142,24 @@ def dispatch_sequence(
 
 
 def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> Optional[str]:
-    """Schlagwort-basierte Capability-Suche als Fallback."""
-    keywords = {
-        "code_generation": ["code", "schreib", "python", "html", "js", "script", "programm"],
-        "web_research": ["recherchier", "suche", "finde", "google", "research"],
-        "content_creation": ["text", "artikel", "blog", "slogan", "schreib"],
-        "editing": ["korrigier", "review", "prüf", "lektorat"],
-        "summarization": ["zusammenfass", "summary"],
-    }
+    """
+    Schlagwort-basierte Capability-Suche als Fallback.
+    Prüft zuerst die agent_capabilities-Tabelle, dann Keyword-Heuristik.
+    """
     task_lower = task.lower()
+
+    # 1. Capability-Tabelle abfragen (für registrierte Fähigkeiten)
+    keywords = {
+        "code_generation":  ["code", "schreib", "python", "html", "js", "script", "programm", "implementier", "bash"],
+        "web_research":     ["recherchier", "suche", "finde", "google", "research", "analyse"],
+        "content_creation": ["text", "artikel", "blog", "slogan", "schreib", "dokument", "doc"],
+        "editing":          ["korrigier", "review", "prüf", "lektorat", "refaktor", "edit"],
+        "summarization":    ["zusammenfass", "summary", "kurzfass"],
+        "security_audit":   ["sicherheit", "security", "audit", "vulnerab", "scan"],
+    }
     for cap, words in keywords.items():
         if any(w in task_lower for w in words):
+            # Zuerst in agent_capabilities suchen
             row = conn.execute("""
                 SELECT ac.agent_name
                 FROM agent_capabilities ac
@@ -155,6 +169,23 @@ def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> Optional[st
             """, (cap,)).fetchone()
             if row:
                 return row["agent_name"]
+
+    # 2. Fallback: Agenten-Namen mit Task-Inhalt matchen
+    agent_hints = {
+        "coderag":     ["code", "python", "html", "js", "create", "erstell", "bau", "implementier", "script", "write"],
+        "writerag":    ["text", "slogan", "artikel", "blog", "dokument", "schreib", "content"],
+        "researcherag":["recherchier", "suche", "finde", "research", "analyse", "fakten"],
+        "editorag":    ["korrigier", "review", "prüf", "lektorat", "refaktor", "qualität"],
+    }
+    for agent_key, agent_words in agent_hints.items():
+        if any(w in task_lower for w in agent_words):
+            row = conn.execute(
+                "SELECT name FROM agents WHERE name = ? AND status IN ('online','busy','running')",
+                (agent_key,)
+            ).fetchone()
+            if row:
+                return row["name"]
+
     return None
 
 
@@ -303,8 +334,9 @@ def fetch_next_message(
 ) -> Optional[dict]:
     """
     Blockiert maximal `timeout` Sekunden auf die nächste Nachricht.
-    Prüft parent_msg_id-Abhängigkeiten: Wenn die Eltern-Nachricht noch nicht
-    abgeschlossen ist, wird diese Nachricht zurückgestellt (re-queue mit delay).
+    Prüft parent_msg_id-Abhängigkeiten:
+    - Parent ist 'dead_letter' → diese Nachricht auch in DLQ
+    - Parent nach DEPENDENCY_TIMEOUT nicht 'done' → diese Nachricht in DLQ
     """
     evt = get_agent_event(agent_name)
     deadline = time.time() + timeout
@@ -326,22 +358,51 @@ def fetch_next_message(
                 """, (agent_name, time.time())).fetchone()
 
                 if row:
-                    # Dependency-Check: parent_msg_id muss abgeschlossen sein
                     parent_id = row["parent_msg_id"]
                     if parent_id is not None:
-                        parent_status = conn.execute(
-                            "SELECT status FROM agent_messages WHERE id = ?",
+                        parent_row = conn.execute(
+                            "SELECT status, created_at FROM agent_messages WHERE id = ?",
                             (parent_id,)
                         ).fetchone()
-                        if parent_status and parent_status["status"] != "done":
-                            # Abhängigkeit noch nicht erfüllt – zurückstellen
+
+                        if not parent_row:
+                            # Parent existiert nicht mehr → abbrechen
+                            conn.execute(
+                                "UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE id=?",
+                                (time.time(), row["id"])
+                            )
+                            conn.commit()
+                            logger.error("Sequenz-Abbruch: parent_msg_id %d existiert nicht (Child %d)", parent_id, row["id"])
+                            time.sleep(0.5)
+                            continue
+
+                        if parent_row["status"] == "dead_letter":
+                            # Parent fehlgeschlagen → auch dieses Child in DLQ
+                            fail_dependent_messages(row["id"], "parent_msg_id=%d in dead_letter" % parent_id, conn)
+                            conn.commit()
+                            logger.error("Sequenz-Abbruch: Parent %d in DLQ – Child %d ebenfalls abgebrochen", parent_id, row["id"])
+                            time.sleep(0.5)
+                            continue
+
+                        if parent_row["status"] != "done":
+                            # Parent noch nicht fertig – prüfe auf Timeout
+                            created = parent_row["created_at"] or time.time()
+                            elapsed = time.time() - created
+                            if elapsed > DEPENDENCY_TIMEOUT:
+                                # Timeout: Parent hängt zu lange → gesamte Sequenz abbrechen
+                                fail_dependent_messages(parent_id, "DEPENDENCY_TIMEOUT=%.0fs" % DEPENDENCY_TIMEOUT, conn)
+                                conn.commit()
+                                logger.error("Sequenz-Abbruch: Parent %d nach %.0fs nicht fertig – Kaskade ausgelöst", parent_id, elapsed)
+                                time.sleep(0.5)
+                                continue
+
+                            # Zurückstellen
                             conn.execute("""
                                 UPDATE agent_messages
                                 SET deliver_after = ?, status = 'pending'
                                 WHERE id = ?
-                            """, (time.time() + 3.0, row["id"]))
+                            """, (time.time() + DEPENDENCY_POLL_S, row["id"]))
                             conn.commit()
-                            # Kurz warten, dann weitersuchen
                             conn.close()
                             time.sleep(1.5)
                             continue
@@ -352,12 +413,12 @@ def fetch_next_message(
                     )
                     conn.commit()
                     return {
-                        "msg_id":      row["id"],
-                        "sender":      row["sender"],
-                        "payload":     json.loads(row["payload"]),
-                        "context_id":  row["context_id"],
-                        "depth":       row["depth"],
-                        "retry_count": row["retry_count"],
+                        "msg_id":        row["id"],
+                        "sender":        row["sender"],
+                        "payload":       json.loads(row["payload"]),
+                        "context_id":    row["context_id"],
+                        "depth":         row["depth"],
+                        "retry_count":   row["retry_count"],
                         "parent_msg_id": row["parent_msg_id"],
                     }
                 else:
@@ -377,6 +438,23 @@ def fetch_next_message(
     return None  # Timeout
 
 
+def fail_dependent_messages(msg_id: int, reason: str, conn: sqlite3.Connection) -> None:
+    """Schickt msg_id + alle davon abhängigen Messages in die DLQ."""
+    now = time.time()
+    conn.execute(
+        "UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE id=?",
+        (now, msg_id)
+    )
+    logger.error("Message %d in DLQ (%s)", msg_id, reason)
+    # Kaskadiere: finde alle Messages, die auf msg_id warten
+    children = conn.execute(
+        "SELECT id FROM agent_messages WHERE parent_msg_id = ? AND status != 'done'",
+        (msg_id,)
+    ).fetchall()
+    for child in children:
+        fail_dependent_messages(child["id"], "chain_reaction: parent %d in DLQ" % msg_id, conn)
+
+
 def ack_message(msg_id: int, db_path: str) -> None:
     """Nachricht als erfolgreich abgearbeitet markieren."""
     conn = get_db_connection()
@@ -393,12 +471,12 @@ def nack_message(msg_id: int, db_path: str, reason: str = "") -> None:
     """
     Nachricht als fehlgeschlagen markieren.
     Retry mit exponentiellem Backoff, max RETRY_MAX Versuche.
-    Danach: Dead-Letter-Queue.
+    Danach: Dead-Letter-Queue + Kaskade auf abhängige Messages.
     """
     conn = get_db_connection()
     try:
         row = conn.execute(
-            "SELECT retry_count FROM agent_messages WHERE id=?", (msg_id,)
+            "SELECT retry_count, sender, recipient FROM agent_messages WHERE id=?", (msg_id,)
         ).fetchone()
 
         if not row:
@@ -407,15 +485,13 @@ def nack_message(msg_id: int, db_path: str, reason: str = "") -> None:
         retries = row["retry_count"] + 1
 
         if retries >= RETRY_MAX:
-            conn.execute(
-                "UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE id=?",
-                (time.time(), msg_id)
-            )
-            logger.error(
-                "Nachricht %d in Dead-Letter-Queue (reason: %s)", msg_id, reason
-            )
+            fail_dependent_messages(msg_id, "max_retries (%s)" % reason, conn)
+            conn.commit()
+            # GeneralAG benachrichtigen
+            from gnom_hub.chat.chat_commands import _post_chat
+            _post_chat("System", f"⚠️ Agent **{row['recipient']}** gescheitert an: {reason[:200]}")
         else:
-            backoff = RETRY_BACKOFF_BASE * (2 ** (retries - 1))  # 5s, 10s, 20s
+            backoff = RETRY_BACKOFF_BASE * (2 ** (retries - 1))
             conn.execute("""
                 UPDATE agent_messages
                 SET status='pending', retry_count=?, deliver_after=?, processing_since=NULL
@@ -569,16 +645,17 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
             msg_id = row["id"]
             retries = row["retry_count"] + 1
             recipient = row["recipient"]
-            sender = row["sender"]
 
             if retries >= RETRY_MAX:
                 conn.execute(
                     "UPDATE agent_messages SET status='dead_letter', retry_count=?, processing_since=NULL, completed_at=? WHERE id=?",
                     (retries, time.time(), msg_id)
                 )
+                # Auch abhängige Messages kaskadieren (retry_count bleibt unverändert)
+                fail_dependent_messages(msg_id, "parent_stuck_retries_%d" % retries, conn)
                 logger.error(
-                    "Nachricht %d (Ziel=%s, Sender=%s) zu oft blockiert – verschoben in dead_letter",
-                    msg_id, recipient, sender
+                    "Nachricht %d (Ziel=%s) zu oft blockiert – Kaskade ausgelöst",
+                    msg_id, recipient
                 )
             else:
                 backoff = RETRY_BACKOFF_BASE * (2 ** (retries - 1))
@@ -588,11 +665,27 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
                     WHERE id=?
                 """, (retries, now + backoff, msg_id))
                 logger.warning(
-                    "Nachricht %d (Ziel=%s, Sender=%s) blockiert. Retry %d/%d in %.0fs",
-                    msg_id, recipient, sender, retries, RETRY_MAX, backoff
+                    "Nachricht %d (Ziel=%s) blockiert. Retry %d/%d in %.0fs",
+                    msg_id, recipient, retries, RETRY_MAX, backoff
                 )
                 notify_agent(recipient)
 
         conn.commit()
     finally:
         conn.close()
+
+
+def fail_dependent_messages(msg_id: int, reason: str, conn: sqlite3.Connection) -> None:
+    """Schickt msg_id + alle davon abhängigen Messages in die DLQ."""
+    now = time.time()
+    conn.execute(
+        "UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE status != 'done' AND id=?",
+        (now, msg_id)
+    )
+    logger.error("Message %d in DLQ (%s)", msg_id, reason)
+    children = conn.execute(
+        "SELECT id FROM agent_messages WHERE parent_msg_id = ? AND status != 'done'",
+        (msg_id,)
+    ).fetchall()
+    for child in children:
+        fail_dependent_messages(child["id"], "chain_reaction: parent %d in DLQ" % msg_id, conn)
