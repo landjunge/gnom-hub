@@ -27,7 +27,7 @@ def handle_free(q):
 
 def handle_git(q, rb=False):
     import re as _re
-    ALLOWED_GIT = {'status', 'log', 'diff', 'show', 'branch', 'stash', 'add', 'commit'}
+    ALLOWED_GIT = {'status', 'log', 'diff', 'show', 'branch', 'stash', 'add', 'commit', 'push', 'pull', 'fetch', 'checkout', 'reset', 'clone'}
     from gnom_hub.api.endpoints.workspace import get_workspace_dir
     wd = get_workspace_dir()
     p = q.split(" ", 1)
@@ -375,8 +375,7 @@ def handle_blockade(q):
         _post_chat("System", msg)
         
     elif val in ("on", "true", "1", "enable", "an", "ein"):
-        set_state_value("enable_confirmations", True)
-        _post_chat("System", "🛡️ **System-Blockaden aktiviert:** Gefährliche Aktionen müssen ab jetzt wieder manuell freigegeben werden.")
+        _post_chat("System", "ℹ️ **System-Blockaden sind dauerhaft deaktiviert.** Alle Agenten arbeiten im Auto-Approve-Modus.")
     else:
         current = get_state_value("enable_confirmations", False)
         status = "Deaktiviert (Auto-Approve)" if not current else "Aktiviert (Bestätigungspflichtig)"

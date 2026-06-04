@@ -268,8 +268,9 @@ def test_capability_registry_routing(isolated_db):
 
     # Test dispatch_by_capability
     from gnom_hub.core.config import DB_PATH
-    target = dispatch_by_capability("GeneralAG", "security_audit", "test task", "default-ctx", str(DB_PATH))
+    target, msg_id = dispatch_by_capability("GeneralAG", "security_audit", "test task", "default-ctx", str(DB_PATH))
     assert target == "SecurityAG"
+    assert msg_id is not None
 
     conn = get_db_connection()
     try:
@@ -422,3 +423,434 @@ def test_task_lineage(isolated_db):
         assert child["parent_msg_id"] == msg["id"]
     finally:
         conn.close()
+
+
+def seed_workflow_agents(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS agent_capabilities (
+            agent_name TEXT NOT NULL,
+            capability TEXT NOT NULL,
+            confidence REAL NOT NULL DEFAULT 1.0,
+            PRIMARY KEY (agent_name, capability)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS swarm_callbacks (
+            idempotency_key  TEXT PRIMARY KEY,
+            context_id       TEXT NOT NULL,
+            agent_name       TEXT NOT NULL,
+            result_json      TEXT NOT NULL,
+            received_at      REAL NOT NULL,
+            http_status      INTEGER DEFAULT 200
+        )
+    """)
+    conn.execute("""
+        INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen)
+        VALUES ('CoderAG', 'coder-uuid', 0, 'Coder Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z')
+    """)
+    conn.execute("""
+        INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen)
+        VALUES ('SecurityAG', 'security-uuid', 0, 'Security Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z')
+    """)
+    conn.execute("INSERT OR REPLACE INTO agent_capabilities (agent_name, capability, confidence) VALUES ('CoderAG', 'code_review', 1.0)")
+    conn.execute("INSERT OR REPLACE INTO agent_capabilities (agent_name, capability, confidence) VALUES ('SecurityAG', 'security_audit', 1.0)")
+    conn.commit()
+
+
+def test_linear_workflow_execution(isolated_db):
+    """Test standard linear workflow A -> B."""
+    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
+    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
+    import json
+
+    conn = get_db_connection()
+    try:
+        seed_workflow_agents(conn)
+    finally:
+        conn.close()
+
+    tasks = [
+        {
+            "task_id": "task_a",
+            "capability": "code_review",
+            "input_template": "Review this code.",
+            "depends_on": []
+        },
+        {
+            "task_id": "task_b",
+            "capability": "security_audit",
+            "input_template": "Audit this: {task_a}",
+            "depends_on": ["task_a"]
+        }
+    ]
+
+    workflow_id = create_workflow("Linear Test Workflow", tasks)
+    assert workflow_id is not None
+
+    start_workflow(workflow_id)
+
+    conn = get_db_connection()
+    try:
+        wf = conn.execute("SELECT status FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
+        assert wf["status"] == "running"
+
+        ta = conn.execute("SELECT status, msg_id FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_a'", (workflow_id,)).fetchone()
+        tb = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_b'", (workflow_id,)).fetchone()
+        assert ta["status"] == "running"
+        assert ta["msg_id"] is not None
+        assert tb["status"] == "pending"
+    finally:
+        conn.close()
+
+    payload_a = SwarmCompletePayload(
+        context_id=workflow_id,
+        agent_name="CoderAG",
+        result={"status": "success", "content": "Code looks good."}
+    )
+    res = swarm_complete(payload_a)
+    assert res["status"] == "accepted"
+
+    conn = get_db_connection()
+    try:
+        ta = conn.execute("SELECT status, result_json FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_a'", (workflow_id,)).fetchone()
+        assert ta["status"] == "completed"
+        assert json.loads(ta["result_json"])["content"] == "Code looks good."
+
+        tb = conn.execute("SELECT status, msg_id FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_b'", (workflow_id,)).fetchone()
+        assert tb["status"] == "running"
+        assert tb["msg_id"] is not None
+        msg_id_b = tb["msg_id"]
+
+        msg_b = conn.execute("SELECT payload FROM agent_messages WHERE id = ?", (msg_id_b,)).fetchone()
+        payload_data = json.loads(msg_b["payload"])
+        assert "Audit this: Code looks good." in payload_data["text"]
+    finally:
+        conn.close()
+
+    payload_b = SwarmCompletePayload(
+        context_id=workflow_id,
+        agent_name="SecurityAG",
+        result={"status": "success", "content": "Audit passed cleanly."}
+    )
+    res = swarm_complete(payload_b)
+    assert res["status"] == "accepted"
+
+    conn = get_db_connection()
+    try:
+        tb = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_b'", (workflow_id,)).fetchone()
+        assert tb["status"] == "completed"
+
+        wf = conn.execute("SELECT status FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
+        assert wf["status"] == "completed"
+    finally:
+        conn.close()
+
+
+def test_parallel_workflow_execution(isolated_db):
+    """Test parallel workflow execution where A (runs on CoderAG), B (runs on SecurityAG) -> C (runs on CoderAG)."""
+    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
+    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
+    import json
+
+    conn = get_db_connection()
+    try:
+        seed_workflow_agents(conn)
+    finally:
+        conn.close()
+
+    tasks = [
+        {
+            "task_id": "task_a",
+            "capability": "code_review",
+            "input_template": "Task A input",
+            "depends_on": []
+        },
+        {
+            "task_id": "task_b",
+            "capability": "security_audit",
+            "input_template": "Task B input",
+            "depends_on": []
+        },
+        {
+            "task_id": "task_c",
+            "capability": "code_review",
+            "input_template": "Audit results of A: '{task_a}' and B: '{task_b}'",
+            "depends_on": ["task_a", "task_b"]
+        }
+    ]
+
+    workflow_id = create_workflow("Parallel Test Workflow", tasks)
+    assert workflow_id is not None
+
+    start_workflow(workflow_id)
+
+    conn = get_db_connection()
+    try:
+        ta = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_a'", (workflow_id,)).fetchone()
+        tb = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_b'", (workflow_id,)).fetchone()
+        tc = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_c'", (workflow_id,)).fetchone()
+
+        assert ta["status"] == "running"
+        assert tb["status"] == "running"
+        assert tc["status"] == "pending"
+    finally:
+        conn.close()
+
+    # Complete Task A (runs on CoderAG)
+    payload_a = SwarmCompletePayload(
+        context_id=workflow_id,
+        agent_name="CoderAG",
+        result={"status": "success", "content": "Result A"}
+    )
+    res = swarm_complete(payload_a)
+    assert res["status"] == "accepted"
+
+    # Task C should still be pending because Task B is not done yet
+    conn = get_db_connection()
+    try:
+        ta = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_a'", (workflow_id,)).fetchone()
+        tc = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_c'", (workflow_id,)).fetchone()
+        assert ta["status"] == "completed"
+        assert tc["status"] == "pending"
+    finally:
+        conn.close()
+
+    # Complete Task B (runs on SecurityAG)
+    payload_b = SwarmCompletePayload(
+        context_id=workflow_id,
+        agent_name="SecurityAG",
+        result={"status": "success", "content": "Result B"}
+    )
+    res = swarm_complete(payload_b)
+    assert res["status"] == "accepted"
+
+    # Task C should now transition to running (dispatched to CoderAG)
+    conn = get_db_connection()
+    try:
+        tb = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_b'", (workflow_id,)).fetchone()
+        tc = conn.execute("SELECT status, msg_id FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_c'", (workflow_id,)).fetchone()
+        assert tb["status"] == "completed"
+        assert tc["status"] == "running"
+        assert tc["msg_id"] is not None
+        msg_id_c = tc["msg_id"]
+
+        msg_c = conn.execute("SELECT payload FROM agent_messages WHERE id = ?", (msg_id_c,)).fetchone()
+        payload_data = json.loads(msg_c["payload"])
+        assert "Audit results of A: 'Result A' and B: 'Result B'" in payload_data["text"]
+    finally:
+        conn.close()
+
+    # Complete Task C (runs on CoderAG).
+    # Since Task A has already completed on CoderAG, this checks if the unique idempotency key with msg_id works correctly!
+    payload_c = SwarmCompletePayload(
+        context_id=workflow_id,
+        agent_name="CoderAG",
+        result={"status": "success", "content": "Final Result"}
+    )
+    res = swarm_complete(payload_c)
+    assert res["status"] == "accepted"
+
+    conn = get_db_connection()
+    try:
+        tc = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_c'", (workflow_id,)).fetchone()
+        assert tc["status"] == "completed"
+
+        wf = conn.execute("SELECT status FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
+        assert wf["status"] == "completed"
+    finally:
+        conn.close()
+
+
+def test_workflow_failure_handling(isolated_db):
+    """Test that a failed task aborts the workflow."""
+    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
+    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
+
+    conn = get_db_connection()
+    try:
+        seed_workflow_agents(conn)
+    finally:
+        conn.close()
+
+    tasks = [
+        {
+            "task_id": "task_a",
+            "capability": "code_review",
+            "input_template": "Task A input",
+            "depends_on": []
+        },
+        {
+            "task_id": "task_b",
+            "capability": "security_audit",
+            "input_template": "Task B input: {task_a}",
+            "depends_on": ["task_a"]
+        }
+    ]
+
+    workflow_id = create_workflow("Failure Test Workflow", tasks)
+    assert workflow_id is not None
+
+    start_workflow(workflow_id)
+
+    # Fail Task A
+    payload_a = SwarmCompletePayload(
+        context_id=workflow_id,
+        agent_name="CoderAG",
+        result={"status": "error", "error": "Crash during compilation"}
+    )
+    res = swarm_complete(payload_a)
+    assert res["status"] == "accepted"
+
+    conn = get_db_connection()
+    try:
+        ta = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_a'", (workflow_id,)).fetchone()
+        tb = conn.execute("SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = 'task_b'", (workflow_id,)).fetchone()
+        wf = conn.execute("SELECT status FROM workflows WHERE id = ?", (workflow_id,)).fetchone()
+
+        assert ta["status"] == "failed"
+        assert tb["status"] == "pending"  # remains pending, never runs
+        assert wf["status"] == "failed"
+    finally:
+        conn.close()
+
+
+def test_completed_at_telemetry(isolated_db):
+    """Test that completed_at is set during ack/nack operations."""
+    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.agents.swarm.swarm_comms import ack_message, nack_message, recover_stuck_messages
+    import time
+    
+    conn = get_db_connection()
+    try:
+        # 1. Insert a pending message
+        conn.execute("""
+            INSERT INTO agent_messages (id, sender, recipient, payload, priority, status, created_at, deliver_after)
+            VALUES (1010, 'GeneralAG', 'CoderAG', '{"text":"test"}', 5, 'pending', ?, 0)
+        """, (time.time(),))
+        
+        # 2. Insert a processing message that was retried max times
+        conn.execute("""
+            INSERT INTO agent_messages (id, sender, recipient, payload, priority, status, retry_count, created_at, deliver_after, processing_since)
+            VALUES (1020, 'GeneralAG', 'CoderAG', '{"text":"test2"}', 5, 'processing', 2, ?, 0, ?)
+        """, (time.time() - 600, time.time() - 600))
+        
+        conn.commit()
+    finally:
+        conn.close()
+        
+    from gnom_hub.core.config import DB_PATH
+    
+    # Acknowledge the first message
+    ack_message(1010, str(DB_PATH))
+    
+    # Run recovery on the second stuck message (should DLQ it and set completed_at)
+    recover_stuck_messages(str(DB_PATH), timeout=300.0)
+    
+    conn = get_db_connection()
+    try:
+        m1 = conn.execute("SELECT status, completed_at FROM agent_messages WHERE id = 1010").fetchone()
+        assert m1["status"] == "done"
+        assert m1["completed_at"] is not None
+        assert m1["completed_at"] > 0
+        
+        m2 = conn.execute("SELECT status, completed_at FROM agent_messages WHERE id = 1020").fetchone()
+        assert m2["status"] == "dead_letter"
+        assert m2["completed_at"] is not None
+        assert m2["completed_at"] > 0
+    finally:
+        conn.close()
+
+
+def test_observability_metrics_api(isolated_db):
+    """Test the observability metrics collection and endpoint API calculations."""
+    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.api.endpoints.observability import get_observability_metrics
+    import time
+    
+    conn = get_db_connection()
+    try:
+        # Create workflows and messages to simulate telemetry
+        conn.execute("""
+            INSERT INTO workflows (id, name, status, created_at, completed_at)
+            VALUES ('wf-1', 'Workflow One', 'completed', ?, ?)
+        """, (time.time() - 100, time.time() - 50))
+        
+        # Insert messages with custom telemetry (wait time = 10s, execution time = 40s)
+        conn.execute("""
+            INSERT INTO agent_messages (id, sender, recipient, payload, priority, status, created_at, deliver_after, processing_since, completed_at)
+            VALUES (2010, 'GeneralAG', 'CoderAG', '{"text":"test"}', 5, 'done', 1000.0, 0, 1010.0, 1050.0)
+        """)
+        
+        # Another message for SecurityAG (wait time = 20s, execution time = 10s)
+        conn.execute("""
+            INSERT INTO agent_messages (id, sender, recipient, payload, priority, status, created_at, deliver_after, processing_since, completed_at)
+            VALUES (2020, 'GeneralAG', 'SecurityAG', '{"text":"test"}', 5, 'done', 2000.0, 0, 2020.0, 2030.0)
+        """)
+        
+        # Add workflow task mapping to capability
+        conn.execute("""
+            INSERT INTO workflow_tasks (workflow_id, task_id, capability, input_template, depends_on, status, msg_id)
+            VALUES ('wf-1', 'task_1', 'code_review', 'input', '[]', 'completed', 2010)
+        """)
+        
+        conn.commit()
+    finally:
+        conn.close()
+        
+    metrics = get_observability_metrics()
+    
+    # Check workflow summary
+    assert metrics["workflows_summary"]["total_count"] == 1
+    assert metrics["workflows_summary"]["completed_count"] == 1
+    assert abs(metrics["workflows_summary"]["avg_duration_s"] - 50.0) < 0.1
+    
+    # Check CoderAG averages: wait = 10s -> 10000ms, exec = 40s -> 40000ms
+    coder_metric = next(a for a in metrics["agents"] if a["agent_name"] == "CoderAG")
+    assert abs(coder_metric["avg_queue_wait_ms"] - 10000.0) < 1.0
+    assert abs(coder_metric["avg_exec_time_ms"] - 40000.0) < 1.0
+    
+    # Check capability averages: wait = 10000ms, exec = 40000ms
+    cap_metric = next(c for c in metrics["capabilities"] if c["capability"] == "code_review")
+    assert abs(cap_metric["avg_queue_wait_ms"] - 10000.0) < 1.0
+    assert abs(cap_metric["avg_exec_time_ms"] - 40000.0) < 1.0
+
+
+def test_fetch_next_message_atomicity(isolated_db):
+    """Test that concurrent calls to fetch_next_message do not result in double delivery."""
+    import threading
+    from gnom_hub.agents.swarm.swarm_comms import fetch_next_message, dispatch_mention
+    from gnom_hub.core.config import DB_PATH
+
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen)
+            VALUES ('CoderAG', 'coder-uuid', 0, 'Coder Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z')
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Dispatch exactly one message
+    dispatch_mention("GeneralAG", "@CoderAG test message", "ctx1", str(DB_PATH))
+
+    results = []
+    def fetcher():
+        msg = fetch_next_message("CoderAG", str(DB_PATH), timeout=0.1)
+        if msg:
+            results.append(msg)
+
+    t1 = threading.Thread(target=fetcher)
+    t2 = threading.Thread(target=fetcher)
+
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    # Only one of the threads should have successfully fetched the message
+    assert len(results) == 1
+

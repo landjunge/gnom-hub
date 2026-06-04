@@ -1,4 +1,5 @@
 import asyncio, os, logging, threading, requests; from gnom_hub.soul import get_soul; from gnom_hub.infrastructure.router.router import ask_router
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
@@ -94,6 +95,10 @@ class BaseAgent:
             ctx_logger.info(f"Agent {self.n} verarbeitet Nachricht {msg['msg_id']}")
 
             try:
+                # Timeout für einzelne Nachrichtenverarbeitung (max 5 Minuten)
+                import signal, functools as _ft
+                _processing_start = time.time()
+
                 # Payload parsen
                 text = msg["payload"]["text"]
 
@@ -107,6 +112,10 @@ class BaseAgent:
                 sys_prompt += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
 
                 r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
+
+                # Timeout-Check nach LLM-Call
+                if time.time() - _processing_start > 300:
+                    raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >5 Min")
 
                 processed = ""
                 if r.content and not r.content.startswith("[ROUTER-FEHLER]"):

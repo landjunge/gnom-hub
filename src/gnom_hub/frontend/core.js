@@ -860,6 +860,9 @@ window.globalSave = async () => {
     if (typeof saveAgentLLMs === 'function') {
       await saveAgentLLMs();
     }
+    if (typeof loadLLMConfig === 'function') {
+      await loadLLMConfig();
+    }
     savedSomething = true;
   }
   

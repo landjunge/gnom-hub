@@ -23,7 +23,8 @@ def handle_job(task):
     ags = agent_repo.get_all()
     gen = next((a for a in ags if a.role == "general" or a.name.lower() == "generalag"), None)
     if not gen: return {"error": "Kein General"}
-    jobs = state_repo.get_value("jobs", []) + [{"id": str(uuid.uuid4()), "task": task, "general": gen.name, "status": "open", "ts": datetime.now(timezone.utc).isoformat()+"Z"}]
+    job_id = str(uuid.uuid4())
+    jobs = state_repo.get_value("jobs", []) + [{"id": job_id, "task": task, "general": gen.name, "status": "open", "ts": datetime.now(timezone.utc).isoformat()+"Z"}]
     state_repo.set_value("jobs", jobs); res = distribute_job(task); _post_chat(gen.name, res)
     workers = []
     for a in ags:
@@ -32,7 +33,7 @@ def handle_job(task):
         aj = next((m.group(2).strip() for m in re.finditer(r'@(\w+)[\s→>:\-]+(.+)', res) if m.group(1).lower() == a.name.lower()), "")
         agent_repo.update_active_job(a.name, aj)
         if aj:
-            import time; time.sleep(1.5); workers.append(a.name); dispatch(aj, target=a.name)
+            import time; time.sleep(1.5); workers.append(a.name); dispatch(aj, target=a.name, context_id=job_id)
     from gnom_hub.agents.swarm.swarm_coordinator import start_coordinator
-    start_coordinator(task, workers)
+    start_coordinator(task, workers, job_id=job_id)
     return {"status": "job_created"}

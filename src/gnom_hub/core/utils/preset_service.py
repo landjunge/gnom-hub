@@ -31,8 +31,8 @@ def _get_preset_agents(conn, preset: str, custom) -> dict:
             logging.getLogger(__name__).error('Fehler in Agenten-DB-Parsing: %s', e)
     w = ["coderag", "researcherag", "writerag", "editorag"]
     if isinstance(custom, dict) and custom:
-        for a in w:
-            if a in custom: adb[a] = custom[a]
+        for a, val in custom.items():
+            adb[a] = val
     else:
         kdb = {}
         row_k = conn.execute("SELECT value FROM state WHERE key=?", ("llm_keys",)).fetchone()

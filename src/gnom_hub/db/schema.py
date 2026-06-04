@@ -144,7 +144,8 @@ CREATE TABLE IF NOT EXISTS agent_messages (
     context_id    TEXT,
     depth         INTEGER NOT NULL DEFAULT 0,
     processing_since REAL DEFAULT NULL,
-    parent_msg_id INTEGER DEFAULT NULL
+    parent_msg_id INTEGER DEFAULT NULL,
+    completed_at  REAL DEFAULT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_aq_recipient_status ON agent_messages(recipient, status, deliver_after);
 CREATE INDEX IF NOT EXISTS idx_aq_context ON agent_messages(context_id, depth);
@@ -164,6 +165,26 @@ CREATE TABLE IF NOT EXISTS agent_capabilities (
     capability   TEXT NOT NULL,
     confidence   REAL NOT NULL DEFAULT 1.0,
     PRIMARY KEY (agent_name, capability)
+);
+
+CREATE TABLE IF NOT EXISTS workflows (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at REAL NOT NULL,
+    completed_at REAL
+);
+
+CREATE TABLE IF NOT EXISTS workflow_tasks (
+    workflow_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    capability TEXT NOT NULL,
+    input_template TEXT NOT NULL,
+    depends_on TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    msg_id INTEGER,
+    result_json TEXT,
+    PRIMARY KEY (workflow_id, task_id)
 );
 """
 
@@ -237,6 +258,12 @@ def init_database() -> None:
                 except sqlite3.OperationalError:
                     pass
                 
+                # Dynamic migration to add completed_at to agent_messages if it is missing
+                try:
+                    conn.execute("ALTER TABLE agent_messages ADD COLUMN completed_at REAL DEFAULT NULL")
+                except sqlite3.OperationalError:
+                    pass
+                
                 # Dynamic migration for Phase 4 columns
                 try:
                     conn.execute("ALTER TABLE agents ADD COLUMN circuit_state TEXT DEFAULT 'CLOSED'")
@@ -248,6 +275,36 @@ def init_database() -> None:
                     pass
                 try:
                     conn.execute("ALTER TABLE agent_messages ADD COLUMN parent_msg_id INTEGER DEFAULT NULL")
+                except sqlite3.OperationalError:
+                    pass
+                
+                # Dynamic migration for Phase 5 tables
+                try:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS workflows (
+                            id TEXT PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            created_at REAL NOT NULL,
+                            completed_at REAL
+                        )
+                    """)
+                except sqlite3.OperationalError:
+                    pass
+                try:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS workflow_tasks (
+                            workflow_id TEXT NOT NULL,
+                            task_id TEXT NOT NULL,
+                            capability TEXT NOT NULL,
+                            input_template TEXT NOT NULL,
+                            depends_on TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            msg_id INTEGER,
+                            result_json TEXT,
+                            PRIMARY KEY (workflow_id, task_id)
+                        )
+                    """)
                 except sqlite3.OperationalError:
                     pass
                 

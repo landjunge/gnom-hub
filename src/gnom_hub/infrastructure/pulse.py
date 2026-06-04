@@ -7,10 +7,15 @@ def pulse_janitor():
     repo = SQLiteAgentRepository()
     from datetime import datetime, timezone
     import json
-    now = datetime.now(timezone.utc)
+    now_utc = datetime.now(timezone.utc)
+    now_local = datetime.now()
     for agent in repo.list_all():
         if agent.status == "busy" and agent.last_seen:
-            diff = (now - agent.last_seen).total_seconds()
+            last_seen = agent.last_seen
+            if last_seen.tzinfo is not None:
+                diff = (now_utc - last_seen).total_seconds()
+            else:
+                diff = (now_local - last_seen).total_seconds()
             if diff > 300:
                 agent.status = "online"
                 agent.active_job = None

@@ -7,6 +7,7 @@ def distribute_job(job_text):
     ags = get_all_agents()
     gen = next((a for a in ags if a.get("role") == "general"), None)
     if not gen: gen = next((a for a in ags if a.get("name","").lower() == "generalag"), None)
+    if not gen: return "Kein GeneralAG gefunden."
     from gnom_hub.soul import get_soul
     soul = get_soul(gen.get("name", "GeneralAG"))
     mmap = ", ".join(f"{a['name']}:{a.get('skill', a.get('role','Agent'))}" for a in ags if a.get('name').lower() not in {"soulag", "generalag", "securityag", "watchdogag"})

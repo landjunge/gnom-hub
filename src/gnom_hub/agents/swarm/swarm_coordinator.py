@@ -18,7 +18,7 @@ class WorkerCompletionTracker:
     Ersetzt das blockierende _wait()-Pattern durch ein Event-basiertes System.
     """
 
-    def __init__(self, worker_names: List[str], timeout: float = 40.0):
+    def __init__(self, worker_names: List[str], timeout: float = 180.0):
         self._pending  = set(worker_names)
         self._lock     = threading.Lock()
         self._done_evt = threading.Event()
@@ -107,24 +107,32 @@ def _eval(ar, task, history):
     return ans
 
 
-def run_swarm_coordinator(task, workers):
+def run_swarm_coordinator(task, workers, job_id=None):
     ar, sr = AR(), SR(); all_res, cur = [], list(workers)
-    from gnom_hub.db import get_active_project
-    proj = get_active_project() or "default"
+    if not job_id:
+        from gnom_hub.db import get_active_project
+        job_id = get_active_project() or "default"
     
     for _ in range(4):
         if not cur: break
         
         # Erstelle einen Tracker für diese Runde von Workern
-        tracker = WorkerCompletionTracker(cur, timeout=40.0)
-        register_tracker(proj, tracker)
+        tracker = WorkerCompletionTracker(cur, timeout=180.0)
+        register_tracker(job_id, tracker)
         try:
             # Warte eventgesteuert (kein Busy-Loop!)
-            tracker.wait()
+            completed, results = tracker.wait()
         finally:
-            cleanup_tracker(proj)
+            cleanup_tracker(job_id)
             
-        new_resp = _collect_worker_responses(cur)
+        # Tracker-Ergebnisse direkt nutzen statt Chat-Historie zu durchsuchen
+        if results:
+            new_resp = "\n\n".join(
+                f"[{name}] {res.get('content', str(res))[:800]}"
+                for name, res in results.items()
+            )
+        else:
+            new_resp = _collect_worker_responses(cur)
         if new_resp: all_res.append(new_resp)
         cur = _dispatch(ar, sr, _eval(ar, task, "\n\n".join(all_res)))
         
@@ -135,5 +143,5 @@ def run_swarm_coordinator(task, workers):
     except Exception as e: logging.getLogger(__name__).error('Fehler in Evolution und Workflow-Abschluss: %s', e)
 
 
-def start_coordinator(task, workers):
-    if workers: SR().set_value("active_workflow", f"Team-Workflow aktiv: {' → '.join(workers)}"); threading.Thread(target=run_swarm_coordinator, args=(task, workers), daemon=True).start()
+def start_coordinator(task, workers, job_id=None):
+    if workers: SR().set_value("active_workflow", f"Team-Workflow aktiv: {' → '.join(workers)}"); threading.Thread(target=run_swarm_coordinator, args=(task, workers, job_id), daemon=True).start()

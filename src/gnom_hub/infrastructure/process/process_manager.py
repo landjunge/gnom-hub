@@ -4,16 +4,18 @@ from gnom_hub.core.config import RUN_DIR, PROJECT_ROOT
 AGENTS = ["generalAG", "soulAG", "researcherAG", "writerAG", "editorAG", "coderAG", "watchdogAG", "securityAG"]
 
 def _get_proc(name: str):
+    matched = next((a for a in AGENTS if a.lower() == name.lower()), name)
     try:
-        pid = int((RUN_DIR / f"{name}.pid").read_text().strip())
+        pid = int((RUN_DIR / f"{matched}.pid").read_text().strip())
         p = psutil.Process(pid)
-        if any(f"agents.{name}" in arg for arg in p.cmdline()): return p
+        if any(f"agents.{matched}" in arg for arg in p.cmdline()): return p
     except (ValueError, OSError, psutil.Error) as e:
         logging.getLogger(__name__).error('Fehler in Prozess-Abfrage: %s', e)
     return None
 
 def _kill_proc(name: str) -> None:
-    p = _get_proc(name)
+    matched = next((a for a in AGENTS if a.lower() == name.lower()), name)
+    p = _get_proc(matched)
     if p:
         try:
             p.terminate()
@@ -22,7 +24,7 @@ def _kill_proc(name: str) -> None:
             try: p.kill()
             except OSError as e:
                 logging.getLogger(__name__).error('Fehler in Prozess-Beendigung: %s', e)
-    (RUN_DIR / f"{name}.pid").unlink(missing_ok=True)
+    (RUN_DIR / f"{matched}.pid").unlink(missing_ok=True)
 
 def start_background_agents() -> None:
     log_dir = PROJECT_ROOT / "logs"

@@ -290,6 +290,12 @@ async function showLLMConfig() {
             Lade Agenten-Zuweisungen...
           </div>
           
+          <div style="padding: 10px 0 0 0; display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;">
+            <button class="btn-primary" id="save-agents-btn-bottom" onclick="saveAgentLLMs()" style="width: 100%; justify-content: center; display: flex; align-items: center; gap: 6px;">
+              💾 Routing Speichern
+            </button>
+          </div>
+          
           <div id="routing-insights-panel" style="margin-top:10px; display:none; flex-shrink:0;"></div>
         </div>
       </div>
@@ -699,6 +705,12 @@ async function loadLLMConfig() {
             const currentMod = modSelect.value;
             const dbMod = modSelect.getAttribute('data-db-model') || currentMod;
             const mods = models[currentProv] || [];
+            if (dbMod && !mods.includes(dbMod)) {
+              mods.push(dbMod);
+            }
+            if (currentMod && !mods.includes(currentMod)) {
+              mods.push(currentMod);
+            }
             modSelect.innerHTML = mods.map(m => `<option value="${m}">${getModelDisplayName(currentProv, m)}</option>`).join('');
             if (mods.includes(dbMod)) {
               modSelect.value = dbMod;
@@ -746,7 +758,7 @@ async function loadLLMConfig() {
   });
 }
 
-window.updateAgentCaps = function(aName) {
+window.updateAgentCaps = async function(aName) {
   if (window.testedAgentStatus) {
     delete window.testedAgentStatus[aName];
     localStorage.setItem('gnom_tested_agent_status', JSON.stringify(window.testedAgentStatus));
@@ -759,6 +771,7 @@ window.updateAgentCaps = function(aName) {
   }
   const capsContainer = document.getElementById(`caps-agent-${aName}`);
   if (capsContainer) capsContainer.innerHTML = '';
+  await saveAgentLLMs();
 };
 
 window.updateModels = function(aName) {
@@ -885,24 +898,8 @@ async function saveKeysOnly() {
   const res = await api('POST', '/llm/keys', toSave);
   
   if (res && res.status === 'ok') {
-    const agentsList = window.llmAgentsListGlobal || [];
-    let agentConfig = {};
-    agentsList.forEach(a => {
-      const p = document.getElementById(`prov-${a.name}`)?.value;
-      const m = document.getElementById(`mod-${a.name}`)?.value;
-      if (p && m) {
-        agentConfig[a.name.toLowerCase()] = { provider: p, model: m };
-      }
-    });
-    if (Object.keys(agentConfig).length > 0) {
-      await api('POST', '/llm/agents', agentConfig);
-    } else {
-      await api('POST', '/llm/auto_assign');
-    }
-
     globalKeys = testedKeys;
     renderKeyStatus(testedKeys);
-    loadLLMConfig();
     
     if (btn) {
       btn.innerText = 'Gespeichert! ✓';
@@ -982,21 +979,6 @@ async function saveAndTestKeys() {
   let toSave = {};
   testedKeys.forEach(k => toSave[k.id] = k);
   await api('POST', '/llm/keys', toSave);
-  
-  const agentsList = window.llmAgentsListGlobal || [];
-  let agentConfig = {};
-  agentsList.forEach(a => {
-    const p = document.getElementById(`prov-${a.name}`)?.value;
-    const m = document.getElementById(`mod-${a.name}`)?.value;
-    if (p && m) {
-      agentConfig[a.name.toLowerCase()] = { provider: p, model: m };
-    }
-  });
-  if (Object.keys(agentConfig).length > 0) {
-    await api('POST', '/llm/agents', agentConfig);
-  } else {
-    await api('POST', '/llm/auto_assign');
-  }
   
   globalKeys = testedKeys;
   renderKeyStatus(testedKeys);
@@ -1368,8 +1350,10 @@ async function saveAgentLLMs() {
   const origBg = btn ? btn.style.background : '';
   const origBgBottom = btnBottom ? btnBottom.style.background : '';
   
+  const currentConfig = await api('GET', '/llm/agents') || {};
   const agentsRes = await api('GET', '/agents');
-  let config = {};
+  let config = { ...currentConfig };
+  let hasUpdated = false;
   if (agentsRes && Array.isArray(agentsRes)) {
     agentsRes.forEach(a => {
       let p = document.getElementById(`prov-${a.name}`);
@@ -1379,8 +1363,13 @@ async function saveAgentLLMs() {
           provider: p.value,
           model: m.value
         };
+        hasUpdated = true;
       }
     });
+  }
+  if (!hasUpdated) {
+    console.warn("saveAgentLLMs: No selects found in DOM, skipping save.");
+    return {"status": "ok"};
   }
   const res = await api('POST', '/llm/agents', config);
   if (res) {
@@ -1807,4 +1796,405 @@ async function clearModalMemory(agentId) {
   await api('DELETE', `/agents/${agentId}/memory`);
   toast('Gedächtnis vollständig gelöscht', 'warning');
   loadModalAgentMemory(agentId);
+}
+
+
+/* ═══════════════════════════════════════════
+   GNOM-HUB — Phase 6: DAG / Workflow Engine & Observability Visualizer
+   ═══════════════════════════════════════════ */
+
+var workflowPollInterval = null;
+var activeWorkflowId = null;
+
+function stopWorkflowPolling() {
+  if (workflowPollInterval) {
+    clearInterval(workflowPollInterval);
+    workflowPollInterval = null;
+  }
+}
+
+window.showWorkflowsView = async function() {
+  if (typeof trackView === 'function') trackView('workflows');
+  stopDashboardPolling();
+  selectedId = null;
+
+  document.getElementById('content').innerHTML = `
+    <style>
+      @keyframes pulse-border {
+        from { box-shadow: 0 0 4px rgba(0, 229, 255, 0.2); border-color: rgba(0, 229, 255, 0.4); }
+        to { box-shadow: 0 0 12px rgba(0, 229, 255, 0.6); border-color: rgba(0, 229, 255, 1); }
+      }
+      @keyframes dash {
+        to {
+          stroke-dashoffset: -20;
+        }
+      }
+    </style>
+    <div class="panel" id="workflows-panel" style="height:calc(100vh - 91px); box-sizing:border-box; display:flex; flex-direction:column; padding:15px 20px; background:rgba(10, 15, 30, 0.4); border:1px solid var(--glass-border); overflow:hidden;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; flex-shrink:0;">
+        <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px; display:flex; align-items:center; gap:8px;">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan);"></span>
+          Workflow Engine & Observability
+        </h2>
+      </div>
+
+      <!-- Main Columns -->
+      <div style="flex:1; display:grid; grid-template-columns:300px 1fr; gap:20px; overflow:hidden; min-height:0;">
+        
+        <!-- Left: Workflows List & Observability summary -->
+        <div style="display:flex; flex-direction:column; gap:15px; height:100%; overflow:hidden;">
+          <div style="flex:1; display:flex; flex-direction:column; background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.04); border-radius:12px; padding:12px; overflow:hidden;">
+            <h3 style="margin:0 0 10px 0; font-size:0.85rem; color:#fff; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Workflows</h3>
+            <div id="workflows-list-container" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; scrollbar-width:thin;">
+              <div class="empty">Lade Workflows...</div>
+            </div>
+          </div>
+          
+          <!-- Observability Bento Stats (Summary) -->
+          <div style="height:220px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; flex-shrink:0;">
+            <h3 style="margin:0; font-size:0.85rem; color:#fff; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">System Latenz</h3>
+            <div id="obs-summary-container" style="font-size:0.8rem; display:flex; flex-direction:column; gap:8px; color:var(--text-dim);">
+              <div class="empty">Lade Telemetrie...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: DAG Canvas & Detailed Metrics -->
+        <div style="display:flex; flex-direction:column; gap:20px; height:100%; overflow:hidden;">
+          <!-- SVG DAG Panel -->
+          <div style="flex:1.5; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:15px; display:flex; flex-direction:column; overflow:hidden; position:relative;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-shrink:0;">
+              <h3 id="dag-workflow-title" style="margin:0; font-size:0.85rem; color:#fff; font-weight:600;">Wähle einen Workflow links</h3>
+              <div id="dag-legend" style="display:flex; gap:8px; font-size:0.68rem;">
+                <span style="color:#888;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#555; margin-right:3px;"></span>Pending</span>
+                <span style="color:#00e5ff;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#00e5ff; margin-right:3px; animation:pulse-glow 1.5s infinite;"></span>Running</span>
+                <span style="color:#10b981;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10b981; margin-right:3px;"></span>Completed</span>
+                <span style="color:#ef4444;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#ef4444; margin-right:3px;"></span>Failed</span>
+              </div>
+            </div>
+            
+            <div id="dag-canvas-container" style="flex:1; width:100%; overflow:auto; background:rgba(0,0,0,0.1); border-radius:8px; border:1px solid rgba(255,255,255,0.02); display:flex; align-items:center; justify-content:center;">
+              <div style="color:var(--text-dim); font-style:italic;">Kein Workflow ausgewählt</div>
+            </div>
+          </div>
+
+          <!-- Bottom detailed metrics -->
+          <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:20px; overflow:hidden; min-height:0;">
+            <!-- Agent latency breakdown -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; display:flex; flex-direction:column; overflow:hidden;">
+              <h3 style="margin:0 0 8px 0; font-size:0.8rem; color:#fff; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Agenten Latenzen</h3>
+              <div id="obs-agent-breakdown" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; scrollbar-width:thin;">
+                <div class="empty">Keine Telemetrie</div>
+              </div>
+            </div>
+            
+            <!-- Capability metrics -->
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:12px; display:flex; flex-direction:column; overflow:hidden;">
+              <h3 style="margin:0 0 8px 0; font-size:0.8rem; color:#fff; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Capability Latenzen</h3>
+              <div id="obs-capability-breakdown" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; scrollbar-width:thin;">
+                <div class="empty">Keine Telemetrie</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  await loadWorkflowsViewData();
+  stopWorkflowPolling();
+  workflowPollInterval = setInterval(refreshWorkflowsView, 3000);
+};
+
+async function loadWorkflowsViewData() {
+  const workflows = await api('GET', '/workflows');
+  const listContainer = document.getElementById('workflows-list-container');
+  
+  if (!listContainer) return;
+  
+  if (!workflows || workflows.length === 0) {
+    listContainer.innerHTML = '<div class="empty">Keine Workflows registriert</div>';
+    return;
+  }
+  
+  // Render workflows list
+  listContainer.innerHTML = workflows.map(w => {
+    let badgeColor = '#555';
+    if (w.status === 'running') badgeColor = '#00e5ff';
+    else if (w.status === 'completed') badgeColor = '#10b981';
+    else if (w.status === 'failed') badgeColor = '#ef4444';
+    
+    const isSelected = activeWorkflowId === w.id;
+    const timeStr = new Date(w.created_at * 1000).toLocaleTimeString();
+    
+    return `
+      <div onclick="selectWorkflow('${w.id}')" style="padding:10px; background:${isSelected ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.02)'}; border:${isSelected ? '1px solid var(--accent)' : '1px solid rgba(255,255,255,0.05)'}; border-radius:8px; cursor:pointer; transition:var(--transition); display:flex; flex-direction:column; gap:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:#fff; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${escapeHtml(w.name)}</strong>
+          <span style="font-size:0.65rem; font-weight:bold; color:${badgeColor}; border:1px solid ${badgeColor}33; border-radius:4px; padding:1px 4px; text-transform:uppercase;">${w.status}</span>
+        </div>
+        <div style="font-size:0.72rem; color:var(--text-muted); display:flex; justify-content:space-between;">
+          <span>Start: ${timeStr}</span>
+          ${w.completed_at ? `<span>Dauer: ${(w.completed_at - w.created_at).toFixed(1)}s</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Load telemetry metrics
+  const obs = await api('GET', '/observability/metrics');
+  const summaryContainer = document.getElementById('obs-summary-container');
+  const agentBreakdown = document.getElementById('obs-agent-breakdown');
+  const capBreakdown = document.getElementById('obs-capability-breakdown');
+
+  if (obs) {
+    if (summaryContainer) {
+      const summary = obs.workflows_summary || { total_count: 0, completed_count: 0, failed_count: 0, avg_duration_s: 0 };
+      summaryContainer.innerHTML = `
+        <div style="display:flex; justify-content:space-between;"><span>Gesamt Workflows:</span><strong style="color:#fff;">${summary.total_count}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Erfolgreich:</span><strong style="color:#10b981;">${summary.completed_count}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Fehlgeschlagen:</span><strong style="color:#ef4444;">${summary.failed_count}</strong></div>
+        <div style="display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:4px;"><span>Ø Workflow-Laufzeit:</span><strong style="color:var(--cyan);">${summary.avg_duration_s.toFixed(1)}s</strong></div>
+      `;
+    }
+
+    if (agentBreakdown) {
+      if (!obs.agents || obs.agents.length === 0) {
+        agentBreakdown.innerHTML = '<div class="empty">Keine Metriken vorhanden</div>';
+      } else {
+        agentBreakdown.innerHTML = obs.agents.map(a => {
+          const successPercent = (a.success_rate * 100).toFixed(0);
+          return `
+            <div style="padding:6px 10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+              <strong style="color:#fff; text-transform:capitalize;">${a.agent_name.replace('ag', 'AG')}</strong>
+              <div style="display:flex; gap:12px; color:var(--text-dim);">
+                <span>Queue: <strong style="color:#fff;">${a.avg_queue_wait_ms.toFixed(0)}ms</strong></span>
+                <span>Exec: <strong style="color:#fff;">${a.avg_exec_time_ms.toFixed(0)}ms</strong></span>
+                <span style="color:${a.success_rate >= 0.9 ? '#10b981' : '#f59e0b'};">Ok: ${successPercent}%</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    if (capBreakdown) {
+      if (!obs.capabilities || obs.capabilities.length === 0) {
+        capBreakdown.innerHTML = '<div class="empty">Keine Metriken vorhanden</div>';
+      } else {
+        capBreakdown.innerHTML = obs.capabilities.map(c => {
+          const successPercent = (c.success_rate * 100).toFixed(0);
+          return `
+            <div style="padding:6px 10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+              <strong style="color:#fff; text-transform:uppercase; letter-spacing:0.5px;">${c.capability}</strong>
+              <div style="display:flex; gap:12px; color:var(--text-dim);">
+                <span>Queue: <strong style="color:#fff;">${c.avg_queue_wait_ms.toFixed(0)}ms</strong></span>
+                <span>Exec: <strong style="color:#fff;">${c.avg_exec_time_ms.toFixed(0)}ms</strong></span>
+                <span style="color:${c.success_rate >= 0.9 ? '#10b981' : '#f59e0b'};">Ok: ${successPercent}%</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+
+  // Draw current active workflow DAG
+  if (activeWorkflowId) {
+    drawWorkflowDAG(activeWorkflowId);
+  }
+}
+
+window.selectWorkflow = function(id) {
+  activeWorkflowId = id;
+  loadWorkflowsViewData();
+};
+
+async function drawWorkflowDAG(workflowId) {
+  const canvas = document.getElementById('dag-canvas-container');
+  const title = document.getElementById('dag-workflow-title');
+  if (!canvas) return;
+
+  let wf;
+  try {
+    wf = await api('GET', `/workflows/${workflowId}`);
+  } catch (e) {
+    canvas.innerHTML = '<div class="empty" style="color:var(--error);">Fehler beim Laden des Workflows</div>';
+    return;
+  }
+
+  if (!wf) {
+    canvas.innerHTML = '<div class="empty">Workflow nicht gefunden</div>';
+    return;
+  }
+
+  title.textContent = `Workflow: ${wf.name}`;
+
+  const tasks = wf.tasks || [];
+  if (tasks.length === 0) {
+    canvas.innerHTML = '<div class="empty">Keine Tasks in diesem Workflow</div>';
+    return;
+  }
+
+  // Topological sorting / levels calculation
+  const levels = {};
+  const tasksMap = {};
+  tasks.forEach(t => {
+    tasksMap[t.task_id] = t;
+  });
+
+  function getLevel(taskId) {
+    if (levels[taskId] !== undefined) return levels[taskId];
+    const t = tasksMap[taskId];
+    if (!t || !t.depends_on || t.depends_on.length === 0) {
+      levels[taskId] = 0;
+      return 0;
+    }
+    let maxDep = 0;
+    t.depends_on.forEach(dep => {
+      maxDep = Math.max(maxDep, getLevel(dep));
+    });
+    levels[taskId] = maxDep + 1;
+    return levels[taskId];
+  }
+
+  tasks.forEach(t => getLevel(t.task_id));
+
+  // Layout levels
+  const levelGroups = {};
+  tasks.forEach(t => {
+    const lvl = levels[t.task_id];
+    if (!levelGroups[lvl]) levelGroups[lvl] = [];
+    levelGroups[lvl].push(t.task_id);
+  });
+
+  const nodeWidth = 150;
+  const nodeHeight = 70;
+  const levelSpacing = 240;
+  const rowSpacing = 110;
+
+  const positions = {};
+  const svgWidth = (Object.keys(levelGroups).length * levelSpacing) + 100;
+  let maxRows = 0;
+  
+  Object.keys(levelGroups).forEach(lvl => {
+    maxRows = Math.max(maxRows, levelGroups[lvl].length);
+  });
+  const svgHeight = (maxRows * rowSpacing) + 100;
+
+  // Determine positions
+  Object.keys(levelGroups).forEach(lvl => {
+    const group = levelGroups[lvl];
+    const x = 50 + lvl * levelSpacing;
+    const levelHeight = group.length * rowSpacing;
+    const startY = (svgHeight - levelHeight) / 2 + 20;
+
+    group.forEach((taskId, index) => {
+      positions[taskId] = {
+        x: x,
+        y: startY + index * rowSpacing
+      };
+    });
+  });
+
+  // Start SVG markup
+  let svg = `<svg width="${Math.max(svgWidth, 600)}" height="${Math.max(svgHeight, 350)}" style="overflow:visible; font-family:'Inter', sans-serif;">`;
+  
+  // Define markers for arrows
+  svg += `
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 2 L 10 5 L 0 8 z" fill="rgba(255,255,255,0.2)" />
+      </marker>
+      <marker id="arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 2 L 10 5 L 0 8 z" fill="var(--cyan)" />
+      </marker>
+    </defs>
+  `;
+
+  // Draw connections (lines) first so they render behind nodes
+  tasks.forEach(t => {
+    const toPos = positions[t.task_id];
+    if (t.depends_on && t.depends_on.length > 0) {
+      t.depends_on.forEach(depId => {
+        const fromPos = positions[depId];
+        if (fromPos && toPos) {
+          const x1 = fromPos.x + nodeWidth;
+          const y1 = fromPos.y + nodeHeight / 2;
+          const x2 = toPos.x;
+          const y2 = toPos.y + nodeHeight / 2;
+
+          const isActive = t.status === 'running' || t.status === 'completed';
+          const stroke = isActive ? 'var(--cyan)' : 'rgba(255,255,255,0.12)';
+          const marker = isActive ? 'url(#arrow-active)' : 'url(#arrow)';
+          const dash = t.status === 'running' ? 'stroke-dasharray="5,5" animation="dash 1s linear infinite"' : '';
+
+          svg += `
+            <path d="M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}" 
+                  fill="none" 
+                  stroke="${stroke}" 
+                  stroke-width="${isActive ? 2 : 1.5}" 
+                  marker-end="${marker}"
+                  ${dash} />
+          `;
+        }
+      });
+    }
+  });
+
+  // Draw nodes
+  tasks.forEach(t => {
+    const pos = positions[t.task_id];
+    if (!pos) return;
+
+    let border = 'rgba(255,255,255,0.08)';
+    let bg = 'rgba(255,255,255,0.02)';
+    let textGlow = '';
+    let statusClass = '';
+
+    if (t.status === 'running') {
+      border = 'var(--cyan)';
+      bg = 'rgba(0,229,255,0.08)';
+      textGlow = 'text-shadow:0 0 8px var(--cyan);';
+      statusClass = 'animation: pulse-border 1.5s infinite alternate;';
+    } else if (t.status === 'completed') {
+      border = '#10b981';
+      bg = 'rgba(16,185,129,0.06)';
+    } else if (t.status === 'failed') {
+      border = '#ef4444';
+      bg = 'rgba(239,68,68,0.08)';
+    }
+
+    svg += `
+      <g transform="translate(${pos.x}, ${pos.y})">
+        <!-- Background glass card -->
+        <rect width="${nodeWidth}" height="${nodeHeight}" rx="8" 
+              fill="${bg}" stroke="${border}" stroke-width="1.5"
+              style="backdrop-filter:blur(8px); ${statusClass}" />
+
+        <!-- Task name -->
+        <text x="12" y="24" fill="#fff" font-size="0.82rem" font-weight="700" style="${textGlow}">${escapeHtml(t.task_id)}</text>
+        
+        <!-- Capability badge -->
+        <text x="12" y="42" fill="rgba(255,255,255,0.5)" font-size="0.68rem" font-weight="500" font-family="monospace">${escapeHtml(t.capability.toUpperCase())}</text>
+
+        <!-- Status & Duration -->
+        <text x="12" y="58" fill="rgba(255,255,255,0.4)" font-size="0.62rem">
+          Status: <tspan fill="${t.status === 'completed' ? '#10b981' : t.status === 'failed' ? '#ef4444' : '#fff'}">${t.status.toUpperCase()}</tspan>
+        </text>
+      </g>
+    `;
+  });
+
+  svg += `</svg>`;
+  canvas.innerHTML = svg;
+}
+
+async function refreshWorkflowsView() {
+  if (!document.getElementById('workflows-panel')) {
+    stopWorkflowPolling();
+    return;
+  }
+  await loadWorkflowsViewData();
 }

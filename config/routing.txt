@@ -1,28 +1,19 @@
 # =====================================================================
-# GNOM-HUB - Agent LLM Routing Overrides
+# GNOM-HUB - Agent LLM Routing (Direkt, kein Auto-Routing)
 # =====================================================================
 # Format: agent_name = provider | model
 #
-# Examples:
-#   coderag = openrouter | deepseek/deepseek-v4-flash
-#   researcherag = lokal | llama3.2
-#   writerag = gemini | gemini-1.5-flash
-#   editorag = auto | stage_2
-#
-# Valid providers:
-#   - auto       (Intelligent stage routing)
-#   - lokal      (Local Ollama instance)
-#   - openrouter (External OpenRouter API)
-#   - deepseek   (Direct DeepSeek API)
-#   - openai     (Direct OpenAI API)
-#   - anthropic  (Direct Anthropic API)
-#   - gemini     (Direct Google Gemini API)
-#   - mistral    (Direct Mistral API)
+# Kette pro Request: Provider → OpenRouter Free Models → Ollama (lokal)
 # =====================================================================
 
-coderag = lokal | llama3
-researcherag = lokal | llama3
-writerag = lokal | llama3
-editorag = lokal | llama3
-generalag = lokal | llama3
-soulag = lokal | llama3
+# --- Heavy Reasoning (Pro = deepseek-reasoner / R1) ---
+coderag = deepseek | deepseek-v4-pro
+securityag = deepseek | deepseek-v4-pro
+researcherag = deepseek | deepseek-v4-pro
+
+# --- Coordination & Content (Flash = deepseek-chat / V3) ---
+generalag = deepseek | deepseek-v4-flash
+soulag = deepseek | deepseek-v4-flash
+writerag = deepseek | deepseek-v4-flash
+editorag = deepseek | deepseek-v4-flash
+watchdogag = deepseek | deepseek-v4-flash

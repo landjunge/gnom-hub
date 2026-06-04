@@ -1,9 +1,19 @@
 # emb_faiss.py — FAISS index and sentence embeddings logic helper
-import os, json, sqlite3, logging, numpy as np, faiss; from sentence_transformers import SentenceTransformer; from gnom_hub.memory.emb_cache import get_emb
+import os, json, sqlite3, logging, numpy as np, faiss, threading; from sentence_transformers import SentenceTransformer; from gnom_hub.memory.emb_cache import get_emb; from gnom_hub.db.connection import get_db_connection
+
+_models_cache = {}
+_models_lock = threading.Lock()
+
+def get_sentence_transformer(model_name: str) -> SentenceTransformer:
+    with _models_lock:
+        if model_name not in _models_cache:
+            _models_cache[model_name] = SentenceTransformer(model_name)
+        return _models_cache[model_name]
+
 class FaissEmbeddingHelper:
     def __init__(self, model_name: str, db_path: str, scope: str = "global"):
         self.scope = scope
-        self.db_path, self.model, self.index, self.fact_ids = db_path, SentenceTransformer(model_name), None, []
+        self.db_path, self.model, self.index, self.fact_ids = db_path, get_sentence_transformer(model_name), None, []
         os.makedirs("data", exist_ok=True)
         self.index_path = f"data/soul_embeddings_{scope}.index"
         self.json_path = f"data/soul_fact_ids_{scope}.json"
@@ -16,7 +26,7 @@ class FaissEmbeddingHelper:
             except Exception as e: logging.getLogger(__name__).error('Fehler beim Laden der fact_ids: %s', e)
     def _create(self):
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with get_db_connection() as conn:
                 if self.scope == "global":
                     facts = conn.execute("SELECT id, key, value FROM soul_memory WHERE agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag')").fetchall()
                 else:
@@ -42,7 +52,7 @@ class FaissEmbeddingHelper:
             res = []
             for idx in [i for i in indices[0] if 0 <= i < len(self.fact_ids)]:
                 try:
-                    with sqlite3.connect(self.db_path) as conn:
+                    with get_db_connection() as conn:
                         r = conn.execute("SELECT key, value FROM soul_memory WHERE id = ?", (self.fact_ids[idx],)).fetchone()
                         if r: res.append(f"{r[0]}: {r[1]}")
                 except Exception as e: logging.getLogger(__name__).error('Fehler in search (raw DB-Lookup): %s', e)
@@ -60,7 +70,7 @@ class FaissEmbeddingHelper:
 
         res_scored = []
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with get_db_connection() as conn:
                 conn.row_factory = sqlite3.Row
                 for dist, fact_id in candidates:
                     r = conn.execute("SELECT key, value, priority FROM soul_memory WHERE id = ?", (fact_id,)).fetchone()

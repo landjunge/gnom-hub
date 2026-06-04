@@ -25,7 +25,10 @@ def seal_content(agent: str, content: str, fname: str = "") -> str:
     
     ext = os.path.splitext(fname)[1].lower()
     if ext == ".py":
-        return content + f"\n# {sig}"
+        header = ""
+        if "coding:" not in content[:100]:
+            header = "# -*- coding: utf-8 -*-\n"
+        return header + content + f"\n# {sig}"
     elif ext in (".html", ".xml", ".md"):
         return content + f"\n<!-- {sig} -->"
     elif ext in (".js", ".ts", ".css"):

@@ -80,7 +80,26 @@ def isolated_db(tmp_path):
                             retry_count INTEGER DEFAULT 0, created_at REAL,
                             deliver_after REAL DEFAULT 0, context_id TEXT, depth INTEGER DEFAULT 0,
                             processing_since REAL DEFAULT NULL,
-                            parent_msg_id INTEGER DEFAULT NULL
+                            parent_msg_id INTEGER DEFAULT NULL,
+                            completed_at REAL DEFAULT NULL
+                        );
+                        CREATE TABLE IF NOT EXISTS workflows (
+                            id TEXT PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            created_at REAL NOT NULL,
+                            completed_at REAL
+                        );
+                        CREATE TABLE IF NOT EXISTS workflow_tasks (
+                            workflow_id TEXT NOT NULL,
+                            task_id TEXT NOT NULL,
+                            capability TEXT NOT NULL,
+                            input_template TEXT NOT NULL,
+                            depends_on TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            msg_id INTEGER,
+                            result_json TEXT,
+                            PRIMARY KEY (workflow_id, task_id)
                         );
                     """)
         

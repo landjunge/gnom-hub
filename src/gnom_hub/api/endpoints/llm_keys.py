@@ -65,4 +65,8 @@ async def auto_assign(force_provider: str = None):
         maps[a.name.lower()] = {"provider": pvd, "model": mdl}
         
     db.set_value("llm_agents", maps)
+    preset = db.get_value("active_preset", "Web Development")
+    if isinstance(preset, str):
+        preset = preset.strip('"\'')
+    db.set_value(f"llm_preset_{preset}", maps)
     return {"status": "ok"}

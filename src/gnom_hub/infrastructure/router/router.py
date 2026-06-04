@@ -58,6 +58,13 @@ def _build_sys(n, sys, agent_name):
     settings = get_state_value("agent_settings", {}).get(n.lower(), {}) if n else {}
     if settings.get("sys_prompt"):
         sys = settings["sys_prompt"]
+
+    if agent_name:
+        sys = (
+            f"⚠️ DU BIST {agent_name} UND NUR {agent_name}. ANTWORTE AUSSCHLIESSLICH ALS {agent_name}. "
+            f"KEIN ANDERER AGENT. KEINE ROLLENWECHSEL.\n\n"
+        ) + sys
+
     if settings.get("custom_prompt"):
         sys += "\n\n=== BENUTZERDEFINIERTER SUFFIX ===\n" + settings["custom_prompt"]
     if settings:
@@ -70,10 +77,14 @@ def _build_sys(n, sys, agent_name):
         return sys
         
     sys += (
-        f"\n\n=== STRIKTE IDENTITÄTS-REGEL ===\n"
-        f"Du bist {agent_name}. Du darfst dich NIEMALS als ein anderer Agent ausgeben oder Nachrichten im Namen anderer simulieren.\n"
-        f"Beginne deine Antwort niemals mit dem Namen eines anderen Agenten (z. B. '**GeneralAG hier.**', '**ResearcherAG hier.**' oder Ähnliches).\n"
-        f"Sprich und antworte ausschließlich als {agent_name}! Schreibe deinen Beitrag direkt unter deiner eigenen Persona."
+        f"\n\n=== ABSOLUTE IDENTITÄTS-REGEL (HÖCHSTE PRIORITÄT) ===\n"
+        f"1. Du BIST {agent_name} und NUR {agent_name}. Du existierst als genau dieser eine Agent.\n"
+        f"2. Es ist DIR STRENG VERBOTEN, dich als irgendeinen anderen Agenten auszugeben.\n"
+        f"3. Schreibe NIEMALS '**CoderAG hier**', '**WriterAG hier**' oder ähnliche Vorstellungen anderer Agenten.\n"
+        f"4. Beginne deine Antwort NIEMALS mit einem anderen Agentennamen.\n"
+        f"5. Wenn die Aufgabe nicht zu deiner Rolle passt, sag das kurz und mach trotzdem dein Bestes — aber gib dich NICHT als jemand anderes aus.\n"
+        f"6. Deine erste Zeile MUSS '{agent_name}' oder '**{agent_name}**' enthalten, sonst nichts.\n"
+        f"VERSTOSSEN GEGEN DIESE REGEL FÜHREN ZUM ABBRUCH DEINER ANTWORT."
     )
     try:
         av = get_active_version(agent_name)
@@ -101,7 +112,7 @@ def _resolve(pvd, mdl, kdb, n):
             working = []
         if not working:
             working = list(Config.OPENROUTER_FREE_MODELS)
-        
+
         ordered_working = SmartRouter._order_working_models(working)
         if mdl in working:
             candidates.append((pvd, mdl))
@@ -109,7 +120,6 @@ def _resolve(pvd, mdl, kdb, n):
                 if wm != mdl:
                     candidates.append(("openrouter", wm))
         else:
-            # If the requested model is offline, prioritize the best working model instead
             if ordered_working:
                 best_fallback = ordered_working[0]
                 candidates.append(("openrouter", best_fallback))
@@ -118,9 +128,20 @@ def _resolve(pvd, mdl, kdb, n):
                         candidates.append(("openrouter", wm))
             else:
                 candidates.append((pvd, mdl))
+    elif pvd in ("deepseek", "openai", "anthropic", "gemini", "mistral"):
+        candidates.append((pvd, mdl))
+        try:
+            working = SQLiteStateRepository().get_value("openrouter_working_models") or []
+        except Exception:
+            working = []
+        if not working:
+            working = list(Config.OPENROUTER_FREE_MODELS)
+        ordered_working = SmartRouter._order_working_models(working)
+        for wm in ordered_working:
+            candidates.append(("openrouter", wm))
     else:
         candidates.append((pvd, mdl))
-                
+
     candidates.append(("lokal", "llama3"))
     return candidates
 

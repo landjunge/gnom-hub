@@ -79,10 +79,11 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                     proc = _get_proc(name)
                     need_restart = False
                     reason = ""
+                    limit = 600.0 if status == "busy" else 120.0
                     if not proc:
                         need_restart = True
                         reason = "Prozess fehlt"
-                    elif drift > 120.0:
+                    elif drift > limit:
                         need_restart = True
                         reason = f"reagiert nicht mehr (Drift: {int(drift)}s)"
 

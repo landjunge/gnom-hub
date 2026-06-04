@@ -72,9 +72,10 @@ def _call(pvd, mdl, key, msgs, n):
             if pvd == "lokal": pyld.setdefault("options", {})["temperature"] = temp
             else: pyld["temperature"] = temp
 
+    req_timeout = 30 if pvd == "lokal" else 60
     for attempt in range(3):
         try:
-            r = requests.post(url, headers=h, json=pyld, timeout=120)
+            r = requests.post(url, headers=h, json=pyld, timeout=req_timeout)
             if r.status_code == 200:
                 try: res_json = r.json()
                 except Exception: res_json = {}

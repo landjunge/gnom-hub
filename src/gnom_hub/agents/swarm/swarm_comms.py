@@ -3,7 +3,7 @@ import time
 import json
 import threading
 import logging
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Tuple
 import sqlite3
 from gnom_hub.db.connection import get_db_connection
 
@@ -64,7 +64,9 @@ def dispatch_mention(
         )
         return []
 
-    mentions = re.findall(r'@(\w+)', text)
+    # Strip <think>...</think> block to prevent mentions inside thoughts from triggering dispatches
+    clean_text = re.sub(r'<think>[\s\S]*?</think>', '', text)
+    mentions = re.findall(r'@(\w+)', clean_text)
     if not mentions:
         return []
 
@@ -180,30 +182,37 @@ def fetch_next_message(
     while time.time() < deadline:
         conn = get_db_connection()
         try:
-            row = conn.execute("""
-                SELECT id, sender, payload, context_id, depth, retry_count
-                FROM agent_messages
-                WHERE recipient    = ?
-                  AND status       = 'pending'
-                  AND deliver_after <= ?
-                ORDER BY priority ASC, id ASC
-                LIMIT 1
-            """, (agent_name, time.time())).fetchone()
+            conn.execute('BEGIN IMMEDIATE')
+            try:
+                row = conn.execute("""
+                    SELECT id, sender, payload, context_id, depth, retry_count
+                    FROM agent_messages
+                    WHERE recipient    = ?
+                      AND status       = 'pending'
+                      AND deliver_after <= ?
+                    ORDER BY priority ASC, id ASC
+                    LIMIT 1
+                """, (agent_name, time.time())).fetchone()
 
-            if row:
-                conn.execute(
-                    "UPDATE agent_messages SET status='processing', processing_since=? WHERE id=?",
-                    (time.time(), row["id"])
-                )
-                conn.commit()
-                return {
-                    "msg_id":      row["id"],
-                    "sender":      row["sender"],
-                    "payload":     json.loads(row["payload"]),
-                    "context_id":  row["context_id"],
-                    "depth":       row["depth"],
-                    "retry_count": row["retry_count"],
-                }
+                if row:
+                    conn.execute(
+                        "UPDATE agent_messages SET status='processing', processing_since=? WHERE id=?",
+                        (time.time(), row["id"])
+                    )
+                    conn.commit()
+                    return {
+                        "msg_id":      row["id"],
+                        "sender":      row["sender"],
+                        "payload":     json.loads(row["payload"]),
+                        "context_id":  row["context_id"],
+                        "depth":       row["depth"],
+                        "retry_count": row["retry_count"],
+                    }
+                else:
+                    conn.rollback()
+            except:
+                conn.rollback()
+                raise
         finally:
             conn.close()
 
@@ -222,7 +231,7 @@ def ack_message(msg_id: int, db_path: str) -> None:
     conn = get_db_connection()
     try:
         conn.execute(
-            "UPDATE agent_messages SET status='done' WHERE id=?", (msg_id,)
+            "UPDATE agent_messages SET status='done', completed_at=? WHERE id=?", (time.time(), msg_id)
         )
         conn.commit()
     finally:
@@ -248,8 +257,8 @@ def nack_message(msg_id: int, db_path: str, reason: str = "") -> None:
 
         if retries >= RETRY_MAX:
             conn.execute(
-                "UPDATE agent_messages SET status='dead_letter' WHERE id=?",
-                (msg_id,)
+                "UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE id=?",
+                (time.time(), msg_id)
             )
             logger.error(
                 "Nachricht %d in Dead-Letter-Queue (reason: %s)", msg_id, reason
@@ -278,7 +287,7 @@ def process_swarm_mentions(sender: str, text: str, depth: int = 0, parent_msg_id
     from gnom_hub.core.config import DB_PATH
     from gnom_hub.db import get_active_project
     proj = get_active_project() or "default"
-    dispatch_mention(sender, text, proj, str(DB_PATH), depth, parent_msg_id=parent_msg_id)
+    dispatch_mention(sender, text, proj, str(DB_PATH), depth + 1, parent_msg_id=parent_msg_id)
 
 
 def find_best_agent_for(task_type: str, conn: sqlite3.Connection) -> Optional[str]:
@@ -317,28 +326,69 @@ def dispatch_by_capability(
     current_depth: int = 0,
     parent_msg_id: Optional[int] = None,
     priority: Optional[Union[str, int]] = None,
-) -> Optional[str]:
+) -> Tuple[Optional[str], Optional[int]]:
     """
     Routet eine Aufgabe basierend auf den Fähigkeiten der Agenten statt über direkten Namen.
+    Gibt Tuple (target_agent, msg_id) zurück.
     """
     conn = get_db_connection()
     try:
         target = find_best_agent_for(task_type, conn)
         if not target:
             logger.warning("Kein Agent für Capability '%s' verfügbar", task_type)
-            return None
+            return None, None
 
-        # Nachricht an den passenden Agenten absenden
-        dispatch_mention(
-            sender=sender,
-            text=f"@{target} {text}",
-            context_id=context_id,
-            db_path=db_path,
-            current_depth=current_depth,
-            parent_msg_id=parent_msg_id,
-            priority=priority,
-        )
-        return target
+        # Backpressure-Limit prüfen
+        pending_count = conn.execute("""
+            SELECT COUNT(*) FROM agent_messages
+            WHERE recipient = ? AND status = 'pending'
+        """, (target,)).fetchone()[0]
+
+        if pending_count >= MAX_QUEUE_DEPTH:
+            logger.warning(
+                "Backpressure ausgelöst: Queue von Agent '%s' ist voll (%d offene Jobs).",
+                target, pending_count
+            )
+            return None, None
+
+        # Concurrent-Limit prüfen
+        active_count = conn.execute("""
+            SELECT COUNT(*) FROM agent_messages
+            WHERE recipient = ? AND status = 'processing'
+        """, (target,)).fetchone()[0]
+
+        # Priorität ermitteln
+        prio_val = None
+        if priority is not None:
+            if isinstance(priority, str):
+                prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
+            elif isinstance(priority, int):
+                prio_val = priority
+        if prio_val is None:
+            prio_val = 7 if active_count >= MAX_CONCURRENT else 5
+
+        # Nachricht an den passenden Agenten in DB speichern
+        cursor = conn.execute("""
+            INSERT INTO agent_messages
+                (sender, recipient, payload, priority, created_at,
+                 deliver_after, context_id, depth, parent_msg_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            sender,
+            target,
+            json.dumps({"text": f"@{target} {text}", "mention": target}),
+            prio_val,
+            time.time(),
+            0.0,
+            context_id,
+            current_depth,
+            parent_msg_id,
+        ))
+        msg_id = cursor.lastrowid
+        conn.commit()
+
+        notify_agent(target)
+        return target, msg_id
     finally:
         conn.close()
 
@@ -364,8 +414,8 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
 
             if retries >= RETRY_MAX:
                 conn.execute(
-                    "UPDATE agent_messages SET status='dead_letter', retry_count=?, processing_since=NULL WHERE id=?",
-                    (retries, msg_id)
+                    "UPDATE agent_messages SET status='dead_letter', retry_count=?, processing_since=NULL, completed_at=? WHERE id=?",
+                    (retries, time.time(), msg_id)
                 )
                 logger.error(
                     "Nachricht %d (Ziel=%s, Sender=%s) zu oft blockiert – verschoben in dead_letter",

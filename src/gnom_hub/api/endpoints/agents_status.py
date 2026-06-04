@@ -297,7 +297,28 @@ def swarm_complete(data: SwarmCompletePayload):
     import json
     import logging
 
-    key = f"{data.context_id}:{data.agent_name}"
+    workflow_msg_id = None
+
+    # Check first if this belongs to a workflow task to build a unique idempotency key
+    with get_db_conn() as conn:
+        try:
+            task_row = conn.execute("""
+                SELECT t.msg_id
+                FROM workflow_tasks t
+                JOIN agent_messages m ON m.id = t.msg_id
+                WHERE t.workflow_id = ?
+                  AND t.status = 'running'
+                  AND LOWER(m.recipient) = LOWER(?)
+            """, (data.context_id, data.agent_name)).fetchone()
+            if task_row:
+                workflow_msg_id = task_row["msg_id"]
+        except Exception:
+            pass
+
+    if workflow_msg_id is not None:
+        key = f"{data.context_id}:{data.agent_name}:{workflow_msg_id}"
+    else:
+        key = f"{data.context_id}:{data.agent_name}"
 
     with get_db_conn() as conn:
         existing = conn.execute(
@@ -357,6 +378,13 @@ def swarm_complete(data: SwarmCompletePayload):
                     """, (data.agent_name,))
 
         conn.commit()
+
+    if workflow_msg_id is not None:
+        try:
+            from gnom_hub.agents.swarm.workflow_engine import handle_task_completion
+            handle_task_completion(workflow_msg_id, data.result)
+        except Exception as e:
+            logging.getLogger(__name__).error("Failed handling workflow task completion: %s", e)
 
     signal_completion(data.context_id, data.agent_name, data.result)
     return {"status": "accepted"}
