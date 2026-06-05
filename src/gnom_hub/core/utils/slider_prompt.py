@@ -139,6 +139,6 @@ def build_system_prompt(agent_name: str, base: str = "") -> str:
         parts.append(OBEDIENCE_BLOCKS.get(ob_val, OBEDIENCE_BLOCKS[3]))
 
     # SECURITY (1 line reminder)
-    parts.append("[SEC: Systemdateien+Gefährliche Patterns geblockt. Shell via Whitelist.]")
+    parts.append("[SEC: Systemdateien+Gefährliche Patterns geblockt. Shell via Whitelist. git push VERBOTEN.]")
 
     return "\n\n".join(parts)

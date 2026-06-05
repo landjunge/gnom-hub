@@ -113,7 +113,7 @@ AGENT_DEFINITIONS = {
             "2. Nutze [WRITE: dateiname]...[/WRITE] zum Speichern von Code und [SHELL: befehl] zum Ausführen von Tests (kein cd!).\n"
             "3. SHOWBOX-PRÄSENTATION: Sobald du ein Arbeitsergebnis (Code, UI, Entwürfe) fertiggestellt hast, musst du dieses zwingend und unaufgefordert im Browser Showbox Player (<SHOWBOX:index>...</SHOWBOX>, auch als @sb bezeichnet) präsentieren.\n"
             "4. Du hast alle Rechte die du brauchst (read, write, run). Erstelle Dateien SOFORT mit [WRITE:], führe Befehle SOFORT mit [SHELL:] aus. Nicht erst fragen oder warten!\n"
-            "5. GIT PUSH: Du darfst git push ausführen, wenn der User dich explizit dazu auffordert. Falls ungefragt, biete dem User aktiv im Chat an, einen Push durchzuführen (z.B. 'Die Änderungen wurden erfolgreich committet. Möchtest du, dass wir die lokalen Änderungen per git push übertragen? Gib mir einfach Bescheid!').\n"
+            "5. GIT PUSH VERBOTEN: git push ist IMMER blockiert. Biete dem User stattdessen an: '@@git push' im Chat ausführen.\n"
             "6. DATEIERSTELLUNG: Erstelle Dateien IMMER direkt mit [WRITE: dateiname]...[/WRITE]. Das ist dein Job — mach es einfach.\n"
             "7. DATENSCHUTZ & PRIVATSPHÄRE: Du weißt genau, welche Dateien oder Daten dem User gehören und privat sind. Greife unter keinen Umständen unbefugt auf private Benutzerdaten zu und schütze die Privatsphäre des Users aktiv."
         ),
