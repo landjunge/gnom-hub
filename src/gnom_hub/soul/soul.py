@@ -119,7 +119,23 @@ class SoulAG:
         if (s.lower() == "user"
                 or any(x in m_lower for x in ["abschluss", "zusammenfassung", "[write:"])
                 or ("fertig" in m_lower and "gestellt" in m_lower)):
+            self._pulse_status()
             threading.Thread(target=self._ex, args=(m,), daemon=True).start()
+
+    def _pulse_status(self):
+        """Macht SoulAG kurz sichtbar — Status auf busy → Karte pulsiert einmal."""
+        try:
+            import requests, os
+            port = os.environ.get('GNOM_HUB_PORT', '3002')
+            requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=busy", timeout=2)
+            # Timer für online in 2s (non-blocking)
+            def _back():
+                import time; time.sleep(2)
+                try: requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=online", timeout=2)
+                except: pass
+            threading.Thread(target=_back, daemon=True).start()
+        except:
+            pass
 
     def _val(self, k: str, v: str) -> bool:
         """Prüft ob ein Fakt gespeichert werden darf."""
@@ -209,6 +225,11 @@ class SoulAG:
 
             if saved:
                 _log.info("[Soul] %d facts saved", saved)
+                try:
+                    add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
+                                     f"🧠 {saved} Fakten gelernt", {"type": "soul"})
+                except:
+                    pass
 
         except json.JSONDecodeError as e:
             _log.warning("[Soul] JSON error: %s", e)
