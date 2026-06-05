@@ -278,6 +278,41 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
         f.write(run_sh_content)
     os.chmod(run_sh_path, 0o755)
 
+    # Write README.txt
+    readme_content = (
+        f"SUPERGNOM: {safe_name}\n"
+        f"Gebacken am: {os.popen('date').read().strip()}\n"
+        f"\n"
+        f"START (Mac/Linux):\n"
+        f"  bash run.sh\n"
+        f"\n"
+        f"START (Windows):\n"
+        f"  run.bat\n"
+        f"\n"
+        f"Der SuperGNOM startet auf http://127.0.0.1:3003\n"
+        f"\n"
+        f"MODI:\n"
+        f"  ONLINE  — Internet verfügbar → DeepSeek Cloud-LLM\n"
+        f"  OFFLINE — Kein Internet → lokales Ollama (muss installiert sein)\n"
+        f"  USB     — Von USB-Stick gestartet → bevorzugt lokale Ressourcen\n"
+        f"\n"
+        f"STRUKTUR:\n"
+        f"  run.sh / run.bat  — Start-Skripte\n"
+        f"  keys.txt          — API-Keys (nicht teilen!)\n"
+        f"  config/           — Agenten-Konfiguration\n"
+        f"  agents/           — 8 Gnom-Agenten\n"
+        f"  gnom_workspace/   — Arbeitsverzeichnis\n"
+        f"  .gnom-hub/        — Datenbank\n"
+        f"\n"
+        f"STOPPEN:\n"
+        f"  pkill -f gnom_hub\n"
+        f"\n"
+        f"PRESETS: config/presets/ — hier eigene Konfigurationen ablegen\n"
+        f"KEYS:    keys.txt — API-Key für Cloud-LLMs eintragen\n"
+    )
+    with open(dist_dir / "README.txt", "w", encoding="utf-8") as f:
+        f.write(readme_content)
+
     # Write Windows execution startup script (run.bat)
     run_bat_content = (
         "@echo off\n"
