@@ -53,6 +53,38 @@ def _get_behavioral_instructions(settings: dict) -> str:
         
     return "\n\n=== VERHALTENS-INSTRUKTIONEN ===\n" + "\n".join(custom_insts) if custom_insts else ""
 
+def _get_agent_role(agent_name_lower: str) -> str:
+    try:
+        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+        return AGENT_DEFINITIONS.get(agent_name_lower, {}).get("role", "")
+    except Exception:
+        return ""
+
+def _get_obedience_instructions(level: int) -> str:
+    instructions = {
+        1: ("=== OBEDIENCE: BLINDLY FOLLOWS ===\n"
+            "Du folgst Anweisungen strikt und wörtlich. "
+            "Hinterfrage nichts, interpretiere nicht um. "
+            "Führe aus was verlangt wird, ohne eigene Meinung."),
+        2: ("=== OBEDIENCE: STRONGLY FOLLOWS ===\n"
+            "Du bist stark an den User gebunden. "
+            "Triff kleine Entscheidungen selbst, aber frage bei Unsicherheit nach. "
+            "Weiche nur von Anweisungen ab, wenn du einen klaren Fehler erkennst."),
+        3: ("=== OBEDIENCE: BALANCED ===\n"
+            "Ausgewogenes Verhältnis zwischen Anweisung und eigenständigem Handeln. "
+            "Biete Alternativen an wenn du einen besseren Weg siehst, "
+            "aber führe die Anweisung aus wenn der User darauf besteht."),
+        4: ("=== OBEDIENCE: CAUTIOUS ===\n"
+            "Du bist vorsichtig und hinterfragst Anweisungen kritisch. "
+            "Schlage aktiv bessere Alternativen vor. "
+            "Warne vor Risiken oder Nachteilen. Entscheide selbst wenn du es besser weißt."),
+        5: ("=== OBEDIENCE: HIGHLY AUTONOMOUS ===\n"
+            "Du handelst hochgradig eigenständig. "
+            "Triff Entscheidungen selbst und frage nur bei echten Blockaden. "
+            "Du darfst Anweisungen ignorieren wenn du einen fundamental besseren Ansatz siehst.")
+    }
+    return "\n\n" + instructions.get(level, instructions[3])
+
 def _build_sys(n, sys, agent_name):
     """Inject preset + evolution rules into system prompt."""
     settings = get_state_value("agent_settings", {}).get(n.lower(), {}) if n else {}
@@ -69,6 +101,13 @@ def _build_sys(n, sys, agent_name):
         sys += "\n\n=== BENUTZERDEFINIERTER SUFFIX ===\n" + settings["custom_prompt"]
     if settings:
         sys += _get_behavioral_instructions(settings)
+
+    if agent_name and n:
+        obedience = settings.get("obedience")
+        if obedience is not None:
+            role = _get_agent_role(n)
+            if role in ("general", "soul", "watchdog", "security"):
+                sys += _get_obedience_instructions(int(obedience))
     active_preset = (get_state_value("active_preset") or "Web Development").strip('"\'')
     if n in ["coderag", "researcherag", "writerag", "editorag"]:
         if prs := get_preset_prompt(active_preset, n):
