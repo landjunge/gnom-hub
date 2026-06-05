@@ -1764,12 +1764,16 @@ window.tuningRender_tuning = async function(agentId) {
   try { settings = await api('GET', '/agents/' + agentId + '/settings') || {}; } catch(e){}
 
   const sliders = [
-    {id:'personality', label:'Persönlichkeit', vals:{1:'Formal',2:'Eher formal',3:'Ausgeglichen',4:'Locker',5:'Sehr locker'}},
-    {id:'creativity', label:'Kreativität', vals:{1:'Konservativ',2:'Fokussiert',3:'Ausgeglichen',4:'Kreativ',5:'Wild'}},
-    {id:'risk_tolerance', label:'Risiko', vals:{1:'Sehr vorsichtig',2:'Vorsichtig',3:'Ausgeglichen',4:'Mutig',5:'Sehr mutig'}},
-    {id:'response_style', label:'Antwort-Stil', vals:{1:'Sehr knapp',2:'Knapp',3:'Ausgeglichen',4:'Ausführlich',5:'Sehr ausführlich'}},
-    {id:'memory_strength', label:'Gedächtnis', vals:{1:'Minimal',2:'Gering',3:'Standard',4:'Stark',5:'Maximum'}},
+    {id:'personality', label:'Personality', vals:{1:'Formal',2:'Semi-formal',3:'Balanced',4:'Casual',5:'Very Casual'}},
+    {id:'creativity', label:'Creativity', vals:{1:'Conservative',2:'Focused',3:'Balanced',4:'Creative',5:'Wild'}},
+    {id:'risk_tolerance', label:'Risk Tolerance', vals:{1:'Very Cautious',2:'Cautious',3:'Balanced',4:'Bold',5:'Very Bold'}},
+    {id:'response_style', label:'Response Style', vals:{1:'Very Concise',2:'Concise',3:'Balanced',4:'Detailed',5:'Very Detailed'}},
+    {id:'memory_strength', label:'Memory Strength', vals:{1:'Minimal',2:'Low',3:'Standard',4:'Strong',5:'Maximum'}},
   ];
+  const isSystem = ['general','soul','watchdog','security'].includes(agent.role);
+  if (isSystem) {
+    sliders.push({id:'obedience', label:'Obedience', vals:{1:'Blindly Follows',2:'Strongly Follows',3:'Balanced',4:'Cautious',5:'Highly Autonomous'}});
+  }
 
   let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
   html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Verhaltenseinstellungen</h3>';
@@ -1794,6 +1798,8 @@ window.tuningSaveBehavior = async function(agentId) {
     response_style: parseInt(document.getElementById('tsl-response_style')?.value || 3),
     memory_strength: parseInt(document.getElementById('tsl-memory_strength')?.value || 3),
   };
+  const obed = document.getElementById('tsl-obedience');
+  if (obed) s.obedience = parseInt(obed.value || 3);
   const r = await api('PUT', '/agents/' + agentId + '/settings', s);
   const msg = document.getElementById('tmsg-behavior');
   if (r !== null) { if (msg) { msg.textContent='✓ Gespeichert'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
