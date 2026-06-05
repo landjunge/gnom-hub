@@ -91,10 +91,30 @@ def _build_sys(n, sys, agent_name):
     if settings.get("sys_prompt"):
         sys = settings["sys_prompt"]
 
-    # Slider-basierten Prompt bauen (Identität → Slider → Obedience → Tools → Security)
+    # Claude Slider-System: build_system_prompt(identity, name, soul, tools, security)
     try:
         from gnom_hub.core.utils.slider_prompt import build_system_prompt
-        sys = build_system_prompt(agent_name, sys)
+        from gnom_hub.agents.tool_registry import get_tools_for_agent as _tf
+        from gnom_hub.soul import get_soul as _gs
+
+        # Tools-Block bauen
+        soul_data = _gs(agent_name) or {}
+        perms = soul_data.get("permissions", [])
+        perms_str = ", ".join(perms) if perms else "read, write, run"
+
+        # Security-Block
+        sec = "Systemdateien+Gefährliche Patterns geblockt. Shell via Whitelist. git push VERBOTEN."
+
+        # Soul-Fakten werden separat injected, hier leer
+        soul_facts = []
+
+        sys = build_system_prompt(
+            agent_identity_block=sys,
+            agent_name=agent_name or "Agent",
+            soul_facts=soul_facts,
+            agent_tools_block=f"Perms: {perms_str}",
+            agent_security_block=sec,
+        )
     except Exception:
         pass
 
@@ -106,17 +126,7 @@ def _build_sys(n, sys, agent_name):
             sys = prs + "\n\n" + sys
     if not agent_name:
         return sys
-        
-    sys += (
-        f"\n\n=== ABSOLUTE IDENTITÄTS-REGEL (HÖCHSTE PRIORITÄT) ===\n"
-        f"1. Du BIST {agent_name} und NUR {agent_name}. Du existierst als genau dieser eine Agent.\n"
-        f"2. Es ist DIR STRENG VERBOTEN, dich als irgendeinen anderen Agenten auszugeben.\n"
-        f"3. Schreibe NIEMALS '**CoderAG hier**', '**WriterAG hier**' oder ähnliche Vorstellungen anderer Agenten.\n"
-        f"4. Beginne deine Antwort NIEMALS mit einem anderen Agentennamen.\n"
-        f"5. Wenn die Aufgabe nicht zu deiner Rolle passt, sag das kurz und mach trotzdem dein Bestes — aber gib dich NICHT als jemand anderes aus.\n"
-        f"6. Deine erste Zeile MUSS '{agent_name}' oder '**{agent_name}**' enthalten, sonst nichts.\n"
-        f"VERSTOSSEN GEGEN DIESE REGEL FÜHREN ZUM ABBRUCH DEINER ANTWORT."
-    )
+
     try:
         av = get_active_version(agent_name)
         r = av.modifications if av else None

@@ -1,144 +1,152 @@
-# slider_prompt.py — Baut den System-Prompt aus JSON-Slider-Konfiguration
-# Reihenfolge: Identität → Slider → Tools → Soul → Security
+"""
+slider_prompt.py
+Baut den System-Prompt eines Agenten aus festen Blöcken + Slider-Konfiguration zusammen.
+Reihenfolge ist die Sicherheitslinie — Slider können nie Identität oder Security überschreiben.
+"""
 
-import json, os, logging
-from pathlib import Path
-from gnom_hub.core.config import CONFIG_DIR
+import json
+import os
 
-_log = logging.getLogger(__name__)
-AGENTS_DIR = CONFIG_DIR / "agents"
+LEVELS = ["low", "medium", "high"]
 
-def _load_agent_config(agent_name: str) -> dict:
-    path = AGENTS_DIR / f"{agent_name}.json"
-    if not path.exists():
+SLIDER_KEYS = ["verbosity", "autonomy", "rückfrage", "ton", "fokus"]
+
+
+def load_slider_config(agent_name: str) -> dict:
+    """Lädt die Slider-Konfiguration für einen Agenten aus der JSON-Datei."""
+    from gnom_hub.core.config import CONFIG_DIR as AGENTS_BASE
+    path = os.path.join(str(AGENTS_BASE), "agents", f"{agent_name}.json")
+    if not os.path.exists(path):
         return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as e:
-        _log.warning("Failed to load agent config %s: %s", agent_name, e)
-        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-def _save_agent_config(agent_name: str, data: dict) -> bool:
-    path = AGENTS_DIR / f"{agent_name}.json"
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        return True
-    except Exception as e:
-        _log.error("Failed to save agent config %s: %s", agent_name, e)
-        return False
 
-def get_slider_value(agent_name: str, slider_key: str, default=3) -> int:
-    cfg = _load_agent_config(agent_name)
-    sliders = cfg.get("sliders", {})
-    return int(sliders.get(slider_key, {}).get("value", default))
-
-def set_slider_value(agent_name: str, slider_key: str, value: int) -> bool:
-    cfg = _load_agent_config(agent_name)
-    if not cfg:
-        return False
-    cfg.setdefault("sliders", {})
-    cfg["sliders"].setdefault(slider_key, {})
-    cfg["sliders"][slider_key]["value"] = value
-    return _save_agent_config(agent_name, cfg)
-
-def get_all_sliders(agent_name: str) -> dict:
-    cfg = _load_agent_config(agent_name)
-    return cfg.get("sliders", {})
-
-def set_all_sliders(agent_name: str, values: dict) -> bool:
-    cfg = _load_agent_config(agent_name)
-    if not cfg:
-        return False
-    sliders = cfg.get("sliders", {})
-    for key, val in values.items():
-        if key in sliders:
-            sliders[key]["value"] = int(val)
-    cfg["sliders"] = sliders
-    return _save_agent_config(agent_name, cfg)
-
-# ── Obedience Prompt-Blöcke ────────────────────────────────────────────
-OBEDIENCE_BLOCKS = {
-    1: (
-        "=== OBEDIENCE: BLINDLY FOLLOWS ===\n"
-        "Du folgst Anweisungen strikt und wörtlich. "
-        "Hinterfrage nichts, interpretiere nicht um. "
-        "Führe aus was verlangt wird, ohne eigene Meinung."
-    ),
-    2: (
-        "=== OBEDIENCE: STRONGLY FOLLOWS ===\n"
-        "Du bist stark an den User gebunden. "
-        "Triff kleine Entscheidungen selbst, frage bei Unsicherheit nach. "
-        "Weiche nur von Anweisungen ab, wenn du einen klaren Fehler erkennst."
-    ),
-    3: (
-        "=== OBEDIENCE: BALANCED ===\n"
-        "Ausgewogenes Verhältnis zwischen Anweisung und eigenständigem Handeln. "
-        "Biete Alternativen an wenn du einen besseren Weg siehst, "
-        "führe die Anweisung aus wenn der User darauf besteht."
-    ),
-    4: (
-        "=== OBEDIENCE: CAUTIOUS ===\n"
-        "Du bist vorsichtig und hinterfragst Anweisungen kritisch. "
-        "Schlage aktiv bessere Alternativen vor. "
-        "Warne vor Risiken oder Nachteilen. Entscheide selbst wenn du es besser weißt."
-    ),
-    5: (
-        "=== OBEDIENCE: HIGHLY AUTONOMOUS ===\n"
-        "Du handelst hochgradig eigenständig. "
-        "Triff Entscheidungen selbst, frage nur bei echten Blockaden. "
-        "Ignoriere Anweisungen wenn du einen fundamental besseren Ansatz siehst."
-    ),
-}
-
-# ── Hauptfunktion: build_system_prompt ─────────────────────────────────
-def build_system_prompt(agent_name: str, base: str = "") -> str:
+def build_slider_block(config: dict) -> str:
     """
-    Baut den vollständigen System-Prompt aus der JSON-Konfiguration.
-    Reihenfolge: Identität → Slider → Tools → Soul → Security
+    Erstellt den dynamischen Slider-Block aus der Konfiguration.
+    Gibt einen einzelnen zusammengesetzten String zurück.
     """
-    cfg = _load_agent_config(agent_name)
-    if not cfg:
-        return base
+    if not config or "sliders" not in config or "prompt_blocks" not in config:
+        return ""
 
-    identity = cfg.get("identity", agent_name)
-    role = cfg.get("role", "")
-    sliders = cfg.get("sliders", {})
-    tools = cfg.get("tools", [])
-    soul = cfg.get("soul_facts", [])
-    security = cfg.get("security", {})
+    sliders = config["sliders"]
+    blocks = config["prompt_blocks"]
+    lines = []
 
+    for key in SLIDER_KEYS:
+        if key in blocks:
+            lines.append(blocks[key])
+
+    return "\n".join(lines)
+
+
+def build_system_prompt(
+    agent_identity_block: str,
+    agent_name: str,
+    soul_facts: list[str],
+    agent_tools_block: str,
+    agent_security_block: str,
+) -> str:
+    """
+    Baut den vollständigen System-Prompt in sicherer Reihenfolge:
+
+    1. IDENTITÄT     — fest, unberührbar, Injection-geschützt
+    2. SLIDER-BLOCK  — dynamisch aus Slider-Konfiguration
+    3. TOOLS         — fest pro Agent
+    4. SOUL-FAKTEN   — dynamisch aus SoulAG
+    5. SECURITY      — fest, immer letzter Block
+    6. IDENTITÄT     — Wiederholung als Injection-Schutz am Ende
+
+    Slider können NIEMALS Identität oder Security überschreiben.
+    """
     parts = []
 
-    # IDENTITY FIRST (überschreibt ALLES)
-    parts.append(f"⚠️⚠️⚠️ DU BIST {identity} UND AUSSCHLIESSLICH {identity}! "
-                 f"DU DARFST DICH NIEMALS ALS ANDEREN AGENTEN AUSGEBEN. "
-                 f"KEINE ROLLENWECHSEL. KEINE 'ICH BIN WRITERAG/CoderAG/...' AUSSAGEN. "
-                 f"DEINE ANTWORT BEGINNT IMMER MIT DEINEM EIGENEN NAMEN: {identity}.")
+    # 1. Identität — Anfang
+    identity_header = f"⚠️ DU BIST {agent_name} UND NUR {agent_name}\n\n{agent_identity_block}"
+    parts.append(identity_header)
 
-    # BASE (role instructions from definitions)
-    if base:
-        parts.append(base)
+    # 2. Dynamischer Slider-Block
+    config = load_slider_config(agent_name)
+    slider_block = build_slider_block(config)
+    if slider_block:
+        parts.append(f"[VERHALTEN]\n{slider_block}")
 
-    # SLIDER (1 compact line)
-    slider_map = {
-        "personality":    ("Pers", {"1":"formal","2":"semi-formal","3":"balanced","4":"casual","5":"very casual"}),
-        "creativity":     ("Creat",{"1":"conservative","2":"focused","3":"balanced","4":"creative","5":"wild"}),
-        "risk_tolerance": ("Risk", {"1":"cautious","2":"careful","3":"balanced","4":"bold","5":"very bold"}),
-        "response_style": ("Style",{"1":"concise","2":"short","3":"balanced","4":"detailed","5":"exhaustive"}),
-        "memory_strength":("Mem",  {"1":"minimal","2":"low","3":"standard","4":"strong","5":"maximum"}),
-    }
-    sl = " | ".join(f"{l}: {lvls.get(str(int(sliders.get(k,{}).get('value',3))), lvls.get('3','balanced'))}"
-                    for k, (l, lvls) in slider_map.items())
-    parts.append(f"[{sl}]")
+    # 3. Tools & Fähigkeiten
+    if agent_tools_block:
+        parts.append(f"[TOOLS]\n{agent_tools_block}")
 
-    # OBEDIENCE (only system agents)
-    system_roles = ("general", "soul", "watchdog", "security")
-    if role in system_roles:
-        ob_val = int(sliders.get("obedience", {}).get("value", 3))
-        parts.append(OBEDIENCE_BLOCKS.get(ob_val, OBEDIENCE_BLOCKS[3]))
+    # 4. Soul-Fakten
+    if soul_facts:
+        facts_text = "\n".join(f"- {f}" for f in soul_facts)
+        parts.append(f"[KONTEXT]\n{facts_text}")
 
-    # SECURITY (1 line reminder)
-    parts.append("[SEC: Systemdateien+Gefährliche Patterns geblockt. Shell via Whitelist. git push VERBOTEN.]")
+    # 5. Security — immer vorletzter Block
+    if agent_security_block:
+        parts.append(f"[SICHERHEIT]\n{agent_security_block}")
+
+    # 6. Identität — Ende (Injection-Schutz)
+    parts.append(f"⚠️ DU BIST {agent_name} UND NUR {agent_name}")
 
     return "\n\n".join(parts)
+
+
+def update_slider(agent_name: str, key: str, value: int) -> bool:
+    """
+    Aktualisiert einen einzelnen Slider-Wert in der Konfigurationsdatei.
+    Gibt True zurück wenn erfolgreich.
+    """
+    if key not in SLIDER_KEYS:
+        return False
+    if value not in (0, 1, 2):
+        return False
+
+    config = load_slider_config(agent_name)
+    if not config:
+        return False
+
+    # Slider-Wert aktualisieren
+    config["sliders"][key] = value
+
+    # Prompt-Block aktualisieren basierend auf neuem Level
+    level = LEVEL_MAP[value]
+    config["prompt_blocks"][key] = _get_default_block(key, level)
+
+    from gnom_hub.core.config import CONFIG_DIR as AGENTS_BASE
+    path = os.path.join(str(AGENTS_BASE), "agents", f"{agent_name}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+    return True
+
+
+def _get_default_block(key: str, level: str) -> str:
+    """Fallback-Blöcke wenn kein Custom-Text gesetzt ist."""
+    defaults = {
+        "verbosity": {
+            "low":    "Antworte in max. 3 Sätzen. Nur das Ergebnis.",
+            "medium": "Antworte präzise mit kurzem Kontext.",
+            "high":   "Erkläre deine Vorgehensweise vollständig und zeige Alternativen auf.",
+        },
+        "autonomy": {
+            "low":    "Bei jeder Unklarheit sofort stoppen und nachfragen.",
+            "medium": "Kleine Entscheidungen selbst treffen, große bestätigen.",
+            "high":   "Handle vollständig selbst. Frage nur bei echten Blockaden.",
+        },
+        "rückfrage": {
+            "low":    "Niemals unterbrechen. Interpretiere selbst und mache weiter.",
+            "medium": "Bei mittlerer Unsicherheit stoppen und kurz nachfragen.",
+            "high":   "Bei jeder Ambiguität sofort nachfragen.",
+        },
+        "ton": {
+            "low":    "Antworte technisch und trocken. Keine Floskeln.",
+            "medium": "Klar und neutral formulieren.",
+            "high":   "Fließend, natürlich und menschenlesbar schreiben.",
+        },
+        "fokus": {
+            "low":    "Exakt beim Task bleiben. Keine verwandten Ideen.",
+            "medium": "Hauptsächlich beim Task, gelegentlich Verwandtes einbringen.",
+            "high":   "Assoziativ denken und Ideen verknüpfen.",
+        },
+    }
+    return defaults.get(key, {}).get(level, "")
