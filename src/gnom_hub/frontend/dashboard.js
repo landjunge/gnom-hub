@@ -1920,24 +1920,31 @@ window.tuningDoBake = async function() {
   const withKey = document.getElementById('tbake-api')?.checked;
   const resultEl = document.getElementById('tbake-result');
   if (!name) { toast('Bitte Namen eingeben', 'warning'); return; }
-  resultEl.innerHTML = '<span style="color:#fa0;">⏳ Backe... das kann 10-30 Sekunden dauern.</span>';
-  resultEl.style.color = '#fa0';
+  resultEl.innerHTML = '<span style="color:#fa0;">⏳ Starte Bake-Job...</span>';
   try {
     const body = {name, template: tpl, embed_api_key: withKey};
     if (preset) body.preset_file = preset;
-    const r = await api('POST', '/admin/bake', body);
-    if (r && r.status === 'ok') {
-      resultEl.innerHTML = '<span style="color:#0f0;">✅ Gebacken! Ordner: <b style="font-family:monospace;">' + r.path + '</b></span>';
-      resultEl.style.color = '#0f0';
-      toast('SuperGNOM gebacken!', 'success');
-    } else {
-      resultEl.innerHTML = '<span style="color:#f44;">❌ Fehler: ' + (r?.error || 'Unbekannt') + '</span>';
-      resultEl.style.color = '#f44';
+    const start = await api('POST', '/admin/bake/start', body);
+    if (!start || !start.job_id) { resultEl.innerHTML = '<span style="color:#f44;">❌ Fehler beim Starten</span>'; return; }
+    resultEl.innerHTML = '<span style="color:#fa0;">⏳ Backe... Job ' + start.job_id + '</span>';
+    // Poll until done
+    for (let i = 1; i <= 60; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const st = await api('GET', '/admin/bake/status/' + start.job_id);
+      if (!st || st.status === 'not_found') { resultEl.innerHTML = '<span style="color:#f44;">❌ Job verloren</span>'; return; }
+      if (st.status === 'finished') {
+        resultEl.innerHTML = '<span style="color:#0f0;">✅ Gebacken: <b style="font-family:monospace;">' + st.path + '</b></span>';
+        toast('SuperGNOM gebacken!', 'success');
+        return;
+      }
+      if (st.status === 'error') {
+        resultEl.innerHTML = '<span style="color:#f44;">❌ ' + (st.error || 'Fehler') + '</span>';
+        return;
+      }
+      resultEl.innerHTML = '<span style="color:#fa0;">⏳ Backe... (' + (i*2) + 's)</span>';
     }
-  } catch(e) {
-    resultEl.innerHTML = '<span style="color:#f44;">❌ Fehler: ' + e.message + '</span>';
-    resultEl.style.color = '#f44';
-  }
+    resultEl.innerHTML = '<span style="color:#f44;">❌ Timeout nach 2 Min</span>';
+  } catch(e) { resultEl.innerHTML = '<span style="color:#f44;">❌ ' + e.message + '</span>'; }
 };
 
 window.generateAutoPreset = async function() {

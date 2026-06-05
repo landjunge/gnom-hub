@@ -10,8 +10,11 @@ class BakeRequest(BaseModel):
     embed_api_key: bool = True
     preset_file: str = ""
 
-@router.post("/bake")
-def bake_supergnom_endpoint(req: BakeRequest):
+# Async Bake — Background Jobs
+import threading, uuid, time as _time
+_bake_jobs = {}
+
+def _do_bake(job_id: str, req: 'BakeRequest'):
     import os, json
     from gnom_hub.core.config import PROJECT_ROOT, CONFIG_DIR
     try:
@@ -35,9 +38,26 @@ def bake_supergnom_endpoint(req: BakeRequest):
                 keys_file = dist_path / "keys.txt"
                 with open(keys_file, "w", encoding="utf-8") as f:
                     f.write(f"DEEPSEEK_API_KEY={key}\n")
-        return {"status": "ok", "path": str(dist_path)}
+        _bake_jobs[job_id] = {"status": "finished", "path": str(dist_path), "error": None}
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        _bake_jobs[job_id] = {"status": "error", "path": None, "error": str(e)}
+
+@router.post("/bake/start")
+def bake_start(req: BakeRequest):
+    """Startet Bake-Job im Hintergrund. Gibt job_id zurück."""
+    job_id = str(uuid.uuid4())[:8]
+    _bake_jobs[job_id] = {"status": "running", "path": None, "error": None}
+    t = threading.Thread(target=_do_bake, args=(job_id, req), daemon=True)
+    t.start()
+    return {"status": "started", "job_id": job_id}
+
+@router.get("/bake/status/{job_id}")
+def bake_status(job_id: str):
+    """Fragt Bake-Job-Status ab."""
+    job = _bake_jobs.get(job_id)
+    if not job:
+        return {"status": "not_found"}
+    return job
 
 @router.post("/clean-all")
 def clean_all():
