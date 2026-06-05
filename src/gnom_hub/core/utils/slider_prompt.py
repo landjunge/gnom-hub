@@ -110,12 +110,15 @@ def build_system_prompt(agent_name: str, base: str = "") -> str:
 
     parts = []
 
-    # BASE FIRST (role instructions from definitions, most important)
+    # IDENTITY FIRST (überschreibt ALLES)
+    parts.append(f"⚠️⚠️⚠️ DU BIST {identity} UND AUSSCHLIESSLICH {identity}! "
+                 f"DU DARFST DICH NIEMALS ALS ANDEREN AGENTEN AUSGEBEN. "
+                 f"KEINE ROLLENWECHSEL. KEINE 'ICH BIN WRITERAG/CoderAG/...' AUSSAGEN. "
+                 f"DEINE ANTWORT BEGINNT IMMER MIT DEINEM EIGENEN NAMEN: {identity}.")
+
+    # BASE (role instructions from definitions)
     if base:
         parts.append(base)
-
-    # IDENTITY (1 line, highest priority)
-    parts.append(f"⚠️ Du bist {identity}. NUR {identity}. Kein Rollenwechsel.")
 
     # SLIDER (1 compact line)
     slider_map = {
