@@ -11,9 +11,9 @@ from gnom_hub.core.config import DB_PATH
 logger = logging.getLogger(__name__)
 
 # ── Konfiguration ───────────────────────────────────────────────────────────
-MAX_RETRIES    = 2                    # Max. Wiederholungen bei transienten Fehlern
-RETRY_DELAY_S  = 30.0                 # Sekunden zwischen Retries
-STUCK_TIMEOUT_S = 600.0               # 10 Min — Task in 'running' ohne Update -> failed
+MAX_RETRIES     = 2                    # Max. Wiederholungen bei transienten Fehlern
+RETRY_DELAY_S   = 30.0                 # Sekunden zwischen Retries
+STUCK_TIMEOUT_S = 300.0                # 5 Min — Task in 'running' ohne Update -> failed
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
@@ -44,22 +44,46 @@ def get_task_output_text(result_str: Optional[str]) -> str:
 
 def interpolate_template(template: str, variables: Dict[str, str]) -> str:
     """
-    Erweiterte Interpolation: Unterstützt {task_id} UND {task_id:output_summary}.
-    Fallback: unersetzte Platzhalter werden erhalten (kein KeyError).
+    Erweiterte Interpolation:
+    {task_id}            → kompletter Output-Text
+    {task_id:content}    → content-Feld aus result_json
+    {task_id:status}     → status-Feld
+    {task_id:error}      → error-Feld
+    {task_id:data.x.y}   → nested: result["data"]["x"]["y"]
+    Fallback: unersetzte Platzhalter bleiben erhalten.
     """
     import re as _re
     result = template
-    for match in _re.finditer(r'\{(\w+)(?::(\w+))?\}', template):
+
+    def _deep_get(d, path):
+        for key in path.split('.'):
+            if isinstance(d, dict):
+                d = d.get(key, d)
+            else:
+                return str(d)
+        return str(d) if d else ""
+
+    for match in _re.finditer(r'\{(\w+)(?::([\w.]+))?\}', template):
         full   = match.group(0)
         var    = match.group(1)
-        field  = match.group(2) or "content"
+        field  = match.group(2)
 
-        if var in variables:
-            val = variables[var]
-            if field != "content" and isinstance(val, dict):
-                result = result.replace(full, str(val.get(field, val.get("content", ""))))
+        if var not in variables:
+            continue
+
+        val = variables[var]
+        if isinstance(val, dict):
+            if field:
+                result = result.replace(full, _deep_get(val, field))
             else:
-                result = result.replace(full, str(val))
+                result = result.replace(full,
+                    val.get("content", val.get("text", val.get("summary",
+                    val.get("result", str(val))))))
+        elif isinstance(val, str):
+            result = result.replace(full, val if field is None else "")
+        else:
+            result = result.replace(full, str(val))
+
     return result
 
 
@@ -149,11 +173,12 @@ def evaluate_workflow(workflow_id: str) -> None:
                     ts = msg["processing_since"] or msg["created_at"] or 0
                     if (now - ts) > STUCK_TIMEOUT_S:
                         _log_wf(workflow_id, f"Task {t['task_id']} stuck ({int(now-ts)}s) -> FAILED", "warning")
+                        summary = f"[STUCK] No update for {int(now-ts)}s"
                         with conn:
                             conn.execute(
-                                "UPDATE workflow_tasks SET status='failed', result_json=? WHERE workflow_id=? AND task_id=?",
+                                "UPDATE workflow_tasks SET status='failed', result_json=?, error_summary=? WHERE workflow_id=? AND task_id=?",
                                 (json.dumps({"error": "stuck_timeout", "elapsed_s": now - ts}),
-                                 workflow_id, t["task_id"])
+                                 summary, workflow_id, t["task_id"])
                             )
                         stuck_found = True
         if stuck_found:
@@ -256,8 +281,9 @@ def evaluate_workflow(workflow_id: str) -> None:
                 _log_wf(workflow_id, f"DISPATCH FAILED for task {rt['task_id']} (cap={rt['capability']})", "error")
                 with conn2:
                     conn2.execute(
-                        "UPDATE workflow_tasks SET status='failed', result_json=? WHERE workflow_id=? AND task_id=?",
+                        "UPDATE workflow_tasks SET status='failed', result_json=?, error_summary=? WHERE workflow_id=? AND task_id=?",
                         (json.dumps({"error": "dispatch_failed", "capability": rt["capability"]}),
+                         f"[DISPATCH] No agent for capability '{rt['capability']}'",
                          workflow_id, rt["task_id"])
                     )
                 evaluate_workflow(workflow_id)
@@ -297,14 +323,14 @@ def handle_task_completion(msg_id: int, result: dict) -> None:
         result_json_str = json.dumps(result) if isinstance(result, dict) else json.dumps({"content": str(result)})
 
         if is_error:
-            # Permanenter Fehler — kein Retry (transiente Fehler sind Stuck-Tasks)
-            status = "failed"
+            error_msg = result.get("error", result.get("message", "Unknown error"))
+            summary = f"[ERROR] {error_msg}"[:200]
             with conn:
                 conn.execute(
-                    "UPDATE workflow_tasks SET status='failed', result_json=? WHERE workflow_id=? AND task_id=?",
-                    (result_json_str, workflow_id, task_id)
+                    "UPDATE workflow_tasks SET status='failed', result_json=?, error_summary=? WHERE workflow_id=? AND task_id=?",
+                    (result_json_str, summary, workflow_id, task_id)
                 )
-            _log_wf(workflow_id, f"Task {task_id} PERMANENTLY FAILED", "error", task_id)
+            _log_wf(workflow_id, f"Task {task_id} FAILED: {summary}", "error", task_id)
         else:
             status = "completed"
             with conn:

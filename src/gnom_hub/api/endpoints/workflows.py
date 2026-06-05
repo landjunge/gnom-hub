@@ -48,7 +48,7 @@ def api_get_workflow(workflow_id: str):
             raise HTTPException(404, detail="Workflow not found")
             
         tasks = conn.execute("""
-            SELECT task_id, capability, input_template, depends_on, status, msg_id, result_json
+            SELECT task_id, capability, input_template, depends_on, status, msg_id, result_json, error_summary
             FROM workflow_tasks
             WHERE workflow_id = ?
         """, (workflow_id,)).fetchall()
@@ -69,7 +69,8 @@ def api_get_workflow(workflow_id: str):
                 "depends_on": json.loads(t["depends_on"]),
                 "status": t["status"],
                 "msg_id": t["msg_id"],
-                "result": res_val
+                "result": res_val,
+                "error_summary": t.get("error_summary"),
             })
             
         return {
