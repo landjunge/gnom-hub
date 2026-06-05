@@ -86,28 +86,20 @@ def _get_obedience_instructions(level: int) -> str:
     return "\n\n" + instructions.get(level, instructions[3])
 
 def _build_sys(n, sys, agent_name):
-    """Inject preset + evolution rules into system prompt."""
+    """Inject slider config + evolution rules into system prompt."""
     settings = get_state_value("agent_settings", {}).get(n.lower(), {}) if n else {}
     if settings.get("sys_prompt"):
         sys = settings["sys_prompt"]
 
-    if agent_name:
-        sys = (
-            f"⚠️ DU BIST {agent_name} UND NUR {agent_name}. ANTWORTE AUSSCHLIESSLICH ALS {agent_name}. "
-            f"KEIN ANDERER AGENT. KEINE ROLLENWECHSEL.\n\n"
-        ) + sys
+    # Slider-basierten Prompt bauen (Identität → Slider → Obedience → Tools → Security)
+    try:
+        from gnom_hub.core.utils.slider_prompt import build_system_prompt
+        sys = build_system_prompt(agent_name, sys)
+    except Exception:
+        pass
 
     if settings.get("custom_prompt"):
         sys += "\n\n=== BENUTZERDEFINIERTER SUFFIX ===\n" + settings["custom_prompt"]
-    if settings:
-        sys += _get_behavioral_instructions(settings)
-
-    if agent_name and n:
-        obedience = settings.get("obedience")
-        if obedience is not None:
-            role = _get_agent_role(n)
-            if role in ("general", "soul", "watchdog", "security"):
-                sys += _get_obedience_instructions(int(obedience))
     active_preset = (get_state_value("active_preset") or "Web Development").strip('"\'')
     if n in ["coderag", "researcherag", "writerag", "editorag"]:
         if prs := get_preset_prompt(active_preset, n):

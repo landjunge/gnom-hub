@@ -1759,26 +1759,26 @@ window.tuningToggleTool = async function(agentId, toolKey) {
 window.tuningRender_tuning = async function(agentId) {
   const el = document.getElementById('tuning-content'); if (!el) return;
   const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
-  const key = agent.name.toLowerCase();
-  let settings = {};
-  try { settings = await api('GET', '/agents/' + agentId + '/settings') || {}; } catch(e){}
+  let sliders = {};
+  try { sliders = await api('GET', '/agents/' + agentId + '/sliders') || {}; } catch(e){}
 
-  const sliders = [
-    {id:'personality', label:'Personality', vals:{1:'Formal',2:'Semi-formal',3:'Balanced',4:'Casual',5:'Very Casual'}},
-    {id:'creativity', label:'Creativity', vals:{1:'Conservative',2:'Focused',3:'Balanced',4:'Creative',5:'Wild'}},
+  const isSystem = ['general','soul','watchdog','security'].includes(agent.role);
+  const sliderDefs = [
+    {id:'personality',    label:'Personality',    vals:{1:'Formal',2:'Semi-formal',3:'Balanced',4:'Casual',5:'Very Casual'}},
+    {id:'creativity',     label:'Creativity',     vals:{1:'Conservative',2:'Focused',3:'Balanced',4:'Creative',5:'Wild'}},
     {id:'risk_tolerance', label:'Risk Tolerance', vals:{1:'Very Cautious',2:'Cautious',3:'Balanced',4:'Bold',5:'Very Bold'}},
     {id:'response_style', label:'Response Style', vals:{1:'Very Concise',2:'Concise',3:'Balanced',4:'Detailed',5:'Very Detailed'}},
-    {id:'memory_strength', label:'Memory Strength', vals:{1:'Minimal',2:'Low',3:'Standard',4:'Strong',5:'Maximum'}},
+    {id:'memory_strength',label:'Memory Strength',vals:{1:'Minimal',2:'Low',3:'Standard',4:'Strong',5:'Maximum'}},
   ];
-  const isSystem = ['general','soul','watchdog','security'].includes(agent.role);
   if (isSystem) {
-    sliders.push({id:'obedience', label:'Obedience', vals:{1:'Blindly Follows',2:'Strongly Follows',3:'Balanced',4:'Cautious',5:'Highly Autonomous'}});
+    sliderDefs.push({id:'obedience', label:'Obedience', vals:{1:'Blindly Follows',2:'Strongly Follows',3:'Balanced',4:'Cautious',5:'Highly Autonomous'}});
   }
 
   let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
-  html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Verhaltenseinstellungen</h3>';
-  sliders.forEach(sl => {
-    const val = settings[sl.id] ?? 3;
+  html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Verhaltenseinstellungen <span style="font-size:0.65rem;font-weight:400;color:rgba(255,255,255,0.3);">— JSON-basiert (config/agents/' + agent.name + '.json)</span></h3>';
+  sliderDefs.forEach(sl => {
+    const sv = sliders[sl.id];
+    const val = sv && sv.value ? sv.value : 3;
     html += '<div style="display:flex;flex-direction:column;gap:3px;">';
     html += '<div style="display:flex;justify-content:space-between;font-size:0.75rem;"><span>' + sl.label + '</span><span id="tlbl-' + sl.id + '" style="font-weight:600;">' + sl.vals[val] + '</span></div>';
     html += '<input type="range" id="tsl-' + sl.id + '" min="1" max="5" value="' + val + '" style="width:100%;" oninput="document.getElementById(\'tlbl-' + sl.id + '\').textContent={\'1\':\'' + sl.vals[1] + '\',\'2\':\'' + sl.vals[2] + '\',\'3\':\'' + sl.vals[3] + '\',\'4\':\'' + sl.vals[4] + '\',\'5\':\'' + sl.vals[5] + '\'}[this.value]">';
@@ -1800,9 +1800,9 @@ window.tuningSaveBehavior = async function(agentId) {
   };
   const obed = document.getElementById('tsl-obedience');
   if (obed) s.obedience = parseInt(obed.value || 3);
-  const r = await api('PUT', '/agents/' + agentId + '/settings', s);
+  const r = await api('PUT', '/agents/' + agentId + '/sliders', s);
   const msg = document.getElementById('tmsg-behavior');
-  if (r !== null) { if (msg) { msg.textContent='✓ Gespeichert'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
+  if (r && r.status === 'ok') { if (msg) { msg.textContent='✓ Gespeichert (JSON)'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
   else { if (msg) { msg.textContent='Fehler'; msg.style.color='#f00'; } }
 };
 
