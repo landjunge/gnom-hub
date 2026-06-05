@@ -1530,7 +1530,6 @@ window.showAgentTuning = function() {
   let html = '<div style="display:flex;flex-direction:column;gap:14px;height:100%;">';
   html += '<h2 style="color:var(--accent);margin:0;display:flex;align-items:center;gap:12px;">🎛️ Agent Tuning <span style="font-size:0.7rem;color:rgba(255,255,255,0.3);font-weight:400;">Prompt · Soul · Blockaden · Tools · Verhalten</span></h2>';
 
-  // Agent-Tabs
   html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
   workers.forEach(a => {
     const col = agentColor(a.name);
@@ -1538,7 +1537,6 @@ window.showAgentTuning = function() {
   });
   html += '</div>';
 
-  // Tab-Bar
   const tabs = [
     {id:'prompt', label:'📝 Prompt'},
     {id:'soul', label:'💡 Soul'},
@@ -1552,12 +1550,10 @@ window.showAgentTuning = function() {
   });
   html += '</div>';
 
-  // Content-Area
   html += '<div id="tuning-content" style="flex:1;overflow-y:auto;padding-right:4px;"></div>';
   html += '</div>';
   el.innerHTML = html;
 
-  // Select first worker
   if (workers.length > 0) tuningSelect(workers[0].id);
 };
 

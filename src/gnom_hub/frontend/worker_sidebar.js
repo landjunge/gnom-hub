@@ -61,7 +61,7 @@ async function selectAgent(id) {
   window.currentView = 'agent-detail';
   if (window.updateBackButtonState) window.updateBackButtonState();
 
-  const target = document.getElementById('content');
+  const target = document.getElementById('agent-detail-modal-body');
   const titleEl = document.getElementById('agent-detail-title');
   if (titleEl) titleEl.textContent = `${meta.name} - Details & Einstellungen`;
 
