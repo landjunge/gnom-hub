@@ -11,7 +11,9 @@ function findAgentByName(name) {
 function handleAgentClick(name) {
   const agent = findAgentByName(name);
   if (agent) {
-    if (typeof selectAgent === 'function') {
+    if (typeof showAgentTuning === 'function') {
+      showAgentTuning(agent.id);
+    } else if (typeof selectAgent === 'function') {
       selectAgent(agent.id);
     }
   }
