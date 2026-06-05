@@ -102,6 +102,21 @@ def delete_agent(a_id: str):
     SQLiteChatRepository().delete_by_agent(a_id)
     return {"status": "deleted"}
 
+class StateConfigPayload(BaseModel):
+    key: str
+    value: bool
+
+@router.post("/api/admin/config")
+def set_state_config(data: StateConfigPayload):
+    from gnom_hub.db import set_state_value
+    set_state_value(data.key, data.value)
+    return {"status": "ok", "key": data.key, "value": data.value}
+
+@router.get("/api/state/{key}")
+def get_state_config(key: str):
+    from gnom_hub.db import get_state_value
+    return {"key": key, "value": get_state_value(key)}
+
 class ToolToggle(BaseModel):
     tool: str
 

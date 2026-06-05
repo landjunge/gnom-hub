@@ -3,7 +3,9 @@
    ═══════════════════════════════════════════ */
 
 function handleWorkerClick(id) {
-  if (typeof selectAgent === 'function') {
+  if (typeof showAgentTuning === 'function') {
+    showAgentTuning(id);
+  } else if (typeof selectAgent === 'function') {
     selectAgent(id);
   }
 }

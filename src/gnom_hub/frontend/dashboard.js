@@ -1513,7 +1513,7 @@ window.getAgentAvatarUrl = function(agentId) {
   return `/static/avatars/generalag.png`;
 };
 
-window.showAgentTuning = function() {
+window.showAgentTuning = function(agentId) {
   if (typeof showWarRoom !== 'function') return;
   window.viewHistory.push('war-room');
   window.currentView = 'agent-tuning';
@@ -1523,16 +1523,13 @@ window.showAgentTuning = function() {
   window._tuningAgentId = null;
   window._tuningTab = 'tuning';
 
-  const workers = (window.agents || []).filter(a =>
-    ['coderag','writerag','researcherag','editorag'].includes((a.name||'').toLowerCase())
-  );
+  const allAgents = (window.agents || []);
 
   let html = '<div style="display:flex;flex-direction:column;gap:14px;height:100%;">';
   html += '<h2 style="color:var(--accent);margin:0;display:flex;align-items:center;gap:12px;">🎛️ Agent Tuning <span style="font-size:0.7rem;color:rgba(255,255,255,0.3);font-weight:400;">Prompt · Soul · Blockaden · Tools · Verhalten</span></h2>';
 
   html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
-  workers.forEach(a => {
-    const col = agentColor(a.name);
+  allAgents.forEach(a => {
     html += '<button class="btn-primary" id="atab-' + a.id + '" onclick="tuningSelect(\'' + a.id + '\')" style="background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:6px 14px;font-size:0.8rem;cursor:pointer;border-radius:6px;">' + a.name + '</button>';
   });
   html += '</div>';
@@ -1554,13 +1551,14 @@ window.showAgentTuning = function() {
   html += '</div>';
   el.innerHTML = html;
 
-  if (workers.length > 0) tuningSelect(workers[0].id);
+  var targetId = agentId || (allAgents.length > 0 ? allAgents[0].id : null);
+  if (targetId) tuningSelect(targetId);
 };
 
 window.tuningSelect = function(agentId) {
   window._tuningAgentId = agentId;
-  const workers = (window.agents || []).filter(a => ['coderag','writerag','researcherag','editorag'].includes((a.name||'').toLowerCase()));
-  workers.forEach(a => {
+  const allAgents = (window.agents || []);
+  allAgents.forEach(a => {
     const btn = document.getElementById('atab-' + a.id);
     if (btn) { btn.style.background = a.id === agentId ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)'; btn.style.borderColor = a.id === agentId ? 'var(--agent-color, var(--accent))' : 'rgba(255,255,255,0.1)'; btn.style.color = a.id === agentId ? '#fff' : 'rgba(255,255,255,0.6)'; btn.style.setProperty('--agent-color', agentColor(a.name)); }
   });
@@ -1686,16 +1684,28 @@ window.tuningSoulDelBtn = function(btn) {
 window.tuningRender_blockaden = function(agentId) {
   const el = document.getElementById('tuning-content'); if (!el) return;
   const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
-  el.innerHTML = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">'
-    + '<h3 style="margin:0;font-size:0.95rem;">🛡️ Schutz-Status für ' + agent.name + '</h3>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">'
-    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">📁 Systemdateien</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.6);line-height:1.6;">Geschützte Pfade:</div><div style="font-size:0.65rem;color:#f44;font-family:monospace;margin-top:4px;">src/gnom_hub/<br>config/<br>.env<br>run.sh<br>index.html</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Diese Dateien können von Workern NICHT geschrieben werden (auch nicht im Workspace)</div></div>'
-    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">⚠️ Gefährliche Patterns</div><div style="font-size:0.65rem;color:#ffa500;font-family:monospace;">rm -rf<br>os.system()<br>subprocess.*<br>eval() / exec()<br>pickle.load()<br>shutil.rmtree()</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Diese Code-Muster werden vor dem Schreiben geprüft und blockiert</div></div>'
-    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🐚 Shell-Schutz</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.6);">'
-    + (agent.role === 'general' ? '<span style="color:#f44;">GeneralAG: KEINE Shell-Befehle erlaubt</span>' : '<span style="color:#0f0;">Shell-Whitelist aktiv (git, python3, npm, ls, ...)</span>')
-    + '</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Gefährliche Befehle (rm -rf /, curl|sh, mkfs) werden immer blockiert</div></div>'
-    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🔒 Workspace-Grenzen</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.6);">Schreiben/Lesen nur innerhalb:<br><span style="color:var(--accent);font-family:monospace;">gnom_workspace/default/</span></div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Zugriffe auf /etc/, /usr/ oder absolute Systempfade sind gesperrt</div></div>'
-    + '</div></div>';
+  api('GET', '/api/state/enable_confirmations').then(r => {
+    const enabled = r && r.value === true;
+    el.innerHTML = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">'
+      + '<h3 style="margin:0;font-size:0.95rem;">🛡️ Schutz-Status für ' + agent.name + '</h3>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">'
+      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">📁 Systemdateien</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.6);line-height:1.6;">Geschützte Pfade:</div><div style="font-size:0.65rem;color:#f44;font-family:monospace;margin-top:4px;">src/gnom_hub/<br>config/<br>.env<br>run.sh<br>index.html</div></div>'
+      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">⚠️ Gefährliche Patterns</div><div style="font-size:0.65rem;color:#ffa500;font-family:monospace;">rm -rf<br>os.system()<br>subprocess.*<br>eval() / exec()</div></div>'
+      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🐚 Shell-Schutz</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.6);">'
+      + (agent.role === 'general' ? '<span style="color:#f44;">GeneralAG: KEINE Shell-Befehle</span>' : '<span style="color:#0f0;">Whitelist aktiv</span>')
+      + '</div></div>'
+      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🔒 Workspace</div><div style="font-size:0.65rem;color:var(--accent);font-family:monospace;">gnom_workspace/default/</div></div>'
+      + '</div>'
+      + '<div class="panel" style="padding:12px;border:1px solid ' + (enabled ? '#f44' : '#0f0') + ';border-radius:8px;background:rgba(255,255,255,0.02);"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">🛑 Bestätigungs-Modus</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.5);">Legt fest ob gefährliche Aktionen manuell bestätigt werden müssen</div><div style="font-size:0.65rem;color:' + (enabled ? '#f44' : '#0f0') + ';margin-top:4px;">Status: <b>' + (enabled ? 'AKTIV — Aktionen müssen bestätigt werden' : 'DEAKTIVIERT — Auto-Approve') + '</b></div></div><button onclick="tuningToggleConfirmations(' + (enabled ? 'false' : 'true') + ')" style="padding:8px 16px;font-size:0.8rem;font-weight:700;background:' + (enabled ? 'rgba(0,200,100,0.15)' : 'rgba(255,50,50,0.15)') + ';border:1px solid ' + (enabled ? 'rgba(0,200,100,0.4)' : 'rgba(255,50,50,0.4)') + ';color:' + (enabled ? '#0f0' : '#f44') + ';border-radius:6px;cursor:pointer;">' + (enabled ? 'Deaktivieren' : 'Aktivieren') + '</button></div></div>'
+      + '</div>';
+  }).catch(() => { el.innerHTML = '<div class="panel" style="padding:16px;color:rgba(255,255,255,0.3);">Lade Blockaden...</div>'; });
+};
+
+window.tuningToggleConfirmations = function(enable) {
+  api('POST', '/admin/config', {key: 'enable_confirmations', value: enable}).then(r => {
+    if (r && r.status === 'ok') { toast(enable ? 'Bestätigungen AKTIVIERT' : 'Bestätigungen DEAKTIVIERT', enable ? 'warning' : 'success'); tuningRender_blockaden(window._tuningAgentId); }
+    else { toast('Fehler', 'error'); }
+  });
 };
 
 // ── Tab: Tools ──
@@ -1707,27 +1717,40 @@ window.tuningRender_tools = async function(agentId) {
   try { profile = await api('GET', '/agents/' + agentId + '/profile') || {}; } catch(e){}
   const tools = profile.tools || [];
   const allTools = [
-    {key:'read_file', icon:'📄', label:'Read'},
-    {key:'write_file', icon:'✏️', label:'Write'},
-    {key:'run_command', icon:'⚡', label:'Run'},
-    {key:'war_room_chat', icon:'💬', label:'@Job'},
-    {key:'browser', icon:'🌐', label:'Browser'},
-    {key:'generate_image', icon:'🎨', label:'Image'},
-    {key:'crawl_url', icon:'🕷️', label:'Crawl'},
-    {key:'evolve', icon:'🧬', label:'Evolve'},
-    {key:'sys_cmd', icon:'🔧', label:'Sys Cmd'},
-    {key:'desktop_action', icon:'🖥️', label:'Desktop'},
-    {key:'screenshot', icon:'📸', label:'Screenshot'},
-    {key:'create_agent', icon:'🤖', label:'Agent+'},
+    {key:'read_file', icon:'📄', label:'Read', desc:'Dateien lesen'},
+    {key:'write_file', icon:'✏️', label:'Write', desc:'Dateien schreiben'},
+    {key:'run_command', icon:'⚡', label:'Run', desc:'Shell-Befehle'},
+    {key:'war_room_chat', icon:'💬', label:'@Job', desc:'Chat/Delegieren'},
+    {key:'browser', icon:'🌐', label:'Browser', desc:'Playwright'},
+    {key:'generate_image', icon:'🎨', label:'Image', desc:'Bilder erstellen'},
+    {key:'crawl_url', icon:'🕷️', label:'Crawl', desc:'Web crawlen'},
+    {key:'evolve', icon:'🧬', label:'Evolve', desc:'Selbst verbessern'},
+    {key:'sys_cmd', icon:'🔧', label:'SysCmd', desc:'Systembefehle'},
+    {key:'desktop_action', icon:'🖥️', label:'Desktop', desc:'Maus/Tastatur'},
+    {key:'screenshot', icon:'📸', label:'Screen', desc:'Screenshots'},
+    {key:'create_agent', icon:'🤖', label:'Agent+', desc:'Neue Agenten'},
   ];
-  let html = '<div class="panel" style="padding:16px;"><h3 style="margin:0 0 10px 0;font-size:0.95rem;">🔧 Tools & Capabilities</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;">';
+  let html = '<div class="panel" style="padding:16px;"><h3 style="margin:0 0 10px 0;font-size:0.95rem;">🔧 Tools & Capabilities <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">— Klick zum Togglen</span></h3>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px;">';
   allTools.forEach(t => {
     const has = tools.includes(t.key);
-    html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;"><span style="font-size:0.9rem;">' + t.icon + '</span><span style="font-size:0.7rem;color:' + (has ? '#39ff14' : 'rgba(255,255,255,0.25)') + ';">' + t.label + '</span><span style="margin-left:auto;font-size:0.7rem;">' + (has ? '✅' : '❌') + '</span></div>';
+    html += '<div onclick="tuningToggleTool(\'' + agentId + '\',\'' + t.key + '\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.02);border:1px solid ' + (has ? 'rgba(57,255,20,0.3)' : 'rgba(255,255,255,0.06)') + ';border-radius:6px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.02)\'" title="' + t.desc + '">';
+    html += '<span style="font-size:1rem;">' + t.icon + '</span>';
+    html += '<span style="font-size:0.75rem;color:' + (has ? '#39ff14' : 'rgba(255,255,255,0.35)') + ';">' + t.label + '</span>';
+    html += '<span style="margin-left:auto;font-size:0.8rem;">' + (has ? '✅' : '⬜') + '</span>';
+    html += '</div>';
   });
   html += '</div>';
-  html += '<div style="font-size:0.6rem;color:rgba(255,255,255,0.25);margin-top:12px;">Tools werden über Permissions in <code>agent_definitions.py</code> gesteuert. LLM-Provider: ' + (profile.llm_provider||'–') + ' / ' + (profile.llm_model||'–') + '</div></div>';
+  html += '<div style="font-size:0.6rem;color:rgba(255,255,255,0.25);margin-top:12px;">LLM: ' + (profile.llm_provider||'–') + ' / ' + (profile.llm_model||'–') + ' — Toggles nur temporär (Session)</div></div>';
   el.innerHTML = html;
+};
+
+window.tuningToggleTool = async function(agentId, toolKey) {
+  const r = await api('POST', '/agents/' + agentId + '/tools/toggle', {tool: toolKey});
+  if (r && r.status === 'ok') {
+    toast(toolKey + (r.enabled ? ' ✅ aktiviert' : ' ❌ deaktiviert'), 'success');
+    tuningRender_tools(agentId);
+  } else { toast('Fehler beim Togglen', 'error'); }
 };
 
 // ── Tab: Verhalten (Sliders) ──
