@@ -184,6 +184,8 @@ CREATE TABLE IF NOT EXISTS workflow_tasks (
     status TEXT NOT NULL DEFAULT 'pending',
     msg_id INTEGER,
     result_json TEXT,
+    retry_count INTEGER DEFAULT 0,
+    retry_deliver_after REAL DEFAULT NULL,
     PRIMARY KEY (workflow_id, task_id)
 );
 """
@@ -302,11 +304,20 @@ def init_database() -> None:
                             status TEXT NOT NULL DEFAULT 'pending',
                             msg_id INTEGER,
                             result_json TEXT,
+                            retry_count INTEGER DEFAULT 0,
+                            retry_deliver_after REAL DEFAULT NULL,
                             PRIMARY KEY (workflow_id, task_id)
                         )
                     """)
                 except sqlite3.OperationalError:
                     pass
+                # Dynamic migration: retry columns for existing workflow_tasks
+                for col, col_type in [("retry_count", "INTEGER DEFAULT 0"),
+                                       ("retry_deliver_after", "REAL DEFAULT NULL")]:
+                    try:
+                        conn.execute(f"ALTER TABLE workflow_tasks ADD COLUMN {col} {col_type}")
+                    except sqlite3.OperationalError:
+                        pass
                 
                 # Default states
                 conn.execute("INSERT OR IGNORE INTO state (key, value) VALUES ('active_project', '\"default\"')")
