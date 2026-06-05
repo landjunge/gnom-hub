@@ -111,9 +111,9 @@ def build_system_prompt(agent_name: str, base: str = "") -> str:
     parts = []
 
     # 1. IDENTITÄT (höchste Priorität, darf NIE überschrieben werden)
-    parts.append(f"=== IDENTITÄT ===\nDu bist {identity}. "
-                 f"Du existierst ausschließlich als {identity}. "
-                 f"Kein Rollenwechsel, kein Ausgeben als anderer Agent.")
+    parts.append(f"⚠️ DU BIST {identity} UND NUR {identity}. ANTWORTE AUSSCHLIESSLICH ALS {identity}. "
+                 f"KEIN ANDERER AGENT. KEINE ROLLENWECHSEL. "
+                 f"Beginne deine Antwort NIEMALS mit dem Namen eines anderen Agenten.")
 
     # 2. BASIS-PROMPT (aus agent_definitions.py)
     if base:
@@ -130,7 +130,8 @@ def build_system_prompt(agent_name: str, base: str = "") -> str:
     }
     for key, (label, levels) in slider_map.items():
         val = int(sliders.get(key, {}).get("value", 3))
-        slider_lines.append(f"- {label}: {levels.get(val, levels[3])}")
+        vs = str(val)
+        slider_lines.append(f"- {label}: {levels.get(vs, levels.get('3', 'balanced'))}")
 
     # Obedience (nur für System-Agenten: general, soul, watchdog, security)
     system_roles = ("general", "soul", "watchdog", "security")
