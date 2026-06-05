@@ -111,35 +111,28 @@ def build_system_prompt(agent_name: str, base: str = "") -> str:
     parts = []
 
     # 1. IDENTITÄT (höchste Priorität, darf NIE überschrieben werden)
-    parts.append(f"⚠️ DU BIST {identity} UND NUR {identity}. ANTWORTE AUSSCHLIESSLICH ALS {identity}. "
-                 f"KEIN ANDERER AGENT. KEINE ROLLENWECHSEL. "
-                 f"Beginne deine Antwort NIEMALS mit dem Namen eines anderen Agenten.")
+    parts.append(f"⚠️ Du bist {identity}. NUR {identity}. Kein Rollenwechsel.")
 
-    # 2. BASIS-PROMPT (aus agent_definitions.py)
     if base:
         parts.append(base)
 
-    # 3. SLIDER-BLOCK
-    slider_lines = ["=== VERHALTEN ==="]
+    # 3. SLIDER-BLOCK (kompakt: eine Zeile)
     slider_map = {
-        "personality":    ("Personality",    {1: "very formal", 2: "semi-formal", 3: "balanced", 4: "casual", 5: "very casual"}),
-        "creativity":     ("Creativity",     {1: "conservative, deterministic", 2: "focused", 3: "balanced", 4: "creative", 5: "wild, highly random"}),
-        "risk_tolerance": ("Risk Tolerance", {1: "very cautious, escalate everything", 2: "cautious", 3: "balanced", 4: "bold", 5: "very bold, act autonomously"}),
-        "response_style": ("Response Style", {1: "very concise, 1-2 sentences", 2: "concise", 3: "balanced", 4: "detailed", 5: "very detailed, exhaustive"}),
-        "memory_strength":("Memory",         {1: "minimal context (top_k=2)", 2: "low context (top_k=4)", 3: "standard (top_k=8)", 4: "strong (top_k=12)", 5: "maximum (top_k=16)"}),
+        "personality":    ("Persona",    {1:"formal", 2:"semi-formal", 3:"balanced", 4:"casual", 5:"very casual"}),
+        "creativity":     ("Creat",      {1:"conservative", 2:"focused", 3:"balanced", 4:"creative", 5:"wild"}),
+        "risk_tolerance": ("Risk",       {1:"very cautious", 2:"cautious", 3:"balanced", 4:"bold", 5:"very bold"}),
+        "response_style": ("Style",      {1:"concise", 2:"short", 3:"balanced", 4:"detailed", 5:"exhaustive"}),
+        "memory_strength":("Memory",     {1:"minimal", 2:"low", 3:"standard", 4:"strong", 5:"maximum"}),
     }
-    for key, (label, levels) in slider_map.items():
-        val = int(sliders.get(key, {}).get("value", 3))
-        vs = str(val)
-        slider_lines.append(f"- {label}: {levels.get(vs, levels.get('3', 'balanced'))}")
+    parts.append("=== SLIDER ===\n" + " | ".join(
+        f"{label}: {levels.get(str(int(sliders.get(key,{}).get('value',3))), levels.get('3','balanced'))}"
+        for key, (label, levels) in slider_map.items()
+    ))
 
-    # Obedience (nur für System-Agenten: general, soul, watchdog, security)
     system_roles = ("general", "soul", "watchdog", "security")
     if role in system_roles:
         ob_val = int(sliders.get("obedience", {}).get("value", 3))
         parts.append(OBEDIENCE_BLOCKS.get(ob_val, OBEDIENCE_BLOCKS[3]))
-
-    parts.append("\n".join(slider_lines))
 
     # 4. TOOLS
     if tools:
