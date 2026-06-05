@@ -920,8 +920,10 @@ function getVoiceForAgent(agentName, lang) {
 
 function cleanTextForTTS(text) {
   if (!text) return '';
+  // Remove <think>...</think> blocks completely (TTS should not read agent thoughts)
+  let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
   // Remove zero-width steganographic characters and hidden unicode markers
-  let cleaned = text.replace(/[\u200b-\u200d\uFEFF\u200e\u200f]/g, '');
+  cleaned = cleaned.replace(/[\u200b-\u200d\uFEFF\u200e\u200f]/g, '');
   
   // Remove leading agent name declarations (e.g. "CoderAG hier - direkte Antwort", "GeneralAG:") to prevent double-name repetition
   cleaned = cleaned.replace(/^\s*\**\s*(GeneralAG|CoderAG|ResearcherAG|WriterAG|EditorAG|SecurityAG|SoulAG|WatchdogAG|System)\s*(hier|sagt|ist|meldet sich)?\s*[\*–—:-]*\s*/gi, '');
