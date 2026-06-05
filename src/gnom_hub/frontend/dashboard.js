@@ -1767,33 +1767,33 @@ window.tuningToggleTool = async function(agentId, toolKey) {
   } else { toast('Fehler beim Togglen', 'error'); }
 };
 
-// ── Tab: Verhalten (Sliders) ──
+// ── Tab: Verhalten (Claude 3-Level Sliders) ──
 window.tuningRender_tuning = async function(agentId) {
   const el = document.getElementById('tuning-content'); if (!el) return;
   const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
-  let sliders = {};
-  try { sliders = await api('GET', '/agents/' + agentId + '/sliders') || {}; } catch(e){}
+  let config = {};
+  try { config = await api('GET', '/agents/' + agentId + '/sliders') || {}; } catch(e){}
 
-  const isSystem = ['general','soul','watchdog','security'].includes(agent.role);
+  const sliders = config.sliders || {};
+  const blocks = config.prompt_blocks || {};
+
   const sliderDefs = [
-    {id:'personality',    label:'Personality',    vals:{1:'Formal',2:'Semi-formal',3:'Balanced',4:'Casual',5:'Very Casual'}},
-    {id:'creativity',     label:'Creativity',     vals:{1:'Conservative',2:'Focused',3:'Balanced',4:'Creative',5:'Wild'}},
-    {id:'risk_tolerance', label:'Risk Tolerance', vals:{1:'Very Cautious',2:'Cautious',3:'Balanced',4:'Bold',5:'Very Bold'}},
-    {id:'response_style', label:'Response Style', vals:{1:'Very Concise',2:'Concise',3:'Balanced',4:'Detailed',5:'Very Detailed'}},
-    {id:'memory_strength',label:'Memory Strength',vals:{1:'Minimal',2:'Low',3:'Standard',4:'Strong',5:'Maximum'}},
+    {id:'verbosity', label:'Verbosity', vals:{0:'Low – kurz', 1:'Medium – präzise', 2:'High – ausführlich'}},
+    {id:'autonomy',  label:'Autonomy',  vals:{0:'Low – stoppt bei Unklarheit', 1:'Medium – kleine Entscheidungen', 2:'High – komplett selbstständig'}},
+    {id:'rückfrage', label:'Rückfrage', vals:{0:'Low – nie unterbrechen', 1:'Medium – bei Unsicherheit', 2:'High – bei jeder Ambiguität'}},
+    {id:'ton',       label:'Ton',       vals:{0:'Low – technisch/trocken', 1:'Medium – neutral', 2:'High – natürlich'}},
+    {id:'fokus',     label:'Fokus',     vals:{0:'Low – exakt beim Task', 1:'Medium – gelegentlich verwandtes', 2:'High – assoziativ'}},
   ];
-  if (isSystem) {
-    sliderDefs.push({id:'obedience', label:'Obedience', vals:{1:'Blindly Follows',2:'Strongly Follows',3:'Balanced',4:'Cautious',5:'Highly Autonomous'}});
-  }
 
   let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
-  html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Verhaltenseinstellungen <span style="font-size:0.65rem;font-weight:400;color:rgba(255,255,255,0.3);">— JSON-basiert (config/agents/' + agent.name + '.json)</span></h3>';
+  html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Claude Slider <span style="font-size:0.65rem;font-weight:400;color:rgba(255,255,255,0.3);">— 3-Level (0-2) mit Prompt-Blöcken</span></h3>';
   sliderDefs.forEach(sl => {
-    const sv = sliders[sl.id];
-    const val = sv && sv.value ? sv.value : 3;
-    html += '<div style="display:flex;flex-direction:column;gap:3px;">';
-    html += '<div style="display:flex;justify-content:space-between;font-size:0.75rem;"><span>' + sl.label + '</span><span id="tlbl-' + sl.id + '" style="font-weight:600;">' + sl.vals[val] + '</span></div>';
-    html += '<input type="range" id="tsl-' + sl.id + '" min="1" max="5" value="' + val + '" style="width:100%;" oninput="document.getElementById(\'tlbl-' + sl.id + '\').textContent={\'1\':\'' + sl.vals[1] + '\',\'2\':\'' + sl.vals[2] + '\',\'3\':\'' + sl.vals[3] + '\',\'4\':\'' + sl.vals[4] + '\',\'5\':\'' + sl.vals[5] + '\'}[this.value]">';
+    const val = sliders[sl.id] ?? 1;
+    html += '<div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">';
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.75rem;"><span><b>' + sl.label + '</b></span><span id="tlbl-' + sl.id + '" style="font-weight:600;color:var(--accent);">' + sl.vals[val] + '</span></div>';
+    html += '<input type="range" id="tsl-' + sl.id + '" min="0" max="2" value="' + val + '" style="width:100%;margin:2px 0;" oninput="document.getElementById(\'tlbl-' + sl.id + '\').textContent={\'0\':\'' + sl.vals[0] + '\',\'1\':\'' + sl.vals[1] + '\',\'2\':\'' + sl.vals[2] + '\'}[this.value]">';
+    const block = blocks[sl.id] || '';
+    html += '<div style="font-size:0.6rem;color:rgba(255,255,255,0.35);margin-top:2px;font-style:italic;">' + escapeHtml(block.substring(0, 120)) + '</div>';
     html += '</div>';
   });
   html += '<button onclick="tuningSaveBehavior(\'' + agentId + '\')" style="padding:8px;font-size:0.8rem;font-weight:700;background:rgba(0,200,100,0.15);border:1px solid rgba(0,200,100,0.3);color:#0f0;border-radius:6px;cursor:pointer;">💾 Verhalten speichern</button>';
@@ -1803,18 +1803,13 @@ window.tuningRender_tuning = async function(agentId) {
 };
 
 window.tuningSaveBehavior = async function(agentId) {
-  const s = {
-    personality: parseInt(document.getElementById('tsl-personality')?.value || 3),
-    creativity: parseInt(document.getElementById('tsl-creativity')?.value || 3),
-    risk_tolerance: parseInt(document.getElementById('tsl-risk_tolerance')?.value || 3),
-    response_style: parseInt(document.getElementById('tsl-response_style')?.value || 3),
-    memory_strength: parseInt(document.getElementById('tsl-memory_strength')?.value || 3),
-  };
-  const obed = document.getElementById('tsl-obedience');
-  if (obed) s.obedience = parseInt(obed.value || 3);
+  const s = {};
+  ['verbosity','autonomy','rückfrage','ton','fokus'].forEach(k => {
+    s[k] = parseInt(document.getElementById('tsl-' + k)?.value ?? 1);
+  });
   const r = await api('PUT', '/agents/' + agentId + '/sliders', s);
   const msg = document.getElementById('tmsg-behavior');
-  if (r && r.status === 'ok') { if (msg) { msg.textContent='✓ Gespeichert (JSON)'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
+  if (r && r.status === 'ok') { if (msg) { msg.textContent='✓ Gespeichert'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
   else { if (msg) { msg.textContent='Fehler'; msg.style.color='#f00'; } }
 };
 

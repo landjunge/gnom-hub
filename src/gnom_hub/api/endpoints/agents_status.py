@@ -103,12 +103,11 @@ def delete_agent(a_id: str):
     return {"status": "deleted"}
 
 class SliderUpdatePayload(BaseModel):
-    personality: Optional[int] = None
-    creativity: Optional[int] = None
-    risk_tolerance: Optional[int] = None
-    response_style: Optional[int] = None
-    memory_strength: Optional[int] = None
-    obedience: Optional[int] = None
+    verbosity: Optional[int] = None
+    autonomy: Optional[int] = None
+    rückfrage: Optional[int] = None
+    ton: Optional[int] = None
+    fokus: Optional[int] = None
 
 @router.get("/api/agents/{a_id}/sliders")
 def get_agent_sliders(a_id: str):
@@ -116,8 +115,8 @@ def get_agent_sliders(a_id: str):
     agent = repo.get_by_id(a_id)
     if not agent:
         raise HTTPException(404, "Agent not found")
-    from gnom_hub.core.utils.slider_prompt import get_all_sliders
-    return get_all_sliders(agent.name)
+    from gnom_hub.core.utils.slider_prompt import load_slider_config
+    return load_slider_config(agent.name)
 
 @router.put("/api/agents/{a_id}/sliders")
 def update_agent_sliders(a_id: str, data: SliderUpdatePayload):
@@ -125,12 +124,12 @@ def update_agent_sliders(a_id: str, data: SliderUpdatePayload):
     agent = repo.get_by_id(a_id)
     if not agent:
         raise HTTPException(404, "Agent not found")
-    from gnom_hub.core.utils.slider_prompt import set_all_sliders
-    values = {k: v for k, v in data.dict().items() if v is not None}
-    if not values:
-        raise HTTPException(400, "No values provided")
-    ok = set_all_sliders(agent.name, values)
-    return {"status": "ok" if ok else "error"}
+    from gnom_hub.core.utils.slider_prompt import update_slider, SLIDER_KEYS
+    for key in SLIDER_KEYS:
+        val = getattr(data, key, None)
+        if val is not None and 0 <= val <= 2:
+            update_slider(agent.name, key, val)
+    return {"status": "ok"}
 
 class StateConfigPayload(BaseModel):
     key: str
