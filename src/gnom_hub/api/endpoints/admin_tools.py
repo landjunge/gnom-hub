@@ -39,6 +39,62 @@ def bake_supergnom_endpoint(req: BakeRequest):
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
+@router.post("/clean-all")
+def clean_all():
+    """Alles zurücksetzen: DB, Tokens, Workspace, Logs. Dann Neustart."""
+    import os, shutil
+    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.db.passive_db import get_passive_conn
+    from gnom_hub.core.config import CONFIG_DIR, WORKSPACE_DIR, PROJECT_ROOT
+
+    conn = get_db_connection()
+    # Alle nicht-essentiellen Tabellen leeren
+    for tbl in ['chat','audit_log','prompt_versions','capabilities','showbox_presentations',
+                'explainable_outputs','agent_messages','swarm_callbacks','agent_capabilities',
+                'workflows','workflow_tasks','soul_memory','token_budget_logs','token_budget_alerts']:
+        try: conn.execute(f'DELETE FROM {tbl}')
+        except: pass
+    # State reset
+    conn.execute("DELETE FROM state WHERE key NOT IN ('active_project','language','active_showbox','enable_confirmations')")
+    conn.execute("UPDATE agents SET status='online', circuit_state='CLOSED', consecutive_failures=0")
+    conn.commit()
+    conn.close()
+
+    # Token-File löschen
+    for token_file in list(CONFIG_DIR.glob('.gnom-hub-tokens*.json')):
+        try: token_file.unlink()
+        except: pass
+
+    # Passive DB
+    try:
+        pconn = get_passive_conn()
+        for t in pconn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall():
+            try: pconn.execute(f'DELETE FROM {t["name"]}')
+            except: pass
+        pconn.commit()
+        pconn.close()
+    except: pass
+
+    # Workspace leeren
+    wd = os.path.join(str(WORKSPACE_DIR), 'default')
+    if os.path.exists(wd):
+        for item in os.listdir(wd):
+            item_path = os.path.join(wd, item)
+            try:
+                if os.path.isdir(item_path): shutil.rmtree(item_path)
+                else: os.remove(item_path)
+            except: pass
+
+    # Neustart in 3s (nachdem die Antwort zurück ist)
+    import threading
+    def delayed_restart():
+        import time; time.sleep(3)
+        from gnom_hub.infrastructure.process.process_manager import restart_hub
+        restart_hub()
+    threading.Thread(target=delayed_restart, daemon=True).start()
+
+    return {"status": "cleaned", "msg": "Alles geleert. Hub startet neu in 3s."}
+
 class ToolDef(BaseModel):
     name: str
     description: str = ""

@@ -45,6 +45,16 @@ function toast(msg, type = 'info') {
   }
 }
 
+async function cleanAll() {
+  if (!confirm('⚠️ ALLES löschen?\n\nChat, Workspace, Tokens, Soul-Memory — alles weg!\nHub startet danach neu.')) return;
+  toast('🧹 Räume auf...', 'info');
+  const r = await api('POST', '/admin/clean-all');
+  if (r && r.status === 'cleaned') {
+    toast('✅ Sauber! Hub startet neu...', 'success');
+    setTimeout(() => location.reload(), 3000);
+  } else { toast('Fehler', 'error'); }
+}
+
 // ── NUKE (G-Button Long Press & Retro TV Effect) ──
 function nukeStart(e) {
   e.stopPropagation();

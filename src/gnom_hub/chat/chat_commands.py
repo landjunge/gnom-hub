@@ -8,6 +8,20 @@ from gnom_hub.chat.chat_commands_handlers import handle_clear, handle_status, ha
 
 router = APIRouter()
 
+def handle_allclear(q):
+    """Führt kompletten System-Cleanup durch und startet Hub neu."""
+    import requests, os
+    port = os.environ.get('GNOM_HUB_PORT', '3002')
+    try:
+        r = requests.post(f"http://127.0.0.1:{port}/api/admin/clean-all", timeout=10)
+        if r.status_code == 200:
+            _post_chat("System", "🧹 Alles gelöscht. Hub startet neu...")
+        else:
+            _post_chat("System", f"Cleanup-Fehler: HTTP {r.status_code}")
+    except Exception as e:
+        _post_chat("System", f"Cleanup-Fehler: {str(e)[:100]}")
+    return {"status": "ok"}
+
 @router.get("/help")
 def get_help():
     return FileResponse(str(Path(__file__).parent.parent / "frontend" / "help.html"))

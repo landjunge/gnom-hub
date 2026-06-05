@@ -2,7 +2,7 @@ from fastapi import APIRouter; from pydantic import BaseModel; from gnom_hub.sou
 from gnom_hub.db import get_all_agents, get_active_project, add_chat_message, get_chat_history
 from gnom_hub.chat.brainstorm.brainstorm import dispatch; from gnom_hub.soul import soul_instance
 from gnom_hub.core.security.showbox_validator import sanitize_showboxes; from .chat_helpers import _parse, _handle_sys
-from gnom_hub.chat.chat_commands import handle_clear, handle_status, handle_job, handle_free, handle_git, handle_resume, handle_approve_decision, handle_reject_decision, handle_bake, handle_emergency, handle_diagnose, handle_confirmations, handle_spass, handle_blockade, handle_help
+from gnom_hub.chat.chat_commands import handle_clear, handle_status, handle_job, handle_free, handle_git, handle_resume, handle_approve_decision, handle_reject_decision, handle_bake, handle_emergency, handle_diagnose, handle_confirmations, handle_spass, handle_blockade, handle_help, handle_allclear
 router = APIRouter()
 class ChatMsg(BaseModel): content: str; sender: str = "user"
 def handle_bs(q): return {"status": "dispatched", "asked": dispatch(q, target=None, sender="user"), "mode": "brainstorm"}
@@ -71,7 +71,7 @@ def handle_workflow(q):
     except Exception as e:
         logging.getLogger(__name__).error("Workflow-Erstellung fehlgeschlagen: %s", e)
         return {"status": "error", "message": str(e)}
-CMDS = {"clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs, "resume": handle_resume, "approve_decision": handle_approve_decision, "reject_decision": handle_reject_decision, "bake": handle_bake, "emergency": handle_emergency, "notfall": handle_emergency, "diagnose": handle_diagnose, "confirmations": handle_confirmations, "spass": handle_spass, "worker": handle_worker, "workers": handle_worker, "blockade": handle_blockade, "blokade": handle_blockade, "workflow": handle_workflow, "help": handle_help, "hilfe": handle_help}
+CMDS = {"clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs, "resume": handle_resume, "approve_decision": handle_approve_decision, "reject_decision": handle_reject_decision, "bake": handle_bake, "emergency": handle_emergency, "notfall": handle_emergency, "diagnose": handle_diagnose, "confirmations": handle_confirmations, "spass": handle_spass, "worker": handle_worker, "workers": handle_worker, "blockade": handle_blockade, "blokade": handle_blockade, "workflow": handle_workflow, "help": handle_help, "hilfe": handle_help, "allclear000": handle_allclear}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     if msg.sender == "user":
