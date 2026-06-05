@@ -4,10 +4,10 @@
 > *8 Agents. 180 Modules. Zero cloud dependency. Zero uncontrolled sprawl.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-139-blue.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#)
-[![Modules](https://img.shields.io/badge/Modules-180-blue.svg)](#)
-[![Linting](https://img.shields.io/badge/Linting-Ruff-orange.svg)](#)
+[![LLM](https://img.shields.io/badge/LLM-DeepSeek_R1-brightgreen.svg)](#)
 
 ---
 
@@ -66,12 +66,7 @@ Gnom-Hub includes an isolated, database-mocked test suite using `pytest`:
 python3 -m pytest tests/ -v
 ```
 
-This runs 32 automated unit and integration tests covering:
-- **Connection Layer:** WAL mode, foreign keys, row factories, and context management.
-- **State Repository:** State key-value get/set and schema defaults.
-- **Agent Repository:** Agent registration, limits, active job tracking, and daemons.
-- **Chat Repository:** Message persistence, history retrieval, and project database scoping.
-- **Admin Authentication:** IP-based and Bearer Token authentication security checks.
+This runs **139 automated unit and integration tests** covering connection, state, agents, chat, admin auth, routing, stability, workflow engine, and security.
 
 ---
 
