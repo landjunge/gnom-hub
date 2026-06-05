@@ -358,6 +358,38 @@ def save_preset(p: SavePresetPayload):
     return {"status": "success", "file": str(preset_file)}
 
 
+@router.get("/api/presets")
+def list_presets():
+    from gnom_hub.core.config import CONFIG_DIR
+    pdir = CONFIG_DIR / "presets"
+    if not pdir.exists():
+        return []
+    presets = []
+    for f in sorted(pdir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            presets.append({"name": data.get("name","?"), "description": data.get("description",""), "file": f.name})
+        except Exception:
+            pass
+    return presets
+
+
+class LoadPresetPayload(BaseModel):
+    file: str
+
+@router.post("/api/presets/load")
+def load_preset(p: LoadPresetPayload):
+    from gnom_hub.core.config import CONFIG_DIR
+    from gnom_hub.db import set_state_value
+    preset_file = CONFIG_DIR / "presets" / p.file
+    if not preset_file.exists():
+        raise HTTPException(404, "Preset not found")
+    data = json.loads(preset_file.read_text(encoding="utf-8"))
+    if data.get("agent_settings"):
+        set_state_value("agent_settings", data["agent_settings"])
+    return {"status": "ok", "name": data.get("name","")}
+
+
 class SwarmCompletePayload(BaseModel):
     context_id: str
     agent_name: str

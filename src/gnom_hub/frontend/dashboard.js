@@ -1540,6 +1540,7 @@ window.showAgentTuning = function(agentId) {
     {id:'blockaden', label:'🛡️ Blockaden'},
     {id:'tools', label:'🔧 Tools'},
     {id:'tuning', label:'🎚️ Verhalten'},
+    {id:'presets', label:'💾 Presets'},
   ];
   html += '<div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">';
   tabs.forEach(t => {
@@ -1796,6 +1797,62 @@ window.tuningSaveBehavior = async function(agentId) {
   const msg = document.getElementById('tmsg-behavior');
   if (r !== null) { if (msg) { msg.textContent='✓ Gespeichert'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
   else { if (msg) { msg.textContent='Fehler'; msg.style.color='#f00'; } }
+};
+
+// ── Tab: Presets ──
+window.tuningRender_presets = async function(agentId) {
+  const el = document.getElementById('tuning-content'); if (!el) return;
+  el.innerHTML = '<div style="color:rgba(255,255,255,0.3);padding:20px;text-align:center;">Lade Presets...</div>';
+  let settings = {}, llm = {}, presets = [];
+  try { settings = await api('GET', '/agents/' + agentId + '/settings') || {}; } catch(e){}
+  try { llm = await api('GET', '/llm/agents') || {}; } catch(e){}
+  try { presets = await api('GET', '/presets') || []; } catch(e){}
+
+  let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
+  html += '<h3 style="margin:0;font-size:0.95rem;">💾 Presets <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">— Konfiguration speichern & laden</span></h3>';
+
+  // Save current as preset
+  html += '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;">';
+  html += '<div style="flex:1;min-width:150px;"><label style="font-size:0.7rem;display:block;margin-bottom:2px;">Preset-Name</label><input id="tpreset-name" placeholder="z.B. Web Development" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:6px;font-size:0.75rem;"></div>';
+  html += '<div style="flex:2;min-width:200px;"><label style="font-size:0.7rem;display:block;margin-bottom:2px;">Beschreibung</label><input id="tpreset-desc" placeholder="Kurze Beschreibung..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:6px;font-size:0.75rem;"></div>';
+  html += '<div><button onclick="tuningSavePreset()" style="padding:6px 16px;font-size:0.75rem;font-weight:700;background:rgba(0,200,100,0.15);border:1px solid rgba(0,200,100,0.3);color:#0f0;border-radius:6px;cursor:pointer;white-space:nowrap;">💾 Speichern</button></div>';
+  html += '</div>';
+
+  // Preset list
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  html += '<div style="font-size:0.7rem;color:rgba(255,255,255,0.5);">Gespeicherte Presets (' + presets.length + ')</div>';
+  if (!presets.length) {
+    html += '<div style="color:rgba(255,255,255,0.2);padding:20px;text-align:center;">Keine Presets vorhanden</div>';
+  } else {
+    presets.forEach(p => {
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;">';
+      html += '<div style="flex:1;min-width:0;"><div style="font-size:0.8rem;font-weight:600;">' + escapeHtml(p.name) + '</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.4);">' + escapeHtml(p.description||'').substring(0,100) + '</div></div>';
+      html += '<button onclick="tuningLoadPreset(\'' + p.file + '\')" style="padding:5px 12px;font-size:0.7rem;font-weight:700;background:rgba(0,150,255,0.15);border:1px solid rgba(0,150,255,0.3);color:#0af;border-radius:4px;cursor:pointer;">📥 Laden</button>';
+      html += '</div>';
+    });
+  }
+  html += '</div></div>';
+  el.innerHTML = html;
+};
+
+window.tuningSavePreset = async function() {
+  const name = document.getElementById('tpreset-name')?.value?.trim();
+  const desc = document.getElementById('tpreset-desc')?.value?.trim();
+  if (!name || !desc) { toast('Name und Beschreibung erforderlich', 'warning'); return; }
+  const r = await api('POST', '/presets/save', {name, description: desc});
+  if (r && r.status === 'success') {
+    toast('Preset "' + name + '" gespeichert', 'success');
+    tuningRender_presets(window._tuningAgentId);
+  } else { toast('Fehler beim Speichern', 'error'); }
+};
+
+window.tuningLoadPreset = async function(file) {
+  if (!confirm('Preset laden? Überschreibt aktuelle Einstellungen aller Agenten.')) return;
+  const r = await api('POST', '/presets/load', {file});
+  if (r && r.status === 'ok') {
+    toast('Preset geladen: ' + r.name, 'success');
+    tuningRender_presets(window._tuningAgentId);
+  } else { toast('Fehler beim Laden', 'error'); }
 };
 
 window.generateAutoPreset = async function() {
