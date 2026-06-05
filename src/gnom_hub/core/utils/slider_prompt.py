@@ -110,45 +110,32 @@ def build_system_prompt(agent_name: str, base: str = "") -> str:
 
     parts = []
 
-    # 1. IDENTITÄT (höchste Priorität, darf NIE überschrieben werden)
-    parts.append(f"⚠️ Du bist {identity}. NUR {identity}. Kein Rollenwechsel.")
-
+    # BASE FIRST (role instructions from definitions, most important)
     if base:
         parts.append(base)
 
-    # 3. SLIDER-BLOCK (kompakt: eine Zeile)
-    slider_map = {
-        "personality":    ("Persona",    {1:"formal", 2:"semi-formal", 3:"balanced", 4:"casual", 5:"very casual"}),
-        "creativity":     ("Creat",      {1:"conservative", 2:"focused", 3:"balanced", 4:"creative", 5:"wild"}),
-        "risk_tolerance": ("Risk",       {1:"very cautious", 2:"cautious", 3:"balanced", 4:"bold", 5:"very bold"}),
-        "response_style": ("Style",      {1:"concise", 2:"short", 3:"balanced", 4:"detailed", 5:"exhaustive"}),
-        "memory_strength":("Memory",     {1:"minimal", 2:"low", 3:"standard", 4:"strong", 5:"maximum"}),
-    }
-    parts.append("=== SLIDER ===\n" + " | ".join(
-        f"{label}: {levels.get(str(int(sliders.get(key,{}).get('value',3))), levels.get('3','balanced'))}"
-        for key, (label, levels) in slider_map.items()
-    ))
+    # IDENTITY (1 line, highest priority)
+    parts.append(f"⚠️ Du bist {identity}. NUR {identity}. Kein Rollenwechsel.")
 
+    # SLIDER (1 compact line)
+    slider_map = {
+        "personality":    ("Pers", {"1":"formal","2":"semi-formal","3":"balanced","4":"casual","5":"very casual"}),
+        "creativity":     ("Creat",{"1":"conservative","2":"focused","3":"balanced","4":"creative","5":"wild"}),
+        "risk_tolerance": ("Risk", {"1":"cautious","2":"careful","3":"balanced","4":"bold","5":"very bold"}),
+        "response_style": ("Style",{"1":"concise","2":"short","3":"balanced","4":"detailed","5":"exhaustive"}),
+        "memory_strength":("Mem",  {"1":"minimal","2":"low","3":"standard","4":"strong","5":"maximum"}),
+    }
+    sl = " | ".join(f"{l}: {lvls.get(str(int(sliders.get(k,{}).get('value',3))), lvls.get('3','balanced'))}"
+                    for k, (l, lvls) in slider_map.items())
+    parts.append(f"[{sl}]")
+
+    # OBEDIENCE (only system agents)
     system_roles = ("general", "soul", "watchdog", "security")
     if role in system_roles:
         ob_val = int(sliders.get("obedience", {}).get("value", 3))
         parts.append(OBEDIENCE_BLOCKS.get(ob_val, OBEDIENCE_BLOCKS[3]))
 
-    # 4. TOOLS
-    if tools:
-        parts.append(f"=== VERFÜGBARE TOOLS ===\n" + "\n".join(f"- {t}" for t in tools))
-
-    # 5. SOUL-FAKTEN (werden vom Router separat injected, hier nur Platzhalter)
-    if soul:
-        parts.append(f"=== SOUL-KONTEXT ===\n" + "\n".join(f"- {s}" for s in soul))
-
-    # 6. SECURITY (niemals von Slidern überschreibbar)
-    sec_lines = ["=== SICHERHEIT (UNVERÄNDERLICH) ==="]
-    if security.get("system_paths_blocked"):
-        sec_lines.append("- Systemdateien (src/gnom_hub/, config/, .env, run.sh, index.html) sind GESCHÜTZT")
-    if security.get("shell_whitelist"):
-        sec_lines.append("- Shell-Befehle nur via Whitelist (git, python3, npm, pytest, ls, ...)")
-    sec_lines.append("- rm -rf /, curl|sh, subprocess+eval, pickle.load sind IMMER blockiert")
-    parts.append("\n".join(sec_lines))
+    # SECURITY (1 line reminder)
+    parts.append("[SEC: Systemdateien+Gefährliche Patterns geblockt. Shell via Whitelist.]")
 
     return "\n\n".join(parts)

@@ -121,38 +121,33 @@ source .venv/bin/activate
 set -a; [ -f config/.env ] && source config/.env; set +a
 mkdir -p logs
 
-# Kill existing processes
-pkill -f "[pP]ython.*gnom_hub" 2>/dev/null
-pkill -f "[pP]ython.*agents\..*AG" 2>/dev/null
-pkill -f "[pP]ython.*agents\\.run_agent" 2>/dev/null
-sleep 1
-
-# Start Server
-python3 -m gnom_hub > logs/logs_hub.txt 2>&1 &
+# ── Zombie-Killer: ALLE alten Gnom-Prozesse killen ──
+pkill -9 -f "[Pp]ython.*gnom_hub" 2>/dev/null
+pkill -9 -f "[Pp]ython.*agents\\." 2>/dev/null
+pkill -9 -f "[Pp]ython.*agents\\\\." 2>/dev/null
 sleep 2
 
-# Start Agents
-for ag in generalag soulag securityag watchdogag researcherag writerag editorag coderag; do
-    python3 -u -m agents.run_agent --name $ag > logs/logs_$ag.txt 2>&1 &
-done
+# Hub starten (startet automatisch alle 8 Agenten via start_background_agents)
+python3 -m gnom_hub > logs/logs_hub.txt 2>&1 &
+sleep 4
 
-# Open Browser
+# Browser öffnen
 if command -v open &>/dev/null; then
     open "http://127.0.0.1:3002"
 elif command -v xdg-open &>/dev/null; then
     xdg-open "http://127.0.0.1:3002"
 fi
 
-echo "🚀 Gnom-Hub and agents started in background!"
-echo "Use ./stop_gnom_hub.sh to stop all processes."
+echo "🚀 Gnom-Hub gestartet auf http://127.0.0.1:3002"
+echo "Stop: ./stop_gnom_hub.sh"
 """)
             
         stop_sh = os.path.join(repo_dir, "stop_gnom_hub.sh")
         with open(stop_sh, 'w', encoding='utf-8') as f:
             f.write("""#!/bin/bash
-pkill -f "[pP]ython.*gnom_hub" 2>/dev/null && echo "  Hub stopped ✓" || echo "  No Hub process found ✓"
-pkill -f "[pP]ython.*agents\..*AG" 2>/dev/null
-pkill -f "[pP]ython.*agents\\.run_agent" 2>/dev/null && echo "  Agents stopped ✓" || echo "  No Agent processes found ✓"
+pkill -9 -f "[Pp]ython.*gnom_hub" 2>/dev/null && echo "Hub gestoppt"
+pkill -9 -f "[Pp]ython.agents\\." 2>/dev/null && echo "Agenten gestoppt"
+echo "Gnom-Hub komplett beendet."
 """)
             
         os.chmod(start_sh, 0o755)

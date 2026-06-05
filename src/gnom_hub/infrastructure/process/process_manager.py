@@ -29,8 +29,35 @@ def _kill_proc(name: str) -> None:
 def start_background_agents() -> None:
     log_dir = PROJECT_ROOT / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Aggressiv ALLE alten Agent-Prozesse killen (auch Zombies ohne PID-File)
+    import signal
     for a in AGENTS:
         _kill_proc(a)
+    # Zusätzlich: pkill für standalone runner
+    try:
+        subprocess.run(["pkill", "-f", "agents\\.run_agent"], capture_output=True, timeout=5)
+    except Exception:
+        pass
+    try:
+        subprocess.run(["pkill", "-f", "agents\\.[a-z]+AG"], capture_output=True, timeout=5)
+    except Exception:
+        pass
+    import time; time.sleep(1)
+
+    # 2. Alle Agenten in DB auf online zurücksetzen
+    try:
+        from gnom_hub.db.connection import get_db_connection
+        conn = get_db_connection()
+        conn.execute("UPDATE agents SET status='online', circuit_state='CLOSED', consecutive_failures=0")
+        conn.execute("UPDATE agent_messages SET status='done', completed_at=? WHERE status IN ('processing','pending')", (time.time(),))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logging.getLogger(__name__).warning("DB cleanup bei Agent-Start fehlgeschlagen: %s", e)
+
+    # 3. Frische Agenten starten
+    for a in AGENTS:
         with open(log_dir / f"logs_{a}.txt", "w") as f:
             p = subprocess.Popen([sys.executable, "-u", "-m", f"agents.{a}"], stdout=f, stderr=subprocess.STDOUT, cwd=str(PROJECT_ROOT))
             (RUN_DIR / f"{a}.pid").write_text(str(p.pid))
