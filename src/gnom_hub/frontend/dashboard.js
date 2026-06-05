@@ -1526,7 +1526,10 @@ window.showAgentTuning = function(agentId) {
   const allAgents = (window.agents || []);
 
   let html = '<div style="display:flex;flex-direction:column;gap:14px;height:100%;">';
-  html += '<h2 style="color:var(--accent);margin:0;display:flex;align-items:center;gap:12px;">🎛️ Agent Tuning <span style="font-size:0.7rem;color:rgba(255,255,255,0.3);font-weight:400;">Prompt · Soul · Blockaden · Tools · Verhalten</span></h2>';
+  html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:4px;">';
+  html += '<img id="tuning-avatar" src="" style="width:48px;height:48px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);object-fit:cover;" onerror="this.src=\'/static/avatars/generalag.png\'">';
+  html += '<div><h2 style="color:var(--accent);margin:0;font-size:1.1rem;">🎛️ Agent Tuning</h2><div id="tuning-agentname" style="font-size:0.8rem;font-weight:600;margin-top:2px;">Agent wählen</div></div>';
+  html += '</div>';
 
   html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
   allAgents.forEach(a => {
@@ -1564,6 +1567,15 @@ window.tuningSelect = function(agentId) {
     const btn = document.getElementById('atab-' + a.id);
     if (btn) { btn.style.background = a.id === agentId ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)'; btn.style.borderColor = a.id === agentId ? 'var(--agent-color, var(--accent))' : 'rgba(255,255,255,0.1)'; btn.style.color = a.id === agentId ? '#fff' : 'rgba(255,255,255,0.6)'; btn.style.setProperty('--agent-color', agentColor(a.name)); }
   });
+  // Avatar in Header updaten
+  const agent = allAgents.find(a => a.id === agentId);
+  if (agent) {
+    const avatarUrl = (window.getAgentAvatarUrl ? window.getAgentAvatarUrl(agent.name) : null) || '/static/avatars/' + agent.name.toLowerCase() + '.png';
+    const avEl = document.getElementById('tuning-avatar');
+    const avNameEl = document.getElementById('tuning-agentname');
+    if (avEl) avEl.src = avatarUrl;
+    if (avNameEl) { avNameEl.textContent = agent.name; avNameEl.style.color = agentColor(agent.name); }
+  }
   tuningSwitchTab(window._tuningTab || 'tuning');
 };
 
