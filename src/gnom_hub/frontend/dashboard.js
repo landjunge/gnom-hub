@@ -1541,6 +1541,7 @@ window.showAgentTuning = function(agentId) {
     {id:'tools', label:'🔧 Tools'},
     {id:'tuning', label:'🎚️ Verhalten'},
     {id:'presets', label:'💾 Presets'},
+    {id:'bake', label:'🏭 Bake'},
   ];
   html += '<div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">';
   tabs.forEach(t => {
@@ -1852,7 +1853,73 @@ window.tuningLoadPreset = async function(file) {
   if (r && r.status === 'ok') {
     toast('Preset geladen: ' + r.name, 'success');
     tuningRender_presets(window._tuningAgentId);
-  } else { toast('Fehler beim Laden', 'error'); }
+  }   else { toast('Fehler beim Laden', 'error'); }
+};
+
+// ── Tab: Bake ──
+window.tuningRender_bake = async function(agentId) {
+  const el = document.getElementById('tuning-content'); if (!el) return;
+  el.innerHTML = '<div style="color:rgba(255,255,255,0.3);padding:20px;text-align:center;">Lade...</div>';
+  let presets = [];
+  try { presets = await api('GET', '/presets') || []; } catch(e){}
+  let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:16px;">';
+  html += '<h3 style="margin:0;font-size:0.95rem;">🏭 SuperGNOM backen <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">— Standalone exportieren</span></h3>';
+  html += '<p style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin:0;">Erzeugt ein lauffähiges, portables Gnom-Hub Paket mit allen 8 Agenten, API-Key, Workspace und Presets.</p>';
+
+  // Name
+  html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:3px;">SuperGNOM-Name</label><input id="tbake-name" placeholder="z.B. meine_agenten" style="width:100%;max-width:400px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:8px;font-size:0.8rem;"></div>';
+
+  // Preset-Auswahl
+  html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:3px;">Preset (optional)</label><select id="tbake-preset" style="width:100%;max-width:400px;background:rgba(0,0,0,0.3);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:8px;font-size:0.8rem;">';
+  html += '<option value="">— Kein Preset (aktuellen Zustand backen) —</option>';
+  presets.forEach(p => { html += '<option value="' + p.file + '">' + escapeHtml(p.name) + '</option>'; });
+  html += '</select></div>';
+
+  // Template
+  html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:3px;">Template</label><select id="tbake-tpl" style="width:100%;max-width:400px;background:rgba(0,0,0,0.3);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:8px;font-size:0.8rem;">';
+  html += '<option value="chat">Chat (Standard)</option><option value="minimal">Minimal (nur API)</option><option value="full">Full (Chat + Workspace)</option></select></div>';
+
+  // Features
+  html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+  html += '<label style="font-size:0.7rem;">Features</label>';
+  html += '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+  html += '<label style="font-size:0.7rem;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="tbake-api" checked> API-Key einbacken</label>';
+  html += '<label style="font-size:0.7rem;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="tbake-run" checked> run.sh / run.bat</label>';
+  html += '<label style="font-size:0.7rem;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="tbake-ws"> Workspace kopieren</label>';
+  html += '</div></div>';
+
+  // Bake Button
+  html += '<button onclick="tuningDoBake()" style="padding:10px 20px;font-size:0.85rem;font-weight:700;background:rgba(255,150,0,0.2);border:1px solid rgba(255,150,0,0.5);color:#fa0;border-radius:8px;cursor:pointer;max-width:300px;transition:all 0.2s;" onmouseover="this.style.background=\'rgba(255,150,0,0.3)\'" onmouseout="this.style.background=\'rgba(255,150,0,0.2)\'">🔥 JETZT BACKEN</button>';
+  html += '<div id="tbake-result" style="font-size:0.7rem;min-height:20px;"></div>';
+  html += '</div>';
+  el.innerHTML = html;
+};
+
+window.tuningDoBake = async function() {
+  const name = document.getElementById('tbake-name')?.value?.trim();
+  const preset = document.getElementById('tbake-preset')?.value;
+  const tpl = document.getElementById('tbake-tpl')?.value || 'chat';
+  const withKey = document.getElementById('tbake-api')?.checked;
+  const resultEl = document.getElementById('tbake-result');
+  if (!name) { toast('Bitte Namen eingeben', 'warning'); return; }
+  resultEl.innerHTML = '<span style="color:#fa0;">⏳ Backe... das kann 10-30 Sekunden dauern.</span>';
+  resultEl.style.color = '#fa0';
+  try {
+    const body = {name, template: tpl, embed_api_key: withKey};
+    if (preset) body.preset_file = preset;
+    const r = await api('POST', '/admin/bake', body);
+    if (r && r.status === 'ok') {
+      resultEl.innerHTML = '<span style="color:#0f0;">✅ Gebacken! Ordner: <b style="font-family:monospace;">' + r.path + '</b></span>';
+      resultEl.style.color = '#0f0';
+      toast('SuperGNOM gebacken!', 'success');
+    } else {
+      resultEl.innerHTML = '<span style="color:#f44;">❌ Fehler: ' + (r?.error || 'Unbekannt') + '</span>';
+      resultEl.style.color = '#f44';
+    }
+  } catch(e) {
+    resultEl.innerHTML = '<span style="color:#f44;">❌ Fehler: ' + e.message + '</span>';
+    resultEl.style.color = '#f44';
+  }
 };
 
 window.generateAutoPreset = async function() {

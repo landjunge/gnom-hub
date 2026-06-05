@@ -198,6 +198,8 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
         f"HOST=127.0.0.1\n"
         f"DEFAULT_LLM_PROVIDER={os.getenv('DEFAULT_LLM_PROVIDER', 'ollama')}\n"
     )
+    if os.getenv("DEEPSEEK_API_KEY"):
+        env_content += f"DEEPSEEK_API_KEY={os.getenv('DEEPSEEK_API_KEY')}\n"
     if os.getenv("OPENROUTER_API_KEY"):
         env_content += f"OPENROUTER_API_KEY={os.getenv('OPENROUTER_API_KEY')}\n"
     if os.getenv("OLLAMA_BASE_URL"):
@@ -205,6 +207,16 @@ def bake_supergnom(name: str, template: str = "chat") -> str:
     
     with open(cfg_dest / ".env", "w", encoding="utf-8") as f:
         f.write(env_content)
+
+    # Write keys.txt for easy API key access
+    keys_lines = []
+    if os.getenv("DEEPSEEK_API_KEY"):
+        keys_lines.append(f"DEEPSEEK_API_KEY={os.getenv('DEEPSEEK_API_KEY')}")
+    if os.getenv("OPENROUTER_API_KEY"):
+        keys_lines.append(f"OPENROUTER_API_KEY={os.getenv('OPENROUTER_API_KEY')}")
+    if keys_lines:
+        with open(dist_dir / "keys.txt", "w", encoding="utf-8") as f:
+            f.write("\n".join(keys_lines) + "\n")
 
     # Write Unix execution startup script (run.sh)
     run_sh_content = (
