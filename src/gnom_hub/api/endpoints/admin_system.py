@@ -28,9 +28,20 @@ def health():
 def nuke_restart(request: Request):
     if request.client and request.client.host not in ("127.0.0.1", "::1", "localhost") and request.headers.get("X-Hub-Secret") != _get_or_create_secret().hex():
         return {"error": "Unauthorized"}
-    killed = []
-    for t in ["generalAG", "soulAG", "watchdogAG", "securityAG", "writerAG", "editorAG", "researcherAG", "coderAG", os.environ.get("GNOM_HUB_PORT", "3002")]:
-        _kill_proc(t)
-        killed.append(t)
+    import subprocess
+    killed = 0
+    # Aggressive kill: ALLE Gnom-Prozesse (auch Zombies ohne PID-File)
+    for pattern in ["gnom_hub", "hub_app", "agents\\."]:
+        try:
+            r = subprocess.run(["pkill", "-9", "-f", pattern], capture_output=True, text=True, timeout=5)
+            killed += 1
+        except Exception:
+            pass
+    # Auch nach PID-Dateien
+    for t in ["generalAG","soulAG","watchdogAG","securityAG","writerAG","editorAG","researcherAG","coderAG"]:
+        try:
+            _kill_proc(t)
+        except Exception:
+            pass
     threading.Timer(1.5, restart_hub).start()
-    return {"status": "nuked", "killed": killed}
+    return {"status": "nuked", "msg": "Alle Prozesse gekillt, Hub startet neu in 1.5s"}
