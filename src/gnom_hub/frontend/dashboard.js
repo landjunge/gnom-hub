@@ -1514,16 +1514,269 @@ window.getAgentAvatarUrl = function(agentId) {
 };
 
 window.showAgentTuning = function() {
-  if (selectedId && typeof selectAgent === 'function') {
-    selectAgent(selectedId);
-  } else {
-    const workers = (agents || []).filter(a => ['coderag','writerag','researcherag','editorag'].includes((a.name||'').toLowerCase()));
-    if (workers.length > 0 && typeof selectAgent === 'function') {
-      selectAgent(workers[0].id);
-    } else {
-      toast('Keine Agenten gefunden.', 'warning');
-    }
-  }
+  if (typeof showWarRoom !== 'function') return;
+  window.viewHistory.push('war-room');
+  window.currentView = 'agent-tuning';
+  if (window.updateBackButtonState) window.updateBackButtonState();
+  const el = document.getElementById('content');
+  if (!el) return;
+  window._tuningAgentId = null;
+  window._tuningTab = 'tuning';
+
+  const workers = (window.agents || []).filter(a =>
+    ['coderag','writerag','researcherag','editorag'].includes((a.name||'').toLowerCase())
+  );
+
+  let html = '<div style="display:flex;flex-direction:column;gap:14px;height:100%;">';
+  html += '<h2 style="color:var(--accent);margin:0;display:flex;align-items:center;gap:12px;">🎛️ Agent Tuning <span style="font-size:0.7rem;color:rgba(255,255,255,0.3);font-weight:400;">Prompt · Soul · Blockaden · Tools · Verhalten</span></h2>';
+
+  // Agent-Tabs
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  workers.forEach(a => {
+    const col = agentColor(a.name);
+    html += '<button class="btn-primary" id="atab-' + a.id + '" onclick="tuningSelect(\'' + a.id + '\')" style="background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:6px 14px;font-size:0.8rem;cursor:pointer;border-radius:6px;">' + a.name + '</button>';
+  });
+  html += '</div>';
+
+  // Tab-Bar
+  const tabs = [
+    {id:'prompt', label:'📝 Prompt'},
+    {id:'soul', label:'💡 Soul'},
+    {id:'blockaden', label:'🛡️ Blockaden'},
+    {id:'tools', label:'🔧 Tools'},
+    {id:'tuning', label:'🎚️ Verhalten'},
+  ];
+  html += '<div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">';
+  tabs.forEach(t => {
+    html += '<button class="ttab" id="ttab-' + t.id + '" onclick="tuningSwitchTab(\'' + t.id + '\')" style="padding:6px 14px;font-size:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;">' + t.label + '</button>';
+  });
+  html += '</div>';
+
+  // Content-Area
+  html += '<div id="tuning-content" style="flex:1;overflow-y:auto;padding-right:4px;"></div>';
+  html += '</div>';
+  el.innerHTML = html;
+
+  // Select first worker
+  if (workers.length > 0) tuningSelect(workers[0].id);
+};
+
+window.tuningSelect = function(agentId) {
+  window._tuningAgentId = agentId;
+  const workers = (window.agents || []).filter(a => ['coderag','writerag','researcherag','editorag'].includes((a.name||'').toLowerCase()));
+  workers.forEach(a => {
+    const btn = document.getElementById('atab-' + a.id);
+    if (btn) { btn.style.background = a.id === agentId ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)'; btn.style.borderColor = a.id === agentId ? 'var(--agent-color, var(--accent))' : 'rgba(255,255,255,0.1)'; btn.style.color = a.id === agentId ? '#fff' : 'rgba(255,255,255,0.6)'; btn.style.setProperty('--agent-color', agentColor(a.name)); }
+  });
+  tuningSwitchTab(window._tuningTab || 'tuning');
+};
+
+window.tuningSwitchTab = function(tabId) {
+  window._tuningTab = tabId;
+  document.querySelectorAll('.ttab').forEach(b => { b.style.color='rgba(255,255,255,0.4)'; b.style.borderBottomColor='transparent'; });
+  const t = document.getElementById('ttab-' + tabId);
+  if (t) { t.style.color='var(--accent)'; t.style.borderBottomColor='var(--accent)'; }
+  const fn = 'tuningRender_' + tabId;
+  if (typeof window[fn] === 'function') window[fn](window._tuningAgentId);
+};
+
+// ── Tab: Prompt ──
+window.tuningRender_prompt = async function(agentId) {
+  const el = document.getElementById('tuning-content'); if (!el) return;
+  const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
+  const key = agent.name.toLowerCase();
+  let settings = {};
+  try { const r = await api('GET', '/agents/' + agentId + '/settings'); if (r) settings = r; } catch(e){}
+  el.innerHTML = '<div class="panel" style="display:flex;flex-direction:column;gap:12px;padding:16px;">'
+    + '<div><label style="font-size:0.75rem;font-weight:600;margin-bottom:4px;display:block;">System-Prompt</label><textarea id="tsp-sys" style="width:100%;min-height:200px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:6px;padding:10px;font-family:monospace;font-size:0.75rem;resize:vertical;">' + escapeHtml((settings.sys_prompt||'')) + '</textarea></div>'
+    + '<div><label style="font-size:0.75rem;font-weight:600;margin-bottom:4px;display:block;">Custom Suffix (wird angehängt)</label><textarea id="tsp-custom" style="width:100%;min-height:120px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:6px;padding:10px;font-family:monospace;font-size:0.75rem;resize:vertical;">' + escapeHtml((settings.custom_prompt||'')) + '</textarea></div>'
+    + '<button onclick="tuningSavePrompt(\'' + agentId + '\',\'' + key + '\')" style="padding:8px;font-size:0.8rem;font-weight:700;background:rgba(0,200,100,0.15);border:1px solid rgba(0,200,100,0.3);color:#0f0;border-radius:6px;cursor:pointer;">💾 Prompt speichern</button>'
+    + '<div id="tmsg-prompt" style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;"></div>'
+    + '</div>';
+};
+
+window.tuningSavePrompt = async function(agentId, key) {
+  const sysP = document.getElementById('tsp-sys')?.value || '';
+  const custP = document.getElementById('tsp-custom')?.value || '';
+  const r = await api('PUT', '/agents/' + agentId + '/settings', {sys_prompt: sysP, custom_prompt: custP});
+  const msg = document.getElementById('tmsg-prompt');
+  if (r !== null) { if (msg) { msg.textContent='✓ Gespeichert'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
+  else { if (msg) { msg.textContent='Fehler'; msg.style.color='#f00'; } }
+};
+
+// ── Tab: Soul ──
+window.tuningRender_soul = async function(agentId) {
+  const el = document.getElementById('tuning-content'); if (!el) return;
+  const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
+  el.innerHTML = '<div style="color:rgba(255,255,255,0.3);padding:20px;text-align:center;">Lade Soul-Daten...</div>';
+  let facts = [];
+  try { const r = await api('GET', '/soul/all/' + agent.name); if (Array.isArray(r)) facts = r; } catch(e){}
+  let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:12px;">';
+  html += '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">';
+  html += '<div style="flex:1;min-width:150px;"><label style="font-size:0.7rem;display:block;margin-bottom:2px;">Filter</label><input id="tsoul-filter" placeholder="Suche..." oninput="tuningSoulFilter()" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:6px;font-size:0.75rem;"></div>';
+  html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:2px;">Priorität</label><select id="tsoul-prio" onchange="tuningSoulFilter()" style="background:rgba(0,0,0,0.3);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:6px;font-size:0.75rem;"><option value="">Alle</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>';
+  html += '<div><button onclick="tuningSoulAdd(\'' + agentId + '\',\'' + agent.name + '\')" style="padding:6px 12px;font-size:0.75rem;background:rgba(0,150,255,0.15);border:1px solid rgba(0,150,255,0.3);color:#0af;border-radius:6px;cursor:pointer;white-space:nowrap;">➕ Neu</button></div>';
+  html += '</div>';
+  html += '<div id="tsoul-cnt" style="font-size:0.7rem;color:rgba(255,255,255,0.4);">' + facts.length + ' Fakten</div>';
+  html += '<div id="tsoul-list" style="max-height:500px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>';
+  html += '</div>';
+  el.innerHTML = html;
+  window._tuningSoulFacts = facts;
+  window._tuningSoulAgent = agent;
+  tuningSoulRenderList();
+};
+
+window.tuningSoulFilter = function() { tuningSoulRenderList(); };
+window.tuningSoulRenderList = function() {
+  const filter = (document.getElementById('tsoul-filter')?.value || '').toLowerCase();
+  const prio = document.getElementById('tsoul-prio')?.value || '';
+  let facts = window._tuningSoulFacts || [];
+  if (filter) facts = facts.filter(f => (f.key||'').toLowerCase().includes(filter) || (f.value||'').toLowerCase().includes(filter));
+  if (prio) facts = facts.filter(f => f.priority === prio);
+  const el = document.getElementById('tsoul-list'); if (!el) return;
+  document.getElementById('tsoul-cnt').textContent = facts.length + ' Fakten';
+  if (!facts.length) { el.innerHTML = '<div style="color:rgba(255,255,255,0.2);padding:20px;text-align:center;">Keine Fakten gefunden</div>'; return; }
+  el.innerHTML = facts.map(f => {
+    const pc = f.priority==='high'?'#ff9900':f.priority==='low'?'#888':'#aaa';
+    const k_enc = f.key.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+    const v_enc = (f.value||'').substring(0,80).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+    return '<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:8px 10px;display:flex;gap:8px;align-items:flex-start;"><div style="flex:1;min-width:0;"><div style="font-size:0.7rem;font-weight:600;color:'+pc+';margin-bottom:3px;word-break:break-word;">'+escapeHtml(f.key)+'</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.5);word-break:break-word;">'+escapeHtml(f.value||'').substring(0,200)+'</div></div><div style="display:flex;gap:3px;flex-shrink:0;"><button data-soulkey="'+k_enc+'" data-soulval="'+v_enc+'" data-soulprio="'+f.priority+'" onclick="tuningSoulEditBtn(this)" style="background:none;border:none;color:#0af;cursor:pointer;font-size:0.7rem;padding:2px;" title="Bearbeiten">✏️</button><button data-soulkey="'+k_enc+'" onclick="tuningSoulDelBtn(this)" style="background:none;border:none;color:#f44;cursor:pointer;font-size:0.7rem;padding:2px;" title="Löschen">✕</button></div></div>';
+  }).join('');
+};
+
+window.tuningSoulAdd = function(agentId, agentName) {
+  const key = prompt('Key (z.B. "projekt_sprache"):');
+  if (!key) return;
+  const value = prompt('Wert:');
+  if (!value) return;
+  const priority = prompt('Priorität (high/medium/low):', 'medium') || 'medium';
+  api('POST', '/soul/save', {key, value, priority}).then(r => {
+    if (r && r.status === 'ok') { toast('Fakt gespeichert', 'success'); tuningRender_soul(agentId); }
+    else { toast('Fehler', 'error'); }
+  });
+};
+
+window.tuningSoulDelete = function(agentId, key) {
+  if (!confirm('Fakt "' + key + '" wirklich löschen?')) return;
+  api('POST', '/soul/delete', {key}).then(r => {
+    if (r && r.status === 'ok') { toast('Gelöscht', 'info'); tuningRender_soul(agentId); }
+    else { toast('Fehler', 'error'); }
+  });
+};
+
+window.tuningSoulEditBtn = function(btn) {
+  const key = btn.getAttribute('data-soulkey');
+  const val = btn.getAttribute('data-soulval');
+  const prio = btn.getAttribute('data-soulprio');
+  const newVal = prompt('Wert bearbeiten:', val);
+  if (newVal === null) return;
+  const newPrio = prompt('Priorität (high/medium/low):', prio) || prio;
+  api('POST', '/soul/save', {key, value: newVal, priority: newPrio}).then(r => {
+    if (r && r.status === 'ok') { toast('Aktualisiert', 'success'); tuningRender_soul(window._tuningAgentId); }
+    else { toast('Fehler', 'error'); }
+  });
+};
+
+window.tuningSoulDelBtn = function(btn) {
+  const key = btn.getAttribute('data-soulkey');
+  if (!confirm('Fakt "' + key + '" löschen?')) return;
+  api('POST', '/soul/delete', {key}).then(r => {
+    if (r && r.status === 'ok') { toast('Gelöscht', 'info'); tuningRender_soul(window._tuningAgentId); }
+    else { toast('Fehler', 'error'); }
+  });
+};
+
+// ── Tab: Blockaden ──
+window.tuningRender_blockaden = function(agentId) {
+  const el = document.getElementById('tuning-content'); if (!el) return;
+  const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
+  el.innerHTML = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">'
+    + '<h3 style="margin:0;font-size:0.95rem;">🛡️ Schutz-Status für ' + agent.name + '</h3>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">'
+    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">📁 Systemdateien</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.6);line-height:1.6;">Geschützte Pfade:</div><div style="font-size:0.65rem;color:#f44;font-family:monospace;margin-top:4px;">src/gnom_hub/<br>config/<br>.env<br>run.sh<br>index.html</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Diese Dateien können von Workern NICHT geschrieben werden (auch nicht im Workspace)</div></div>'
+    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">⚠️ Gefährliche Patterns</div><div style="font-size:0.65rem;color:#ffa500;font-family:monospace;">rm -rf<br>os.system()<br>subprocess.*<br>eval() / exec()<br>pickle.load()<br>shutil.rmtree()</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Diese Code-Muster werden vor dem Schreiben geprüft und blockiert</div></div>'
+    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🐚 Shell-Schutz</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.6);">'
+    + (agent.role === 'general' ? '<span style="color:#f44;">GeneralAG: KEINE Shell-Befehle erlaubt</span>' : '<span style="color:#0f0;">Shell-Whitelist aktiv (git, python3, npm, ls, ...)</span>')
+    + '</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Gefährliche Befehle (rm -rf /, curl|sh, mkfs) werden immer blockiert</div></div>'
+    + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🔒 Workspace-Grenzen</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.6);">Schreiben/Lesen nur innerhalb:<br><span style="color:var(--accent);font-family:monospace;">gnom_workspace/default/</span></div><div style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-top:6px;">Zugriffe auf /etc/, /usr/ oder absolute Systempfade sind gesperrt</div></div>'
+    + '</div></div>';
+};
+
+// ── Tab: Tools ──
+window.tuningRender_tools = async function(agentId) {
+  const el = document.getElementById('tuning-content'); if (!el) return;
+  const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
+  el.innerHTML = '<div style="color:rgba(255,255,255,0.3);padding:20px;text-align:center;">Lade Tools...</div>';
+  let profile = {};
+  try { profile = await api('GET', '/agents/' + agentId + '/profile') || {}; } catch(e){}
+  const tools = profile.tools || [];
+  const allTools = [
+    {key:'read_file', icon:'📄', label:'Read'},
+    {key:'write_file', icon:'✏️', label:'Write'},
+    {key:'run_command', icon:'⚡', label:'Run'},
+    {key:'war_room_chat', icon:'💬', label:'@Job'},
+    {key:'browser', icon:'🌐', label:'Browser'},
+    {key:'generate_image', icon:'🎨', label:'Image'},
+    {key:'crawl_url', icon:'🕷️', label:'Crawl'},
+    {key:'evolve', icon:'🧬', label:'Evolve'},
+    {key:'sys_cmd', icon:'🔧', label:'Sys Cmd'},
+    {key:'desktop_action', icon:'🖥️', label:'Desktop'},
+    {key:'screenshot', icon:'📸', label:'Screenshot'},
+    {key:'create_agent', icon:'🤖', label:'Agent+'},
+  ];
+  let html = '<div class="panel" style="padding:16px;"><h3 style="margin:0 0 10px 0;font-size:0.95rem;">🔧 Tools & Capabilities</h3><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px;">';
+  allTools.forEach(t => {
+    const has = tools.includes(t.key);
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;"><span style="font-size:0.9rem;">' + t.icon + '</span><span style="font-size:0.7rem;color:' + (has ? '#39ff14' : 'rgba(255,255,255,0.25)') + ';">' + t.label + '</span><span style="margin-left:auto;font-size:0.7rem;">' + (has ? '✅' : '❌') + '</span></div>';
+  });
+  html += '</div>';
+  html += '<div style="font-size:0.6rem;color:rgba(255,255,255,0.25);margin-top:12px;">Tools werden über Permissions in <code>agent_definitions.py</code> gesteuert. LLM-Provider: ' + (profile.llm_provider||'–') + ' / ' + (profile.llm_model||'–') + '</div></div>';
+  el.innerHTML = html;
+};
+
+// ── Tab: Verhalten (Sliders) ──
+window.tuningRender_tuning = async function(agentId) {
+  const el = document.getElementById('tuning-content'); if (!el) return;
+  const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
+  const key = agent.name.toLowerCase();
+  let settings = {};
+  try { settings = await api('GET', '/agents/' + agentId + '/settings') || {}; } catch(e){}
+
+  const sliders = [
+    {id:'personality', label:'Persönlichkeit', vals:{1:'Formal',2:'Eher formal',3:'Ausgeglichen',4:'Locker',5:'Sehr locker'}},
+    {id:'creativity', label:'Kreativität', vals:{1:'Konservativ',2:'Fokussiert',3:'Ausgeglichen',4:'Kreativ',5:'Wild'}},
+    {id:'risk_tolerance', label:'Risiko', vals:{1:'Sehr vorsichtig',2:'Vorsichtig',3:'Ausgeglichen',4:'Mutig',5:'Sehr mutig'}},
+    {id:'response_style', label:'Antwort-Stil', vals:{1:'Sehr knapp',2:'Knapp',3:'Ausgeglichen',4:'Ausführlich',5:'Sehr ausführlich'}},
+    {id:'memory_strength', label:'Gedächtnis', vals:{1:'Minimal',2:'Gering',3:'Standard',4:'Stark',5:'Maximum'}},
+  ];
+
+  let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
+  html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Verhaltenseinstellungen</h3>';
+  sliders.forEach(sl => {
+    const val = settings[sl.id] ?? 3;
+    html += '<div style="display:flex;flex-direction:column;gap:3px;">';
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.75rem;"><span>' + sl.label + '</span><span id="tlbl-' + sl.id + '" style="font-weight:600;">' + sl.vals[val] + '</span></div>';
+    html += '<input type="range" id="tsl-' + sl.id + '" min="1" max="5" value="' + val + '" style="width:100%;" oninput="document.getElementById(\'tlbl-' + sl.id + '\').textContent={\'1\':\'' + sl.vals[1] + '\',\'2\':\'' + sl.vals[2] + '\',\'3\':\'' + sl.vals[3] + '\',\'4\':\'' + sl.vals[4] + '\',\'5\':\'' + sl.vals[5] + '\'}[this.value]">';
+    html += '</div>';
+  });
+  html += '<button onclick="tuningSaveBehavior(\'' + agentId + '\')" style="padding:8px;font-size:0.8rem;font-weight:700;background:rgba(0,200,100,0.15);border:1px solid rgba(0,200,100,0.3);color:#0f0;border-radius:6px;cursor:pointer;">💾 Verhalten speichern</button>';
+  html += '<div id="tmsg-behavior" style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;"></div>';
+  html += '</div>';
+  el.innerHTML = html;
+};
+
+window.tuningSaveBehavior = async function(agentId) {
+  const s = {
+    personality: parseInt(document.getElementById('tsl-personality')?.value || 3),
+    creativity: parseInt(document.getElementById('tsl-creativity')?.value || 3),
+    risk_tolerance: parseInt(document.getElementById('tsl-risk_tolerance')?.value || 3),
+    response_style: parseInt(document.getElementById('tsl-response_style')?.value || 3),
+    memory_strength: parseInt(document.getElementById('tsl-memory_strength')?.value || 3),
+  };
+  const r = await api('PUT', '/agents/' + agentId + '/settings', s);
+  const msg = document.getElementById('tmsg-behavior');
+  if (r !== null) { if (msg) { msg.textContent='✓ Gespeichert'; msg.style.color='#0f0'; setTimeout(()=>msg.textContent='',2000); } }
+  else { if (msg) { msg.textContent='Fehler'; msg.style.color='#f00'; } }
 };
 
 window.generateAutoPreset = async function() {

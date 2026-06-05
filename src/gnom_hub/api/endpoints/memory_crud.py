@@ -39,6 +39,37 @@ def delete_memory(m_id: str): SQLiteChatRepository().delete_by_id(m_id); return 
 @router.delete("/api/agents/{a_id}/memory")
 def clear_agent_memory(a_id: str): SQLiteChatRepository().delete_by_agent(a_id); return {"status": "ok"}
 
+class SoulSaveRequest(BaseModel):
+    key: str
+    value: str
+    priority: str = "medium"
+
+@router.post("/api/soul/save")
+def save_soul_fact(req: SoulSaveRequest):
+    from gnom_hub.db.connection import get_db_conn
+    with get_db_conn() as conn:
+        existing = conn.execute("SELECT key FROM soul_memory WHERE key = ?", (req.key,)).fetchone()
+        if existing:
+            conn.execute("UPDATE soul_memory SET value = ?, priority = ?, timestamp = ? WHERE key = ?",
+                         (req.value, req.priority, __import__('datetime').datetime.now().isoformat(), req.key))
+        else:
+            conn.execute("INSERT INTO soul_memory (key, value, priority, timestamp, agent) VALUES (?, ?, ?, ?, ?)",
+                         (req.key, req.value, req.priority, __import__('datetime').datetime.now().isoformat(), "System"))
+    return {"status": "ok"}
+
+
+@router.get("/api/soul/all/{agent_name}")
+def get_all_soul_facts(agent_name: str):
+    from gnom_hub.db.connection import get_db_conn
+    with get_db_conn() as conn:
+        facts = conn.execute(
+            "SELECT key, value, priority, timestamp, agent FROM soul_memory WHERE LOWER(agent) = LOWER(?) OR LOWER(agent) = 'system' OR agent = 'System' ORDER BY timestamp DESC LIMIT 100",
+            (agent_name,)
+        ).fetchall()
+        return [{"key": f["key"], "value": f["value"], "priority": f["priority"],
+                 "timestamp": f["timestamp"], "agent": f["agent"]} for f in facts]
+
+
 class SoulDeleteRequest(BaseModel):
     key: str
 
