@@ -31,6 +31,9 @@ def format_tools_prompt(soul: dict, name: str):
     if "generate_image" in t: syn += "\n  [IMAGE: prompt] — Generate image"
     if "browser" in t: syn += '\n  [BROWSER: {"action": "goto|click|type|read|screenshot", "target": "...", "value": "..."}]'
     syn += '\n  <SHOWBOX:lamp_index>["Slide 1 HTML", "Slide 2 HTML"]</SHOWBOX> — Showbox update.'
+    syn += '\n  LAYER-REGEL: Worker nutzen <SHOWBOX:worker> (Layer 2, orange).'
+    syn += '\n  System-Agenten (GeneralAG) nutzen <SHOWBOX:system> (Layer 1, cyan).'
+    syn += '\n  Der User sieht Layer 3 (grün). Ergebnisse immer im RICHTIGEN Layer abliefern.'
     char = f" – {soul['character']}" if soul.get("character") else ""
     intro = f"You are {name} ({soul.get('role', 'Agent')}{char})."
     if soul.get("directive"): intro += f"\n[PERSONALITY] {soul['directive']}"
@@ -69,6 +72,10 @@ def format_tools_prompt(soul: dict, name: str):
         "via <SHOWBOX> geliefert. NIEMALS langen Code, HTML, CSS, Konzepte oder Erklärungen "
         "direkt in den Chat schreiben. Der Chat ist NUR für kurze Statusmeldungen, "
         "Fragen und @Mentions da.\n"
+        "• SHOWBOX-LAYER-REGEL: Worker (CoderAG, WriterAG, ResearcherAG, EditorAG) liefern "
+        "ihre Ergebnisse im <SHOWBOX:worker> Layer (orange). "
+        "GeneralAG und System-Agenten nutzen <SHOWBOX:system> (cyan). "
+        "Jeder Agent liefert NUR in SEINEM zugewiesenen Layer.\n"
         "• WEBSITE-FERTIG-REGEL: Wenn eine Website oder größeres Projekt abgeschlossen ist: "
         "(1) In <SHOWBOX> präsentieren, (2) Dann [SHELL: open index.html] ausführen "
         "um die Seite automatisch im Browser zu öffnen.\n"
