@@ -368,7 +368,7 @@ function parseShowboxInMsg(m, overrideId) {
   }
   let showBoxFound = false;
   let showData = null;
-  const showboxMatch = rawContent.match(/<SHOWBOX(?::(\d+))?>([\s\S]*?)<\/SHOWBOX>/);
+  const showboxMatch = rawContent.match(/<SHOWBOX(?::(\w+))?>([\s\S]*?)<\/SHOWBOX>/i);
   
   if (showboxMatch) {
     showBoxFound = true;
@@ -378,7 +378,13 @@ function parseShowboxInMsg(m, overrideId) {
       try { 
         showData = JSON.parse(showboxMatch[2]); 
         if (showboxMatch[1] !== undefined) {
-          showData._targetIdx = parseInt(showboxMatch[1], 10) - 1;
+          var layerName = showboxMatch[1].toLowerCase();
+          // Map named layers to indices: system=1, worker=2, user=3
+          var layerMap = {'system': 1, 'worker': 2, 'user': 3, '1': 1, '2': 2, '3': 3};
+          var layerIdx = layerMap[layerName] || parseInt(showboxMatch[1], 10);
+          if (layerIdx >= 1 && layerIdx <= 3) {
+            showData._targetIdx = layerIdx - 1;
+          }
         }
       } 
       catch(e) { console.error("SHOWBOX parse error", e); }
