@@ -577,6 +577,9 @@ function handleShowboxTrigger(showData, sender) {
         targetIdx = slides._targetIdx;
       }
       window.showboxes[targetIdx] = slides;
+      if (window.showboxPresentations && window.showboxPresentations[targetIdx]) {
+        window.showboxPresentations[targetIdx].slides = slides;
+      }
       if (window.closeShowbox) window.closeShowbox();
       setTimeout(() => { if (window.triggerShowbox) window.triggerShowbox(targetIdx, sender); }, 100);
     }, 300);

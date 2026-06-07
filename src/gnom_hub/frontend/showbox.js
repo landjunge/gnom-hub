@@ -622,6 +622,17 @@
         window.showboxPresentations = res;
         window.showboxes = res.map(p => p.slides);
       }
+      // Ensure at least 3 slots for the 3-layer system (system=0, worker=1, user=2)
+      while (window.showboxPresentations.length < 3) {
+        var idx = window.showboxPresentations.length;
+        var names = ['System-Layer', 'Worker-Layer', 'User-Layer'];
+        window.showboxPresentations.push({
+          name: names[idx] || 'Layer ' + (idx + 1),
+          slides: ['<div style="padding:40px;text-align:center;color:rgba(255,255,255,0.15);font-size:0.8rem;">🔇 Keine aktive Präsentation in diesem Layer.</div>'],
+          sender: 'System'
+        });
+        window.showboxes.push(window.showboxPresentations[idx].slides);
+      }
 
       // Sync active state from DB
       const activeRes = await window.api('GET', '/showbox/active');
