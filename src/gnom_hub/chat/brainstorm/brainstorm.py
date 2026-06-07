@@ -35,11 +35,23 @@ def dispatch(q, target=None, depth=0, sender="GeneralAG", context_id=None):
         for a in s:
             dispatch_mention(sender, f"@{a['name']} {q}", proj, str(DB_PATH), depth)
         return [a["name"] for a in s]
-    w = [a for a in ao if a["name"].lower() not in ("soulag", "generalag", "securityag", "watchdogag")]
+    # @bs Brainstorming: NUR GeneralAG analysiert und delegiert
     g = [a for a in ao if a["name"] == "GeneralAG"]
-    wn = [a["name"] for a in w]
-    print(f"[BS] Phase 1: Worker ({wn})"); _run_phase(w, q, get_ctx(), True)
     if g:
-        synthesis_ctx = f"FRAGE: {q}\n\nWORKER-ANTWORTEN:\n{_collect_worker_responses(wn)}"
-        print(f"[BS] Phase 2: Synthese"); _run_phase(g, q, synthesis_ctx, True)
-    return [a["name"] for a in w + g]
+        bs_instruction = (
+            f"[BRAINSTORM-AUFTRAG]\n"
+            f"Der User hat eine Brainstorming-Anfrage gestellt.\n"
+            f"AUFGABE: {q}\n\n"
+            f"DEINE ROLLE: Du bist GeneralAG, der alleinige Koordinator.\n"
+            f"1. Analysiere die Aufgabe.\n"
+            f"2. Zerlege sie in Teilaufgaben und weise sie den passenden Worker-Agenten zu.\n"
+            f"   Verwende das Format: @CoderAG -> konkrete Aufgabe (pro Zeile ein Agent).\n"
+            f"3. Warte auf die Ergebnisse der Worker.\n"
+            f"4. Fasse die Worker-Ergebnisse zusammen und präsentiere sie in <SHOWBOX:1>.\n\n"
+            f"WICHTIG: Du selbst erstellst KEINE Slides, Konzepte oder Inhalte. "
+            f"Du koordinierst und fasst NUR zusammen. "
+            f"Die Worker-Agenten werden erst aktiv, wenn du ihnen eine Aufgabe zuweist."
+        )
+        _run_phase(g, q, bs_instruction, True)
+        return [a["name"] for a in g]
+    return []
