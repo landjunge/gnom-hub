@@ -2,7 +2,7 @@
    GNOM-HUB — War Room Chat & Autocomplete
    ═══════════════════════════════════════════ */
 
-const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'free', 'project', 'git', 'tts', 'worker', 'system', 'all', 'confirmations', 'spass', 'merken'];
+const BUILTIN_CMDS = ['bs', 'research', 'job', 'status', 'clear', 'project', 'git', 'worker', 'spass', 'merken', 'diagnose', 'help'];
 var acIdx = -1;
 window._pageLoadTime = Date.now();
 
@@ -55,22 +55,18 @@ function buildChatHintsHTML() {
       <span><strong>@@</strong> System-level command (e.g. @@project, @@status, @@git)</span>
     </div>
     <div class="chat-hints">
-      <span onclick="insertHint('@bs')" data-help-title="🧠 Brainstorming (@bs)" data-help="Der @bs Befehl aktiviert den gesamten Schwarm für komplexe Brainstorming- und Planungsaufgaben. Mehrere Agenten diskutieren und arbeiten zusammen, um eine optimale Lösung zu erarbeiten." data-tooltip="Brainstorm: Activate the swarm for complex ideas.">@bs</span>
-      <span onclick="insertHint('@research')" data-help-title="🔍 Research (@research)" data-help="Der @research Befehl startet einen autonomen Forschungs- und Recherche-Job. Der ResearcherAG sucht im Web und in lokalen Dokumenten nach Fakten und bereitet diese übersichtlich auf." data-tooltip="Research: Start an autonomous research job.">@research</span>
-      <span onclick="insertHint('@job')" data-help-title="📋 Job Task (@job)" data-help="Der @job Befehl verteilt Aufgaben an Hintergrund-Agenten. Ideal, um parallele Arbeitsschritte zu koordinieren und auszuführen." data-tooltip="Job Task: Distribute background tasks to agents.">@job</span>
-      <span onclick="insertHint('@free')" data-help-title="🧹 Free Agent (@free)" data-help="Der @free Befehl bricht alle aktuell laufenden Hintergrundprozesse und Aufgaben eines bestimmten Agenten ab und setzt ihn wieder in den Standby-Zustand." data-tooltip="Free: Clear active jobs from an agent.">@free</span>
-      <span onclick="insertHint('@worker')" data-help-title="👷 Worker (@worker)" data-help="Mit dem @worker Befehl sprichst du gezielt alle ausführenden Worker-Agenten (CoderAG, WriterAG, ResearcherAG, EditorAG) an." data-tooltip="Worker: Query all non-system agents.">@worker</span>
-      <span onclick="insertHint('@system')" data-help-title="⚙️ System (@system)" data-help="Mit dem @system Befehl sprichst du die koordinierenden System-Agenten (GeneralAG, SoulAG, WatchdogAG) an." data-tooltip="System: Query all system-level agents.">@system</span>
-      <span onclick="insertHint('@all')" data-help-title="🌐 All (@all)" data-help="Der @all Befehl sendet deine Nachricht an alle online verfügbaren Agenten im System gleichzeitig." data-tooltip="All: Query all online agents.">@all</span>
-      <span onclick="insertHint('@spass')" data-help-title="🤪 Humor-Modus (@spass)" data-help="Der @spass Befehl schaltet alle Agenten in einen lockeren, kreativen Modus um. Humor steht ab jetzt vor Logik!" data-tooltip="Humor-Modus: Maximize agent creativity and casual tone.">@spass</span>
-      <span onclick="insertHint('@merken')" data-help-title="💾 Fakt merken (@merken)" data-help="Der @merken Befehl speichert den eingegebenen Fakt mit hoher Priorität dauerhaft im Langzeitgedächtnis des Hubs ab." data-tooltip="Merken: Save important facts to agent memory.">@merken</span>
-      <span onclick="insertHint('@@project')" data-help-title="📂 Project Management (@@project)" data-help="Verwalte deine Projekte im Hub. Nutze '@@project &lt;name&gt;' um ein Projekt zu erstellen oder zu wechseln, und '@@project delete &lt;name&gt;' zum Löschen." data-tooltip="Project: (e.g. @@project netzwerkpunkt, @@project delete netzwerkpunkt)">@@project</span>
-      <span onclick="insertHint('@@clear')" data-help-title="🗑️ Clear Hub (@@clear)" data-help="Löscht ausgewählte Verläufe oder Daten: '@@clear chat' leert den Chatverlauf, '@@clear all agents' setzt alle Agenten-Speicher zurück." data-tooltip="Clear: (@@clear chat, @@clear @project, @@clear all agents)">@@clear</span>
-      <span onclick="insertHint('@@status')" data-help-title="📊 System Status (@@status)" data-help="Ruft den aktuellen Systemstatus ab. Zeigt CPU-, RAM-, Docker- und Netzwerkmetriken sowie den Zustand der Agenten." data-tooltip="Status: Get system and agent status.">@@status</span>
-      <span onclick="insertHint('@@git')" data-help-title="🐙 Git Integration (@@git)" data-help="Ermöglicht das Ausführen von Git-Befehlen direkt im Hub-Arbeitsverzeichnis, z.B. '@@git status', '@@git log' oder '@@git commit'." data-tooltip="Git: Run git commands (e.g. @@git status)">@@git</span>
-      <span onclick="insertHint('/coffee')" data-help-title="☕ Kaffeepause (/coffee)" data-help="Löst eine gemütliche Kaffeepausen-Animation im War Room aus. Perfekt für kurze Verschnaufpausen." data-tooltip="Coffee break: (Animation)">/coffee</span>
-      <span onclick="insertHint('/ufo')" data-help-title="🛸 UFO-Sichtung (/ufo)" data-help="Fliegt ein UFO über deinen Bildschirm? Dieser Animationsbefehl sorgt für außerirdische Abwechslung." data-tooltip="UFO Event: (Animation)">/ufo</span>
-      <span onclick="insertHint('/ghost')" data-help-title="👻 Geisterstunde (/ghost)" data-help="Ruft einen geheimnisvollen Geist herbei, der durch dein Dashboard schwebt." data-tooltip="Ghost: (Animation)">/ghost</span>
+      <span onclick="insertHint('@bs')" data-help-title="🧠 Brainstorming (@bs)" data-help="Aktiviert den gesamten Schwarm für Brainstorming. Mehrere Agenten diskutieren, GeneralAG fasst zusammen." data-tooltip="Brainstorm: Activate the swarm for complex ideas.">@bs</span>
+      <span onclick="insertHint('@research')" data-help-title="🔍 Research (@research)" data-help="Startet autonome Recherche. ResearcherAG durchsucht Web und Dokumente nach Fakten." data-tooltip="Research: Start an autonomous research job.">@research</span>
+      <span onclick="insertHint('@job')" data-help-title="📋 Job (@job)" data-help="Verteilt Aufgaben an Hintergrund-Agenten für parallele Bearbeitung." data-tooltip="Job: Distribute background tasks to agents.">@job</span>
+      <span onclick="insertHint('@worker')" data-help-title="👷 Worker (@worker)" data-help="Spricht alle Worker-Agenten gleichzeitig an (CoderAG, WriterAG, ResearcherAG, EditorAG)." data-tooltip="Worker: Query all non-system agents.">@worker</span>
+      <span onclick="insertHint('@spass')" data-help-title="🤪 Humor (@spass)" data-help="Schaltet alle Agenten in den Humor-Modus. '@@spass off' zum Deaktivieren." data-tooltip="Humor: Maximize agent creativity.">@spass</span>
+      <span onclick="insertHint('@merken')" data-help-title="💾 Merken (@merken)" data-help="Speichert einen Fakt dauerhaft im Langzeitgedächtnis (soul_memory)." data-tooltip="Merken: Save fact to memory.">@merken</span>
+      <span onclick="insertHint('@@project')" data-help-title="📂 Projekt (@@project)" data-help="Projekt wechseln/erstellen: '@@project name'. Löschen: '@@project delete name'." data-tooltip="Project: Switch or delete projects.">@@project</span>
+      <span onclick="insertHint('@@clear')" data-help-title="🗑️ Clear (@@clear)" data-help="Löscht Daten: '@@clear chat', '@@clear db', '@@clear all agents', '@@clear @projekt'." data-tooltip="Clear: Chat, DB, agents or project.">@@clear</span>
+      <span onclick="insertHint('@@status')" data-help-title="📊 Status (@@status)" data-help="Zeigt Agenten-Status, Metriken und Systeminformationen an." data-tooltip="Status: Get system and agent status.">@@status</span>
+      <span onclick="insertHint('@@git')" data-help-title="🐙 Git (@@git)" data-help="Git-Befehle im Workspace: '@@git status', '@@git commit', '@@git push'." data-tooltip="Git: Run git commands.">@@git</span>
+      <span onclick="insertHint('@diagnose')" data-help-title="🔧 Diagnose (@diagnose)" data-help="Führt eine System-Selbstdiagnose aller Agenten durch." data-tooltip="Diagnose: Self-diagnosis of all agents.">@diagnose</span>
+      <span onclick="insertHint('@@help')" data-help-title="❓ Hilfe (@@help)" data-help="Öffnet die interaktive Hilfe mit allen Befehlen in der Showbox." data-tooltip="Help: Open interactive help.">@@help</span>
     </div>`;
 }
 

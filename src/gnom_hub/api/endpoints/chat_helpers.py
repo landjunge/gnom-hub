@@ -7,12 +7,12 @@ def _parse(t):
     m_gen = re.match(r"@generalag\s+@(\w+)\s*(.*)", t_clean, re.IGNORECASE | re.DOTALL)
     if m_gen:
         tag = m_gen.group(1).lower()
-        if tag in ("bs","clear","status","research","job","free","git","project","resume","approve_decision","reject_decision","bake","emergency","notfall","diagnose","help","hilfe","confirmations","spass","worker","workers","blockade","blokade","workflow","allclear000"):
+        if tag in ("bs","clear","status","research","job","git","project","diagnose","help","spass","worker","merken","allclear000"):
             return m_gen.group(2).strip(), None, tag
     m = re.match(r"@{1,2}(\w+)\s*(.*)", t_clean, re.DOTALL)
     r, tag = (m.group(2).strip() if m else None), (m.group(1).lower() if m else None)
     if not m: return t_clean, None, None
-    if tag in ("bs","clear","status","research","job","free","git","project","resume","approve_decision","reject_decision","bake","emergency","notfall","diagnose","help","hilfe","confirmations","spass","worker","workers","blockade","blokade","workflow","allclear000"):
+    if tag in ("bs","clear","status","research","job","git","project","diagnose","help","spass","worker","merken","allclear000"):
         return r or t_clean, None, tag
     return r or t_clean, tag, None
 
