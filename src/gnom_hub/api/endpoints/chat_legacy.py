@@ -132,6 +132,9 @@ def post_chat(msg: ChatMsg):
     q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt; ags = get_all_agents()
     a = next((x for x in ags if x.get("name", "").lower() == (s_name or "").lower()), None)
     if a: msg.content = add_agent_metadata(a["name"], msg.content)
+    # Layer-Enforcement: Agenten dürfen nicht in <SHOWBOX:user> schreiben
+    from gnom_hub.core.security.showbox_validator import enforce_agent_layer
+    msg.content = enforce_agent_layer(msg.content, msg.sender)
     add_chat_message(get_active_project(), msg.sender, "war-room", cmd or "chat", msg.content, {"type": cmd or "chat", "sender": msg.sender})
     if msg.sender != "user": return {"status": "saved"}
     if cmd in CMDS: return CMDS[cmd](q)
