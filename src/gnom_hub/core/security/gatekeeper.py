@@ -12,7 +12,8 @@ from gnom_hub.db import (
     save_showbox_presentation, 
     set_active_showbox, 
     get_active_project, 
-    set_agent_status
+    set_agent_status,
+    log_blockade,
 )
 import gnom_hub.infrastructure.router.router as router
 from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
@@ -21,6 +22,93 @@ from gnom_hub.agents.capability_manager import check_capability, request_capabil
 # Injectable clock functions for testability (C1 fix)
 _clock_time = time.time
 _clock_sleep = time.sleep
+
+
+# ── Blockade Rules System ──
+
+def _get_rules():
+    """Lade alle Benutzerregeln aus der State-Tabelle."""
+    return get_state_value("blockade_rules", [])
+
+
+def _save_rules(rules: list):
+    """Speichere alle Benutzerregeln."""
+    set_state_value("blockade_rules", rules)
+
+
+def _match_rule(target_value: str, rule_value: str) -> bool:
+    """Prüft ob target_value auf rule_value passt (Substring-Match)."""
+    return rule_value.lower() in target_value.lower()
+
+
+def check_blockade_rules(agent_name: str, action_type: str, detail: str) -> str:
+    """
+    Prüft die Benutzerregeln gegen eine Aktion.
+    Gibt zurück: 'allow', 'block' oder '' (keine Regel matcht).
+    Konsumiert allow_once-Regeln.
+    """
+    rules = _get_rules()
+    if not rules:
+        return ""
+
+    agent_lower = agent_name.lower() if agent_name else ""
+    detail_lower = detail.lower() if detail else ""
+
+    # Phase 1: allow_once-Regeln konsumieren (vor allen anderen)
+    changed = False
+    remaining = []
+    consumed = []
+    for r in rules:
+        agent_match = not r.get("agent") or r["agent"].lower() == agent_lower
+        value_match = r["target_value"].lower() in detail_lower
+        if r["type"] == "allow_once" and agent_match and value_match:
+            consumed.append(r)
+            changed = True
+        else:
+            remaining.append(r)
+
+    if consumed:
+        _save_rules(remaining)
+        return "allow"
+
+    if changed:
+        _save_rules(remaining)
+
+    # Phase 2: Andere Regeln prüfen
+    for r in remaining:
+        agent_match = not r.get("agent") or r["agent"].lower() == agent_lower
+        value_match = r["target_value"].lower() in detail_lower
+        if not agent_match or not value_match:
+            continue
+        if r["type"] == "block_always":
+            return "block"
+        if r["type"] in ("whitelist", "allow_agent"):
+            return "allow"
+
+    return ""
+
+
+def add_blockade_rule(rule_type: str, target_value: str, agent: str = "", blockade_id: int = None):
+    """Fügt eine neue Benutzerregel hinzu."""
+    rules = _get_rules()
+    rules.append({
+        "id": str(uuid.uuid4()),
+        "type": rule_type,
+        "target_value": target_value,
+        "agent": agent or "",
+        "blockade_id": blockade_id,
+        "created_at": time.time()
+    })
+    _save_rules(rules)
+    return True
+
+
+def remove_blockade_rule(rule_id: str):
+    """Entfernt eine Benutzerregel."""
+    rules = _get_rules()
+    rules = [r for r in rules if r.get("id") != rule_id]
+    _save_rules(rules)
+    return True
 
 def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     # Auto-approve if confirmations are disabled (default is False/disabled as requested by user)
@@ -119,6 +207,7 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
         if _clock_time() - start_time > max_wait_seconds:
             # Auto-reject on timeout
             set_agent_status(agent_name, "busy")
+            log_blockade(agent_name, action_type, detail[:150], f"Timeout 5 Min. — automatisch abgelehnt: {rule}", "timeout", "System", content[:100] if content else "")
             add_chat_message(
                 get_active_project(), "System", "system", "chat",
                 f"⏰ [TIMEOUT] Entscheidung für {agent_name} ({action_type}: {detail}) nach 5 Minuten automatisch abgelehnt."
@@ -133,6 +222,7 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
                 return True
             elif d["status"] == "rejected":
                 set_agent_status(agent_name, "busy")
+                log_blockade(agent_name, action_type, detail[:150], f"Vom User abgelehnt: {rule}", "rejected", "User", content[:100] if content else "")
                 return False
                 
         # Fallback check if agent was resumed externally
@@ -149,34 +239,89 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
 
 def verify_write(agent, fn, content, wd, perms) -> bool:
     """
-    Nicht-blockierende Prüfung vor Schreibaktionen.
+    Risikobasierte Prüfung vor Schreibaktionen.
+    - Benutzerregeln (whitelist/block) haben Vorfahrt
     - Workspace-Dateien → Auto-Approve
-    - System-Dateien (src/gnom_hub, config/, .env, ...) → Instant Block
-    - Gefährliche Code-Patterns → Instant Block
-    Keine Warte-Dialoge mehr.
+    - System-Dateien (src/gnom_hub, config/, .env, ...) → Hard Block
+    - Hochriskante Code-Patterns → Hard Block
+    - Mittelriskante Code-Patterns → Warning (log + allow)
     """
     name = (agent or {}).get("name", "Unknown")
 
+    # SoulAG darf NIE Dateien schreiben — nur DB
+    if name.lower() == "soulag":
+        log_blockade(name, "WRITE", fn,
+                     "SoulAG darf keine Dateien schreiben — nur Datenbank (soul_memory).",
+                     "blocked", "Gatekeeper", content[:200] if content else "")
+        return False
+
+    # Benutzerregeln zuerst prüfen
+    rule_result = check_blockade_rules(name, "WRITE", fn)
+    if rule_result == "allow":
+        request_capability(name, "WRITE", fn, "UserApproved")
+        return True
+    if rule_result == "block":
+        log_blockade(name, "WRITE", fn, f"Dauerhaft blockiert per Benutzerregel: {fn}", "blocked", "User")
+        return False
+
     p = _safe(wd, fn, perms)
     if not p:
+        log_blockade(name, "WRITE", fn,
+                     f"Pfad ausserhalb des Workspace: {fn}",
+                     "blocked", "PathValidator")
         return False
 
     if is_worker_blocked(agent, fn, wd, perms):
+        log_blockade(name, "WRITE", fn, f"System-Pfad blockiert: {fn}", "blocked", "PathValidator")
         return False
 
-    if is_security_block(agent, fn, content, wd, perms):
+    sev = is_security_block(agent, fn, content, wd, perms)
+    if sev == "high":
+        log_blockade(name, "WRITE", fn, f"Hochriskantes Code-Pattern blockiert", "blocked", "SecurityAG", content[:200] if content else "")
         return False
+    if sev == "medium":
+        log_blockade(name, "WRITE", fn, f"Mittelriskantes Code-Pattern — gewarnt", "warning", "SecurityAG", content[:200] if content else "")
+        # Allow with warning
 
     request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
     return True
 
+def _is_high_risk_exec(exec_name: str, args_tokens: list) -> bool:
+    """Bestimmt ob ein Befehl wirklich hochriskant ist (hard block) oder nur mittel (warning)."""
+    high_risk_execs = {"dd", "mkfs", "fdisk", "parted", "reboot", "shutdown", "init", "poweroff", "halt"}
+    if exec_name in high_risk_execs:
+        return True
+    # Check if any arg contains an rm -rf targeting system paths (even via sudo/other wrappers)
+    full_args = " ".join(args_tokens).lower()
+    if "rm" in full_args and ("-rf" in full_args or "-fr" in full_args):
+        for arg in args_tokens:
+            if arg.startswith("-"): continue
+            resolved = os.path.realpath(os.path.expanduser(arg))
+            if resolved == "/" or resolved.startswith(("/etc", "/usr", "/bin", "/sbin", "/var", "/private")):
+                return True
+            if any(sys_path in resolved for sys_path in ["src/gnom_hub", "run.sh", ".env"]):
+                return True
+    # Check for pipe-to-sh patterns in args
+    if "|" in full_args:
+        if "sh" in full_args or "bash" in full_args:
+            return True
+    return False
+
+
 def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
     """
     Parses a shell command and determines if it is safe and whitelisted.
-    Returns (is_safe, reason).
+    Returns (is_safe, severity, reason).
+    severity: None (safe), "high" (hard block), "medium" (warning+allow)
     """
     import re
     import requests
+
+    # Pre-check for pipe-to-sh dangerous patterns (curl|sh, wget|bash etc.)
+    # These can span across split boundaries, so check the raw cmd first.
+    cmd_lower = cmd.lower()
+    if re.search(r'(curl|wget|fetch)\b.*\|\s*(ba)?sh\b', cmd_lower):
+        return False, "high", "Piping von curl/wget in Shell ist nicht erlaubt."
     
     # 1. Clean the command and split it by common shell chain operators.
     parts = re.split(r'(&&|\|\||;|\|)', cmd)
@@ -227,16 +372,17 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
         }
 
         if exec_name not in allowed_execs:
-            # C2 fix: godmode darf KEINE unbekannten Binaries ausführen.
-            # godmode erweitert nur Argument-Freiheiten, nicht die Executable-Whitelist.
-            return False, f"Befehl '{exec_name}' ist nicht auf der Whitelist erlaubter Programme."
+            if _is_high_risk_exec(exec_name, args_tokens):
+                return False, "high", f"Hochrisiko-Befehl '{exec_name}' blockiert."
+            # Unbekannt aber nicht hochriskant → warning + allow
+            return False, "medium", f"Befehl '{exec_name}' ist nicht auf der Whitelist — gewarnt."
 
         # 3. Argument-Validierung für spezifische Befehle
         if exec_name in ("pip", "pip3"):
             if len(args_tokens) >= 2 and args_tokens[0] == "install":
                 packages = [a for a in args_tokens[1:] if not a.startswith("-")]
                 if not packages:
-                    return False, "Ungültiger pip install Befehl ohne Paketnamen."
+                    return False, "medium", "Ungültiger pip install Befehl ohne Paketnamen."
 
                 safe_packages = {
                     "pytest", "requests", "fpdf2", "numpy", "pandas",
@@ -255,29 +401,25 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                             data = r.json()
                             vulns = data.get("vulnerabilities", [])
                             if vulns:
-                                return False, f"Paket '{pkg_clean}' hat bekannte Sicherheitslücken auf PyPI."
+                                return False, "high", f"Paket '{pkg_clean}' hat bekannte Sicherheitslücken auf PyPI."
                             releases = data.get("releases", {})
                             if len(releases) < 1:
-                                return False, f"Paket '{pkg_clean}' hat keine gültigen Releases auf PyPI."
+                                return False, "medium", f"Paket '{pkg_clean}' hat keine gültigen Releases auf PyPI."
                         else:
-                            return False, f"Paket '{pkg_clean}' konnte nicht auf PyPI verifiziert werden (Status {r.status_code})."
+                            return False, "medium", f"Paket '{pkg_clean}' konnte nicht auf PyPI verifiziert werden (Status {r.status_code})."
                     except Exception as e:
-                        # Netzwerk nicht erreichbar → Auto-approve mit Warning statt Hard-Block
                         logging.getLogger(__name__).warning(
                             "gatekeeper: PyPI-Check für '%s' nicht möglich (Netzwerk?), auto-approve: %s",
                             pkg_clean, e
                         )
-                        continue  # Weiter, nicht blocken
+                        continue
 
         elif exec_name in ("npm", "npx", "yarn", "pnpm", "bun"):
-            # Node-Pakete generell erlauben — Worker benötigen das
-            # Nur offensichtliche Gefahren abfangen
             full_cmd = " ".join(args_tokens).lower()
             if "rm -rf" in full_cmd or "&&rm" in full_cmd or "curl|sh" in full_cmd:
-                return False, f"Gefährliche Verkettung in npm-Befehl erkannt."
+                return False, "high", f"Gefährliche Verkettung in npm-Befehl erkannt."
                         
         elif exec_name == "rm":
-            # C3 fix: Resolve ALL paths to catch ~/, ../../../, symlinks etc.
             dangerous_roots = {"/", os.path.expanduser("~")}
             system_prefixes = (
                 "/etc", "/usr", "/bin", "/sbin", "/var", "/boot", "/proc", "/sys", "/lib",
@@ -287,16 +429,15 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                 if arg.startswith("-"): continue
                 resolved = os.path.realpath(os.path.expanduser(arg))
                 if resolved in dangerous_roots:
-                    return False, f"rm auf '{resolved}' ist nicht erlaubt."
+                    return False, "high", f"rm auf '{resolved}' ist nicht erlaubt."
                 if resolved.startswith(system_prefixes):
-                    return False, f"rm auf Systempfad '{resolved}' ist nicht erlaubt."
-            # rm -rf auf Gnom-Systemdateien blockieren
+                    return False, "high", f"rm auf Systempfad '{resolved}' ist nicht erlaubt."
             if "-rf" in args_tokens or "-fr" in args_tokens:
                 for arg in args_tokens:
                     if arg.startswith("-"): continue
                     abs_arg = os.path.realpath(os.path.expanduser(arg))
                     if any(sys_path in abs_arg for sys_path in ["src/gnom_hub", "run.sh", ".env"]):
-                        return False, f"rm -rf auf Systemdatei '{arg}' ist nicht erlaubt."
+                        return False, "high", f"rm -rf auf Systemdatei '{arg}' ist nicht erlaubt."
 
         elif exec_name == "git":
             allowed_git_subcmds = {
@@ -305,20 +446,20 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                 "clone", "stash", "branch", "merge", "rebase", "tag",
                 "remote", "show", "blame", "shortlog", "describe"
             }
-            # git push ist NUR dem User via @@git push erlaubt
             if args_tokens and args_tokens[0] == "push":
-                return False, (
+                return False, "high", (
                     "git push ist Agenten nicht erlaubt. "
                     "Nur der User darf pushen — nutze @@git push im Chat."
                 )
             if not args_tokens or args_tokens[0] not in allowed_git_subcmds:
-                return False, f"Git Subbefehl '{args_tokens[0] if args_tokens else ''}' ist nicht autorisiert."
+                return False, "medium", f"Git Subbefehl '{args_tokens[0] if args_tokens else ''}' ist nicht autorisiert."
                 
-    return True, ""
+    return True, None, ""
 
 def verify_cmd(agent, cmd):
     """
     Nicht-blockierende Prüfung vor Shell-Befehlen.
+    - Benutzerregeln (whitelist/block) haben Vorfahrt
     - GeneralAG (role=general): KEINE Shell-Befehle erlaubt
     - Whitelist-Prüfung (erlaubte Befehle)
     - System-Pfad-Schutz (kein Zugriff auf src/gnom_hub, config/, .env, ...)
@@ -327,7 +468,24 @@ def verify_cmd(agent, cmd):
     name = (agent or {}).get("name", "Unknown")
     role = (agent or {}).get("role", "")
 
+    # SoulAG darf NIE Shell-Befehle ausführen — nur DB
+    if name.lower() == "soulag":
+        log_blockade(name, "SHELL", cmd[:150],
+                     "SoulAG darf keine Shell-Befehle ausführen — nur Datenbank (soul_memory).",
+                     "blocked", "Gatekeeper", cmd[:200])
+        return False
+
+    # Benutzerregeln zuerst prüfen
+    rule_result = check_blockade_rules(name, "SHELL", cmd)
+    if rule_result == "allow":
+        request_capability(name, "SHELL", cmd, "UserApproved")
+        return True
+    if rule_result == "block":
+        log_blockade(name, "SHELL", cmd[:150], f"Dauerhaft blockiert per Benutzerregel: {cmd[:80]}", "blocked", "User", cmd[:200])
+        return False
+
     if role == "general" or name.lower() == "generalag":
+        log_blockade(name, "SHELL", cmd[:150], "GeneralAG darf keine Shell-Befehle ausführen", "blocked", "Gatekeeper", cmd[:200])
         return False
 
     from gnom_hub.core.config import WORKSPACE_DIR
@@ -355,11 +513,17 @@ def verify_cmd(agent, cmd):
     cleaned_cmd = " ".join(cleaned_tokens).lower()
 
     if is_system_path(cleaned_cmd):
+        log_blockade(name, "SHELL", cmd[:150], f"Befehl enthält System-Pfad", "blocked", "PathValidator", cmd[:100])
         return False
 
-    is_safe, _block_reason = is_command_safe_and_whitelisted(cmd, agent)
+    is_safe, sev, _block_reason = is_command_safe_and_whitelisted(cmd, agent)
     if not is_safe:
-        return False
+        if sev == "high":
+            log_blockade(name, "SHELL", cmd[:150], f"Blockiert: {_block_reason}", "blocked", "Gatekeeper", cmd[:200])
+            return False
+        else:
+            log_blockade(name, "SHELL", cmd[:150], f"Gewarnt: {_block_reason}", "warning", "Gatekeeper", cmd[:200])
+            # Medium risk → warn but allow
 
     request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
     return True

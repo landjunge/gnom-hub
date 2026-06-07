@@ -233,7 +233,17 @@ AVATARS_DIR = Path(__file__).parent.parent / "config" / "avatars"
 if AVATARS_DIR.exists(): app.mount("/static/avatars", StaticFiles(directory=str(AVATARS_DIR)), name="avatars")
 
 FRONT = Path(__file__).parent.parent / "frontend"
-if FRONT.exists(): app.mount("/static", StaticFiles(directory=str(FRONT)), name="static")
+if FRONT.exists: app.mount("/static", StaticFiles(directory=str(FRONT)), name="static")
+
+# Force no-cache for all static files (prevents stale JS/CSS)
+from starlette.middleware.base import BaseHTTPMiddleware
+class NoCacheStaticMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+app.add_middleware(NoCacheStaticMiddleware)
 
 @app.get("/api/health")
 def api_health():

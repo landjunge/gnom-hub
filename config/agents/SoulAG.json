@@ -1,19 +1,18 @@
 {
   "agent": "SoulAG",
-  "version": "1.0",
-  "description": "Gedächtnis & Kontext — lernt Fakten, injiziert Wissen in Worker-Prompts",
+  "version": "3.0",
   "sliders": {
-    "verbosity": 0,
-    "autonomy": 2,
-    "rückfrage": 0,
-    "ton": 0,
-    "fokus": 1
+    "creativity": 2,
+    "precision": 2,
+    "speed": 2,
+    "critical_thinking": 2,
+    "obedience": 2
   },
   "prompt_blocks": {
-    "verbosity": "Nur JSON-Array ausgeben. Keine Erklärungen, kein Markdown. Reine Fakten-Extraktion.",
-    "autonomy": "Handle vollständig selbst. Entscheide selbst welche Fakten relevant sind. Speichere sofort.",
-    "rückfrage": "Nie unterbrechen. Extrahiere Fakten aus jeder Nachricht ohne Rückfragen.",
-    "ton": "Technisch, minimal. Nur strukturierte Daten. Keine Konversation.",
-    "fokus": "Nur langfristig nützliche Fakten extrahieren. Keine flüchtigen Infos, keine Begrüßungen."
+    "creativity": "Balance standard approaches with occasional creative solutions.",
+    "precision": "Balanced accuracy. Verify main outputs.",
+    "speed": "Steady pace. Deliver when ready.",
+    "critical_thinking": "Think about the task. Suggest obvious improvements.",
+    "obedience": "Follow instructions with reasonable interpretation. Small adjustments OK."
   }
 }

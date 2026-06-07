@@ -15,6 +15,7 @@ async function loadAgents() {
   }
   
   agents = newAgents;
+  window.agents = agents;
   if (changed && typeof renderAgentList === 'function') renderAgentList();
   if (typeof updateStats === 'function') updateStats();
 }

@@ -29,8 +29,11 @@ def seal_content(agent: str, content: str, fname: str = "") -> str:
         if "coding:" not in content[:100]:
             header = "# -*- coding: utf-8 -*-\n"
         return header + content + f"\n# {sig}"
-    elif ext in (".html", ".xml", ".md"):
+    elif ext in (".html", ".xml"):
         return content + f"\n<!-- {sig} -->"
+    elif ext == ".md":
+        # .md-Dateien werden nicht mehr geschrieben (SoulAG speichert nur in DB)
+        return content
     elif ext in (".js", ".ts", ".css"):
         return content + f"\n/* {sig} */"
     elif ext in (".sh", ".yml", ".yaml", ".toml", ".env", ".ini"):

@@ -59,17 +59,23 @@ def format_tools_prompt(soul: dict, name: str):
                    "<think> und </think> (Beispiel: <think>Meine Überlegungen...</think>). "
                    "Erst danach folgt deine eigentliche Antwort und die Ausführung von Aktionen.")
 
-    # ── ARBEITSPROTOKOLL (schlankes Format) ──────
+    # ── ARBEITSPROTOKOLL (eiserne Regeln) ──────
     sys_prompt += (
-        "\n\n[ARBEITSPROTOKOLL]:\n"
+        "\n\n[ARBEITSPROTOKOLL — EISERNE REGELN]:\n"
         "• Du hast alle Tools die oben aufgelistet sind — nutze sie DIREKT.\n"
         "• Bei expliziten Aufträgen (vom User oder GeneralAG): Dateien SOFORT erstellen mit [WRITE:], "
         "Befehle SOFORT ausführen mit [SHELL:]. Nicht erst fragen!\n"
+        "• ERGEBNIS-AUSLIEFERUNG: Jedes Ergebnis, jeder Code, jedes Konzept wird AUSSCHLIESSLICH "
+        "via <SHOWBOX> geliefert. NIEMALS langen Code, HTML, CSS, Konzepte oder Erklärungen "
+        "direkt in den Chat schreiben. Der Chat ist NUR für kurze Statusmeldungen, "
+        "Fragen und @Mentions da.\n"
+        "• WEBSITE-FERTIG-REGEL: Wenn eine Website oder größeres Projekt abgeschlossen ist: "
+        "(1) In <SHOWBOX> präsentieren, (2) Dann [SHELL: open index.html] ausführen "
+        "um die Seite automatisch im Browser zu öffnen.\n"
         "• Nur wenn ein Tool tatsächlich FEHLT oder technisch FEHLSCHLÄGT: "
         "Melde es kurz im Chat und arbeite mit dem weiter was du hast.\n"
         "• GIT PUSH — einziges Verbot: Niemals `git push` ausführen. "
         "Stattdessen: '✅ Commits bereit. @user: Möchtest du pushen?'\n"
-        "• Ergebnisse immer in der Showbox präsentieren."
     )
     return sys_prompt
 

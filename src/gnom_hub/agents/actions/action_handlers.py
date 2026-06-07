@@ -11,21 +11,32 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     w_ms, r_ms, sh_ms, desktop_ms = [], [], [], []
     for m in re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", ans, re.DOTALL):
         fn, content = m.group(1).strip(), m.group(2).strip()
-        if verify_write(agent, fn, content, wd, perms): w_ms.append(m)
-        else: ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
-    # Fallback: LLMs often write [WRITE: file] followed by a ```code``` block without [/WRITE]
+        if "write" not in perms:
+            ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine Schreibberechtigung.]")
+        elif verify_write(agent, fn, content, wd, perms):
+            w_ms.append(m)
+        else:
+            ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
     already_matched = {m.start() for m in w_ms}
     for m in re.finditer(r"\[WRITE:\s*(.*?)\]\s*\n\s*```\w*\n(.*?)```", ans, re.DOTALL):
         if m.start() not in already_matched:
             fn, content = m.group(1).strip(), m.group(2).strip()
-            if verify_write(agent, fn, content, wd, perms): w_ms.append(m)
-            else: ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
+            if "write" not in perms:
+                ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine Schreibberechtigung.]")
+            elif verify_write(agent, fn, content, wd, perms):
+                w_ms.append(m)
+            else:
+                ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
     for m in re.finditer(r"\[READ:\s*(.*?)\]", ans):
         r_ms.append(m)
     for m in re.finditer(r"\[SHELL:\s*(.*?)\]", ans):
         cmd = m.group(1).strip()
-        if verify_cmd(agent, cmd): sh_ms.append(m)
-        else: ans = ans.replace(m.group(0), f"[Gatekeeper: Befehlsausführung verweigert.]")
+        if "run" not in perms:
+            ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine SHELL-Berechtigung.]")
+        elif verify_cmd(agent, cmd):
+            sh_ms.append(m)
+        else:
+            ans = ans.replace(m.group(0), f"[Gatekeeper: Befehlsausführung verweigert.]")
     for m in re.finditer(r"\[DESKTOP:\s*(.*?)\]", ans, re.DOTALL):
         desktop_ms.append(m)
     ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)

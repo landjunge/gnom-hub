@@ -5,6 +5,7 @@
 // Shared Globals
 var API = '';
 var agents = [];
+window.agents = agents;
 var selectedId = null;
 var _intervalIds = [];
 

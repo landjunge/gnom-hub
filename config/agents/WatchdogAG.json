@@ -1,19 +1,18 @@
 {
   "agent": "WatchdogAG",
-  "version": "1.0",
-  "description": "Datei-Wächter — schützt Systemdateien, prüft Pfade, blockt unerlaubte Zugriffe",
+  "version": "3.0",
   "sliders": {
-    "verbosity": 0,
-    "autonomy": 2,
-    "rückfrage": 0,
-    "ton": 0,
-    "fokus": 0
+    "creativity": 2,
+    "precision": 2,
+    "speed": 2,
+    "critical_thinking": 2,
+    "obedience": 2
   },
   "prompt_blocks": {
-    "verbosity": "Nur APPROVED oder REJECTED antworten. Keine Erklärungen.",
-    "autonomy": "Handle komplett selbstständig. Blockiere sofort, keine Rückfragen.",
-    "rückfrage": "Nie unterbrechen. Entscheide sofort über Zugriff.",
-    "ton": "Absolut minimal. Nur das Ergebnis.",
-    "fokus": "Nur auf Dateizugriffe und Pfade fokussieren. Nichts anderes."
+    "creativity": "Balance standard approaches with occasional creative solutions.",
+    "precision": "Balanced accuracy. Verify main outputs.",
+    "speed": "Steady pace. Deliver when ready.",
+    "critical_thinking": "Think about the task. Suggest obvious improvements.",
+    "obedience": "Follow instructions with reasonable interpretation. Small adjustments OK."
   }
 }

@@ -3,9 +3,9 @@
 
 <head>
   <script src="/api/showbox/themes"></script>
-  <link rel="stylesheet" href="/static/showbox.css?v=4">
-  <script src="/static/showbox-buttons.js?v=4"></script>
-  <script src="/static/showbox.js?v=4"></script>
+  <link rel="stylesheet" href="/static/showbox.css?v=15">
+  <script src="/static/showbox-buttons.js?v=15"></script>
+  <script src="/static/showbox.js?v=15"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gnom-Hub</title>
@@ -2620,6 +2620,7 @@
       <button class="btn-primary" onclick="showWorkflowsView()" data-help="Öffnet das Workflow-Dashboard mit der SVG-basierten Visualisierung des DAGs und Observability-Latenzen." data-help-title="Workflows">Workflows</button>
       <button class="btn-primary" onclick="showLLMConfig()" data-help="Öffnet die LLM-Einstellungen, um API-Keys einzutragen, Provider-Presets zu wählen und Agenten-Charaktere anzupassen." data-help-title="LLM-Konfiguration">LLM</button>
       <button class="btn-primary" onclick="showAgentTuning()" data-help="Öffnet den Agent Inspector mit Persönlichkeits-Reglern, Custom Prompts und Statistiken." data-help-title="Agent Tuning">Tuning</button>
+      <button class="btn-primary" onclick="showBlockadenDashboard()" style="background:rgba(255,50,50,0.12);border-color:rgba(255,50,50,0.3);color:#f66;" data-help="Öffnet das erweiterte Blockaden-Dashboard v2 mit 3-Zeilen-Ansicht: Grund, Auslöser und Snippet." data-help-title="Blockaden-Dashboard v2">🛡️ Blockaden</button>
       <button class="btn-primary" onclick="showHelpPage()" data-help="Öffnet das Help Center mit der vollständigen Bedienungsanleitung und Erklärungen der Agenten." data-help-title="Help Center">Help</button>
       <button class="btn-primary" id="btn-save" onclick="globalSave()" title="Global Speichern" data-help="Sichert den aktuellen Hub-Zustand, Einstellungen und Verlauf global." data-help-title="Backup sichern">Save</button>
       <button class="btn-primary" onclick="cleanAll()" title="Alles zurücksetzen" data-help="Löscht alle Daten: Chat, Workspace, Tokens, Soul-Memory, Workflows. Hub startet neu." data-help-title="Clean All" style="background:rgba(255,80,50,0.15);border-color:rgba(255,80,50,0.3);color:#f66;">🧹 Clean</button>
@@ -2768,13 +2769,13 @@
     </div>
   </div>
 
-  <script src="/static/core.js?v=4"></script>
-  <script src="/static/system_dashboard.js?v=4"></script>
-  <script src="/static/worker_dashboard.js?v=4"></script>
-  <script src="/static/worker_sidebar.js?v=4"></script>
-  <script src="/static/chat.js?v=4"></script>
-  <script src="/static/workspace.js?v=4"></script>
-  <script src="/static/dashboard.js?v=4"></script>
+  <script src="/static/core.js?v=15"></script>
+  <script src="/static/system_dashboard.js?v=15"></script>
+  <script src="/static/worker_dashboard.js?v=15"></script>
+  <script src="/static/worker_sidebar.js?v=15"></script>
+  <script src="/static/chat.js?v=15"></script>
+  <script src="/static/workspace.js?v=15"></script>
+  <script src="/static/dashboard.js?v=15"></script>
   <script>
     // ── Init Bootstrap ──
     (async () => {

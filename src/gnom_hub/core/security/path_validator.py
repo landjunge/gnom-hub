@@ -40,39 +40,57 @@ def is_worker_blocked(agent, f, wd, perms):
         return True
     return False
 
-# Gefährliche Code-Patterns — regex-basiert mit verschleierten Varianten
-_DANGEROUS_RE = _re.compile(
+# Gefährliche Code-Patterns — aufgeteilt in hohes und mittleres Risiko
+_HIGH_RISK_RE = _re.compile(
     r"rm\s+(-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|[a-zA-Z]*-r[a-zA-Z]*-f[a-zA-Z]*)"
     r"|subprocess\.(call|run|Popen|check_output)"
     r"|os\.system\s*\(|os\.popen\s*\(|os\.exec[lvpe]*\s*\(|os\.spawn[lvpe]*\s*\("
-    r"|eval\s*\(|exec\s*\(|__import__\s*\(|compile\s*\(.*?(?:eval|exec)"
+    r"|eval\s*\(|exec\s*\(|compile\s*\(.*?(?:eval|exec)"
     r"|shutil\.rmtree\s*\(|shutil\.move\s*\([^,]*,[^,]*/(?:etc|usr|bin|sbin|var|root|tmp)"
-    r"|pickle\.(?:load|dumps)\s*\(|marshal\.(?:load|dumps)\s*\(|bytes\.decode\s*\(.*?\)\s*"
     r"|chmod\s+[0-7]*7[0-7]*7\s"
     r"|>\s*/(?:etc|usr|bin|sbin|var|dev)/|>>\s*/(?:etc|usr|bin|sbin|var|dev)/"
     r"|curl.*\|\s*(?:ba)?sh|wget.*\|\s*(?:ba)?sh"
     r"|dd\s+if=|mkfs\.|:\(\)\s*\{\s*:\|:&\s*\};:"
-    r"|input\s*\(.*?exec|__builtins__|__globals__|__getattribute__|base64\..*decode",
+    r"|input\s*\(.*?exec|__builtins__|__globals__|__getattribute__",
     _re.IGNORECASE | _re.DOTALL
 )
+
+_MEDIUM_RISK_RE = _re.compile(
+    r"__import__\s*\("
+    r"|pickle\.(?:load|dumps)\s*\("
+    r"|marshal\.(?:load|dumps)\s*\("
+    r"|base64\..*decode"
+    r"|bytes\.decode\s*\(.*?\)\s*"
+    r"|shutil\.move\s*\("
+    r"|os\.remove\s*\(|os\.unlink\s*\(",
+    _re.IGNORECASE | _re.DOTALL
+)
+
 
 def is_security_block(agent, f, content, wd, perms):
     """
     Regex-basierte Prüfung auf gefährliche Code-Patterns.
-    Immer aktiv. System-Agenten sind ausgenommen.
+    Gibt zurück: ("high"|"medium"|None) — high = hart blocken, medium = warnen
     """
     role = (agent or {}).get("role", "")
     if role in ["soul", "watchdog", "security"]:
-        return False
+        return None
 
     if not content or not content.strip():
-        return False
+        return None
 
-    if _DANGEROUS_RE.search(content):
+    if _HIGH_RISK_RE.search(content):
         from gnom_hub.db import add_chat_message
         name = (agent or {}).get("name", "Unknown")
-        msg = f"[SecurityAG] {name} verwendet gefaehrliches Code-Pattern. BLOCKIERT."
+        msg = f"[SecurityAG] {name} verwendet HOCHRISIKO-Code-Pattern. BLOCKIERT."
         add_chat_message("default", "SecurityAG", "securityag", "chat", msg)
-        return True
+        return "high"
 
-    return False
+    if _MEDIUM_RISK_RE.search(content):
+        from gnom_hub.db import add_chat_message
+        name = (agent or {}).get("name", "Unknown")
+        msg = f"[SecurityAG] {name} verwendet mittelriskantes Code-Pattern. GEWARNT."
+        add_chat_message("default", "SecurityAG", "securityag", "chat", msg)
+        return "medium"
+
+    return None

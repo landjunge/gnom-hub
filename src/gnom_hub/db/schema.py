@@ -58,6 +58,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS blockade_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    blocked_by TEXT DEFAULT 'Gatekeeper',
+    action_type TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    content_snippet TEXT DEFAULT '',
+    status TEXT DEFAULT 'blocked'
+);
+
 CREATE TABLE IF NOT EXISTS prompt_versions (
     id TEXT PRIMARY KEY,
     agent TEXT NOT NULL,

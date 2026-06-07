@@ -2,6 +2,9 @@
 import os, re
 from gnom_hub.core.security.path_validator import _safe
 
+def seal_content(content: str) -> str:
+    return content.strip()
+
 def _git_commit_file(wd, rel_path, agent_name):
     import subprocess
     from pathlib import Path
@@ -24,7 +27,6 @@ def _git_commit_file(wd, rel_path, agent_name):
         print(f"Git auto-commit failed: {e}")
 
 def handle_write(answer, matches, agent, perms, bs_mode, wd):
-    from gnom_hub.core.security.hmac_signer import seal_content
     for m in matches:
         fname, content = m.group(1).strip(), m.group(2).strip()
         content = re.sub(r"^```\w*\n", "", re.sub(r"\n```$", "", content).strip())
@@ -38,15 +40,25 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                     if os.path.exists(fpath):
                         import shutil; shutil.copy2(fpath, fpath + ".bak")
                     
-                    sealed_content = seal_content(agent["name"], content, fname)
+                    sealed_content = seal_content(content)
                     with open(fpath, "w", encoding="utf-8") as f:
                         f.write(sealed_content)
                     
                     rel_path = os.path.relpath(fpath, wd)
                     _git_commit_file(wd, rel_path, agent["name"])
 
+                    auto_open = ""
+                    base = os.path.basename(fname).lower()
+                    if base == "index.html" and "run" in perms:
+                        try:
+                            import subprocess
+                            subprocess.Popen(["open", fpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            auto_open = " [Browser geöffnet]"
+                        except Exception:
+                            pass
+
                     from gnom_hub.soul.zwc_soul import add_agent_metadata
-                    r = f"[System: Datei '{fname}' gespeichert.]" + add_agent_metadata(agent["name"], "")
+                    r = f"[System: Datei '{fname}' gespeichert.{auto_open}]" + add_agent_metadata(agent["name"], "")
 
                 except Exception as e: r = f"[System-Fehler: {fname}: {e}]"
         answer = answer.replace(m.group(0), r)

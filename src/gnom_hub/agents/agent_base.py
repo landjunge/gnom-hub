@@ -124,15 +124,9 @@ class BaseAgent:
                     perms = soul.get("permissions", [])
                     processed = await _to_thread(process_actions, r.content, {"name": self.n}, perms, False, wd)
 
-                    import re
-                    think_match = re.search(r'(<think>[\s\S]*?</think>)', r.answer)
-                    if think_match:
-                        think_prefix = think_match.group(1) + "\n\n"
-                    else:
-                        steps_str = "\n".join(f"- {step}" for step in r.reasoning_chain)
-                        think_prefix = f"<think>\n🧠 [Denkprozess & Logik für {self.n}]\n{steps_str}\n</think>\n\n"
-
-                    self._req("post", "/api/chat", {"content": think_prefix + processed, "sender": self.n})
+                    import re as _re
+                    clean = _re.sub(r'<think>[\s\S]*?</think>', '', processed or r.content, flags=_re.IGNORECASE | _re.DOTALL).strip()
+                    self._req("post", "/api/chat", {"content": clean, "sender": self.n})
 
                 # Acknowledge in the queue
                 await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))

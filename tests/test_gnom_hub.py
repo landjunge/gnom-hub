@@ -83,16 +83,16 @@ def test_soul_memory_retrieval():
 def test_command_whitelisting_security():
     """Verify that safe commands are allowed and dangerous commands are rejected by the gatekeeper."""
     # Pre-approved command
-    safe, reason = is_command_safe_and_whitelisted("python3 scratch/run_all_tests.py")
+    safe, sev, reason = is_command_safe_and_whitelisted("python3 scratch/run_all_tests.py")
     assert safe is True
     
     # Non-whitelisted base executable
-    unsafe1, reason1 = is_command_safe_and_whitelisted("sudo apt-get update")
+    unsafe1, sev1, reason1 = is_command_safe_and_whitelisted("sudo apt-get update")
     assert unsafe1 is False
     assert "nicht auf der Whitelist" in reason1
     
     # Dangerous rm targeting root
-    unsafe2, reason2 = is_command_safe_and_whitelisted("rm -rf /")
+    unsafe2, sev2, reason2 = is_command_safe_and_whitelisted("rm -rf /")
     assert unsafe2 is False
     assert "nicht auf der Whitelist" in reason2 or "nicht erlaubt" in reason2
 

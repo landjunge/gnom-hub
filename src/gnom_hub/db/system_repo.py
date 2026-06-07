@@ -110,3 +110,106 @@ def cleanup_old_data(days_chat: int = 7, days_soul: int = 30):
         logger.info("[DB] Old chats and soul facts cleaned up successfully.")
     except Exception as e:
         logger.error(f"[DB] Cleanup failed: {e}")
+
+
+# ── Blockade Log ──
+
+def log_blockade(agent_name: str, action_type: str, detail: str, reason: str, status: str = "blocked", blocked_by: str = "Gatekeeper", content_snippet: str = ""):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("""
+                    INSERT INTO blockade_log (timestamp, agent_name, blocked_by, action_type, detail, reason, content_snippet, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    agent_name, blocked_by,
+                    action_type, detail[:500], reason[:500],
+                    content_snippet[:200], status,
+                ))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to log blockade: {e}")
+
+
+def get_blockades_for_agent(agent_name: str, limit: int = 50):
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute(
+                "SELECT id, timestamp, agent_name, blocked_by, action_type, detail, reason, content_snippet, status FROM blockade_log WHERE agent_name = ? ORDER BY timestamp DESC LIMIT ?",
+                (agent_name, limit)
+            ).fetchall()
+            return [dict(r) for r in rows]
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to get blockades: {e}")
+        return []
+
+
+def delete_blockade(blockade_id: int):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM blockade_log WHERE id = ?", (blockade_id,))
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to delete blockade: {e}")
+        return False
+
+
+def clear_agent_blockades(agent_name: str):
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM blockade_log WHERE agent_name = ?", (agent_name,))
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to clear blockades: {e}")
+        return False
+
+
+def clear_all_blockades():
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                conn.execute("DELETE FROM blockade_log")
+        return True
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to clear all blockades: {e}")
+        return False
+
+
+def get_blockade_count(agent_name: str) -> int:
+    try:
+        with get_db_conn() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) as cnt FROM blockade_log WHERE agent_name = ?",
+                (agent_name,)
+            ).fetchone()
+            return row["cnt"] if row else 0
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to count blockades: {e}")
+        return 0
+
+
+def get_all_blockade_counts():
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute(
+                "SELECT agent_name, COUNT(*) as cnt FROM blockade_log GROUP BY agent_name ORDER BY cnt DESC"
+            ).fetchall()
+            return [dict(r) for r in rows]
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to get blockade counts: {e}")
+        return []
+
+
+def get_all_blockades(limit: int = 200):
+    try:
+        with get_db_conn() as conn:
+            rows = conn.execute(
+                "SELECT id, timestamp, agent_name, blocked_by, action_type, detail, reason, content_snippet, status FROM blockade_log ORDER BY timestamp DESC LIMIT ?",
+                (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to get all blockades: {e}")
+        return []

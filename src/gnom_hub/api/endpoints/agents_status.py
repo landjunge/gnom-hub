@@ -103,11 +103,11 @@ def delete_agent(a_id: str):
     return {"status": "deleted"}
 
 class SliderUpdatePayload(BaseModel):
-    verbosity: Optional[int] = None
-    autonomy: Optional[int] = None
-    rückfrage: Optional[int] = None
-    ton: Optional[int] = None
-    fokus: Optional[int] = None
+    creativity:        Optional[int] = None
+    precision:         Optional[int] = None
+    speed:             Optional[int] = None
+    critical_thinking: Optional[int] = None
+    obedience:         Optional[int] = None
 
 @router.get("/api/agents/{a_id}/sliders")
 def get_agent_sliders(a_id: str):
@@ -127,9 +127,127 @@ def update_agent_sliders(a_id: str, data: SliderUpdatePayload):
     from gnom_hub.core.utils.slider_prompt import update_slider, SLIDER_KEYS
     for key in SLIDER_KEYS:
         val = getattr(data, key, None)
-        if val is not None and 0 <= val <= 2:
+        if val is not None and 0 <= val <= 4:
             update_slider(agent.name, key, val)
     return {"status": "ok"}
+
+
+# ── Blockade Endpoints ──
+
+@router.get("/api/agents/{a_id}/blockades")
+def get_agent_blockades(a_id: str, limit: int = 50):
+    repo = SQLiteAgentRepository()
+    agent = repo.get_by_id(a_id)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    from gnom_hub.db import get_blockades_for_agent, get_blockade_count
+    blockades = get_blockades_for_agent(agent.name, limit)
+    count = get_blockade_count(agent.name)
+    return {"agent": agent.name, "count": count, "blockades": blockades}
+
+@router.get("/api/blockades/overview")
+def get_blockades_overview():
+    from gnom_hub.db import get_all_blockade_counts, get_blockades_for_agent
+    counts = get_all_blockade_counts()
+    return {"agents": counts}
+
+@router.delete("/api/agents/{a_id}/blockades/{blockade_id}")
+def delete_agent_blockade(a_id: str, blockade_id: int):
+    repo = SQLiteAgentRepository()
+    agent = repo.get_by_id(a_id)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    from gnom_hub.db import delete_blockade
+    ok = delete_blockade(blockade_id)
+    return {"status": "deleted" if ok else "error"}
+
+@router.delete("/api/agents/{a_id}/blockades")
+def clear_agent_blockades_route(a_id: str):
+    repo = SQLiteAgentRepository()
+    agent = repo.get_by_id(a_id)
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+    from gnom_hub.db import clear_agent_blockades
+    ok = clear_agent_blockades(agent.name)
+    return {"status": "cleared" if ok else "error"}
+
+@router.get("/api/blockades")
+def get_all_blockades_route(limit: int = 200):
+    from gnom_hub.db import get_all_blockades, get_all_blockade_counts
+    blockades = get_all_blockades(limit)
+    counts = get_all_blockade_counts()
+    return {"blockades": blockades, "counts": counts}
+
+@router.delete("/api/blockades/{blockade_id}")
+def delete_blockade_route(blockade_id: int):
+    from gnom_hub.db import delete_blockade
+    ok = delete_blockade(blockade_id)
+    return {"status": "deleted" if ok else "error"}
+
+@router.delete("/api/blockades")
+def clear_all_blockades_route():
+    from gnom_hub.db import clear_all_blockades
+    ok = clear_all_blockades()
+    return {"status": "cleared" if ok else "error"}
+
+
+class BlockadeActionPayload(BaseModel):
+    rule_type: str
+    target_value: str = ""
+    agent: str = ""
+
+
+@router.post("/api/blockades/{blockade_id}/action")
+def blockade_action_route(blockade_id: int, payload: BlockadeActionPayload):
+    from gnom_hub.db import get_db_conn
+    from gnom_hub.core.security.gatekeeper import add_blockade_rule
+
+    # Fetch the blockade entry to get target details
+    with get_db_conn() as conn:
+        row = conn.execute(
+            "SELECT agent_name, action_type, detail, reason FROM blockade_log WHERE id = ?",
+            (blockade_id,)
+        ).fetchone()
+    if not row:
+        return {"status": "error", "message": "Blockade not found"}
+
+    agent_name = row["agent_name"]
+    action_type = row["action_type"]
+    detail = row["detail"]
+    target_value = payload.target_value or detail
+
+    if payload.rule_type == "allow_once":
+        add_blockade_rule("allow_once", target_value, "", blockade_id)
+        return {"status": "ok", "message": "Einmalig erlaubt"}
+
+    elif payload.rule_type == "whitelist":
+        add_blockade_rule("whitelist", target_value, "", blockade_id)
+        return {"status": "ok", "message": "Auf Whitelist gesetzt"}
+
+    elif payload.rule_type == "allow_agent":
+        a = payload.agent or agent_name
+        add_blockade_rule("allow_agent", target_value, a, blockade_id)
+        return {"status": "ok", "message": f"Für {a} erlaubt"}
+
+    elif payload.rule_type == "block_always":
+        add_blockade_rule("block_always", target_value, "", blockade_id)
+        return {"status": "ok", "message": "Immer blockiert"}
+
+    return {"status": "error", "message": "Unknown rule_type"}
+
+
+@router.get("/api/blockades/rules")
+def get_blockade_rules_route():
+    from gnom_hub.core.security.gatekeeper import _get_rules
+    return {"rules": _get_rules()}
+
+
+@router.delete("/api/blockades/rules/{rule_id}")
+def delete_blockade_rule_route(rule_id: str):
+    from gnom_hub.core.security.gatekeeper import remove_blockade_rule
+    ok = remove_blockade_rule(rule_id)
+    return {"status": "deleted" if ok else "error"}
+
 
 class StateConfigPayload(BaseModel):
     key: str

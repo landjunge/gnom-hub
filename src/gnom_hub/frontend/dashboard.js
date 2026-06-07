@@ -1695,34 +1695,303 @@ window.tuningSoulDelBtn = function(btn) {
 };
 
 // ── Tab: Blockaden ──
-window.tuningRender_blockaden = function(agentId) {
+window.tuningRender_blockaden = async function(agentId) {
   const el = document.getElementById('tuning-content'); if (!el) return;
   const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
-  api('GET', '/api/state/enable_confirmations').then(r => {
-    const enabled = r && r.value === true;
-    el.innerHTML = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">'
-      + '<h3 style="margin:0;font-size:0.95rem;">🛡️ Schutz-Status für ' + agent.name + '</h3>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">'
-      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">📁 Systemdateien</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.6);line-height:1.6;">Geschützte Pfade:</div><div style="font-size:0.65rem;color:#f44;font-family:monospace;margin-top:4px;">src/gnom_hub/<br>config/<br>.env<br>run.sh<br>index.html</div></div>'
-      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">⚠️ Gefährliche Patterns</div><div style="font-size:0.65rem;color:#ffa500;font-family:monospace;">rm -rf<br>os.system()<br>subprocess.*<br>eval() / exec()</div></div>'
-      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🐚 Shell-Schutz</div><div style="font-size:0.65rem;color:rgba(255,255,255,0.6);">'
-      + (agent.role === 'general' ? '<span style="color:#f44;">GeneralAG: KEINE Shell-Befehle</span>' : '<span style="color:#0f0;">Whitelist aktiv</span>')
-      + '</div></div>'
-      + '<div class="bs-card" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;"><div style="font-weight:600;font-size:0.8rem;margin-bottom:6px;">🔒 Workspace</div><div style="font-size:0.65rem;color:var(--accent);font-family:monospace;">gnom_workspace/default/</div></div>'
-      + '</div>'
-      + '<div class="panel" style="padding:12px;border:1px solid ' + (enabled ? '#f44' : '#0f0') + ';border-radius:8px;background:rgba(255,255,255,0.02);"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;font-size:0.85rem;margin-bottom:4px;">🛑 Bestätigungs-Modus</div><div style="font-size:0.7rem;color:rgba(255,255,255,0.5);">Legt fest ob gefährliche Aktionen manuell bestätigt werden müssen</div><div style="font-size:0.65rem;color:' + (enabled ? '#f44' : '#0f0') + ';margin-top:4px;">Status: <b>' + (enabled ? 'AKTIV — Aktionen müssen bestätigt werden' : 'DEAKTIVIERT — Auto-Approve') + '</b></div></div><button onclick="tuningToggleConfirmations(' + (enabled ? 'false' : 'true') + ')" style="padding:8px 16px;font-size:0.8rem;font-weight:700;background:' + (enabled ? 'rgba(0,200,100,0.15)' : 'rgba(255,50,50,0.15)') + ';border:1px solid ' + (enabled ? 'rgba(0,200,100,0.4)' : 'rgba(255,50,50,0.4)') + ';color:' + (enabled ? '#0f0' : '#f44') + ';border-radius:6px;cursor:pointer;">' + (enabled ? 'Deaktivieren' : 'Aktivieren') + '</button></div></div>'
-      + '</div>';
-  }).catch(() => { el.innerHTML = '<div class="panel" style="padding:16px;color:rgba(255,255,255,0.3);">Lade Blockaden...</div>'; });
+  el.innerHTML = '<div style="color:var(--accent);padding:20px;text-align:center;">📋 Blockaden-Dashboard v2 lädt...</div>';
+
+  const [data, overview] = await Promise.all([
+    api('GET', '/agents/' + agentId + '/blockades').catch(() => ({count:0,blockades:[]})),
+    api('GET', '/blockades/overview').catch(() => ({agents:[]}))
+  ]);
+  const blockades = data.blockades || [], count = data.count || 0;
+  const sCol = s => s==='rejected'?'#f44':s==='timeout'?'#fa0':'#f60';
+
+  let h = '<div style="display:flex;flex-direction:column;gap:8px;font-size:0.75rem;">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:600;">🛡️ Blockaden: '+agent.name+'</span><span style="font-size:0.65rem;color:'+(count?'#f44':'#0f0')+';">'+count+' Einträge</span></div>';
+
+  // Übersicht
+  const ov = overview.agents || [];
+  if (ov.length) {
+    h += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">';
+    ov.forEach(o => {
+      h += '<span style="font-size:0.55rem;padding:2px 6px;border-radius:3px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">'+o.agent_name+': <b style="color:#f66;">'+o.cnt+'</b></span>';
+    });
+    h += '</div>';
+  }
+
+  // Aktionen
+  h += '<div style="display:flex;gap:4px;margin-bottom:4px;">';
+  h += '<button onclick="tuningClearBlockades(\''+agentId+'\')" style="font-size:0.6rem;padding:3px 8px;background:rgba(255,50,50,0.12);border:1px solid rgba(255,50,50,0.25);color:#f66;border-radius:4px;cursor:pointer;">🗑 Agent zurücksetzen</button>';
+  h += '<button onclick="tuningClearAllBlockades()" style="font-size:0.6rem;padding:3px 8px;background:rgba(255,50,50,0.08);border:1px solid rgba(255,50,50,0.15);color:rgba(255,100,100,0.7);border-radius:4px;cursor:pointer;">🗑 Alle zurücksetzen</button>';
+  h += '</div>';
+
+  // Liste
+  if (!blockades.length) {
+    h += '<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.2);font-size:0.7rem;">Keine Blockaden für '+agent.name+'</div>';
+  } else {
+    blockades.forEach(b => {
+      const t = b.timestamp||'–';
+      h += '<div style="display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.03);background:rgba(255,255,255,0.01);">';
+      // Zeile 1: Zeit + Status + Typ + Aktion
+      h += '<div style="display:flex;align-items:center;gap:5px;">';
+      h += '<span style="font-size:0.5rem;color:rgba(255,255,255,0.25);font-family:monospace;flex-shrink:0;">'+t.substring(11,19)+'</span>';
+      h += '<span style="font-size:0.5rem;padding:0 4px;border-radius:2px;background:rgba(255,255,255,0.04);color:'+sCol(b.status)+';">'+b.status+'</span>';
+      h += '<span style="font-size:0.55rem;color:rgba(0,200,255,0.6);flex-shrink:0;">'+escapeHtml(b.action_type||'')+'</span>';
+      h += '<span style="font-size:0.6rem;font-family:monospace;color:#f88;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(b.detail||'–')+'</span>';
+      h += '<button onclick="tuningDeleteBlockade(\''+agentId+'\','+b.id+')" style="flex-shrink:0;background:none;border:none;color:rgba(255,50,50,0.4);cursor:pointer;font-size:0.55rem;padding:1px;">✕</button>';
+      h += '</div>';
+      // Zeile 2: Grund + Ausgelöst von
+      h += '<div style="display:flex;align-items:center;gap:5px;padding-left:3px;">';
+      h += '<span style="font-size:0.5rem;color:rgba(255,255,255,0.35);">🔒 '+escapeHtml(b.reason||'')+'</span>';
+      h += '<span style="font-size:0.45rem;color:rgba(255,255,255,0.2);margin-left:auto;">via '+escapeHtml(b.blocked_by||'Gatekeeper')+'</span>';
+      h += '</div>';
+      // Zeile 3: Content-Snippet falls vorhanden
+      if (b.content_snippet) {
+        h += '<div style="font-size:0.45rem;color:rgba(255,255,255,0.2);padding-left:3px;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">📝 '+escapeHtml(b.content_snippet.substring(0,100))+'</div>';
+      }
+      h += '</div>';
+    });
+  }
+  h += '</div>';
+  el.innerHTML = h;
 };
 
-window.tuningToggleConfirmations = function(enable) {
-  api('POST', '/admin/config', {key: 'enable_confirmations', value: enable}).then(r => {
-    if (r && r.status === 'ok') { toast(enable ? 'Bestätigungen AKTIVIERT' : 'Bestätigungen DEAKTIVIERT', enable ? 'warning' : 'success'); tuningRender_blockaden(window._tuningAgentId); }
-    else { toast('Fehler', 'error'); }
+window.tuningDeleteBlockade = async function(agentId, bid) {
+  await api('DELETE', '/agents/' + agentId + '/blockades/' + bid);
+  tuningRender_blockaden(agentId);
+};
+window.tuningClearBlockades = async function(agentId) {
+  await api('DELETE', '/agents/' + agentId + '/blockades');
+  tuningRender_blockaden(agentId);
+};
+window.tuningClearAllBlockades = async function() {
+  await api('DELETE', '/blockades');
+  tuningRender_blockaden(window._tuningAgentId);
+};
+
+// ════════════════════════════════════════════════════════════════════
+// Blockaden Dashboard v2 — Standalone full-page view
+// ════════════════════════════════════════════════════════════════════
+
+var _bdPollInterval = null;
+
+function stopBDPolling() {
+  if (_bdPollInterval) {
+    clearInterval(_bdPollInterval);
+    _bdPollInterval = null;
+  }
+}
+
+function runBDPolling() {
+  if (!document.getElementById('blockaden-dashboard-panel')) {
+    stopBDPolling();
+    return;
+  }
+  loadBlockadenDashboardData();
+}
+
+async function showBlockadenDashboard() {
+  if (typeof trackView === 'function') trackView('blockaden');
+  selectedId = null;
+  stopBDPolling();
+  document.getElementById('content').innerHTML = `
+    <div class="panel" id="blockaden-dashboard-panel" style="height:calc(100vh - 91px); box-sizing:border-box; display:flex; flex-direction:column; padding:15px 20px; background:rgba(10, 15, 30, 0.4); border:1px solid var(--glass-border); margin-bottom:0; overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; flex-shrink:0;">
+        <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px; display:flex; align-items:center; gap:8px;">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f44; animation:pulse-glow 1.5s infinite;"></span>
+          Blockaden-Dashboard v2
+        </h2>
+        <div style="display:flex; gap:6px; margin-left:auto;">
+          <span id="bd-count-badge" style="font-size:0.65rem; padding:2px 8px; border-radius:4px; background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.2); color:#f66;"></span>
+          <button onclick="bdShowRules()" id="bd-rules-btn" style="font-size:0.6rem; padding:3px 8px; background:rgba(255,165,0,0.08); border:1px solid rgba(255,165,0,0.2); color:#ffa500; border-radius:4px; cursor:pointer;">📜 Regeln</button>
+          <button onclick="showBlockadenDashboard()" style="font-size:0.6rem; padding:3px 8px; background:rgba(0,229,255,0.08); border:1px solid rgba(0,229,255,0.2); color:var(--accent); border-radius:4px; cursor:pointer;">⟳ Refresh</button>
+          <button onclick="if(confirm('Wirklich ALLE Blockaden unwiderruflich löschen?')){tuningClearAllBlockades();setTimeout(showBlockadenDashboard,300)}" style="font-size:0.6rem; padding:3px 8px; background:rgba(255,50,50,0.08); border:1px solid rgba(255,50,50,0.15); color:#f66; border-radius:4px; cursor:pointer;">🗑 Alle löschen</button>
+        </div>
+      </div>
+      <div id="bd-filter-bar" style="display:flex; gap:8px; margin-bottom:8px; flex-shrink:0; flex-wrap:wrap; align-items:center;">
+        <input id="bd-filter-agent" placeholder="Agent filtern..." style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:4px 8px; font-size:0.72rem; width:140px; outline:none;" oninput="bdApplyFilter()">
+        <input id="bd-filter-reason" placeholder="Grund filtern..." style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:4px; padding:4px 8px; font-size:0.72rem; width:140px; outline:none;" oninput="bdApplyFilter()">
+        <select id="bd-filter-status" onchange="bdApplyFilter()" style="background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 8px; font-size:0.72rem;">
+          <option value="">Alle Status</option>
+          <option value="blocked">blocked</option>
+          <option value="warning">warning</option>
+          <option value="rejected">rejected</option>
+          <option value="timeout">timeout</option>
+        </select>
+        <div id="bd-agent-pills" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+      </div>
+      <div id="bd-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:3px; padding-right:4px; scrollbar-width:thin;">
+        <div style="color:rgba(255,255,255,0.3); padding:40px; text-align:center;">Lade Blockaden...</div>
+      </div>
+    </div>
+  `;
+  await loadBlockadenDashboardData();
+  _bdPollInterval = setInterval(runBDPolling, 4000);
+}
+
+window.bdApplyFilter = function() {
+  const agentF = (document.getElementById('bd-filter-agent')?.value || '').toLowerCase();
+  const reasonF = (document.getElementById('bd-filter-reason')?.value || '').toLowerCase();
+  const statusF = document.getElementById('bd-filter-status')?.value || '';
+  document.querySelectorAll('.bd-entry').forEach(el => {
+    const agent = el.getAttribute('data-agent') || '';
+    const reason = el.getAttribute('data-reason') || '';
+    const status = el.getAttribute('data-status') || '';
+    const matchAgent = !agentF || agent.includes(agentF);
+    const matchReason = !reasonF || reason.includes(reasonF);
+    const matchStatus = !statusF || status === statusF;
+    el.style.display = (matchAgent && matchReason && matchStatus) ? '' : 'none';
   });
 };
 
-// ── Tab: Tools ──
+async function loadBlockadenDashboardData() {
+  const container = document.getElementById('bd-list');
+  if (!container) return;
+
+  const data = await api('GET', '/blockades?limit=500').catch(() => null);
+  if (!data) {
+    container.innerHTML = '<div style="color:rgba(255,255,255,0.3); padding:40px; text-align:center;">Fehler beim Laden der Blockaden.</div>';
+    return;
+  }
+
+  const blockades = data.blockades || [];
+  const counts = data.counts || [];
+
+  const badge = document.getElementById('bd-count-badge');
+  if (badge) badge.textContent = blockades.length + ' Blockaden';
+
+  // Agent pills
+  const pillsEl = document.getElementById('bd-agent-pills');
+  if (pillsEl) {
+    const maxCnt = Math.max(...counts.map(c => c.cnt), 1);
+    pillsEl.innerHTML = counts.map(c => {
+      const pct = blockades.length ? Math.round((c.cnt / blockades.length) * 100) : 0;
+      const barW = Math.round((c.cnt / maxCnt) * 60);
+      const color = agentColor(c.agent_name);
+      return `<span onclick="document.getElementById('bd-filter-agent').value='${c.agent_name}';bdApplyFilter()" style="position:relative; font-size:0.55rem; padding:3px 8px; border-radius:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); cursor:pointer; transition:all 0.2s; overflow:hidden;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" title="${c.cnt} Blockaden (${pct}%)">
+        <span style="position:absolute; left:0; top:0; height:100%; width:${barW}px; background:${color}18; pointer-events:none; border-radius:3px;"></span>
+        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${color}; margin-right:4px; position:relative;"></span>
+        <span style="position:relative; font-weight:500;">${c.agent_name.replace('ag','AG')}</span>
+        <b style="color:#fff; background:${color}33; padding:0 5px; border-radius:3px; font-size:0.6rem; margin-left:4px; position:relative;">${c.cnt}</b>
+      </span>`;
+    }).join('');
+  }
+
+  if (!blockades.length) {
+    container.innerHTML = '<div style="color:rgba(255,255,255,0.2); padding:40px; text-align:center;">🔒 Keine Blockaden vorhanden. Alle Agenten sind brav.</div>';
+    return;
+  }
+
+  const sCol = s => s==='rejected'?'#f44':s==='timeout'?'#fa0':s==='warning'?'#ffa500':'#f60';
+
+  container.innerHTML = blockades.map(b => {
+    const ts = b.timestamp || '';
+    const time = ts.substring(11, 19);
+    const date = ts.substring(0, 10);
+    const agentColorHex = agentColor(b.agent_name);
+
+    const detail = b.detail || '–';
+    const reason = b.reason || '–';
+    const snippet = b.content_snippet || '';
+
+    const agentName = b.agent_name || 'Unknown';
+    const targetVal = encodeURIComponent(b.detail || '');
+    const agentEnc = encodeURIComponent(agentName);
+    const idEnc = b.id;
+
+    return `
+      <div class="bd-entry" data-agent="${agentName.toLowerCase()}" data-reason="${(b.reason||'').toLowerCase()}" data-status="${(b.status||'')}" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-left:3px solid ${agentColorHex}; border-radius:4px; padding:5px 8px; display:flex; flex-direction:column; gap:2px; transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'">
+        <div style="display:flex; align-items:center; gap:4px; font-size:0.6rem;">
+          <span style="color:${agentColorHex}; font-weight:600; text-transform:uppercase; flex-shrink:0;">${agentName.replace('ag','AG')}</span>
+          <span style="font-size:0.45rem; color:rgba(255,255,255,0.25); font-family:monospace;">${date} ${time}</span>
+          <span style="font-size:0.45rem; padding:0 3px; border-radius:2px; background:rgba(255,255,255,0.04); color:${sCol(b.status)}; font-weight:500;">${b.status}</span>
+          <span style="font-size:0.5rem; color:rgba(0,200,255,0.6);">${b.action_type || ''}</span>
+          <span style="font-size:0.5rem; color:rgba(255,255,255,0.3); margin-left:auto;">via ${b.blocked_by || 'Gatekeeper'}</span>
+          <button onclick="bdDeleteBlockade(${b.id})" style="flex-shrink:0; background:none; border:none; color:rgba(255,50,50,0.3); cursor:pointer; font-size:0.5rem; padding:1px 3px;">✕</button>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:4px;">
+          <span style="font-size:0.55rem; color:rgba(255,255,255,0.3); flex-shrink:0; width:44px;">🔒 Grund:</span>
+          <span style="font-size:0.6rem; color:#f88; line-height:1.25; word-break:break-word; flex:1;">${escapeHtml(reason)}</span>
+        </div>
+        <div style="display:flex; align-items:flex-start; gap:4px;">
+          <span style="font-size:0.55rem; color:rgba(255,255,255,0.3); flex-shrink:0; width:44px;">⚡ Auslöser:</span>
+          <code style="font-size:0.55rem; color:#0af; line-height:1.2; word-break:break-word; font-family:monospace; background:rgba(0,0,0,0.2); padding:1px 4px; border-radius:2px; flex:1; overflow-x:auto; white-space:pre-wrap;">${escapeHtml(detail)}</code>
+        </div>
+        ${snippet ? `
+        <div style="display:flex; align-items:flex-start; gap:4px;">
+          <span style="font-size:0.55rem; color:rgba(255,255,255,0.3); flex-shrink:0; width:44px;">📝 Snippet:</span>
+          <code style="font-size:0.5rem; color:rgba(255,255,255,0.5); line-height:1.2; word-break:break-word; font-family:monospace; background:rgba(0,0,0,0.15); padding:1px 4px; border-radius:2px; flex:1; overflow-x:auto; white-space:pre-wrap; max-height:2.4em; overflow:hidden;">${escapeHtml(snippet)}</code>
+        </div>` : ''}
+        <div style="display:flex; gap:3px; margin-top:2px; padding-top:3px; border-top:1px solid rgba(255,255,255,0.04);">
+          <button onclick="bdAction(${idEnc},'allow_once','${targetVal}','')" style="font-size:0.45rem; padding:2px 5px; background:rgba(57,255,20,0.08); border:1px solid rgba(57,255,20,0.2); color:#39ff14; border-radius:3px; cursor:pointer; flex:1;">✅ Einmalig</button>
+          <button onclick="bdAction(${idEnc},'whitelist','${targetVal}','')" style="font-size:0.45rem; padding:2px 5px; background:rgba(0,229,255,0.08); border:1px solid rgba(0,229,255,0.2); color:#00e5ff; border-radius:3px; cursor:pointer; flex:1;">➕ Whitelist</button>
+          <button onclick="bdAction(${idEnc},'allow_agent','${targetVal}','${agentEnc}')" style="font-size:0.45rem; padding:2px 5px; background:rgba(176,38,255,0.08); border:1px solid rgba(176,38,255,0.2); color:#b026ff; border-radius:3px; cursor:pointer; flex:1;">👤 Agent</button>
+          <button onclick="bdAction(${idEnc},'block_always','${targetVal}','')" style="font-size:0.45rem; padding:2px 5px; background:rgba(255,50,50,0.08); border:1px solid rgba(255,50,50,0.2); color:#f66; border-radius:3px; cursor:pointer; flex:1;">🚫 Block</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.bdDeleteBlockade = async function(bid) {
+  await api('DELETE', '/blockades/' + bid).catch(() => {});
+  loadBlockadenDashboardData();
+};
+
+window.bdShowRules = async function() {
+  const res = await api('GET', '/blockades/rules').catch(() => ({rules: []}));
+  const rules = res.rules || [];
+  if (!rules.length) {
+    toast('Keine aktiven Regeln.', 'info');
+    return;
+  }
+  const labels = {'allow_once':'✅ Einmalig','whitelist':'➕ Whitelist','allow_agent':'👤 Agent','block_always':'🚫 Block'};
+  let html = rules.map(r => `
+    <div style="display:flex; align-items:center; gap:6px; padding:4px 8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:4px; font-size:0.6rem;">
+      <span style="padding:1px 4px; border-radius:2px; background:rgba(255,255,255,0.05);">${labels[r.type]||r.type}</span>
+      <code style="flex:1; color:#0af; font-family:monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.target_value)}</code>
+      <span style="color:rgba(255,255,255,0.3);">${r.agent ? escapeHtml(r.agent) : ''}</span>
+      <button onclick="bdDeleteRule('${r.id}')" style="background:none; border:none; color:#f44; cursor:pointer; padding:1px 4px;">✕</button>
+    </div>
+  `).join('');
+  document.getElementById('bd-list').innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:4px; padding:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:0.7rem; font-weight:600;">📜 Aktive Regeln (${rules.length})</span>
+        <button onclick="loadBlockadenDashboardData()" style="font-size:0.55rem; padding:2px 6px; background:none; border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.5); border-radius:3px; cursor:pointer;">← Zurück</button>
+      </div>
+      ${html}
+    </div>
+  `;
+};
+
+window.bdDeleteRule = async function(ruleId) {
+  await api('DELETE', '/blockades/rules/' + ruleId).catch(() => {});
+  bdShowRules();
+};
+
+window.bdAction = async function(bid, ruleType, targetVal, agent) {
+  const labels = {
+    'allow_once': '✅ Einmalig erlaubt',
+    'whitelist': '➕ Auf Whitelist gesetzt',
+    'allow_agent': '👤 Für Agenten erlaubt',
+    'block_always': '🚫 Immer blockiert'
+  };
+  const target = decodeURIComponent(targetVal);
+  const res = await api('POST', '/blockades/' + bid + '/action', {
+    rule_type: ruleType,
+    target_value: target,
+    agent: decodeURIComponent(agent)
+  });
+  if (res && res.status === 'ok') {
+    toast(res.message || labels[ruleType] || 'OK', 'success');
+    loadBlockadenDashboardData();
+  } else {
+    toast('Fehler: ' + (res?.message || 'Unknown'), 'error');
+  }
+};
+
 window.tuningRender_tools = async function(agentId) {
   const el = document.getElementById('tuning-content'); if (!el) return;
   const agent = (agents||[]).find(a => a.id === agentId); if (!agent) return;
@@ -1778,34 +2047,76 @@ window.tuningRender_tuning = async function(agentId) {
   const blocks = config.prompt_blocks || {};
 
   const sliderDefs = [
-    {id:'verbosity', label:'Verbosity', vals:{0:'Low – kurz', 1:'Medium – präzise', 2:'High – ausführlich'}},
-    {id:'autonomy',  label:'Autonomy',  vals:{0:'Low – stoppt bei Unklarheit', 1:'Medium – kleine Entscheidungen', 2:'High – komplett selbstständig'}},
-    {id:'rückfrage', label:'Rückfrage', vals:{0:'Low – nie unterbrechen', 1:'Medium – bei Unsicherheit', 2:'High – bei jeder Ambiguität'}},
-    {id:'ton',       label:'Ton',       vals:{0:'Low – technisch/trocken', 1:'Medium – neutral', 2:'High – natürlich'}},
-    {id:'fokus',     label:'Fokus',     vals:{0:'Low – exakt beim Task', 1:'Medium – gelegentlich verwandtes', 2:'High – assoziativ'}},
+    {id:'creativity', label:'Creativity',
+     vals:{0:'0 – rigid',1:'1 – proven',2:'2 – balanced',3:'3 – innovative',4:'4 – wild'},
+     descs:{0:'No experimentation. Only standard patterns.',
+            1:'Prefer proven patterns. Minimal variation.',
+            2:'Balance standard with occasional creative.',
+            3:'Propose novel solutions. Break conventions.',
+            4:'Free innovation. Wild ideas welcome.'}},
+    {id:'precision', label:'Precision',
+     vals:{0:'0 – approx',1:'1 – low',2:'2 – balanced',3:'3 – high',4:'4 – flawless'},
+     descs:{0:'Approximations fine. Speed over accuracy.',
+            1:'Low precision. Verify only critical.',
+            2:'Balanced accuracy. Verify main outputs.',
+            3:'Detailed verification. Edge cases checked.',
+            4:'Flawless. Double-check everything. No errors.'}},
+    {id:'speed', label:'Speed',
+     vals:{0:'0 – glacial',1:'1 – slow',2:'2 – steady',3:'3 – fast',4:'4 – instant'},
+     descs:{0:'Maximum quality. Take all time needed.',
+            1:'Slow pace. Thoroughness over velocity.',
+            2:'Steady pace. Deliver when ready.',
+            3:'Quick delivery. First version fast.',
+            4:'Instant delivery. Speed over everything.'}},
+    {id:'critical_thinking', label:'Critical Thinking',
+     vals:{0:'0 – none',1:'1 – minimal',2:'2 – moderate',3:'3 – high',4:'4 – skeptic'},
+     descs:{0:'Execute literally. No questioning.',
+            1:'Flag only blocking issues.',
+            2:'Think about task. Suggest improvements.',
+            3:'Challenge assumptions. Propose changes.',
+            4:'Question everything. Root cause analysis.'}},
+    {id:'obedience', label:'Obedience',
+     vals:{0:'0 – slave',1:'1 – follower',2:'2 – teammate',3:'3 – lead',4:'4 – sovereign'},
+     descs:{0:'Follow literally. No interpretation.',
+            1:'Close adherence. Minimal autonomy.',
+            2:'Reasonable interpretation. Small adjustments.',
+            3:'High autonomy. Guidelines over instructions.',
+            4:'Full autonomy. Always choose best path.'}},
   ];
 
   let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
-  html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Claude Slider <span style="font-size:0.65rem;font-weight:400;color:rgba(255,255,255,0.3);">— 3-Level (0-2) mit Prompt-Blöcken</span></h3>';
+  html += '<h3 style="margin:0;font-size:0.95rem;">🎚️ Claude Slider <span style="font-size:0.65rem;font-weight:400;color:rgba(255,255,255,0.3);">— 5-Level (0–4)</span></h3>';
   sliderDefs.forEach(sl => {
-    const val = sliders[sl.id] ?? 1;
-    html += '<div style="display:flex;flex-direction:column;gap:3px;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">';
-    html += '<div style="display:flex;justify-content:space-between;font-size:0.75rem;"><span><b>' + sl.label + '</b></span><span id="tlbl-' + sl.id + '" style="font-weight:600;color:var(--accent);">' + sl.vals[val] + '</span></div>';
-    html += '<input type="range" id="tsl-' + sl.id + '" min="0" max="2" value="' + val + '" style="width:100%;margin:2px 0;" oninput="document.getElementById(\'tlbl-' + sl.id + '\').textContent={\'0\':\'' + sl.vals[0] + '\',\'1\':\'' + sl.vals[1] + '\',\'2\':\'' + sl.vals[2] + '\'}[this.value]">';
-    const block = blocks[sl.id] || '';
-    html += '<div style="font-size:0.6rem;color:rgba(255,255,255,0.35);margin-top:2px;font-style:italic;">' + escapeHtml(block.substring(0, 120)) + '</div>';
+    const val = sliders[sl.id] ?? 2;
+    html += '<div style="display:flex;flex-direction:column;gap:3px;padding:6px 8px;background:rgba(255,255,255,0.02);border-radius:6px;">';
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.72rem;"><span><b>' + sl.label + '</b></span><span id="tlbl-' + sl.id + '" style="font-weight:600;color:var(--accent);">' + sl.vals[val] + '</span></div>';
+    html += '<input type="range" id="tsl-' + sl.id + '" min="0" max="4" value="' + val + '" style="width:100%;margin:2px 0;" oninput="sliderUpdate(\'' + sl.id + '\',this.value)">';
+    html += '<div id="tdesc-' + sl.id + '" style="font-size:0.6rem;color:rgba(255,255,255,0.45);line-height:1.3;">' + escapeHtml(sl.descs[val]) + '</div>';
     html += '</div>';
   });
+  html += '<script>window._sliderDescs=' + JSON.stringify(sliderDefs) + ';</script>';
   html += '<button onclick="tuningSaveBehavior(\'' + agentId + '\')" style="padding:8px;font-size:0.8rem;font-weight:700;background:rgba(0,200,100,0.15);border:1px solid rgba(0,200,100,0.3);color:#0f0;border-radius:6px;cursor:pointer;">💾 Verhalten speichern</button>';
   html += '<div id="tmsg-behavior" style="font-size:0.65rem;color:rgba(255,255,255,0.3);text-align:center;"></div>';
   html += '</div>';
-  el.innerHTML = html;
+   el.innerHTML = html;
+};
+
+// Live Slider-Update
+window.sliderUpdate = function(key, value) {
+  value = parseInt(value);
+  const defs = window._sliderDescs || [];
+  const sl = defs.find(function(d) { return d.id === key; });
+  if (!sl) return;
+  const lbl = document.getElementById('tlbl-' + key);
+  if (lbl) lbl.textContent = sl.vals[value];
+  const desc = document.getElementById('tdesc-' + key);
+  if (desc) desc.textContent = sl.descs[value];
 };
 
 window.tuningSaveBehavior = async function(agentId) {
   const s = {};
-  ['verbosity','autonomy','rückfrage','ton','fokus'].forEach(k => {
-    s[k] = parseInt(document.getElementById('tsl-' + k)?.value ?? 1);
+  ['creativity','precision','speed','critical_thinking','obedience'].forEach(k => {
+    s[k] = parseInt(document.getElementById('tsl-' + k)?.value ?? 2);
   });
   const r = await api('PUT', '/agents/' + agentId + '/sliders', s);
   const msg = document.getElementById('tmsg-behavior');
