@@ -58,6 +58,7 @@ dev = ["pytest>=7.0", "httpx>=0.24", "pytest-asyncio"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+markers = ["load_test: marks tests as load/stress tests (longer runtime)"]
 
 [tool.ruff.lint.per-file-ignores]
 "agents/*.py" = ["E402"]  # module level import not at top

@@ -58,7 +58,9 @@ def interpolate_template(template: str, variables: Dict[str, str]) -> str:
     def _deep_get(d, path):
         for key in path.split('.'):
             if isinstance(d, dict):
-                d = d.get(key, d)
+                if key not in d:
+                    return ""
+                d = d[key]
             else:
                 return str(d)
         return str(d) if d else ""

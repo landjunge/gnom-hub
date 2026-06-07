@@ -23,7 +23,7 @@ def verify_browser(agent, code, wd, perms) -> bool:
         request_capability(name, "BROWSER", code_hash, "AutoApprovedBrowser")
         return True
 
-    if "godmode" not in perms: return False
+    if not isinstance(perms, list) or "godmode" not in perms: return False
     if check_capability(name, "BROWSER", code_hash): return True
     urls = re.findall(r'https?://[^\s\'"]+', code)
     approved = get_state_value("approved_external_urls", []) or []

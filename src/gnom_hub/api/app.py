@@ -17,6 +17,9 @@ async def start_openrouter_updater():
             print("Running scheduled OpenRouter free models check...")
             await check_and_update_models()
             print("Scheduled OpenRouter free models check complete.")
+        except asyncio.CancelledError:
+            print("OpenRouter updater cancelled.")
+            break
         except Exception as e:
             print(f"Error in background openrouter updater: {e}")
         await asyncio.sleep(2 * 3600)
@@ -233,7 +236,8 @@ AVATARS_DIR = Path(__file__).parent.parent / "config" / "avatars"
 if AVATARS_DIR.exists(): app.mount("/static/avatars", StaticFiles(directory=str(AVATARS_DIR)), name="avatars")
 
 FRONT = Path(__file__).parent.parent / "frontend"
-if FRONT.exists: app.mount("/static", StaticFiles(directory=str(FRONT)), name="static")
+# FRONTEND_DIR also defined in core.config.Config — keep in sync
+if FRONT.exists(): app.mount("/static", StaticFiles(directory=str(FRONT)), name="static")
 
 # Force no-cache for all static files (prevents stale JS/CSS)
 from starlette.middleware.base import BaseHTTPMiddleware

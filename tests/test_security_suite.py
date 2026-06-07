@@ -149,43 +149,45 @@ class TestIsCommandSafeAndWhitelisted:
         return is_command_safe_and_whitelisted(cmd)
 
     def test_python3_allowed(self):
-        safe, reason = self._call("python3 main.py")
+        safe, sev, reason = self._call("python3 main.py")
         assert safe is True
 
     def test_pytest_allowed(self):
-        safe, _ = self._call("pytest tests/")
+        safe, sev, _ = self._call("pytest tests/")
         assert safe is True
 
     def test_ls_allowed(self):
-        safe, _ = self._call("ls -la")
+        safe, sev, _ = self._call("ls -la")
         assert safe is True
 
     def test_rm_rf_blocked(self):
-        safe, reason = self._call("rm -rf /")
+        safe, sev, reason = self._call("rm -rf /")
         assert safe is False
-        assert reason  # Begründung vorhanden
+        assert "nicht erlaubt" in reason  # Begründung vorhanden
 
     def test_unknown_exec_blocked(self):
-        """Truly unknown binary not on whitelist → blocked"""
-        safe, reason = self._call("custom_evil_binary --payload")
+        """Truly unknown binary not on whitelist → blocked (medium severity = warning+allow)"""
+        safe, sev, reason = self._call("custom_evil_binary --payload")
         assert safe is False
+        assert sev == "medium"
 
     def test_git_status_allowed(self):
-        safe, _ = self._call("git status")
+        safe, sev, _ = self._call("git status")
         assert safe is True
 
     def test_git_push_blocked(self):
-        safe, reason = self._call("git push origin main")
+        safe, sev, reason = self._call("git push origin main")
         assert safe is False
-        assert "push" in reason.lower() or "autorisiert" in reason.lower()
+        assert "push" in reason.lower() or "nicht erlaubt" in reason.lower()
 
     def test_git_no_subcommand_blocked(self):
-        safe, reason = self._call("git")
+        safe, sev, reason = self._call("git")
         assert safe is False
+        assert sev == "medium"
 
     def test_pip_known_safe_package(self):
         """pytest ist in safe_packages → kein PyPI-Request nötig"""
-        safe, _ = self._call("pip install pytest")
+        safe, sev, _ = self._call("pip install pytest")
         assert safe is True
 
     def test_pip_unknown_package_pypi_ok(self):
@@ -197,7 +199,7 @@ class TestIsCommandSafeAndWhitelisted:
             "vulnerabilities": []
         }
         with patch("requests.get", return_value=mock_response):
-            safe, _ = self._call("pip install someunknownpackage")
+            safe, sev, _ = self._call("pip install someunknownpackage")
         assert safe is True
 
     def test_pip_unknown_package_has_vulns(self):
@@ -209,7 +211,7 @@ class TestIsCommandSafeAndWhitelisted:
             "vulnerabilities": [{"id": "CVE-2024-1337"}]
         }
         with patch("requests.get", return_value=mock_response):
-            safe, reason = self._call("pip install dangerouslib")
+            safe, sev, reason = self._call("pip install dangerouslib")
         assert safe is False
         assert "sicherheitslücken" in reason.lower() or "CVE" in reason or "Sicherheits" in reason
 
@@ -218,42 +220,42 @@ class TestIsCommandSafeAndWhitelisted:
         mock_response = MagicMock()
         mock_response.status_code = 404
         with patch("requests.get", return_value=mock_response):
-            safe, reason = self._call("pip install ghostpackage123")
+            safe, sev, reason = self._call("pip install ghostpackage123")
         assert safe is False
 
     def test_pip_network_error_auto_approves(self):
         """Netzwerkfehler bei PyPI-Check → auto-approve (per current implementation)"""
         with patch("requests.get", side_effect=Exception("timeout")):
-            safe, _ = self._call("pip install networkfailpkg")
+            safe, sev, _ = self._call("pip install networkfailpkg")
         assert safe is True
 
     def test_pip_install_no_package_name(self):
         """pip install ohne Paketname → falls through to safe (len check doesn't trigger)"""
-        safe, _ = self._call("pip install")
+        safe, sev, _ = self._call("pip install")
         assert safe is True
 
     def test_npm_safe_package(self):
-        safe, _ = self._call("npm install react")
+        safe, sev, _ = self._call("npm install react")
         assert safe is True
 
     def test_npm_unknown_package_allowed(self):
         """npm packages are generally allowed unless dangerous patterns detected"""
-        safe, _ = self._call("npm install some-shady-lib")
+        safe, sev, _ = self._call("npm install some-shady-lib")
         assert safe is True
 
     def test_npm_dangerous_pattern_blocked(self):
         """npm with dangerous chaining → blocked"""
-        safe, reason = self._call("npm install && rm -rf /")
+        safe, sev, reason = self._call("npm install && rm -rf /")
         assert safe is False
 
     def test_chained_commands_one_bad(self):
         """Kette: erlaubter Befehl && verbotener Befehl → blockiert"""
-        safe, reason = self._call("python3 script.py && custom_evil_binary --payload")
+        safe, sev, reason = self._call("python3 script.py && custom_evil_binary --payload")
         assert safe is False
 
     def test_env_var_prefix_ignored(self):
         """Umgebungsvariablen-Prefix wird korrekt ignoriert"""
-        safe, _ = self._call("MY_VAR=1 python3 main.py")
+        safe, sev, _ = self._call("MY_VAR=1 python3 main.py")
         assert safe is True
 
 
@@ -330,19 +332,19 @@ class TestVerifyWrite:
         agent = make_agent()
         with patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/evil.py"), \
              patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
-             patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=True):
+             patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value="high"):
             result = self._call(agent, "evil.py", "rm -rf")
         assert result is False
 
-    def test_soul_role_auto_approved(self):
-        """System-Agenten (soul, watchdog, security) sind auto-approved"""
+    def test_soul_role_blocked(self):
+        """SoulAG darf KEINE Dateien schreiben — nur Datenbank (verify_write blockiert)"""
         agent = {"name": "SoulAG", "role": "soul"}
         with patch("gnom_hub.core.security.gatekeeper.check_capability", return_value=False), \
              patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/mem.json"), \
              patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
              patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=False):
             result = self._call(agent, "mem.json")
-        assert result is True
+        assert result is False
 
 
 # ==============================================================================
@@ -378,10 +380,10 @@ class TestVerifyCmd:
         result = self._call(make_agent(), "pytest tests/")
         assert result is True
 
-    def test_non_whitelisted_cmd_instant_blocked(self):
-        """Nicht-whitelisted Befehl → sofort blockiert"""
+    def test_non_whitelisted_cmd_warning_allowed(self):
+        """Nicht-whitelisted Befehl → warning (medium) + allow (nicht high-risk)"""
         result = self._call(make_agent(), "custom_evil_binary --payload")
-        assert result is False
+        assert result is True
 
     def test_python3_cmd_allowed(self):
         """python3 mit Script ist whitelisted → True"""
@@ -826,71 +828,52 @@ class TestBakeSupergnom:
 # ==============================================================================
 
 class TestWaitForDecisionTimeout:
-    """Timeout-Logik in wait_for_decision() — nutzt _clock_time/_clock_sleep (C1 fix)"""
+    """Timeout-Logik in wait_for_decision() — nutzt threading.Event"""
 
     def test_timeout_auto_rejects(self):
         """Nach 300s Timeout → auto-reject (return False)"""
-        call_count = [0]
-        def fake_clock():
-            call_count[0] += 1
-            return 0 if call_count[0] <= 2 else 301
-
         def fake_get_state(key, default=None):
             if key == "enable_confirmations":
-                return True  # Must be True to enter the decision loop
-            if key == "pending_decisions":
-                return {}  # No decisions → stays in loop until timeout
+                return True
             return default
 
-        with patch("gnom_hub.core.security.gatekeeper.router.ask_router") as mock_router, \
-             patch("gnom_hub.core.security.gatekeeper.get_state_value", side_effect=fake_get_state), \
+        with patch("gnom_hub.core.security.gatekeeper.get_state_value", side_effect=fake_get_state), \
              patch("gnom_hub.db.get_state_value", side_effect=fake_get_state), \
-             patch("gnom_hub.core.security.gatekeeper.set_state_value"), \
              patch("gnom_hub.core.security.gatekeeper.save_showbox_presentation"), \
              patch("gnom_hub.core.security.gatekeeper.set_active_showbox"), \
              patch("gnom_hub.core.security.gatekeeper.add_chat_message"), \
              patch("gnom_hub.core.security.gatekeeper.set_agent_status"), \
              patch("gnom_hub.core.security.gatekeeper.get_active_project", return_value="default"), \
-             patch("gnom_hub.db.get_all_agents", return_value=[]), \
-             patch("gnom_hub.core.security.gatekeeper._clock_time", fake_clock), \
-             patch("gnom_hub.core.security.gatekeeper._clock_sleep"):
-            mock_router.return_value = MagicMock(content="Test-Erklärung")
+             patch("threading.Event.wait", return_value=False):  # simuliert Timeout
             from gnom_hub.core.security.gatekeeper import wait_for_decision
             result = wait_for_decision("CoderAG", "WRITE", "test.py", "content", "Regel")
         assert result is False
 
     def test_approved_decision_returns_true(self):
-        """Wenn decision status == 'approved' → True"""
-        decision_id_holder = {}
+        """Wenn decision approved → True"""
+        from gnom_hub.core.security.gatekeeper import _signal_decision, _decisions
+        import uuid as _uuid
 
-        def fake_set_state(key, val):
-            if key == "pending_decisions":
-                for k in val:
-                    decision_id_holder[k] = val[k]
+        did = str(_uuid.uuid4())
+
+        def fake_event_wait(timeout=300):
+            _signal_decision(did, "approved")
+            return True
 
         def fake_get_state(key, default=None):
             if key == "enable_confirmations":
-                return True  # Must be True to enter the decision loop
-            if key == "pending_decisions":
-                result = {}
-                for k, v in decision_id_holder.items():
-                    result[k] = {**v, "status": "approved"}
-                return result
+                return True
             return default
 
-        with patch("gnom_hub.core.security.gatekeeper.router.ask_router") as mock_router, \
-             patch("gnom_hub.core.security.gatekeeper.get_state_value", side_effect=fake_get_state), \
+        with patch("gnom_hub.core.security.gatekeeper.get_state_value", side_effect=fake_get_state), \
              patch("gnom_hub.db.get_state_value", side_effect=fake_get_state), \
-             patch("gnom_hub.core.security.gatekeeper.set_state_value", side_effect=fake_set_state), \
              patch("gnom_hub.core.security.gatekeeper.save_showbox_presentation"), \
              patch("gnom_hub.core.security.gatekeeper.set_active_showbox"), \
              patch("gnom_hub.core.security.gatekeeper.add_chat_message"), \
              patch("gnom_hub.core.security.gatekeeper.set_agent_status"), \
              patch("gnom_hub.core.security.gatekeeper.get_active_project", return_value="default"), \
-             patch("gnom_hub.db.get_all_agents", return_value=[]), \
-             patch("gnom_hub.core.security.gatekeeper._clock_time", MagicMock(return_value=0)), \
-             patch("gnom_hub.core.security.gatekeeper._clock_sleep"):
-            mock_router.return_value = MagicMock(content="Erklärung")
+             patch("uuid.uuid4", return_value=did), \
+             patch("threading.Event.wait", side_effect=fake_event_wait):
             from gnom_hub.core.security.gatekeeper import wait_for_decision
             result = wait_for_decision("CoderAG", "WRITE", "test.py", "content", "Regel")
         assert result is True
@@ -908,23 +891,24 @@ class TestGodmodeWhitelistHardening:
         return is_command_safe_and_whitelisted(cmd, agent)
 
     def test_godmode_agent_unknown_binary_blocked(self):
-        """godmode-Agent mit unbekanntem Binary → blockiert (C2 fix)"""
+        """godmode-Agent mit unbekanntem Binary → blocked (medium)"""
         agent = {"name": "CoderAG", "permissions": ["godmode"]}
-        safe, reason = self._call("custom_evil_binary --payload", agent)
+        safe, sev, reason = self._call("custom_evil_binary --payload", agent)
         assert safe is False
-        assert "Whitelist" in reason
+        assert sev == "medium"
 
     def test_godmode_agent_whitelisted_binary_allowed(self):
         """godmode-Agent mit whitelisted Binary → erlaubt"""
         agent = {"name": "CoderAG", "permissions": ["godmode"]}
-        safe, _ = self._call("python3 main.py", agent)
+        safe, sev, _ = self._call("python3 main.py", agent)
         assert safe is True
 
     def test_normal_agent_unknown_binary_blocked(self):
-        """Normaler Agent ohne godmode → auch blockiert"""
+        """Normaler Agent ohne godmode → auch blocked (medium)"""
         agent = {"name": "CoderAG", "permissions": ["read", "write"]}
-        safe, reason = self._call("custom_evil_binary", agent)
+        safe, sev, reason = self._call("custom_evil_binary", agent)
         assert safe is False
+        assert sev == "medium"
 
 
 # ==============================================================================
@@ -940,39 +924,39 @@ class TestRmPathResolving:
 
     def test_rm_tilde_blocked(self):
         """rm ~/ → aufgelöst zu Home-Dir → blockiert"""
-        safe, reason = self._call("rm ~/")
+        safe, sev, reason = self._call("rm ~/")
         assert safe is False
         assert "nicht erlaubt" in reason
 
     def test_rm_rf_tilde_blocked(self):
         """rm -rf ~/ → blockiert"""
-        safe, reason = self._call("rm -rf ~/")
+        safe, sev, reason = self._call("rm -rf ~/")
         assert safe is False
 
     def test_rm_root_blocked(self):
         """rm / → blockiert"""
-        safe, reason = self._call("rm /")
+        safe, sev, reason = self._call("rm /")
         assert safe is False
 
     def test_rm_etc_passwd_blocked(self):
         """rm /etc/passwd → Systempfad blockiert"""
-        safe, reason = self._call("rm /etc/passwd")
+        safe, sev, reason = self._call("rm /etc/passwd")
         assert safe is False
         assert "Systempfad" in reason
 
     def test_rm_usr_blocked(self):
         """rm -rf /usr/local → Systempfad blockiert"""
-        safe, reason = self._call("rm -rf /usr/local")
+        safe, sev, reason = self._call("rm -rf /usr/local")
         assert safe is False
 
     def test_rm_safe_file_allowed(self):
         """rm output.txt → normaler Pfad → erlaubt"""
-        safe, _ = self._call("rm output.txt")
+        safe, sev, _ = self._call("rm output.txt")
         assert safe is True
 
     def test_rm_rf_tmp_subdir_allowed(self):
         """rm -rf /tmp/myproject → nicht System, nicht Home → erlaubt"""
-        safe, _ = self._call("rm -rf /tmp/myproject")
+        safe, sev, _ = self._call("rm -rf /tmp/myproject")
         assert safe is True
 
 

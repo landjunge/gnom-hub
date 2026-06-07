@@ -85,6 +85,14 @@ def handle_resume(q):
     _post_chat("System", f"Agent **{agent['name']}** wurde fortgesetzt.")
     return {"status": "ok"}
 
+def _signal_decision_handler(decision_id: str, status: str):
+    """Weckt den wartenden wait_for_decision-Thread via Event."""
+    try:
+        from gnom_hub.core.security.gatekeeper import _signal_decision
+        _signal_decision(decision_id, status)
+    except ImportError:
+        pass
+
 def handle_approve_decision(q):
     decision_id = q.strip()
     from gnom_hub.db import get_state_value, set_state_value, set_agent_status
@@ -101,6 +109,7 @@ def handle_approve_decision(q):
             cmds = get_state_value("approved_security_commands", [])
             cmds.append(d["detail"])
             set_state_value("approved_security_commands", cmds)
+        _signal_decision_handler(decision_id, "approved")
         set_agent_status(d["agent_name"], "busy")
         try:
             from gnom_hub.db import set_active_showbox, delete_showbox_presentation
@@ -122,6 +131,7 @@ def handle_reject_decision(q):
         d = pending[decision_id]
         d["status"] = "rejected"
         set_state_value("pending_decisions", pending)
+        _signal_decision_handler(decision_id, "rejected")
         set_agent_status(d["agent_name"], "busy")
         try:
             from gnom_hub.db import set_active_showbox, delete_showbox_presentation
@@ -362,7 +372,7 @@ def handle_blockade(q):
                     cmds.append(d["detail"])
                     set_state_value("approved_security_commands", cmds)
                 
-                # Wake up agent
+                _signal_decision_handler(d_id, "approved")
                 set_agent_status(d["agent_name"], "busy")
                 
                 # Delete Showbox card

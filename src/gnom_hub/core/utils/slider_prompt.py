@@ -79,10 +79,17 @@ def update_slider(agent_name: str, key: str, value: int) -> bool:
     level = LEVELS[value]
     config["prompt_blocks"][key] = _get_default_block(key, level)
 
+    import tempfile
     from gnom_hub.core.config import CONFIG_DIR as AGENTS_BASE
     path = os.path.join(str(AGENTS_BASE), "agents", f"{agent_name}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(config, f, ensure_ascii=False, indent=2)
+    tmp = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, dir=os.path.dirname(path))
+    try:
+        json.dump(config, tmp, ensure_ascii=False, indent=2)
+        tmp.close()
+        os.replace(tmp.name, path)
+    except Exception:
+        os.unlink(tmp.name)
+        raise
 
     return True
 

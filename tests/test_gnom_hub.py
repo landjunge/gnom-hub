@@ -194,8 +194,8 @@ def test_blockade_command():
     
     client = TestClient(app)
     try:
-        # Send @blockade aus command
-        res = client.post("/api/chat", json={"content": "@blockade aus", "sender": "user"})
+        # Send @@blockade aus command
+        res = client.post("/api/chat", json={"content": "@@blockade aus", "sender": "user"})
         assert res.status_code == 200
         
         # Verify confirmations setting is disabled

@@ -31,6 +31,38 @@ _new_message_event: Dict[str, threading.Event] = {}
 _event_lock = threading.Lock()
 
 
+def can_accept_message(agent_name: str, conn: sqlite3.Connection) -> bool:
+    """Prüft ob ein Agent noch Tasks annehmen kann (Backpressure + Concurrent-Limit).
+
+    Berücksichtigt:
+      - MAX_QUEUE_DEPTH: Maximale Anzahl offener (pending) Nachrichten pro Agent
+      - MAX_CONCURRENT:  Maximale Anzahl gleichzeitig verarbeiteter (processing) Nachrichten
+
+    Rückgabewert: True = Task kann angenommen werden, False = Queue voll/überlastet
+    """
+    pending = conn.execute(
+        "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'pending'",
+        (agent_name,)
+    ).fetchone()[0]
+    if pending >= MAX_QUEUE_DEPTH:
+        logger.warning(
+            "Backpressure für Agent '%s': %d pending (Limit %d)",
+            agent_name, pending, MAX_QUEUE_DEPTH
+        )
+        return False
+
+    active = conn.execute(
+        "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
+        (agent_name,)
+    ).fetchone()[0]
+    if active >= MAX_CONCURRENT:
+        logger.info(
+            "Auslastung Agent '%s': %d processing (Limit %d) – wird gepuffert",
+            agent_name, active, MAX_CONCURRENT
+        )
+    return True
+
+
 def parse_agent_sequence(text: str) -> List[Tuple[str, str]]:
     """
     Parst mehrzeilige Delegationen im Format:
@@ -90,7 +122,6 @@ def dispatch_sequence(
         for step_idx, (agent_key, task) in enumerate(steps):
             tgt_name = agent_map.get(agent_key)
             if not tgt_name:
-                # Fallback: capability-basiert suchen
                 tgt_name = find_best_agent_for_task(task, conn)
                 if not tgt_name:
                     logger.info("Kein Agent für Task '%s' gefunden", task[:60])
@@ -99,13 +130,18 @@ def dispatch_sequence(
             if agent_key.lower() == sender.lower():
                 continue
             if agent_key in offline and agent_key not in agent_map:
-                # Nur überspringen wenn wirklich offline UND kein Fallback gefunden
-                # (tgt_name ist dann der Fallback, nicht der offline Agent)
                 if tgt_name == agent_map.get(agent_key):
                     tgt_name = find_best_agent_for_task(task, conn)
                     if not tgt_name:
                         logger.info("Agent '%s' offline – kein Ersatz", agent_key)
                         continue
+
+            if not can_accept_message(tgt_name, conn):
+                logger.warning(
+                    "dispatch_sequence: Überspringe Step %d für '%s' – Queue voll (context=%s)",
+                    step_idx, tgt_name, context_id
+                )
+                continue
 
             payload = json.dumps({"text": f"@{tgt_name} {task}", "mention": tgt_name})
 
@@ -130,12 +166,12 @@ def dispatch_sequence(
                     (json.dumps(payload_obj), msg_id)
                 )
 
-            conn.commit()
             notify_agent(tgt_name)
             dispatched.append(tgt_name)
             prev_msg_id = msg_id
 
     finally:
+        conn.commit()
         conn.close()
 
     return dispatched
@@ -263,26 +299,14 @@ def dispatch_mention(
 
             tgt_name = agent_map[tgt_lower]
 
-            # Backpressure-Limit prüfen (Queue-Explosionsschutz)
-            pending_count = conn.execute("""
-                SELECT COUNT(*) FROM agent_messages
-                WHERE recipient = ? AND status = 'pending'
-            """, (tgt_name,)).fetchone()[0]
-
-            if pending_count >= MAX_QUEUE_DEPTH:
-                logger.warning(
-                    "Backpressure ausgelöst: Queue von Agent '%s' ist voll (%d offene Jobs).",
-                    tgt_name, pending_count
-                )
+            if not can_accept_message(tgt_name, conn):
                 continue
 
-            # Concurrent-Limit prüfen
-            active_count = conn.execute("""
-                SELECT COUNT(*) FROM agent_messages
-                WHERE recipient = ? AND status = 'processing'
-            """, (tgt_name,)).fetchone()[0]
+            active_count = conn.execute(
+                "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
+                (tgt_name,)
+            ).fetchone()[0]
 
-            # Priorität ermitteln
             prio_val = None
             if priority is not None:
                 if isinstance(priority, str):
@@ -291,12 +315,6 @@ def dispatch_mention(
                     prio_val = priority
             if prio_val is None:
                 prio_val = 7 if active_count >= MAX_CONCURRENT else 5
-
-            if active_count >= MAX_CONCURRENT:
-                logger.info(
-                    "Agent '%s' ausgelastet (%d Jobs) – Nachricht wird gepuffert (Prio %d)",
-                    tgt_name, active_count, prio_val
-                )
 
             # Nachricht persistent speichern
             conn.execute("""
@@ -385,25 +403,30 @@ def fetch_next_message(
                             continue
 
                         if parent_row["status"] != "done":
-                            # Parent noch nicht fertig – prüfe auf Timeout
-                            created = parent_row["created_at"] or time.time()
-                            elapsed = time.time() - created
-                            if elapsed > DEPENDENCY_TIMEOUT:
-                                # Timeout: Parent hängt zu lange → gesamte Sequenz abbrechen
-                                fail_dependent_messages(parent_id, "DEPENDENCY_TIMEOUT=%.0fs" % DEPENDENCY_TIMEOUT, conn)
-                                conn.commit()
-                                logger.error("Sequenz-Abbruch: Parent %d nach %.0fs nicht fertig – Kaskade ausgelöst", parent_id, elapsed)
-                                time.sleep(0.5)
-                                continue
+                            # Parent noch nicht fertig – prüfe auf Timeout.
+                            # Verwende processing_since (Start der Bearbeitung) statt
+                            # created_at (Einreihen in Queue) – sonst timeoutet eine
+                            # frisch gestartete, aber alte Message sofort.
+                            parent_ps = conn.execute(
+                                "SELECT processing_since FROM agent_messages WHERE id = ?",
+                                (parent_id,)
+                            ).fetchone()
+                            ps = parent_ps["processing_since"] if parent_ps else None
+                            if ps is not None:
+                                elapsed = time.time() - ps
+                                if elapsed > DEPENDENCY_TIMEOUT:
+                                    fail_dependent_messages(parent_id, "DEPENDENCY_TIMEOUT=%.0fs" % DEPENDENCY_TIMEOUT, conn)
+                                    conn.commit()
+                                    logger.error("Sequenz-Abbruch: Parent %d nach %.0fs processing – Kaskade ausgelöst", parent_id, elapsed)
+                                    time.sleep(0.5)
+                                    continue
 
-                            # Zurückstellen
                             conn.execute("""
                                 UPDATE agent_messages
                                 SET deliver_after = ?, status = 'pending'
                                 WHERE id = ?
                             """, (time.time() + DEPENDENCY_POLL_S, row["id"]))
                             conn.commit()
-                            conn.close()
                             time.sleep(1.5)
                             continue
 
@@ -438,30 +461,37 @@ def fetch_next_message(
     return None  # Timeout
 
 
-def fail_dependent_messages(msg_id: int, reason: str, conn: sqlite3.Connection) -> None:
-    """Schickt msg_id + alle davon abhängigen Messages in die DLQ."""
-    now = time.time()
-    conn.execute(
-        "UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE id=?",
-        (now, msg_id)
-    )
-    logger.error("Message %d in DLQ (%s)", msg_id, reason)
-    # Kaskadiere: finde alle Messages, die auf msg_id warten
-    children = conn.execute(
-        "SELECT id FROM agent_messages WHERE parent_msg_id = ? AND status != 'done'",
-        (msg_id,)
-    ).fetchall()
-    for child in children:
-        fail_dependent_messages(child["id"], "chain_reaction: parent %d in DLQ" % msg_id, conn)
-
-
 def ack_message(msg_id: int, db_path: str) -> None:
-    """Nachricht als erfolgreich abgearbeitet markieren."""
+    """Nachricht als erfolgreich abgearbeitet markieren.
+
+    Setzt bei allen wartenden Children (parent_msg_id = msg_id, status = 'pending')
+    deliver_after auf 0 zurück, damit fetch_next_message sie sofort findet.
+
+    Optimierung: Die meisten Messages haben keine abhängigen Children. Ein günstiger
+    SELECT 1 ... LIMIT 1 (Index-Only-Lookup) prüft, ob Children existieren. Nur dann
+    werden der UPDATE und notify_agent() ausgeführt. Der COMMIT erfolgt einmalig.
+    """
     conn = get_db_connection()
     try:
         conn.execute(
-            "UPDATE agent_messages SET status='done', completed_at=? WHERE id=?", (time.time(), msg_id)
+            "UPDATE agent_messages SET status='done', completed_at=? WHERE id=?",
+            (time.time(), msg_id)
         )
+        children_exist = conn.execute(
+            "SELECT 1 FROM agent_messages WHERE parent_msg_id = ? AND status = 'pending' LIMIT 1",
+            (msg_id,)
+        ).fetchone() is not None
+        if children_exist:
+            conn.execute(
+                "UPDATE agent_messages SET deliver_after=0 WHERE parent_msg_id = ? AND status = 'pending'",
+                (msg_id,)
+            )
+            agents = conn.execute(
+                "SELECT DISTINCT recipient FROM agent_messages WHERE parent_msg_id = ? AND status = 'pending'",
+                (msg_id,)
+            ).fetchall()
+            for row in agents:
+                notify_agent(row["recipient"])
         conn.commit()
     finally:
         conn.close()
@@ -573,26 +603,18 @@ def dispatch_by_capability(
             logger.warning("Kein Agent für Capability '%s' verfügbar", task_type)
             return None, None
 
-        # Backpressure-Limit prüfen
-        pending_count = conn.execute("""
-            SELECT COUNT(*) FROM agent_messages
-            WHERE recipient = ? AND status = 'pending'
-        """, (target,)).fetchone()[0]
-
-        if pending_count >= MAX_QUEUE_DEPTH:
+        if not can_accept_message(target, conn):
             logger.warning(
-                "Backpressure ausgelöst: Queue von Agent '%s' ist voll (%d offene Jobs).",
-                target, pending_count
+                "dispatch_by_capability: Ziel '%s' kann keine weiteren Tasks annehmen",
+                target
             )
             return None, None
 
-        # Concurrent-Limit prüfen
-        active_count = conn.execute("""
-            SELECT COUNT(*) FROM agent_messages
-            WHERE recipient = ? AND status = 'processing'
-        """, (target,)).fetchone()[0]
+        active_count = conn.execute(
+            "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
+            (target,)
+        ).fetchone()[0]
 
-        # Priorität ermitteln
         prio_val = None
         if priority is not None:
             if isinstance(priority, str):
@@ -638,7 +660,7 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
         stuck_cutoff = now - timeout
         rows = conn.execute("""
             SELECT id, retry_count, recipient, sender FROM agent_messages
-            WHERE status = 'processing' AND processing_since <= ?
+            WHERE status = 'processing' AND (processing_since <= ? OR processing_since IS NULL)
         """, (stuck_cutoff,)).fetchall()
 
         for row in rows:
@@ -676,16 +698,27 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
 
 
 def fail_dependent_messages(msg_id: int, reason: str, conn: sqlite3.Connection) -> None:
-    """Schickt msg_id + alle davon abhängigen Messages in die DLQ."""
+    """Schickt msg_id + den gesamten Abhängigkeitsbaum in die DLQ.
+
+    Verwendet einen einzelnen rekursiven CTE, um alle transitiven Abhängigkeiten
+    zu sammeln, und aktualisiert sie in einem einzigen UPDATE. Das vermeidet
+    N Einzel-Updates (wie die alte rekursive Version) und skaliert auf tiefe
+    Chains.
+
+    Eine 'done'-Message wird nicht überschrieben (WHERE status != 'done'),
+    aber ihre Children werden trotzdem in die DLQ geschickt.
+    """
     now = time.time()
-    conn.execute(
-        "UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE status != 'done' AND id=?",
-        (now, msg_id)
-    )
-    logger.error("Message %d in DLQ (%s)", msg_id, reason)
-    children = conn.execute(
-        "SELECT id FROM agent_messages WHERE parent_msg_id = ? AND status != 'done'",
-        (msg_id,)
-    ).fetchall()
-    for child in children:
-        fail_dependent_messages(child["id"], "chain_reaction: parent %d in DLQ" % msg_id, conn)
+    affected = conn.execute("""
+        WITH RECURSIVE dep_tree(id) AS (
+            SELECT ?
+            UNION ALL
+            SELECT m.id FROM agent_messages m
+            JOIN dep_tree ON m.parent_msg_id = dep_tree.id
+        )
+        UPDATE agent_messages
+        SET status='dead_letter', completed_at=?
+        WHERE status != 'done' AND id IN (SELECT id FROM dep_tree)
+    """, (msg_id, now)).rowcount
+    if affected:
+        logger.error("%d Messages in DLQ (root=%d, reason=%s)", affected, msg_id, reason)

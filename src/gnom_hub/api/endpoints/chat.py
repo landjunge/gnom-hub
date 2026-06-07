@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from uuid import UUID
 from typing import List
 from pydantic import BaseModel
-from gnom_hub.api.dependencies import get_chat_service
+from gnom_hub.infrastructure.router.llm_orchestrator import LLMOrchestrator
 
 class BrainstormRequest(BaseModel):
     agent_ids: List[UUID]
@@ -12,19 +12,19 @@ class BrainstormRequest(BaseModel):
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 @router.post("/send")
-async def send_message(agent_id: UUID, content: str, service=Depends(get_chat_service)):
-    """Sendet eine Nachricht an einen Agenten."""
+async def send_message(agent_id: UUID, content: str):
     try:
-        message = await service.send_message(agent_id, content)
-        return {"status": "ok", "message": message}
+        orch = LLMOrchestrator()
+        result = orch.process_message(str(agent_id), content)
+        return {"status": "ok", "message": result}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/brainstorm")
-async def brainstorm(req: BrainstormRequest, service=Depends(get_chat_service)):
-    """Führt paralleles Brainstorming durch."""
+async def brainstorm(req: BrainstormRequest):
     try:
-        messages = await service.brainstorm(req.agent_ids, req.topic, req.rounds)
-        return {"status": "ok", "messages": messages}
+        orch = LLMOrchestrator()
+        messages = orch.process_message("brainstorm", req.topic)
+        return {"status": "ok", "messages": [messages]}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

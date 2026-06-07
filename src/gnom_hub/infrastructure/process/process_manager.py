@@ -86,9 +86,4 @@ def restart_single_agent(name: str) -> None:
         (RUN_DIR / f"{matched}.pid").write_text(str(p.pid))
     logging.getLogger(__name__).info("Watchdog hat Agent '%s' (PID %d) neu gestartet.", matched, p.pid)
 
-class ProcessManager:
-    async def start_agent_process(self, agent) -> int:
-        pass
 
-    async def stop_agent_process(self, pid: int) -> None:
-        pass

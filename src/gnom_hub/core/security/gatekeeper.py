@@ -2,6 +2,7 @@
 import os
 import uuid
 import time
+import threading
 import logging
 import json
 from html import escape as html_escape
@@ -22,6 +23,21 @@ from gnom_hub.agents.capability_manager import check_capability, request_capabil
 # Injectable clock functions for testability (C1 fix)
 _clock_time = time.time
 _clock_sleep = time.sleep
+
+# ── Event-basierte Entscheidungs-Warteschlange ──
+# Ersetzt das while-True-Polling durch threading.Event.
+# _signal_decision() wird von @@approve_decision / @@reject_decision aufgerufen
+# und weckt den wartenden Agent-Thread via event.set().
+_decisions: dict[str, dict] = {}
+_decisions_lock = threading.Lock()
+
+def _signal_decision(decision_id: str, status: str):
+    """Weckt den auf eine Entscheidung wartenden Agent-Thread."""
+    with _decisions_lock:
+        entry = _decisions.get(decision_id)
+        if entry and entry["status"] == "pending":
+            entry["status"] = status
+            entry["event"].set()
 
 
 # ── Blockade Rules System ──
@@ -111,46 +127,37 @@ def remove_blockade_rule(rule_id: str):
     return True
 
 def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
-    # Auto-approve if confirmations are disabled (default is False/disabled as requested by user)
+    # Auto-approve if confirmations are disabled
     from gnom_hub.db import get_state_value
     if not get_state_value("enable_confirmations", False):
         proj = get_active_project()
         add_chat_message(
-            proj, 
-            "WatchdogAG", 
-            "watchdogag", 
-            "chat", 
+            proj,
+            "WatchdogAG",
+            "watchdogag",
+            "chat",
             f"⚡ [AUTO-APPROVED] Aktion von **{agent_name}** ({action_type}: {detail}) automatisch freigegeben."
         )
         return True
 
     decision_id = str(uuid.uuid4())
-    
+    event = threading.Event()
+
+    # Module-level Entscheidungs-Store (kein DB-Polling nötig)
+    with _decisions_lock:
+        _decisions[decision_id] = {"status": "pending", "event": event}
+
     # 1. Determine blocker agent
     blocker_name = "WatchdogAG"
     blocker_color = "#FFA500"
     blocker_rgb = "255, 165, 0"
-    
+
     if "security" in rule.lower() or "gefahr" in rule.lower() or "sicherheits" in rule.lower():
         blocker_name = "SecurityAG"
         blocker_color = "#FF69B4"
         blocker_rgb = "255, 105, 180"
 
-    # 2. Register the pending decision
-    pending = get_state_value("pending_decisions", {})
-    pending[decision_id] = {
-        "agent_name": agent_name,
-        "action_type": action_type,
-        "detail": detail,
-        "content": content,
-        "rule": rule,
-        "status": "pending",
-        "timestamp": time.time()
-    }
-    set_state_value("pending_decisions", pending)
-    
-    # 3. Build HTML content for Showbox slide (Super compact - no LLM queries, extremely direct)
-    # Escape all user-supplied values to prevent XSS in the Showbox HTML
+    # 2. Build HTML content for Showbox slide
     safe_agent = html_escape(str(agent_name))
     safe_action = html_escape(str(action_type))
     safe_detail = html_escape(str(detail))
@@ -182,59 +189,51 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
         f"  </div>"
         f"</div>"
     )
-    
-    # 7. Save and set active showbox presentation with GeneralAG as sender
+
     presentation_name = f"Blockade: {agent_name}"
     save_showbox_presentation(presentation_name, [html_content], sender="GeneralAG")
     set_active_showbox(presentation_name)
-    
-    # Send message to chat
+
     proj = get_active_project()
     add_chat_message(
-        proj, 
-        "GeneralAG", 
-        "generalag", 
-        "chat", 
+        proj,
+        "GeneralAG",
+        "generalag",
+        "chat",
         f"@user Soll die Aktion von **{agent_name}** ({action_type}: {detail}) erlaubt werden? (Ja/Nein)"
     )
-    
-    # 8. Pause agent and wait for user input
-    set_agent_status(agent_name, "paused")
-    
-    max_wait_seconds = 300  # 5 minute timeout
-    start_time = _clock_time()
-    while True:
-        if _clock_time() - start_time > max_wait_seconds:
-            # Auto-reject on timeout
-            set_agent_status(agent_name, "busy")
-            log_blockade(agent_name, action_type, detail[:150], f"Timeout 5 Min. — automatisch abgelehnt: {rule}", "timeout", "System", content[:100] if content else "")
-            add_chat_message(
-                get_active_project(), "System", "system", "chat",
-                f"⏰ [TIMEOUT] Entscheidung für {agent_name} ({action_type}: {detail}) nach 5 Minuten automatisch abgelehnt."
-            )
-            return False
 
-        pending = get_state_value("pending_decisions", {})
-        d = pending.get(decision_id)
-        if d:
-            if d["status"] == "approved":
-                set_agent_status(agent_name, "busy")
-                return True
-            elif d["status"] == "rejected":
-                set_agent_status(agent_name, "busy")
-                log_blockade(agent_name, action_type, detail[:150], f"Vom User abgelehnt: {rule}", "rejected", "User", content[:100] if content else "")
-                return False
-                
-        # Fallback check if agent was resumed externally
-        from gnom_hub.db import get_all_agents
-        agents = get_all_agents()
-        current_agent = next((a for a in agents if a["name"].lower() == agent_name.lower()), None)
-        if current_agent and current_agent.get("status") not in ["paused", "offline"]:
-            break
-            
-        _clock_sleep(0.3)  # NOTE: Blocking poll — runs in worker thread via asyncio.to_thread
-        
+    set_agent_status(agent_name, "paused")
+
+    # Thread blockiert hier im OS-Scheduler, 0% CPU, kein DB-Poll.
+    # event.set() wird von _signal_decision() aufgerufen wenn der User
+    # @@approve_decision oder @@reject_decision im Chat sendet.
+    if event.wait(timeout=300):
+        with _decisions_lock:
+            entry = _decisions.pop(decision_id, None)
+            status = entry.get("status", "rejected") if entry else "rejected"
+    else:
+        with _decisions_lock:
+            entry = _decisions.pop(decision_id, None)
+            status = entry.get("status", "rejected") if entry else "rejected"
+
     set_agent_status(agent_name, "busy")
+
+    if status == "approved":
+        return True
+
+    if status == "pending":
+        log_blockade(agent_name, action_type, detail[:150],
+                     f"Timeout 5 Min. — automatisch abgelehnt: {rule}",
+                     "timeout", "System", content[:100] if content else "")
+        add_chat_message(
+            get_active_project(), "System", "system", "chat",
+            f"⏰ [TIMEOUT] Entscheidung für {agent_name} ({action_type}: {detail}) nach 5 Minuten automatisch abgelehnt."
+        )
+    else:
+        log_blockade(agent_name, action_type, detail[:150],
+                     f"Vom User abgelehnt: {rule}",
+                     "rejected", "User", content[:100] if content else "")
     return False
 
 def verify_write(agent, fn, content, wd, perms) -> bool:

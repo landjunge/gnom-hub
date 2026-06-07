@@ -11,6 +11,8 @@ except ImportError:
     HAS_LIBS = False
 
 _search_cache = {}
+_search_cache_ttl = {}
+_search_cache_max_age = 60.0
 _logger = logging.getLogger("embeddings")
 
 class SoulEmbedder:
@@ -48,7 +50,9 @@ class SoulEmbedder:
 
     def search_sync(self, query: str, agent_name: str = None, top_k: int = 8, raw: bool = False) -> list:
         k = (query, agent_name, top_k, raw)
-        if k in _search_cache:
+        import time as _time
+        now = _time.time()
+        if k in _search_cache and now - _search_cache_ttl.get(k, 0) < _search_cache_max_age:
             return _search_cache[k]
         
         g_helper = self.get_helper("global")
@@ -88,6 +92,7 @@ class SoulEmbedder:
             res = sr.retrieve_similar_sync(query, top_k=top_k, agent_name=agent_name, raw=raw)
             
         _search_cache[k] = res
+        _search_cache_ttl[k] = now
         return res
 
     def has_similar(self, text: str, threshold: float = 0.92) -> bool:

@@ -96,7 +96,6 @@ class BaseAgent:
 
             try:
                 # Timeout für einzelne Nachrichtenverarbeitung (max 5 Minuten)
-                import signal, functools as _ft
                 _processing_start = time.time()
 
                 # Payload parsen
@@ -115,7 +114,7 @@ class BaseAgent:
 
                 # Timeout-Check nach LLM-Call
                 if time.time() - _processing_start > 300:
-                    raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >5 Min")
+                    raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >5 Min (msg_id={msg['msg_id']})")
 
                 processed = ""
                 if r.content and not r.content.startswith("[ROUTER-FEHLER]"):

@@ -57,7 +57,7 @@ def handle_clear(q=""):
             elif os.path.isdir(fp): shutil.rmtree(fp)
         from gnom_hub.chat.chat_commands import _post_chat; _post_chat("System", f"Projekt '{p}' komplett geleert.")
         return {"status": "project_cleared"}
-    if q.startswith("chat"):
+    if q == "chat" or q.startswith("chat "):
         parts = q.split(); from gnom_hub.chat.chat_commands import _post_chat
         if len(parts) > 1:
             target_agent = parts[1].replace("@", "").lower()

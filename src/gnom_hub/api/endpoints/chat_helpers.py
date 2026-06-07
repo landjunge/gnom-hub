@@ -12,7 +12,7 @@ def _parse(t):
     m = re.match(r"@{1,2}(\w+)\s*(.*)", t_clean, re.DOTALL)
     r, tag = (m.group(2).strip() if m else None), (m.group(1).lower() if m else None)
     if not m: return t_clean, None, None
-    if tag in ("bs","clear","status","research","job","git","project","diagnose","help","spass","worker","merken","allclear000"):
+    if tag in ("bs","clear","status","research","job","git","project","diagnose","help","spass","worker","merken","allclear000","blockade","blokade"):
         return r or t_clean, None, tag
     return r or t_clean, tag, None
 

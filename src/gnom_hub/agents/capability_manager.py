@@ -2,6 +2,7 @@
 import logging
 import sqlite3
 import time
+import threading
 from datetime import datetime, timezone, timedelta
 
 from gnom_hub.db.connection import get_db_conn
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 # In-memory TTL cache: (agent_name, cap_type, resource) -> expiry_timestamp
 _cache: dict = {}
+_cache_lock = threading.Lock()
 
 
 def request_capability(
@@ -40,7 +42,8 @@ def request_capability(
                     exp,
                 ),
             )
-            _cache[(agent_name, cap_type, resource)] = time.time() + (ttl_min * 60)
+            with _cache_lock:
+                _cache[(agent_name, cap_type, resource)] = time.time() + (ttl_min * 60)
             return True
     except Exception as e:
         logger.error("Failed to grant capability %s/%s to %s: %s", cap_type, resource, agent_name, e)
@@ -52,7 +55,9 @@ def check_capability(agent_name: str, cap_type: str, resource: str) -> bool:
     key = (agent_name, cap_type, resource)
 
     # Fast path: check in-memory cache
-    if _cache.get(key, 0) > time.time():
+    with _cache_lock:
+        cached = _cache.get(key, 0)
+    if cached > time.time():
         return True
 
     # Slow path: check database
@@ -68,14 +73,16 @@ def check_capability(agent_name: str, cap_type: str, resource: str) -> bool:
                 (agent_name, cap_type, resource, now_str),
             ).fetchone()
             if row:
-                _cache[key] = datetime.fromisoformat(
-                    row[0].replace("Z", "+00:00")
-                ).timestamp()
+                with _cache_lock:
+                    _cache[key] = datetime.fromisoformat(
+                        row[0].replace("Z", "+00:00")
+                    ).timestamp()
                 return True
     except Exception as e:
         logger.error("Capability check failed for %s/%s/%s: %s", agent_name, cap_type, resource, e)
 
-    _cache.pop(key, None)
+    with _cache_lock:
+        _cache.pop(key, None)
     return False
 
 
@@ -88,6 +95,7 @@ def cleanup_expired():
                 "UPDATE capabilities SET is_active = 0 WHERE expires_at <= ?",
                 (now_str,),
             )
-        _cache.clear()
+        with _cache_lock:
+            _cache.clear()
     except Exception as e:
         logger.error("Failed to clean up expired capabilities: %s", e)
