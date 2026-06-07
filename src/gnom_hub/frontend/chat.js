@@ -368,6 +368,9 @@ function parseShowboxInMsg(m, overrideId) {
   }
   let showBoxFound = false;
   let showData = null;
+  // Strip invisible Unicode chars (zero-width spaces, joiners, etc.) from end of content
+  rawContent = rawContent.replace(/[\u200B-\u200D\uFEFF\u2060\u2061\u2062\u2063\u2064\u00AD\u034F\u115F\u1160\u17B4\u17B5\u180E\u2028\u2029\u202A-\u202E\u2066-\u2069\u2800\u3164\uFFA0]+$/g, '');
+
   const showboxMatch = rawContent.match(/<SHOWBOX(?::(\w+))?>([\s\S]*?)<\/SHOWBOX>/i);
   
   if (showboxMatch) {
@@ -376,10 +379,16 @@ function parseShowboxInMsg(m, overrideId) {
     if (!window._processedShowboxes.has(mid)) {
       window._processedShowboxes.add(mid);
       try { 
-        showData = JSON.parse(showboxMatch[2]); 
+        // Try JSON parse first, fall back to treating as plain text slide
+        var rawSlides = showboxMatch[2].trim();
+        try {
+          showData = JSON.parse(rawSlides);
+        } catch (jsonErr) {
+          // Not valid JSON — treat entire content as a single slide
+          showData = [rawSlides];
+        }
         if (showboxMatch[1] !== undefined) {
           var layerName = showboxMatch[1].toLowerCase();
-          // Map named layers to indices: system=1, worker=2, user=3
           var layerMap = {'system': 1, 'worker': 2, 'user': 3, '1': 1, '2': 2, '3': 3};
           var layerIdx = layerMap[layerName] || parseInt(showboxMatch[1], 10);
           if (layerIdx >= 1 && layerIdx <= 3) {
