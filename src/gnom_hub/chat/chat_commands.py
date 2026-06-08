@@ -1,4 +1,5 @@
 import subprocess
+import time
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 from pathlib import Path
@@ -36,16 +37,15 @@ def get_jobs():
 def handle_free(q):
     t = q.replace("@","").strip().lower()
     SQLiteAgentRepository().clear_jobs(t or None)
-    # Alte Queue-Messages des Agents löschen, damit neue Tasks nicht hinten versinken
     from gnom_hub.db.connection import get_db_connection
     with get_db_connection() as conn:
         with conn:
             if t:
-                conn.execute("DELETE FROM agent_messages WHERE recipient=? AND status IN ('pending','processing')", (t,))
-                conn.execute("UPDATE agents SET status='online' WHERE name=?", (t,))
+                conn.execute("UPDATE agent_messages SET status='done', completed_at=? WHERE recipient=? AND status IN ('pending','processing')", (time.time(), t))
+                conn.execute("UPDATE agents SET status='online', active_job=NULL WHERE name=?", (t,))
             else:
-                conn.execute("DELETE FROM agent_messages WHERE status IN ('pending','processing')")
-                conn.execute("UPDATE agents SET status='online' WHERE status IN ('busy','paused')")
+                conn.execute("UPDATE agent_messages SET status='done', completed_at=? WHERE status IN ('pending','processing')", (time.time(),))
+                conn.execute("UPDATE agents SET status='online', active_job=NULL WHERE status IN ('busy','paused')")
     _post_chat("System", f"Jobs cleared: {t or 'ALL'}")
     return {"status": "ok"}
 

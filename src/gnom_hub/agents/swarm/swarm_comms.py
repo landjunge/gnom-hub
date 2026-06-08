@@ -304,22 +304,21 @@ def dispatch_mention(
             if not is_critical and not can_accept_message(tgt_name, conn):
                 continue
 
-            active_count = conn.execute(
-                "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
-                (tgt_name,)
-            ).fetchone()[0]
-
-            prio_val = None
-            if priority is not None:
-                if isinstance(priority, str):
-                    prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
-                elif isinstance(priority, int):
-                    prio_val = priority
-            if prio_val is None:
-                prio_val = 7 if active_count >= MAX_CONCURRENT else 5
-
             if is_critical:
-                prio_val = 0  # überspringt alle normalen Tasks
+                prio_val = 0
+            else:
+                active_count = conn.execute(
+                    "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
+                    (tgt_name,)
+                ).fetchone()[0]
+                prio_val = None
+                if priority is not None:
+                    if isinstance(priority, str):
+                        prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
+                    elif isinstance(priority, int):
+                        prio_val = priority
+                if prio_val is None:
+                    prio_val = 7 if active_count >= MAX_CONCURRENT else 5
 
             # Nachricht persistent speichern
             conn.execute("""
