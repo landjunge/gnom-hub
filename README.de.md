@@ -67,11 +67,13 @@ Gnom-Hub enthält eine isolierte Test-Suite mit Mock-Datenbanken via `pytest`:
 python3 -m pytest tests/ -v
 ```
 
-Dies führt 32 automatisierte Unit- und Integrationstests aus:
+Dies führt **154 automatisierte Unit- und Integrationstests** aus:
 - **Connection-Layer:** WAL-Modus, Foreign Keys, Row-Factories und Context-Management.
 - **State-Repository:** Zustands-Schlüssel-Wert-Zuweisung und Schema-Standards.
 - **Agent-Repository:** Agenten-Registrierung, Limits, Job-Tracking und Daemons.
 - **Chat-Repository:** Nachrichten-Persistenz, Verlaufsabfrage und Projekt-Scopes.
+- **Security-Suite:** Gatekeeper, Capability-Manager, Write/Shell-Validierung, Bake-Compiler, Prompt-Injection.
+- **Queue-Load-Tests:** 15 Stabilitäts- und Lastexperimente für die SQLite-Message-Queue.
 - **Admin-Authentifizierung:** IP-basierte und Bearer-Token-Sicherheitsprüfungen.
 
 ---
@@ -317,7 +319,13 @@ Die Showbox im Dashboard dient als visuelles Ausgabemedium für die Zwischenerge
 - **Im SuperGNOM-Modus ist die Lernschleife vollständig deaktiviert** (Statische Prompts).
 
 ### Steganografisches Tracing (ZWC)
-*Experimentelles Sicherheits-/Audit-Feature:* Die Identität des sendenden Agenten wird als unsichtbare **Zero-Width Unicode-Zeichenkette** direkt im Chat-Text codiert (Base64 → Binär → ZWC-Zeichen). Ein integrierter 3-Bit-Mehrheitsentscheid-Fehlerkorrekturcode sichert den Fingerabdruck gegen Verluste beim Kopieren und Einfügen zwecks Herkunftsnachweis.
+Jede Agenten-Antwort wird mit unsichtbaren **Zero-Width Unicode-Zeichen** signiert (Base64 → Binär → ZWC mit 3-Bit-Mehrheitsentscheid-Fehlerkorrektur). Der Fingerabdruck überlebt Copy-Paste und dient der Herkunftssicherung.
+
+**ZWC-Direktiven** — SoulAG kann via ZWC Echtzeit-Anweisungen einbetten, die Agents dekodieren und befolgen:
+- `add_directive(agent, msg, ttl)` — erzeugt TTL-begrenzte Direktive
+- `get_directives(text)` — extrahiert nicht-abgelaufene Direktiven
+- `SoulAG.emit_directive(target, msg)` — postet Direktive als Chat-Nachricht
+- Agents können ihr Verhalten basierend auf SoulAGs ZWC-Instruktionen ausrichten
 
 ---
 
@@ -421,7 +429,7 @@ gnom-hub/
 ├── agents/                # Startskripte für die 8 Hintergrund-Agenten (1-Zeilen-Wrapper)
 ├── config/                # Presets, .env, Routing-Overrides
 ├── scripts/               # Setup- & Hilfs-Skripte
-├── tests/                 # Unit-Testsuite (32 Tests: connection, state, agents, chat, admin_auth)
+├── tests/                 # Unit-Testsuite (154 Tests: connection, state, agents, chat, admin, security, stability, queue-load)
 ├── docs/                  # Systemberichte & Screenshots
 └── pyproject.toml         # Ruff-Konfiguration & Abhängigkeiten
 ```
