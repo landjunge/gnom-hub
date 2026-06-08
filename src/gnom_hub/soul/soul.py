@@ -265,6 +265,21 @@ class SoulAG:
                  if k.lower() in [x.lower() for x in re.findall(r'@(\w+)', msg)]]
         return ctx + ("\n\n=== ERWÄHNTE AGENTEN ===\n" + "\n".join(m_ctx) if m_ctx else "")
 
+    def emit_directive(self, target_agent: str, directive: str, ttl: int = 3600):
+        """Sendet eine ZWC-Direktive fuer einen Ziel-Agenten.
+
+        Die Direktive wird als Chat-Nachricht gepostet und ist fuer andere
+        Agents via decode_soul() lesbar. SoulAG kann damit Agenten
+        ausrichten oder an wichtige Regeln erinnern.
+        """
+        from gnom_hub.soul.zwc_soul import add_directive as _add_dir
+        from gnom_hub.db import add_chat_message, get_active_project
+        zwc = _add_dir(target_agent, directive, ttl)
+        add_chat_message(get_active_project(), "SoulAG", "soulag", "directive",
+                         f"🧠 Direktive fuer {target_agent}: {directive[:80]}{zwc}",
+                         {"type": "directive", "target": target_agent})
+        _log.info("[Soul] Directive emitted: %s -> %s: %s", target_agent, directive[:60], ttl)
+
     def get_definitions(self) -> dict:
         from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
         return AGENT_DEFINITIONS

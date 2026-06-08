@@ -22,10 +22,11 @@ def pulse_janitor():
                 repo.save(agent)
                 try:
                     from gnom_hub.db import add_chat_message, get_active_project
-                add_chat_message(get_active_project(), "System", "war-room", "chat",
-                                 f"⚠️ [System] Agent **{agent.name}** wurde nach 1 Minute Inaktivität automatisch freigegeben (@free).",
-                                 {"type": "chat"})
-                except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Freigabe-Benachrichtigung: %s', e)
+                    add_chat_message(get_active_project(), "System", "war-room", "chat",
+                                     f"⚠️ [System] Agent **{agent.name}** wurde nach 1 Minute Inaktivität automatisch freigegeben (@free).",
+                                     {"type": "chat"})
+                except Exception as e:
+                    logging.getLogger(__name__).error('Fehler in Agenten-Freigabe-Benachrichtigung: %s', e)
     for name in AGENTS:
         proc = _get_proc(name)
         status = "running" if proc else "stopped"

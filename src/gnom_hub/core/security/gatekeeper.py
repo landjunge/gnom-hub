@@ -20,19 +20,21 @@ import gnom_hub.infrastructure.router.router as router
 from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
 from gnom_hub.agents.capability_manager import check_capability, request_capability
 
-# Injectable clock functions for testability (C1 fix)
-_clock_time = time.time
-_clock_sleep = time.sleep
-
 # ── Event-basierte Entscheidungs-Warteschlange ──
-# Ersetzt das while-True-Polling durch threading.Event.
-# _signal_decision() wird von @@approve_decision / @@reject_decision aufgerufen
-# und weckt den wartenden Agent-Thread via event.set().
+# Ersetzt das while-True-Polling (3000 Iterationen in 5min) durch
+# threading.Event. Der Thread blockiert im OS-Scheduler mit 0% CPU.
+# _signal_decision() wird von @@approve_decision / @@reject_decision
+# im Chat aufgerufen und weckt den wartenden Agent-Thread via event.set().
 _decisions: dict[str, dict] = {}
 _decisions_lock = threading.Lock()
 
 def _signal_decision(decision_id: str, status: str):
-    """Weckt den auf eine Entscheidung wartenden Agent-Thread."""
+    """Weckt den auf eine Entscheidung wartenden Agent-Thread.
+
+    Wird von handle_approve_decision / handle_reject_decision in
+    chat_commands.py aufgerufen. Setzt den Entscheidungsstatus und
+    triggert threading.Event.set() auf dem Event des wartenden Threads.
+    """
     with _decisions_lock:
         entry = _decisions.get(decision_id)
         if entry and entry["status"] == "pending":
@@ -205,17 +207,13 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
 
     set_agent_status(agent_name, "paused")
 
-    # Thread blockiert hier im OS-Scheduler, 0% CPU, kein DB-Poll.
-    # event.set() wird von _signal_decision() aufgerufen wenn der User
-    # @@approve_decision oder @@reject_decision im Chat sendet.
-    if event.wait(timeout=300):
-        with _decisions_lock:
-            entry = _decisions.pop(decision_id, None)
-            status = entry.get("status", "rejected") if entry else "rejected"
-    else:
-        with _decisions_lock:
-            entry = _decisions.pop(decision_id, None)
-            status = entry.get("status", "rejected") if entry else "rejected"
+    # Thread blockiert hier im OS-Scheduler mit 0% CPU-Last.
+    # _signal_decision() setzt das Event bei @@approve / @@reject.
+    # Bei Timeout nach 300s gibt event.wait() False zurück.
+    event.wait(timeout=300)
+    with _decisions_lock:
+        entry = _decisions.pop(decision_id, None)
+        status = entry.get("status", "rejected") if entry else "rejected"
 
     set_agent_status(agent_name, "busy")
 

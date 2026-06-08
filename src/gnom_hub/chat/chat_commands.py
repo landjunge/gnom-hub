@@ -85,65 +85,42 @@ def handle_resume(q):
     _post_chat("System", f"Agent **{agent['name']}** wurde fortgesetzt.")
     return {"status": "ok"}
 
-def _signal_decision_handler(decision_id: str, status: str):
-    """Weckt den wartenden wait_for_decision-Thread via Event."""
+def handle_approve_decision(q):
+    """Bestätigt eine ausstehende Gatekeeper-Entscheidung.
+
+    Der decision_id wird aus dem Command extrahiert und direkt an
+    _signal_decision() übergeben. Diese setzt das threading.Event
+    im wartenden wait_for_decision-Thread. Der Thread übernimmt dann:
+    - Agent-Status zurücksetzen (busy)
+    - Showbox-Card entfernen
+    - Blockade-Log schreiben
+    - Rückgabewert (True/False)
+    """
+    decision_id = q.strip()
+    if not decision_id:
+        return {"status": "error", "message": "Missing decision_id"}
     try:
         from gnom_hub.core.security.gatekeeper import _signal_decision
-        _signal_decision(decision_id, status)
-    except ImportError:
-        pass
-
-def handle_approve_decision(q):
-    decision_id = q.strip()
-    from gnom_hub.db import get_state_value, set_state_value, set_agent_status
-    pending = get_state_value("pending_decisions", {})
-    if decision_id in pending:
-        d = pending[decision_id]
-        d["status"] = "approved"
-        set_state_value("pending_decisions", pending)
-        if d["action_type"] == "WRITE":
-            writes = get_state_value("approved_security_writes", [])
-            writes.append(d["detail"])
-            set_state_value("approved_security_writes", writes)
-        elif d["action_type"] == "SHELL":
-            cmds = get_state_value("approved_security_commands", [])
-            cmds.append(d["detail"])
-            set_state_value("approved_security_commands", cmds)
-        _signal_decision_handler(decision_id, "approved")
-        set_agent_status(d["agent_name"], "busy")
-        try:
-            from gnom_hub.db import set_active_showbox, delete_showbox_presentation
-            set_active_showbox("")
-            delete_showbox_presentation(f"Blockade: {d['agent_name']}")
-        except Exception as e:
-            print(f"Error clearing blockade presentation: {e}")
-        _post_chat("System", f"Entscheidung '{decision_id}': Aktion von **{d['agent_name']}** wurde **erlaubt**.")
+        _signal_decision(decision_id, "approved")
+        _post_chat("System", f"✅ Entscheidung '{decision_id[:8]}...' wurde erlaubt.")
         return {"status": "ok"}
-    else:
-        _post_chat("System", f"Fehler: Entscheidung '{decision_id}' nicht gefunden.")
-        return {"status": "error", "message": "Decision not found"}
+    except Exception as e:
+        _post_chat("System", f"❌ Fehler bei Freigabe: {e}")
+        return {"status": "error", "message": str(e)}
 
 def handle_reject_decision(q):
+    """Lehnt eine ausstehende Gatekeeper-Entscheidung ab."""
     decision_id = q.strip()
-    from gnom_hub.db import get_state_value, set_state_value, set_agent_status
-    pending = get_state_value("pending_decisions", {})
-    if decision_id in pending:
-        d = pending[decision_id]
-        d["status"] = "rejected"
-        set_state_value("pending_decisions", pending)
-        _signal_decision_handler(decision_id, "rejected")
-        set_agent_status(d["agent_name"], "busy")
-        try:
-            from gnom_hub.db import set_active_showbox, delete_showbox_presentation
-            set_active_showbox("")
-            delete_showbox_presentation(f"Blockade: {d['agent_name']}")
-        except Exception as e:
-            print(f"Error clearing blockade presentation: {e}")
-        _post_chat("System", f"Entscheidung '{decision_id}': Aktion von **{d['agent_name']}** wurde **abgelehnt**.")
+    if not decision_id:
+        return {"status": "error", "message": "Missing decision_id"}
+    try:
+        from gnom_hub.core.security.gatekeeper import _signal_decision
+        _signal_decision(decision_id, "rejected")
+        _post_chat("System", f"⛔ Entscheidung '{decision_id[:8]}...' wurde abgelehnt.")
         return {"status": "ok"}
-    else:
-        _post_chat("System", f"Fehler: Entscheidung '{decision_id}' nicht gefunden.")
-        return {"status": "error", "message": "Decision not found"}
+    except Exception as e:
+        _post_chat("System", f"❌ Fehler bei Ablehnung: {e}")
+        return {"status": "error", "message": str(e)}
 
 def handle_bake(q):
     parts = q.strip().split()
@@ -372,7 +349,11 @@ def handle_blockade(q):
                     cmds.append(d["detail"])
                     set_state_value("approved_security_commands", cmds)
                 
-                _signal_decision_handler(d_id, "approved")
+                try:
+                    from gnom_hub.core.security.gatekeeper import _signal_decision
+                    _signal_decision(d_id, "approved")
+                except ImportError:
+                    pass
                 set_agent_status(d["agent_name"], "busy")
                 
                 # Delete Showbox card
