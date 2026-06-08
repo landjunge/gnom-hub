@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v1.2.0] - 2026-06-08
+## [v1.1.1] - 2026-06-08
 ### Added
 - **Event-basierter Gatekeeper**: `threading.Event` statt `while True: sleep(0.3); poll()` — 0% CPU im Wait, 0 DB-Operationen, instant Wake-up bei User-Entscheidung.
 - **ZWC-Direktivensystem**: SoulAG kann via `emit_directive()` TTL-begrenzte Anweisungen als unsichtbare ZWC-Metadaten einbetten. Agents lesen sie via `get_directives()`.
