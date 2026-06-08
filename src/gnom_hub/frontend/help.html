@@ -415,6 +415,54 @@
               <td>Projekt</td>
               <td>Wechselt das aktive Projekt (z.&nbsp;B. <code>@@project netzwerkpunkt</code>).</td>
             </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@free</span></td>
+              <td><code>[agent]</code></td>
+              <td>Verwaltung</td>
+              <td>Setzt Agent zurück, leert Queue (UPDATE statt DELETE). Ohne Agent: alle.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@approve_decision</span></td>
+              <td><code>&lt;id&gt;</code></td>
+              <td>Gatekeeper</td>
+              <td>Bestätigt eine ausstehende Gatekeeper-Entscheidung (threading.Event).</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@reject_decision</span></td>
+              <td><code>&lt;id&gt;</code></td>
+              <td>Gatekeeper</td>
+              <td>Lehnt eine ausstehende Gatekeeper-Entscheidung ab.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@blockade</span></td>
+              <td><code>aus/an</code></td>
+              <td>Gatekeeper</td>
+              <td>Schaltet Gatekeeper-Bestätigungen an/aus. 0% CPU durch threading.Event.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@blockade</span></td>
+              <td><code>aus/an</code></td>
+              <td>Gatekeeper</td>
+              <td>Wie @blockade, mit @@ für System-Cmd-Parsing.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@confirmations</span></td>
+              <td><code>on/off</code></td>
+              <td>Gatekeeper</td>
+              <td>Schaltet manuelle Bestätigungen an/aus.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@resume</span></td>
+              <td><code>&lt;agent&gt;</code></td>
+              <td>Verwaltung</td>
+              <td>Setzt einen pausierten Agenten fort.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">priority</span></td>
+              <td><code>critical</code></td>
+              <td>Dispatch</td>
+              <td>Mit <code>"priority": "critical"</code> im Payload springt der Task mit prio=0 vor alle anderen.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -451,266 +499,41 @@
       </div>
     </div>
 
-    <!-- ── Tab: UI (User Interface) ── -->
+    <!-- ── Tab: UI (User Interface) — in Showbox erklärt, hier kurz ── -->
     <div id="panel-ui" class="panel">
       <div class="panel-header">
-        <h2 class="panel-title">Dokumentation der Benutzeroberfläche (UI)</h2>
+        <h2 class="panel-title">Benutzeroberfläche</h2>
       </div>
       <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:15px; line-height:1.5;">
-        Diese Übersicht beschreibt alle Bedienelemente und Schaltflächen in Gnom-Hub. Sie dient sowohl Anwendern als auch den Agenten (z. B. ResearcherAG, CoderAG) als Referenz, um die Systemsteuerung und den Workflow des Schwarms zu verstehen.
+        Die UI wird interaktiv in der Showbox erklärt. Hier nur eine Kurzübersicht:
       </p>
-
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:15px; margin-top:10px;">
-        
-        <!-- Header Controls -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Logo & Hard Reset</h3>
-          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:8px; padding:0;">
-            <li>
-              <strong style="color:#fff;">Gnom-Hub Logo (Nuke-Button)</strong><br>
-              <span style="font-size:0.75rem;"><b>Interaktion:</b> Linksklick gedrückt halten (2 Sekunden).</span><br>
-              <span style="font-size:0.75rem;"><b>Funktion:</b> Führt ein hartes Zurücksetzen ("Nuke") aller Agenten-Hintergrundprozesse aus, killt verwaiste Tasks und startet den Hub-Server neu. Zu nutzen bei Blockaden oder Hängern.</span>
-            </li>
-          </ul>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">💣 Nuke</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Logo 2s halten → Reset aller Agents</div>
         </div>
-
-        <!-- Navigation Buttons -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Header-Navigation</h3>
-          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
-            <li>
-              <strong style="color:#fff;">Workspace Button</strong><br>
-              <span style="font-size:0.75rem;">Öffnet das Dateiverzeichnis des aktiven Projekts.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">Dashboard Button</strong><br>
-              <span style="font-size:0.75rem;">Zeigt Echtzeit-Metriken (Latenz, Tokens, Fehlerraten) und den Systemstatus an.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">Showbox Button</strong><br>
-              <span style="font-size:0.75rem;">Öffnet das Showbox Center zur Bearbeitung der Präsentations-Slides.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">LLM Button</strong><br>
-              <span style="font-size:0.75rem;">Zur Konfiguration der API-Keys, FTP-Autodeploy, Spracheinstellung und Modellzuweisungen.</span>
-            </li>
-
-            <li>
-              <strong style="color:#fff;">Help Button</strong><br>
-              <span style="font-size:0.75rem;">Öffnet dieses Hilfe- und Dokumentationscenter direkt im Hauptbereich.</span>
-            </li>
-          </ul>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">📂 Workspace</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Dateibrowser & Live-Vorschau</div>
         </div>
-
-        <!-- Sidebar Preset & Agent list -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Seitenleiste (Presets & Agenten)</h3>
-          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
-            <li>
-              <strong style="color:#fff;">Agent Gangs Dropdown</strong><br>
-              <span style="font-size:0.75rem;">Wechselt das aktive Team-Preset (z. B. Web Development, Graphic Design, Research). Lädt spezifische Prompt-Erweiterungen und Verhaltensregeln für den gesamten Schwarm aus <code>config/presets/</code>.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">Agenten-Suchfeld & Liste</strong><br>
-              <span style="font-size:0.75rem;">Filtert die Liste der aktiven Agenten. Die Liste zeigt den Zustand jedes Agenten (online/offline/busy) und seine aktuelle Rolle. Ein Klick auf eine Agentenkarte öffnet dessen Detail- und Erinnerungsansicht.</span>
-            </li>
-          </ul>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">📊 Dashboard</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Echtzeit-Metriken: Latenz, Tokens, Fehler</div>
         </div>
-
-        <!-- Showbox & Steuerung -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Showbox &amp; Steuerung</h3>
-          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
-            <li>
-              <strong style="color:#fff;">Showbox Screen</strong><br>
-              <span style="font-size:0.75rem;">Ein zentrales Ausgabefenster für Präsentationen, Meldungen, Uhren und Countdown-Timer. Wenn Agenten Ergebnisse dorthin streamen, leuchtet der Rahmen in der Farbe des jeweiligen Agenten auf. Bei System-Hinweisen erfolgt ein schneller Multicolor-Neon-Glow.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">Showbox Center Steuerung</strong><br>
-              <span style="font-size:0.75rem;">Präsentationen werden vollständig im Showbox Center (Schaltfläche "Showbox" in der Kopfzeile) verwaltet. Dort können Präsentationen gestartet, editiert, neu erstellt, gelöscht oder in den Standby-Modus versetzt werden.</span>
-            </li>
-          </ul>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎬 Showbox</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">3-Layer-Ausgabe: System, Worker, Entscheidungen</div>
         </div>
-
-        <!-- Chat Input Controls -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Chat-Eingabebereich</h3>
-          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
-            <li>
-              <strong style="color:#fff;">@ Erwähnungen & Autovervollständigung</strong><br>
-              <span style="font-size:0.75rem;">Tippe <code>@</code> im Chatfeld, um ein Dropdown with allen verfügbaren Befehlen und Agenten-Namen aufzurufen. Bestätige mit <code>Enter</code> oder <code>Tab</code>.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">Terminal-Pfeiltasten (Eingabeverlauf)</strong><br>
-              <span style="font-size:0.75rem;">Drücke im Chat-Eingabefeld <code>Pfeil-oben</code>, um vorherige Eingaben zu laden. Mit <code>Pfeil-unten</code> navigierst du zurück zu neueren Eingaben oder deinem Entwurf.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">Rec Button (Spracheingabe)</strong><br>
-              <span style="font-size:0.75rem;">Aktiviert Speech-to-Text über die Browser-Schnittstelle. Erlaubt freies Diktieren deiner Anweisungen.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">Stop-TTS Button</strong><br>
-              <span style="font-size:0.75rem;">Bricht die Sprachausgabe (Text-to-Speech) von Agenten-Meldungen sofort ab und leert die Sprachwarteschlange.</span>
-            </li>
-          </ul>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">⚙️ LLM-Config</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">API-Keys, Modelle, 5-Achsen-Tuning, Presets</div>
         </div>
-
-        <!-- Workspace & Preview Inner view buttons -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:15px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:4px;">Workspace Inner Actions</h3>
-          <ul style="font-size:0.8rem; color:var(--text-dim); list-style:none; display:flex; flex-direction:column; gap:10px; padding:0;">
-            <li>
-              <strong style="color:#fff;">🌐 Open Button</strong><br>
-              <span style="font-size:0.75rem;">Öffnet HTML-/CSS-/JS-Webdateien in einem neuen Browsertab.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">👁️ Preview Button</strong><br>
-              <span style="font-size:0.75rem;">Öffnet eine interaktive Live-Vorschau der Web-Datei im rechten Hauptbereich.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">▶ Run Button</strong><br>
-              <span style="font-size:0.75rem;">Führt Python-Dateien direkt im Hintergrund aus und fängt deren Standard-Ausgaben auf.</span>
-            </li>
-            <li>
-              <strong style="color:#fff;">◀ Zurück Button</strong><br>
-              <span style="font-size:0.75rem;">Schließt das aktuelle Untermenü und kehrt zurück zur War Room Chat-Hauptansicht.</span>
-            </li>
-          </ul>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">📖 Help</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Diese Seite</div>
         </div>
-
       </div>
     </div>
-
-    <!-- ── Tab: Features & Presets (System Features) ── -->
-    <div id="panel-features" class="panel">
-      <div class="panel-header">
-        <h2 class="panel-title">System-Features &amp; Presets Dokumentation</h2>
-      </div>
-      <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:20px; line-height:1.5;">
-        Dieser Bereich dokumentiert die fortgeschrittenen Funktionen des Gnom-Hubs, darunter die Browsersteuerung, das flexible Preset-System, Sicherheits-Leases und das lokale Gedächtnis-Retrieval.
-      </p>
-      <!-- Agenten-Skills & Syntax-Referenz -->
-      <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(0, 102, 255, 0.15); padding:16px; border-radius:var(--radius-sm);">
-        <h3 style="font-size:0.9rem; color:#fff; margin-bottom:10px; display:flex; align-items:center; gap:6px; font-weight: 500;">
-          <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#00e5ff;"></span>
-          Agenten-Skills &amp; Syntax-Referenz (Tools)
-        </h3>
-        <p style="font-size:0.8rem; color:var(--text-dim); line-height:1.6; margin-bottom:12px;">
-          Die Agenten des Schwarms besitzen spezielle Fähigkeiten (Skills), die sie durch Formatierungs-Tags in ihren Antworten aktivieren können. Du kannst die Agenten im Chat direkt anweisen, diese Skills für dich einzusetzen.
-        </p>
-        
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
-          
-          <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
-            <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">📂 Datei lesen (READ)</div>
-            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">[READ: dateipfad]</div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">Liest den Inhalt einer Datei aus dem Projektverzeichnis (bzw. beliebigem Pfad im Godmode).</div>
-          </div>
-
-          <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
-            <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">💾 Datei schreiben (WRITE)</div>
-            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">[WRITE: dateipfad]inhalt[/WRITE]</div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">Erstellt eine neue Datei oder überschreibt den Inhalt einer bestehenden Datei.</div>
-          </div>
-
-          <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
-            <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">💻 Terminal ausführen (SHELL)</div>
-            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">[SHELL: terminal_befehl]</div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">Führt Systembefehle auf dem Mac aus (z. B. <code>git status</code>, <code>npm run dev</code>, Programme installieren).</div>
-          </div>
-
-          <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
-            <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎨 Bild generieren (IMAGE)</div>
-            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">[IMAGE: bild_beschreibung]</div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">Erzeugt ein neues Bild auf Basis deiner Textbeschreibung und speichert es ab.</div>
-          </div>
-
-          <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
-            <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🌐 Browsersteuerung (BROWSER)</div>
-            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">[BROWSER: python_playwright_code]</div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">Führt echten Browser-Code in Docker aus. Ermöglicht Webseiten-Analysen und Screenshots.</div>
-          </div>
-
-          <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.03);">
-            <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎬 Showbox-Steuerung (SHOWBOX)</div>
-            <div style="font-family:monospace; font-size:0.7rem; color:#fff; margin-bottom:4px;">&lt;SHOWBOX:name&gt;JSON_SLIDES&lt;/SHOWBOX&gt;</div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">Aktualisiert oder erstellt eine Präsentation mit dem angegebenen alphanumerischen Namen in der SQLite-Datenbank und schaltet sie aktiv. Unterstützt auch legacy Indizes (1-7).</div>
-          </div>
-
-        </div>
-      </div>
-        
-        <!-- Browsersteuerung -->
-        <div style="background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:16px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:10px; display:flex; align-items:center; gap:6px; font-weight: 500;">
-            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green);"></span>
-            Browsersteuerung (Playwright in Docker)
-          </h3>
-          <p style="font-size:0.8rem; color:var(--text-dim); line-height:1.6; margin-bottom:10px;">
-            Die Browsersteuerung ermöglicht es Agenten (wie <code>CoderAG</code>), vollautomatisiert Webseiten aufzurufen, zu navigieren, Screenshots zu erstellen oder Daten abzufragen. Aus Sicherheitsgründen läuft diese Automatisierung isoliert in einem Docker-Container.
-          </p>
-          <div style="font-size:0.75rem; color:var(--text-dim); margin-left:15px; display:flex; flex-direction:column; gap:8px;">
-            <div><strong>🔧 Voraussetzungen:</strong> Auf dem Host-System des Nutzers muss <b>Docker Desktop</b> aktiv und gestartet sein. Falls Docker offline ist, wird die Ausführung blockiert.</div>
-            <div><strong>💬 Steuerung per Prompt:</strong> Beauftrage einfach einen fähigen Agenten im Chat mit einer Browseraufgabe, z. B.:<br>
-               <code style="background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px; color:#fff; display:inline-block; margin-top:4px;">@CoderAG mache einen Screenshot von https://example.com und speichere ihn als screenshot.png</code>
-            </div>
-            <div><strong>🤖 Code-Generierung:</strong> Der Agent erzeugt im Hintergrund lauffähigen Python Playwright-Code und bettet ihn in ein spezielles Tag ein:<br>
-               <code style="background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px; color:#fff; display:inline-block; margin-top:4px; font-family:monospace; font-size:0.7rem;">[BROWSER: import asyncio; ... asyncio.run(main())]</code>
-            </div>
-            <div><strong>🛡️ Sicherheitsüberprüfung:</strong> Jedes Skript wird durch <code>SecurityAG</code> und <code>WatchdogAG</code> bewertet. Wenn eine externe URL aufgerufen wird, meldet das System dies im Chat zur Freigabe durch den Benutzer. Nach der Freigabe wird der Code-Hash für 5 Minuten lizenziert (Lease), sodass wiederholte Ausführungen ohne erneute Abfrage durch lizenziert ablaufen.</div>
-          </div>
-        </div>
-
-        <!-- Presets & Custom Presets -->
-        <div style="background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:16px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:10px; display:flex; align-items:center; gap:6px; font-weight: 500;">
-            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#ffaa00;"></span>
-            Preset-System &amp; Custom Presets (Agent Gangs)
-          </h3>
-          <p style="font-size:0.8rem; color:var(--text-dim); line-height:1.6; margin-bottom:10px;">
-            Presets sind vordefinierte Systemkonfigurationen, die die Rollen, Systemprompts und Spezialisierungen deines gesamten Agenten-Schwarms anpassen. Dadurch verhalten sich die Agenten passend zur gewählten Domäne.
-          </p>
-          <div style="font-size:0.75rem; color:var(--text-dim); margin-left:15px; display:flex; flex-direction:column; gap:8px;">
-            <div><strong>📂 Standard-Presets:</strong> Das System bringt Profile wie <i>Web Development</i>, <i>Graphic Design</i>, <i>Audio Production</i>, <i>Video Production</i>, <i>Marketing &amp; Copy</i> und <i>Research &amp; Analysis</i> standardmäßig mit.</div>
-            <div><strong>🛠️ Custom Presets hinzufügen:</strong> Du kannst eigene Team-Zusammensetzungen erstellen, indem du eine JSON-Datei im Verzeichnis <code>config/presets/</code> ablegst (z. B. <code>test_preset.json</code>).</div>
-            <div><strong>🔄 Automatisches Laden &amp; Mergen:</strong> Beim Start scannt der <code>preset_service</code> dieses Verzeichnis, lädt alle benutzerdefinierten JSON-Dateien und führt sie nahtlos mit den Standard-Presets zusammen. Sie erscheinen sofort im **Agent Gangs** Dropdown-Menü in der Seitenleiste.</div>
-            <div><strong>🧠 Dynamische Umprofilierung:</strong> Sobald du ein Preset im Dropdown auswählst, erhalten alle Agenten die neue Systemanweisung und passen ihr logisches Verhalten augenblicklich an das ausgewählte Arbeitsfeld an.</div>
-          </div>
-        </div>
-
-        <!-- Zero-Trust-Leases -->
-        <div style="background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:16px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:10px; display:flex; align-items:center; gap:6px; font-weight: 500;">
-            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#cc33ff;"></span>
-            Zero-Trust-Berechtigungen (TTL Leases)
-          </h3>
-          <p style="font-size:0.8rem; color:var(--text-dim); line-height:1.6; margin-bottom:10px;">
-            Um unbefugte Aktionen durch LLMs (z. B. willkürliche Konsolenbefehle oder Dateiüberschreibungen) zu verhindern, arbeitet Gnom-Hub mit einem Zero-Trust-Modell.
-          </p>
-          <div style="font-size:0.75rem; color:var(--text-dim); margin-left:15px; display:flex; flex-direction:column; gap:8px;">
-            <div><strong>🔑 Dynamische Anforderung:</strong> Wenn ein Agent eine geschützte Aktion (z. B. <code>WRITE</code>, <code>SHELL</code>, <code>BROWSER</code>) ausführen möchte, fordert er diese Berechtigung explizit beim Gatekeeper an.</div>
-            <div><strong>⏳ 5-Minuten-Cache Lease:</strong> Nach der ersten Freigabe durch den Benutzer wird der Berechtigungstyp für diesen spezifischen Befehl bzw. dieses Skript für 5 Minuten lizenziert. Jede wiederholte Ausführung desselben Befehls innerhalb dieses Zeitfensters wird automatisch durchgewunken, was Entwicklungszyklen drastisch beschleunigt.</div>
-            <div><strong>⚡ O(1) In-Memory Cache:</strong> Die Überprüfung der aktiven Berechtigungs-Leases erfolgt über einen In-Memory Cache in Millisekunden, um die Systemlatenz minimal zu halten.</div>
-          </div>
-        </div>
-
-        <!-- Offline Semantic Retrieval -->
-        <div style="background:rgba(255,255,255,0.01); border:1px solid var(--glass-border); padding:16px; border-radius:var(--radius-sm);">
-          <h3 style="font-size:0.9rem; color:#fff; margin-bottom:10px; display:flex; align-items:center; gap:6px; font-weight: 500;">
-            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--red);"></span>
-            Lokales Offline-Gedächtnis (FAISS Vector Search)
-          </h3>
-          <p style="font-size:0.8rem; color:var(--text-dim); line-height:1.6; margin-bottom:10px;">
-            Die Seele des Schwarms (<code>SoulAG</code>) verwaltet das Langzeitgedächtnis des Systems vollständig offline und lokal auf deinem Rechner.
-          </p>
-          <div style="font-size:0.75rem; color:var(--text-dim); margin-left:15px; display:flex; flex-direction:column; gap:8px;">
-            <div><strong>🗄️ Lokale Suchen:</strong> Das System verwendet <code>sentence-transformers</code> zur Generierung von Embeddings und <code>FAISS</code> als Vektordatenbank zur Ähnlichkeitssuche.</div>
-            <div><strong>📉 Quantisierung (75% weniger RAM):</strong> Die Vektorindizes sind durch PQ-Quantisierung (Product Quantization) komprimiert. Dadurch wird der RAM-Bedarf für das Speichern und Durchsuchen tausender Erinnerungen um <b>75%</b> reduziert.</div>
-            <div><strong>🔄 Ausfallsicherer Fallback:</strong> Sollten die Bibliotheken <code>sentence-transformers</code> or <code>faiss</code> nicht auf deinem Mac installiert sein, schaltet das System vollautomatisch und fehlerfrei auf einen lokalen TF-IDF Cosine Similarity Search-Algorithmus um. Somit bleibt das Gedächtnissystem jederzeit zu 100% einsatzbereit.</div>
-          </div>
-        </div>
-
-      </div>
 
     <!-- ── Tab: Agents (Soul Hierarchy) ── -->
     <div id="panel-agents" class="panel">

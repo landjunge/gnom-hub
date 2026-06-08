@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>chain_sat_2 — CoderAG Bootstrap</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #0a0a0f;
+                color: #00ff41;
+                font-family: 'Fira Code', 'Courier New', monospace;
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+            }
+            #terminal {
+                width: 90%;
+                max-width: 800px;
+                padding: 30px;
+                border: 1px solid #00ff41;
+                box-shadow: 0 0 20px #00ff4140;
+                background: #0d0d14;
+                border-radius: 8px;
+            }
+            .header {
+                font-size: 1.6rem;
+                font-weight: bold;
+                color: #00ffcc;
+                text-shadow: 0 0 10px #00ffcc80;
+                margin-bottom: 20px;
+                border-bottom: 1px solid #00ff4180;
+                padding-bottom: 10px;
+                position: relative;
+            }
+            .header::after {
+                content: '▌';
+                animation: blink 1s step-end infinite;
+                color: #00ffcc;
+                margin-left: 4px;
+            }
+            @keyframes blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0; }
+            }
+            .line {
+                font-size: 0.95rem;
+                line-height: 1.8;
+                opacity: 0.9;
+                display: flex;
+                gap: 10px;
+            }
+            .line .tag {
+                color: #888;
+                min-width: 60px;
+            }
+            .line .ok { color: #00ff41; }
+            .line .warn { color: #ffaa00; }
+            .line .info { color: #00aaff; }
+            .prompt {
+                margin-top: 20px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 1rem;
+            }
+            .prompt .dollar {
+                color: #00ffcc;
+            }
+            .prompt .cmd {
+                color: #fff;
+                overflow: hidden;
+                white-space: nowrap;
+                border-right: 2px solid #00ff41;
+                animation: typewriter 2s steps(20) 1s forwards;
+                width: 0;
+            }
+            @keyframes typewriter {
+                from { width: 0; }
+                to { width: 18ch; }
+            }
+        </style>
+    </head>
+    <body>
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(7,9,19,0.95);backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,229,255,0.15);padding:6px 12px;font-size:0.75rem;display:flex;gap:8px;overflow-x:auto;white-space:nowrap;font-family:'Inter',sans-serif;">
+<a href="/" style="color:#00e5ff;font-weight:600;text-decoration:none;padding:2px 8px;">🏠 Start</a>
+<a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">a0</a> <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_0</a> <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_11</a> <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_14</a> <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_15</a> <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_17</a> <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_18</a> <a href="/chain_sat_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_2</a> <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_20</a> <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_21</a> <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_24</a> <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_26</a> <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_5</a> <a href="/chat_test_a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_a</a> <a href="/chat_test_b.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_b</a> <a href="/combo_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_2</a> <a href="/combo_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_4</a> <a href="/editorag_test.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">editorag_test</a> <a href="/flood_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_1</a> <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_3</a>
+<a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">⋯ alle 47</a>
+</div><style>body{padding-top:36px!important}</style>>
+        <div id="terminal" role="region" aria-label="CoderAG Bootstrap Terminal">
+            <div class="header">chain_sat_2 — CoderAG Bootstrap Protocol</div>
+            <div class="line"><span class="tag">[00:00:00]</span><span class="info">Loading WSAT-0 core...</span></div>
+            <div class="line"><span class="tag">[00:00:01]</span><span class="ok">✓ Self-awareness core online</span></div>
+            <div class="line"><span class="tag">[00:00:02]</span><span class="info">Loading chain_sat_0 origin...</span></div>
+            <div class="line"><span class="tag">[00:00:03]</span><span class="ok">✓ Origin loaded</span></div>
+            <div class="line"><span class="tag">[00:00:04]</span><span class="info">Activating CoderAG bootstrap sequence...</span></div>
+            <div class="line"><span class="tag">[00:00:05]</span><span class="warn">⚠ Trigger: @CoderAG chain_sat_2</span></div>
+            <div class="line"><span class="tag">[00:00:06]</span><span class="ok">✓ CoderAG core loop engaged</span></div>
+            <div class="line"><span class="tag">[00:00:07]</span><span class="ok">✓ File System Access: Active</span></div>
+            <div class="line"><span class="tag">[00:00:08]</span><span class="ok">✓ Write Capability: Active</span></div>
+            <div class="line"><span class="tag">[00:00:09]</span><span class="ok">✓ Shell Access: Active</span></div>
+            <div class="line"><span class="tag">[00:00:10]</span><span class="ok">✓ Ready for Task Embodiment</span></div>
+            <div class="line"><span class="tag">[00:00:11]</span><span class="ok" style="color: #00ffcc;">✓ chain_sat_2 bootstrap complete</span></div>
+            <div class="prompt">
+                <span class="dollar">$</span>
+                <span class="cmd">chain_sat_2::ready</span>
+            </div>
+        </div>
+    </body>
+    </html>
+    ```

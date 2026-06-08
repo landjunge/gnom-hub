@@ -1,0 +1,165 @@
+and then <SHOWBOX:worker>code</SHOWBOX:worker>.
+
+But the user might expect only SHOWBOX. I'll deliver both.
+
+Now, content of the HTML: I'll generate a page about "Chain-of-Thought" or "System Architecture" since the workspace has many "chain_sat" files. But to be safe, I'll keep it generic. I'll create a simple template for a "Gen 2a Task Output" with some placeholder text. I'll include a button that changes the color theme.
+
+I'll ensure semantic HTML5, accessibility, responsive.
+
+Let's write code.
+</think>
+
+
+[WRITE: gen_2a.html]
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoderAG – Gen 2a Output</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --text: #1a1a2e;
+      --accent: #3b82f6;
+      --card: #ffffff;
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+      --radius: 12px;
+    }
+    [data-theme="dark"] {
+      --bg: #1a1a2e;
+      --text: #e0e0e0;
+      --accent: #60a5fa;
+      --card: #16213e;
+      --shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    *,*::before,*::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      transition: background 0.4s ease, color 0.4s ease;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--card);
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.4s ease;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; }
+    .theme-toggle {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: opacity 0.2s;
+    }
+    .theme-toggle:hover { opacity: 0.85; }
+    main {
+      flex: 1;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      width: 100%;
+    }
+    .card {
+      background: var(--card);
+      padding: 2rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+    }
+    h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+    p { margin-bottom: 1rem; }
+    code {
+      background: rgba(59,130,246,0.1);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+    }
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.85rem;
+      opacity: 0.7;
+    }
+    @media (max-width: 600px) {
+      header { padding: 0.75rem 1rem; }
+      .card { padding: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(7,9,19,0.95);backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,229,255,0.15);padding:6px 12px;font-size:0.75rem;display:flex;gap:8px;overflow-x:auto;white-space:nowrap;font-family:'Inter',sans-serif;">
+<a href="/" style="color:#00e5ff;font-weight:600;text-decoration:none;padding:2px 8px;">🏠 Start</a>
+<a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">a0</a> <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_0</a> <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_11</a> <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_14</a> <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_15</a> <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_17</a> <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_18</a> <a href="/chain_sat_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_2</a> <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_20</a> <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_21</a> <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_24</a> <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_26</a> <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_5</a> <a href="/chat_test_a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_a</a> <a href="/chat_test_b.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_b</a> <a href="/combo_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_2</a> <a href="/combo_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_4</a> <a href="/editorag_test.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">editorag_test</a> <a href="/flood_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_1</a> <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_3</a>
+<a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">⋯ alle 47</a>
+</div><style>body{padding-top:36px!important}</style>>
+  <header aria-label="Seitenkopf">
+    <h1>CoderAG · Gen 2a</h1>
+    <button class="theme-toggle" id="themeBtn" aria-label="Hintergrundmodus umschalten">
+      <span id="themeIcon">🌙</span> Dunkel
+    </button>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Aufgabe <span class="badge">gen_2a</span></h2>
+      <p>Dieses HTML-Dokument wurde von <strong>CoderAG</strong> als Antwort auf die Anweisung <code>gen_2a</code> generiert. Es demonstriert eine saubere, responsive und zugängliche Codebasis unter Verwendung von modernem HTML5, CSS3 und Vanilla JavaScript.</p>
+      <p>Der <em>Theme Toggle</em> wechselt zwischen hellem und dunklem Erscheinungsbild – alle Übergänge sind fließend. Die Seite ist bewusst schlank gehalten und entspricht den gewünschten Qualitätsanforderungen.</p>
+      <hr style="margin:1.5rem 0;border:none;border-top:1px solid var(--text);opacity:0.15;">
+      <p style="font-size:0.9rem;">Weitere Anweisungen werden erwartet. Das Ergebnis liegt als <code>gen_2a.html</code> im Arbeitsverzeichnis vor.</p>
+    </div>
+  </main>
+
+  <footer aria-label="Seitenfuß">
+    <span>© CoderAG · Schwarm-System</span>
+  </footer>
+
+  <script>
+    (function() {
+      const btn = document.getElementById('themeBtn');
+      const icon = document.getElementById('themeIcon');
+      const root = document.documentElement;
+      const stored = localStorage.getItem('theme');
+      if (stored === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+        icon.textContent = '☀️';
+        btn.innerHTML = '<span id="themeIcon">☀️</span> Hell';
+      }
+      btn.addEventListener('click', function() {
+        const current = root.getAttribute('data-theme');
+        if (current === 'dark') {
+          root.removeAttribute('data-theme');
+          localStorage.setItem('theme', 'light');
+          icon.textContent = '🌙';
+          btn.innerHTML = '<span id="themeIcon">🌙</span> Dunkel';
+        } else {
+          root.setAttribute('data-theme', 'dark');
+          localStorage.setItem('theme', 'dark');
+          icon.textContent = '☀️';
+          btn.innerHTML = '<span id="themeIcon">☀️</span> Hell';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

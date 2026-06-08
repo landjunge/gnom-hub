@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAX STRESS · system overload</title>
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        :root {
+            --glow: #00f7ff;
+            --warn: #ff3860;
+            --bg: #0a0e17;
+            --panel: rgba(10, 14, 23, 0.85);
+            --text: #c8d6e5;
+            --accent: #7f5af0;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* ===== GRID BACKGROUND ===== */
+        #grid-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ===== MAIN WRAPPER ===== */
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1000px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 32px;
+        }
+
+        /* ===== HEADER ===== */
+        header {
+            text-align: center;
+            position: relative;
+        }
+        header h1 {
+            font-size: clamp(2.8rem, 10vw, 5.5rem);
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            background: linear-gradient(135deg, var(--glow), var(--accent), var(--warn));
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 6s ease-in-out infinite;
+            text-shadow: 0 0 80px rgba(0, 247, 255, 0.15);
+            filter: drop-shadow(0 0 30px rgba(127, 90, 240, 0.2));
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        header p {
+            font-size: clamp(0.8rem, 2vw, 1.2rem);
+            letter-spacing: 0.4em;
+            text-transform: uppercase;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        /* ===== STRESS METER ===== */
+        .meter-section {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .meter-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+        .meter-track {
+            width: 100%;
+            height: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+        }
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 20px;
+            transition: width 0.15s ease-out, background 0.3s;
+            background: linear-gradient(90deg, #00f7ff, #7f5af0, #ff3860);
+            box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+        }
+
+        /* ===== CONTROL PANEL ===== */
+        .panel {
+            background: var(--panel);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            padding: 28px 32px;
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 20px 28px;
+            box-shadow: 0 8px 60px rgba(0,0,0,0.6);
+            transition: border-color 0.3s;
+        }
+        .panel:focus-within {
+            border-color: rgba(0, 247, 255, 0.25);
+        }
+
+        .btn {
+            background: transparent;
+            border: 1.5px solid rgba(255,255,255,0.1);
+            color: var(--text);
+            padding: 10px 28px;
+            border-radius: 60px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: currentColor;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .btn:hover {
+            border-color: rgba(255,255,255,0.25);
+            transform: scale(1.02);
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn--primary {
+            border-color: var(--glow);
+            color: var(--glow);
+            box-shadow: 0 0 24px rgba(0, 247, 255, 0.08);
+        }
+        .btn--primary:hover {
+            background: rgba(0, 247, 255, 0.08);
+            box-shadow: 0 0 40px rgba(0, 247, 255, 0.18);
+        }
+        .btn--danger {
+            border-color: var(--warn);
+            color: var(--warn);
+        }
+        .btn--danger:hover {
+            background: rgba(255, 56, 96, 0.08);
+            box-shadow: 0 0 40px rgba(255, 56, 96, 0.15);
+        }
+        .btn--accent {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .btn--accent:hover {
+            background: rgba(127, 90, 240, 0.08);
+        }
+        .btn--ghost {
+            border-color: transparent;
+            opacity: 0.5;
+        }
+        .btn--ghost:hover {
+            opacity: 1;
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        /* ===== SLIDER ===== */
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .slider-group label {
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 160px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            outline: none;
+            transition: background 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--glow);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+            transition: 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--glow);
+            cursor: pointer;
+            border: none;
+        }
+
+        /* ===== VISUALIZER BARS ===== */
+        .vis-container {
+            width: 100%;
+            max-width: 700px;
+            height: 180px;
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 0 4px;
+        }
+        .vis-bar {
+            flex: 1;
+            background: linear-gradient(to top, var(--glow), var(--accent));
+            border-radius: 4px 4px 0 0;
+            transition: height 0.08s ease-out, opacity 0.2s;
+            min-height: 2px;
+            opacity: 0.7;
+            box-shadow: 0 0 6px rgba(0, 247, 255, 0.15);
+        }
+
+        /* ===== STATUS ROW ===== */
+        .status-row {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.35;
+            padding: 0 8px;
+        }
+
+        /* ===== OVERLOAD FLASH ===== */
+        .overload-flash {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 999;
+            background: radial-gradient(circle at center, rgba(255, 56, 96, 0.08), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.08s;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .container { padding: 16px; gap: 24px; }
+            .panel { padding: 20px 18px; gap: 16px; }
+            input[type="range"] { width: 100px; }
+            .vis-container { height: 120px; }
+            .btn { padding: 8px 18px; font-size: 0.75rem; }
+            header h1 { letter-spacing: 0.04em; }
+        }
+    </style>
+</head>
+<body>
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(7,9,19,0.95);backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,229,255,0.15);padding:6px 12px;font-size:0.75rem;display:flex;gap:8px;overflow-x:auto;white-space:nowrap;font-family:'Inter',sans-serif;">
+<a href="/" style="color:#00e5ff;font-weight:600;text-decoration:none;padding:2px 8px;">🏠 Start</a>
+<a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">a0</a> <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_0</a> <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_11</a> <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_14</a> <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_15</a> <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_17</a> <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_18</a> <a href="/chain_sat_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_2</a> <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_20</a> <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_21</a> <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_24</a> <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_26</a> <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_5</a> <a href="/chat_test_a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_a</a> <a href="/chat_test_b.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_b</a> <a href="/combo_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_2</a> <a href="/combo_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_4</a> <a href="/editorag_test.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">editorag_test</a> <a href="/flood_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_1</a> <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_3</a>
+<a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">⋯ alle 47</a>
+</div><style>body{padding-top:36px!important}</style>>
+
+    <!-- ===== GRID BACKGROUND CANVAS ===== -->
+    <canvas id="grid-canvas"></canvas>
+
+    <!-- ===== OVERLOAD FLASH OVERLAY ===== -->
+    <div class="overload-flash" id="overloadFlash"></div>
+
+    <!-- ===== MAIN ===== -->
+    <div class="container" role="main" aria-label="MAX STRESS interactive system stress test">
+
+        <header>
+            <h1>⚡ MAX STRESS</h1>
+            <p>system overload simulator</p>
+        </header>
+
+        <!-- STRESS METER -->
+        <section class="meter-section" aria-label="Stress level meter">
+            <div class="meter-label">
+                <span>stress</span>
+                <span id="meterValue">0%</span>
+            </div>
+            <div class="meter-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div class="meter-fill" id="meterFill" style="width:0%;"></div>
+            </div>
+        </section>
+
+        <!-- VISUALIZER BARS -->
+        <div class="vis-container" id="visContainer" aria-label="Real-time visualizer bars" role="img"></div>
+
+        <!-- CONTROL PANEL -->
+        <div class="panel" role="toolbar" aria-label="Stress controls">
+            <button class="btn btn--primary" id="btnStress" aria-label="Toggle stress">▶ stress</button>
+            <button class="btn btn--danger" id="btnOverload" aria-label="Trigger overload pulse">⛔ overload</button>
+            <button class="btn btn--accent" id="btnReset" aria-label="Reset all values">↺ reset</button>
+            <div class="slider-group">
+                <label for="intensitySlider">intensity</label>
+                <input type="range" id="intensitySlider" min="0" max="100" value="40" aria-label="Intensity slider">
+            </div>
+        </div>
+
+        <!-- STATUS ROW -->
+        <div class="status-row">
+            <span id="statusFreq">freq: 0 hz</span>
+            <span id="statusPeak">peak: 0%</span>
+            <span id="statusParticles">particles: 0</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ─── DOM REFS ────────────────────────────────
+            const meterFill   = document.getElementById('meterFill');
+            const meterValue  = document.getElementById('meterValue');
+            const visContainer = document.getElementById('visContainer');
+            const btnStress   = document.getElementById('btnStress');
+            const btnOverload = document.getElementById('btnOverload');
+            const btnReset    = document.getElementById('btnReset');
+            const slider      = document.getElementById('intensitySlider');
+            const statusFreq  = document.getElementById('statusFreq');
+            const statusPeak  = document.getElementById('statusPeak');
+            const statusParts = document.getElementById('statusParticles');
+            const flash       = document.getElementById('overloadFlash');
+            const canvas      = document.getElementById('grid-canvas');
+            const ctx         = canvas.getContext('2d');
+
+            // ─── STATE ───────────────────────────────────
+            const NUM_BARS = 48;
+            let running = false;
+            let stressLevel = 0;          // 0–100
+            let targetStress = 0;
+            let intensity = 40;           // 0–100 (from slider)
+            let peakStress = 0;
+            let frameId = null;
+            let bars = new Array(NUM_BARS).fill(0);
+            let particles = [];
+            let freqCounter = 0;
+            let lastFreqTime = performance.now();
+            let currentFreq = 0;
+
+            // ─── CANVAS GRID ─────────────────────────────
+            let gridDots = [];
+            function initGrid() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                canvas.width = w;
+                canvas.height = h;
+                gridDots = [];
+                const spacing = 48;
+                for (let x = 0; x < w; x += spacing) {
+                    for (let y = 0; y < h; y += spacing) {
+                        gridDots.push({
+                            x: x + Math.random() * 6 - 3,
+                            y: y + Math.random() * 6 - 3,
+                            baseX: x,
+                            baseY: y,
+                            phase: Math.random() * Math.PI * 2
+                        });
+                    }
+                }
+            }
+            initGrid();
+            window.addEventListener('resize', initGrid);
+
+            let gridTime = 0;
+            function drawGrid(stressNorm) {
+                gridTime += 0.012;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const amplify = 0.3 + stressNorm * 4.5;
+                const alphaBase = 0.04 + stressNorm * 0.12;
+
+                ctx.fillStyle = `rgba(0, 247, 255, ${alphaBase})`;
+                for (const d of gridDots) {
+                    const dx = Math.sin(gridTime * 0.8 + d.phase) * amplify;
+                    const dy = Math.cos(gridTime * 0.6 + d.phase * 1.3) * amplify;
+                    ctx.beginPath();
+                    ctx.arc(d.baseX + dx, d.baseY + dy, 1.2 + stressNorm * 1.0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // faint connecting lines when stressed
+                if (stressNorm > 0.3) {
+                    ctx.strokeStyle = `rgba(0, 247, 255, ${(stressNorm - 0.3) * 0.06})`;
+                    ctx.lineWidth = 0.5;
+                    for (let i = 0; i < gridDots.length; i += 5) {
+                        const a = gridDots[i];
+                        const b = gridDots[(i + 3) % gridDots.length];
+                        ctx.beginPath();
+                        ctx.moveTo(a.baseX, a.baseY);
+                        ctx.lineTo(b.baseX, b.baseY);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // ─── BUILD VIS BARS ─────────────────────────
+            for (let i = 0; i < NUM_BARS; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'vis-bar';
+                bar.style.height = '2px';
+                visContainer.appendChild(bar);
+            }
+            const barElements = visContainer.querySelectorAll('.vis-bar');
+
+            // ─── PARTICLES ───────────────────────────────
+            function spawnParticle(stressNorm) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.4 + Math.random() * 1.6 * (0.5 + stressNorm);
+                particles.push({
+                    x: window.innerWidth / 2 + (Math.random() - 0.5) * 200,
+                    y: window.innerHeight / 2 + (Math.random() - 0.5) * 100,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 0.3,
+                    life: 1.0,
+                    decay: 0.004 + (1 - stressNorm) * 0.006 + Math.random() * 0.004,
+                    size: 2 + Math.random() * 4 * stressNorm,
+                    hue: 180 + Math.random() * 60   // cyan to purple
+                });
+            }
+
+            function updateParticles() {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.008;   // slight gravity
+                    p.life -= p.decay;
+                    if (p.life <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawParticles() {
+                for (const p of particles) {
+                    const alpha = p.life * 0.7;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${p.hue}, 90%, 65%, ${alpha})`;
+                    ctx.fill();
+                    // glow
+                    ctx.shadowColor = `hsla(${p.hue}, 90%, 70%, ${alpha * 0.3})`;
+                    ctx.shadowBlur = 14;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            // ─── UPDATE BARS ────────────────────────────
+            function updateBars(stressNorm, dt) {
+                const speed = 0.5 + stressNorm * 3.0;
+                const noiseAmp = 0.2 + stressNorm * 0.8;
+                for (let i = 0; i < NUM_BARS; i++) {
+                    const target = (0.5 + 0.5 * Math.sin(i * 0.55 + performance.now() * 0.003 * speed)) * noiseAmp;
+                    bars[i] += (target - bars[i]) * 0.12;
+                    const h = Math.max(2, bars[i] * 100 * stressNorm * 1.2 + 2);
+                    barElements[i].style.height = h + 'px';
+                    // color shift with stress
+                    const hue = 180 + stressNorm * 30;
+                    const sat = 70 + stressNorm * 30;
+                    const lit = 40 + stressNorm * 30;
+                    barElements[i].style.background =
+                        `linear-gradient(to top, hsl(${hue - 20}, ${sat}%, ${lit - 10}%), hsl(${hue + 10}, ${sat}%, ${lit + 10}%))`;
+                    barElements[i].style.opacity = 0.4 + stressNorm * 0.6;
+                }
+            }
+
+            // ─── MAIN LOOP ──────────────────────────────
+            let lastTime = performance.now();
+
+            function tick(now) {
+                const dt = Math.min((now - lastTime) / 16, 3);
+                lastTime = now;
+
+                // frequency counter
+                freqCounter++;
+                if (now - lastFreqTime > 1000) {
+                    currentFreq = Math.round(freqCounter / ((now - lastFreqTime) / 1000));
+                    freqCounter = 0;
+                    lastFreqTime = now;
+                }
+
+                // stress update
+                if (running) {
+                    targetStress = Math.min(100, intensity * (0.8 + 0.2 * (0.5 + 0.5 * Math.sin(now * 0.0015))));
+                } else {
+                    targetStress = 0;
+                }
+                stressLevel += (targetStress - stressLevel) * 0.06;
+                if (Math.abs(stressLevel - targetStress) < 0.3) stressLevel = targetStress;
+                const stressNorm = stressLevel / 100;
+
+                // peak tracking
+                if (stressLevel > peakStress) peakStress = stressLevel;
+                peakStress *= 0.9995; // slow decay
+
+                // meter
+                const displayStress = Math.round(stressLevel);
+                meterFill.style.width = displayStress + '%';
+                meterFill.style.background =
+                    `linear-gradient(90deg, #00f7ff, ${stressLevel > 60 ? '#ff3860' : '#7f5af0'})`;
+                meterValue.textContent = displayStress + '%';
+                const meterTrack = meterFill.closest('.meter-track');
+                if (meterTrack) meterTrack.setAttribute('aria-valuenow', displayStress);
+
+                // bars
+                updateBars(stressNorm, dt);
+
+                // particles
+                const spawnRate = stressNorm * stressNorm * 2.2;
+                if (Math.random() < spawnRate * 0.6 + (running ? 0.02 : 0)) {
+                    spawnParticle(stressNorm);
+                }
+                updateParticles();
+
+                // canvas
+                drawGrid(stressNorm);
+                // draw particles on canvas
+                const currentAlpha = ctx.globalAlpha;
+                drawParticles();
+                ctx.globalAlpha = currentAlpha;
+
+                // overload flash auto-decay
+                const flashOpacity = parseFloat(getComputedStyle(flash).opacity);
+                if (flashOpacity > 0.01) {
+                    flash.style.opacity = Math.max(0, flashOpacity * 0.92 - 0.005);
+                }
+
+                // status
+                statusFreq.textContent = `freq: ${currentFreq} hz`;
+                statusPeak.textContent = `peak: ${Math.round(peakStress)}%`;
+                statusParts.textContent = `particles: ${particles.length}`;
+
+                // button text
+                btnStress.textContent = running ? '⏸ pause' : '▶ stress';
+
+                frameId = requestAnimationFrame(tick);
+            }
+
+            // ─── OVERLOAD PULSE ─────────────────────────
+            function triggerOverload() {
+                stressLevel = Math.min(100, stressLevel + 45);
+                peakStress = Math.max(peakStress, stressLevel);
+                flash.style.opacity = '0.7';
+                // burst of particles
+                const norm = stressLevel / 100;
+                for (let i = 0; i < 40 + Math.round(norm * 80); i++) {
+                    spawnParticle(norm);
+                }
+                // haptic feedback via vibration if supported
+                if (navigator.vibrate) {
+                    navigator.vibrate(30);
+                }
+            }
+
+            // ─── RESET ──────────────────────────────────
+            function resetAll() {
+                running = false;
+                stressLevel = 0;
+                targetStress = 0;
+                peakStress = 0;
+                bars.fill(0);
+                particles = [];
+                flash.style.opacity = '0';
+                slider.value = 40;
+                intensity = 40;
+                for (const bar of barElements) {
+                    bar.style.height = '2px';
+                    bar.style.opacity = '0.4';
+                    bar.style.background =
+                        `linear-gradient(to top, #00f7ff, #7f5af0)`;
+                }
+                meterFill.style.width = '0%';
+                meterFill.style.background =
+                    'linear-gradient(90deg, #00f7ff, #7f5af0, #ff3860)';
+                meterValue.textContent = '0%';
+            }
+
+            // ─── EVENTS ─────────────────────────────────
+            btnStress.addEventListener('click', () => {
+                running = !running;
+                if (running && stressLevel === 0) {
+                    stressLevel = 2; // kickstart
+                }
+            });
+
+            btnOverload.addEventListener('click', triggerOverload);
+
+            btnReset.addEventListener('click', resetAll);
+
+            slider.addEventListener('input', () => {
+                intensity = parseFloat(slider.value);
+            });
+
+            // keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    running = !running;
+                    if (running && stressLevel === 0) stressLevel = 2;
+                }
+                if (e.key === 'o' || e.key === 'O') {
+                    triggerOverload();
+                }
+                if (e.key === 'r' || e.key === 'R') {
+                    resetAll();
+                }
+            });
+
+            // ─── START ──────────────────────────────────
+            frameId = requestAnimationFrame(tick);
+
+            // tooltip / status initial
+            statusFreq.textContent = 'freq: 0 hz';
+            statusPeak.textContent = 'peak: 0%';
+            statusParts.textContent = 'particles: 0';
+
+        })();
+    </script>
+</body>
+</html>

@@ -3,78 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sequenz 1</title>
+    <title>EditorAG Prüfung</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
         body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            margin: 0;
+            padding: 20px;
             display: flex;
-            align-items: center;
             justify-content: center;
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            color: #e2e8f0;
-            padding: 2rem;
+            align-items: center;
+            min-height: 100vh;
         }
         .card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(12px);
-            border-radius: 2rem;
-            padding: 3rem 4rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 400px;
             text-align: center;
-            max-width: 600px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.7);
         }
         h1 {
-            font-size: 4rem;
-            font-weight: 700;
-            background: linear-gradient(to right, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 1rem;
-            letter-spacing: -0.02em;
+            color: #333;
         }
-        p {
-            font-size: 1.2rem;
-            color: #94a3b8;
-            line-height: 1.7;
-            margin-bottom: 2rem;
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
         }
-        .badge {
-            display: inline-block;
-            background: #334155;
-            padding: 0.4rem 1.2rem;
-            border-radius: 9999px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #38bdf8;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            border: 1px solid rgba(56, 189, 248, 0.3);
+        button:hover {
+            background: #45a049;
         }
-        .footer {
-            margin-top: 2rem;
-            font-size: 0.9rem;
-            color: #64748b;
-        }
-        @media (max-width: 480px) {
-            .card {
-                padding: 2rem 1.5rem;
-            }
-            h1 {
-                font-size: 2.8rem;
-            }
+        #output {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #555;
         }
     </style>
 </head>
@@ -84,11 +52,20 @@
 <a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">a0</a> <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_0</a> <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_11</a> <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_14</a> <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_15</a> <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_17</a> <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_18</a> <a href="/chain_sat_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_2</a> <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_20</a> <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_21</a> <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_24</a> <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_26</a> <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chain_sat_5</a> <a href="/chat_test_a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_a</a> <a href="/chat_test_b.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">chat_test_b</a> <a href="/combo_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_2</a> <a href="/combo_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">combo_4</a> <a href="/editorag_test.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">editorag_test</a> <a href="/flood_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_1</a> <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">flood_3</a>
 <a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 6px;">⋯ alle 47</a>
 </div><style>body{padding-top:36px!important}</style>>
-    <div class="card" role="main" aria-labelledby="seq1-title">
-        <span class="badge">CoderAG · Sequenz 1</span>
-        <h1 id="seq1-title">Bereit.</h1>
-        <p>Agent gestartet. System initialisiert. Nächste Anweisung wird erwartet.</p>
-        <div class="footer">⚡ task_2 · endurance Protokoll aktiv</div>
+    <div class="card">
+        <h1>EditorAG Qualitäts-Check</h1>
+        <button id="clickBtn">Klick mich</button>
+        <p id="output">Bereit</p>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('clickBtn');
+            const out = document.getElementById('output');
+            btn.addEventListener('click', () => {
+                out.textContent = '✅ Code geprüft – keine Fehler gefunden.';
+            });
+        });
+    </script>
 </body>
 </html>
