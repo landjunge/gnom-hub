@@ -415,54 +415,6 @@
               <td>Projekt</td>
               <td>Wechselt das aktive Projekt (z.&nbsp;B. <code>@@project netzwerkpunkt</code>).</td>
             </tr>
-            <tr>
-              <td><span class="badge badge-cmd">@@free</span></td>
-              <td><code>[agent]</code></td>
-              <td>Verwaltung</td>
-              <td>Setzt Agent zurück, leert Queue (UPDATE statt DELETE). Ohne Agent: alle.</td>
-            </tr>
-            <tr>
-              <td><span class="badge badge-cmd">@@approve_decision</span></td>
-              <td><code>&lt;id&gt;</code></td>
-              <td>Gatekeeper</td>
-              <td>Bestätigt eine ausstehende Gatekeeper-Entscheidung (threading.Event).</td>
-            </tr>
-            <tr>
-              <td><span class="badge badge-cmd">@@reject_decision</span></td>
-              <td><code>&lt;id&gt;</code></td>
-              <td>Gatekeeper</td>
-              <td>Lehnt eine ausstehende Gatekeeper-Entscheidung ab.</td>
-            </tr>
-            <tr>
-              <td><span class="badge badge-cmd">@blockade</span></td>
-              <td><code>aus/an</code></td>
-              <td>Gatekeeper</td>
-              <td>Schaltet Gatekeeper-Bestätigungen an/aus. 0% CPU durch threading.Event.</td>
-            </tr>
-            <tr>
-              <td><span class="badge badge-cmd">@@blockade</span></td>
-              <td><code>aus/an</code></td>
-              <td>Gatekeeper</td>
-              <td>Wie @blockade, mit @@ für System-Cmd-Parsing.</td>
-            </tr>
-            <tr>
-              <td><span class="badge badge-cmd">@@confirmations</span></td>
-              <td><code>on/off</code></td>
-              <td>Gatekeeper</td>
-              <td>Schaltet manuelle Bestätigungen an/aus.</td>
-            </tr>
-            <tr>
-              <td><span class="badge badge-cmd">@@resume</span></td>
-              <td><code>&lt;agent&gt;</code></td>
-              <td>Verwaltung</td>
-              <td>Setzt einen pausierten Agenten fort.</td>
-            </tr>
-            <tr>
-              <td><span class="badge badge-cmd">priority</span></td>
-              <td><code>critical</code></td>
-              <td>Dispatch</td>
-              <td>Mit <code>"priority": "critical"</code> im Payload springt der Task mit prio=0 vor alle anderen.</td>
-            </tr>
           </tbody>
         </table>
       </div>

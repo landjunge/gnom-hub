@@ -124,8 +124,14 @@ class BaseAgent:
                     processed = await _to_thread(process_actions, r.content, {"name": self.n}, perms, False, wd)
 
                     import re as _re
-                    clean = _re.sub(r'<think>[\s\S]*?</think>', '', processed or r.content, flags=_re.IGNORECASE | _re.DOTALL).strip()
-                    self._req("post", "/api/chat", {"content": clean, "sender": self.n})
+                    raw = processed or r.content
+                    # Think-Block formatieren statt löschen: in Chat sichtbar machen
+                    think_display = _re.sub(
+                        r'<think>([\s\S]*?)</think>',
+                        r'\n[💭 \1]\n',
+                        raw, flags=_re.IGNORECASE | _re.DOTALL
+                    ).strip()
+                    self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
 
                 # Acknowledge in the queue
                 await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))

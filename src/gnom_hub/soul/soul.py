@@ -115,10 +115,22 @@ class SoulAG:
         from gnom_hub.core.config import Config
         if Config.SUPERGNOM_MODE:
             return
-        m_lower = m.lower()
-        if (s.lower() == "user"
-                or any(x in m_lower for x in ["abschluss", "zusammenfassung", "[write:"])
-                or ("fertig" in m_lower and "gestellt" in m_lower)):
+        # SoulAG lernt aus JEDER Nachricht (nicht nur User), mit Rate-Limit
+        import hashlib
+        msg_hash = hashlib.md5(m.encode()).hexdigest()[:16]
+        now = time.time()
+        if not hasattr(self, '_last_seen_hash'):
+            self._last_seen_hash = {}
+        # Dedup: gleiche Nachricht nicht mehrfach lernen
+        last = self._last_seen_hash.get(msg_hash, 0)
+        if now - last < 30:
+            return
+        self._last_seen_hash[msg_hash] = now
+        if len(self._last_seen_hash) > 500:
+            oldest = min(self._last_seen_hash, key=self._last_seen_hash.get)
+            del self._last_seen_hash[oldest]
+        # Bei User-Nachrichten immer, bei Agent-Nachrichten mit 50% Rate-Limit
+        if s.lower() == "user" or hash(msg_hash) % 100 < 50:
             self._pulse_status()
             threading.Thread(target=self._ex, args=(m,), daemon=True).start()
 
