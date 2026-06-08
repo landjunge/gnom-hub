@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chain SAT 0</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hammer_8</title>
   <style>
     * {
       margin: 0;
@@ -11,17 +11,97 @@
       box-sizing: border-box;
     }
     body {
-      background: #0a0a0f;
+      background: #1a1e2c;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
     }
-    canvas {
-      display: block;
+    .card {
+      background: #222738;
+      border-radius: 2rem;
+      padding: 3rem 4rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+    .card:hover {
+      transform: scale(1.02);
+    }
+    .hammer {
+      width: 120px;
+      height: auto;
+      margin: 0 auto 1.5rem;
+      position: relative;
+      animation: swing 2s ease-in-out infinite alternate;
+      transform-origin: top center;
+    }
+    @keyframes swing {
+      0%   { transform: rotate(-10deg); }
+      100% { transform: rotate(10deg); }
+    }
+    .hammer svg {
       width: 100%;
-      height: 100%;
+      display: block;
+      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
+    }
+    h1 {
+      font-size: 4rem;
+      color: #f0c27f;
+      letter-spacing: 4px;
+      text-shadow: 0 4px 8px rgba(0,0,0,0.5);
+      margin-bottom: 0.5rem;
+    }
+    p {
+      color: #b0b9d6;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+    }
+    .badge {
+      display: inline-block;
+      margin-top: 1.5rem;
+      padding: 0.4rem 1.8rem;
+      border-radius: 100px;
+      background: #f0c27f;
+      color: #1a1e2c;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .counter {
+      margin-top: 2rem;
+      color: #6c7a9e;
+      font-size: 0.9rem;
+    }
+    .counter span {
+      color: #f0c27f;
+      font-weight: 700;
+      font-size: 1.4rem;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 1.8rem;
+      padding: 0.7rem 2rem;
+      background: transparent;
+      border: 2px solid #f0c27f;
+      color: #f0c27f;
+      border-radius: 60px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn:hover {
+      background: #f0c27f;
+      color: #1a1e2c;
+      transform: scale(1.05);
+    }
+    .btn:active {
+      transform: scale(0.95);
     }
   </style>
 </head>
@@ -66,133 +146,44 @@
 <style> body { padding-top: 36px !important; } </style>
 <!-- END GNOM-HUB PAGE NAV -->
 >
-  <canvas id="satCanvas" role="img" aria-label="Chain of satellites orbiting animation"></canvas>
-  <script>
-    (() => {
-      const canvas = document.getElementById('satCanvas');
-      const ctx = canvas.getContext('2d');
-      let W, H, cx, cy, radius;
-
-      function resize() {
-        W = canvas.width = window.innerWidth;
-        H = canvas.height = window.innerHeight;
-        cx = W / 2;
-        cy = H / 2;
-        radius = Math.min(W, H) * 0.35;
-      }
-
-      window.addEventListener('resize', resize);
-      resize();
-
-      const count = 24;          // number of satellites
-      const trailLength = 12;    // how many past positions to keep for trail
-
-      // Each satellite: object with an angle offset (phase) and an array of past positions
-      const sats = [];
-      for (let i = 0; i < count; i++) {
-        sats.push({
-          phase: (i / count) * Math.PI * 2,
-          trail: [] // stores {x, y} of previous frames
-        });
-      }
-
-      let time = 0;
-
-      function draw() {
-        time += 0.008; // rotation speed
-        ctx.clearRect(0, 0, W, H);
-
-        // Draw subtle background grid (optional)
-        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 20; i++) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, radius * (i / 20), 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-        // Update satellite positions
-        const angle = time;
-        const positions = [];
-        const glow = 8;
-
-        // First pass: compute new positions and store trail
-        for (let i = 0; i < count; i++) {
-          const sat = sats[i];
-          const a = angle + sat.phase;
-          const x = cx + Math.cos(a) * radius;
-          const y = cy + Math.sin(a) * radius;
-          positions.push({ x, y });
-          // Add current position to trail
-          sat.trail.push({ x, y });
-          if (sat.trail.length > trailLength) {
-            sat.trail.shift();
-          }
-        }
-
-        // Draw chain lines (connecting consecutive satellites)
-        ctx.strokeStyle = 'rgba(0, 200, 255, 0.35)';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        for (let i = 0; i < count; i++) {
-          const p = positions[i];
-          const pNext = positions[(i + 1) % count];
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(pNext.x, pNext.y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-
-        // Draw satellite trails (glow effect)
-        for (let i = 0; i < count; i++) {
-          const sat = sats[i];
-          const trail = sat.trail;
-          for (let t = 0; t < trail.length; t++) {
-            const alpha = (t / trail.length) * 0.4;
-            const size = (t / trail.length) * 2 + 0.5;
-            ctx.beginPath();
-            ctx.arc(trail[t].x, trail[t].y, size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(0, 200, 255, ${alpha})`;
-            ctx.fill();
-          }
-        }
-
-        // Draw satellites
-        for (let i = 0; i < count; i++) {
-          const p = positions[i];
-          // Outer glow
-          ctx.shadowColor = '#00ccff';
-          ctx.shadowBlur = 20;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-          ctx.fillStyle = '#00ccff';
-          ctx.fill();
-
-          // Inner bright dot
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
-
-          // Reset shadow
-          ctx.shadowBlur = 0;
-        }
-
-        // Draw a small central Earth-like glow
-        ctx.shadowBlur = 40;
-        ctx.shadowColor = '#002244';
-        ctx.beginPath();
-        ctx.arc(cx, cy, 12, 0, Math.PI * 2);
-        ctx.fillStyle = '#112233';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        requestAnimationFrame(draw);
-      }
-
-      draw();
-    })();
-  </script>
+<div class="card">
+  <!-- Hammer SVG (einfach, stilisiert) -->
+  <div class="hammer">
+    <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+      <!-- Stiel -->
+      <rect x="44" y="50" width="12" height="60" rx="4" fill="#b5895c"/>
+      <!-- Hammerkopf -->
+      <rect x="20" y="20" width="60" height="36" rx="8" fill="#7d6b5b"/>
+      <!-- untere Seite etwas heller -->
+      <rect x="24" y="24" width="52" height="28" rx="6" fill="#8d7b6b"/>
+      <!-- Reflexion -->
+      <rect x="30" y="28" width="18" height="8" rx="3" fill="#a08d7a" opacity="0.6"/>
+    </svg>
+  </div>
+  <h1>HAMMER 8</h1>
+  <p>Schlagkraft · Präzision · Stil</p>
+  <div class="badge">⚡ achte Generation</div>
+  <div class="counter">🔨 <span id="count">0</span> Schläge</div>
+  <button class="btn" id="hitBtn">💥 Zuschlagen</button>
+</div>
+<script>
+  let count = 0;
+  const countEl = document.getElementById('count');
+  const btn = document.getElementById('hitBtn');
+  btn.addEventListener('click', () => {
+    count++;
+    countEl.textContent = count;
+    // kurzer Animationseffekt
+    const hammer = document.querySelector('.hammer');
+    hammer.style.animation = 'none';
+    hammer.offsetHeight; // Trigger reflow
+    hammer.style.animation = 'swing 2s ease-in-out infinite alternate';
+    // zusätzlicher kurzer Ruck
+    hammer.style.transform = 'rotate(20deg)';
+    setTimeout(() => {
+      hammer.style.transform = '';
+    }, 100);
+  });
+</script>
 </body>
 </html>

@@ -1,29 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chain SAT 0</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      background: #0a0a0f;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      overflow: hidden;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hammer 0</title>
 </head>
 <body>
 
@@ -66,133 +46,7 @@
 <style> body { padding-top: 36px !important; } </style>
 <!-- END GNOM-HUB PAGE NAV -->
 >
-  <canvas id="satCanvas" role="img" aria-label="Chain of satellites orbiting animation"></canvas>
-  <script>
-    (() => {
-      const canvas = document.getElementById('satCanvas');
-      const ctx = canvas.getContext('2d');
-      let W, H, cx, cy, radius;
-
-      function resize() {
-        W = canvas.width = window.innerWidth;
-        H = canvas.height = window.innerHeight;
-        cx = W / 2;
-        cy = H / 2;
-        radius = Math.min(W, H) * 0.35;
-      }
-
-      window.addEventListener('resize', resize);
-      resize();
-
-      const count = 24;          // number of satellites
-      const trailLength = 12;    // how many past positions to keep for trail
-
-      // Each satellite: object with an angle offset (phase) and an array of past positions
-      const sats = [];
-      for (let i = 0; i < count; i++) {
-        sats.push({
-          phase: (i / count) * Math.PI * 2,
-          trail: [] // stores {x, y} of previous frames
-        });
-      }
-
-      let time = 0;
-
-      function draw() {
-        time += 0.008; // rotation speed
-        ctx.clearRect(0, 0, W, H);
-
-        // Draw subtle background grid (optional)
-        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 20; i++) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, radius * (i / 20), 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-        // Update satellite positions
-        const angle = time;
-        const positions = [];
-        const glow = 8;
-
-        // First pass: compute new positions and store trail
-        for (let i = 0; i < count; i++) {
-          const sat = sats[i];
-          const a = angle + sat.phase;
-          const x = cx + Math.cos(a) * radius;
-          const y = cy + Math.sin(a) * radius;
-          positions.push({ x, y });
-          // Add current position to trail
-          sat.trail.push({ x, y });
-          if (sat.trail.length > trailLength) {
-            sat.trail.shift();
-          }
-        }
-
-        // Draw chain lines (connecting consecutive satellites)
-        ctx.strokeStyle = 'rgba(0, 200, 255, 0.35)';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        for (let i = 0; i < count; i++) {
-          const p = positions[i];
-          const pNext = positions[(i + 1) % count];
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(pNext.x, pNext.y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-
-        // Draw satellite trails (glow effect)
-        for (let i = 0; i < count; i++) {
-          const sat = sats[i];
-          const trail = sat.trail;
-          for (let t = 0; t < trail.length; t++) {
-            const alpha = (t / trail.length) * 0.4;
-            const size = (t / trail.length) * 2 + 0.5;
-            ctx.beginPath();
-            ctx.arc(trail[t].x, trail[t].y, size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(0, 200, 255, ${alpha})`;
-            ctx.fill();
-          }
-        }
-
-        // Draw satellites
-        for (let i = 0; i < count; i++) {
-          const p = positions[i];
-          // Outer glow
-          ctx.shadowColor = '#00ccff';
-          ctx.shadowBlur = 20;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-          ctx.fillStyle = '#00ccff';
-          ctx.fill();
-
-          // Inner bright dot
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
-          ctx.fill();
-
-          // Reset shadow
-          ctx.shadowBlur = 0;
-        }
-
-        // Draw a small central Earth-like glow
-        ctx.shadowBlur = 40;
-        ctx.shadowColor = '#002244';
-        ctx.beginPath();
-        ctx.arc(cx, cy, 12, 0, Math.PI * 2);
-        ctx.fillStyle = '#112233';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        requestAnimationFrame(draw);
-      }
-
-      draw();
-    })();
-  </script>
+    <h1>Hammer 0</h1>
+    <p>Platzhalter für Hammer-Projekt.</p>
 </body>
 </html>

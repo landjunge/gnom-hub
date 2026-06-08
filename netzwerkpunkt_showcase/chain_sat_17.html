@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chain SAT 17 • DPLL Solver</title>
+  <style>
+    /* === RESET & BASE === */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .container {
+      width: 100%;
+      max-width: 780px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      padding: 2rem 2rem 2.5rem;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+      transition: box-shadow 0.3s;
+    }
+    .container:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.8); }
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+      background: linear-gradient(135deg, #58a6ff, #be4dff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      color: #8b949e;
+      font-size: 0.9rem;
+      margin-bottom: 1.75rem;
+      border-bottom: 1px solid #21262d;
+      padding-bottom: 0.75rem;
+    }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+      color: #e6edf3;
+    }
+    textarea {
+      width: 100%;
+      height: 160px;
+      background: #0d1117;
+      color: #e6edf3;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.85rem;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.2);
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 1.25rem 0 1rem;
+    }
+    button {
+      background: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.6rem 1.4rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.1s;
+    }
+    button:hover { background: #30363d; border-color: #58a6ff; }
+    button:active { transform: scale(0.97); }
+    button.primary {
+      background: #238636;
+      border-color: #2ea043;
+      color: #fff;
+    }
+    button.primary:hover { background: #2ea043; border-color: #3fb950; }
+    .output {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      min-height: 100px;
+      margin-top: 0.5rem;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-x: auto;
+    }
+    .output .sat { color: #3fb950; }
+    .output .unsat { color: #f85149; }
+    .output .dim { color: #8b949e; }
+    .badge {
+      display: inline-block;
+      background: #1f6feb;
+      color: #fff;
+      border-radius: 20px;
+      padding: 0.15rem 0.7rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+    .example-box {
+      background: #0d1117;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: #8b949e;
+      border: 1px dashed #21262d;
+    }
+    .example-box code { color: #e6edf3; }
+    @media (max-width: 500px) {
+      .container { padding: 1.5rem; }
+      h1 { font-size: 1.4rem; }
+      textarea { height: 120px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- GNOM-HUB PAGE NAV -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(7,9,19,0.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,229,255,0.15);padding:6px 12px;font-family:'Inter',sans-serif;font-size:0.75rem;display:flex;align-items:center;gap:10px;overflow-x:auto;white-space:nowrap;">
+  <span style="color:#00e5ff;font-weight:600;margin-right:4px;">🧪 GNOM-HUB</span>
+  <a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;">Übersicht</a>
+  <a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">a0</a>
+  <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_0</a>
+  <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_11</a>
+  <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_14</a>
+  <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_15</a>
+  <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_17</a>
+  <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_18</a>
+  <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_20</a>
+  <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_21</a>
+  <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_24</a>
+  <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_26</a>
+  <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_5</a>
+  <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_3</a>
+  <a href="/flood_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_4</a>
+  <a href="/flood_7.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_7</a>
+  <a href="/hammer_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_0</a>
+  <a href="/hammer_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_1</a>
+  <a href="/hammer_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_2</a>
+  <a href="/hammer_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_3</a>
+  <a href="/hammer_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_4</a>
+  <a href="/hammer_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_5</a>
+  <a href="/hammer_6.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_6</a>
+  <a href="/hammer_8.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_8</a>
+  <a href="/index.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index</a>
+  <a href="/index1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index1</a>
+  <a href="/index2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index2</a>
+  <a href="/rsat_16.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">rsat_16</a>
+  <a href="/seq_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">seq_1</a>
+  <a href="/t0a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">t0a</a>
+  <span style="flex:1;"></span>
+  <span style="color:#666;font-size:0.65rem;">test.netzwerkpunkt.de</span>
+</div>
+<style> body { padding-top: 36px !important; } </style>
+<!-- END GNOM-HUB PAGE NAV -->
+>
+<div class="container" role="main">
+  <h1>chain_sat_17 <span class="badge">DPLL</span></h1>
+  <div class="subtitle">Interaktiver SAT-Solver – DIMACS CNF</div>
+
+  <label for="cnfInput">Klauseln (eine pro Zeile, Literale mit Leerzeichen, 0 als Terminator)</label>
+  <textarea id="cnfInput" spellcheck="false" placeholder="p cnf 3 3&#10;1 -2 3 0&#10;-1 2 0&#10;-3 -2 0">p cnf 3 3
+1 -2 3 0
+-1 2 0
+-3 -2 0</textarea>
+
+  <div class="row">
+    <button class="primary" id="solveBtn">⟳ Lösen</button>
+    <button id="clearBtn">⌫ Leeren</button>
+    <button id="exampleBtn">✓ Beispiel</button>
+    <button id="randBtn">∅ Zufall</button>
+  </div>
+
+  <label>Ergebnis</label>
+  <div class="output" id="outputArea" role="log" aria-live="polite">Bereit – klicke auf „Lösen".</div>
+
+  <div class="example-box">
+    <strong>ⓘ Hinweis:</strong> Erwartet wird DIMACS-ähnliches Format. Die erste Zeile <code>p cnf &lt;variablen&gt; &lt;klauseln&gt;</code> ist optional. Jede Klausel endet mit <code>0</code>. Negation durch Minus.
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const cnfInput = document.getElementById('cnfInput');
+  const output    = document.getElementById('outputArea');
+  const solveBtn  = document.getElementById('solveBtn');
+  const clearBtn  = document.getElementById('clearBtn');
+  const exampleBtn = document.getElementById('exampleBtn');
+  const randBtn   = document.getElementById('randBtn');
+
+  // ---------- Parser ----------
+  function parseDIMACS(text) {
+    const clauses = [];
+    const lines = text.split('\n');
+    for (let line of lines) {
+      line = line.trim();
+      if (line === '' || line.startsWith('c') || line.startsWith('p')) continue;
+      const parts = line.split(/\s+/).map(Number);
+      if (parts.length === 0) continue;
+      const clause = [];
+      for (const lit of parts) {
+        if (lit === 0) break;
+        clause.push(lit);
+      }
+      if (clause.length > 0) clauses.push(clause);
+    }
+    return clauses;
+  }
+
+  // ---------- DPLL (einfach, rekursiv) ----------
+  function pureLiteralAssign(clauses, assign) {
+    const literals = new Set();
+    for (const c of clauses) for (const l of c) literals.add(l);
+    const pure = new Map();
+    for (const l of literals) {
+      const neg = -l;
+      if (!literals.has(neg)) {
+        pure.set(l, true);
+      }
+    }
+    for (const [lit] of pure) {
+      assign.set(Math.abs(lit), lit > 0 ? true : false);
+      // remove clauses with this literal
+      for (let i = clauses.length-1; i>=0; i--) {
+        if (clauses[i].includes(lit)) clauses.splice(i,1);
+      }
+    }
+  }
+
+  function unitPropagate(clauses, assign) {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = clauses.length-1; i>=0; i--) {
+        const c = clauses[i];
+        if (c.length === 1) {
+          const lit = c[0];
+          const var_ = Math.abs(lit);
+          if (!assign.has(var_)) {
+            assign.set(var_, lit>0);
+            changed = true;
+          }
+          // remove clause
+          clauses.splice(i,1);
+          // remove all clauses containing this literal
+          for (let j = clauses.length-1; j>=0; j--) {
+            if (clauses[j].includes(lit)) clauses.splice(j,1);
+          }
+          // remove negated literal from other clauses
+          const negLit = -lit;
+          for (let j = clauses.length-1; j>=0; j--) {
+            const idx = clauses[j].indexOf(negLit);
+            if (idx !== -1) {
+              clauses[j].splice(idx,1);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function dpll(clauses, assign) {
+    // Make a deep copy
+    clauses = clauses.map(c => [...c]);
+    assign = new Map(assign);
+
+    pureLiteralAssign(clauses, assign);
+    unitPropagate(clauses, assign);
+
+    // empty clause set -> SAT
+    if (clauses.length === 0) return { sat: true, assign };
+
+    // any empty clause -> UNSAT
+    for (const c of clauses) {
+      if (c.length === 0) return { sat: false, assign: null };
+    }
+
+    // choose variable (heuristic: first literal of first clause)
+    const lit = clauses[0][0];
+    const var_ = Math.abs(lit);
+
+    // try true
+    const assign1 = new Map(assign);
+    assign1.set(var_, true);
+    const clauses1 = clauses.map(c => [...c]);
+    // simplify: remove clauses with var_ positive, remove -var_ from clauses
+    for (let i = clauses1.length-1; i>=0; i--) {
+      if (clauses1[i].includes(var_)) clauses1.splice(i,1);
+      else {
+        const idx = clauses1[i].indexOf(-var_);
+        if (idx !== -1) clauses1[i].splice(idx,1);
+      }
+    }
+    const res1 = dpll(clauses1, assign1);
+    if (res1.sat) return res1;
+
+    // try false
+    const assign2 = new Map(assign);
+    assign2.set(var_, false);
+    const clauses2 = clauses.map(c => [...c]);
+    for (let i = clauses2.length-1; i>=0; i--) {
+      if (clauses2[i].includes(-var_)) clauses2.splice(i,1);
+      else {
+        const idx = clauses2[i].indexOf(var_);
+        if (idx !== -1) clauses2[i].splice(idx,1);
+      }
+    }
+    return dpll(clauses2, assign2);
+  }
+
+  // ---------- UI ----------
+  function solve() {
+    const text = cnfInput.value;
+    let clauses;
+    try {
+      clauses = parseDIMACS(text);
+    } catch(e) {
+      output.innerHTML = `<span class="unsat">❌ Parse-Fehler: ${e.message}</span>`;
+      return;
+    }
+    if (clauses.length === 0) {
+      output.innerHTML = '<span class="dim">Keine Klauseln gefunden. Bitte gültige DIMACS-Eingabe.</span>';
+      return;
+    }
+
+    const start = performance.now();
+    const result = dpll(clauses, new Map());
+    const elapsed = ((performance.now() - start) / 1000).toFixed(3);
+
+    if (result.sat) {
+      let modelStr = '';
+      const vars = Array.from(result.assign.keys()).sort((a,b)=>a-b);
+      for (const v of vars) {
+        modelStr += `${v} → ${result.assign.get(v) ? 'true' : 'false'}\n`;
+      }
+      output.innerHTML = `<span class="sat">✅ SATISFIABLE  (${elapsed}s)</span>\n<span class="dim">Modell:</span>\n${modelStr}`;
+    } else {
+      output.innerHTML = `<span class="unsat">❌ UNSATISFIABLE  (${elapsed}s)</span>`;
+    }
+  }
+
+  function clearInput() {
+    cnfInput.value = '';
+    output.innerHTML = '<span class="dim">Eingabe gelöscht.</span>';
+  }
+
+  function setExample() {
+    cnfInput.value = `p cnf 3 3
+1 -2 3 0
+-1 2 0
+-3 -2 0`;
+    output.innerHTML = '<span class="dim">Beispiel geladen. Klicke „Lösen".</span>';
+  }
+
+  function setRandom() {
+    const numVars = 3 + Math.floor(Math.random() * 4); // 3-6
+    const numClauses = numVars + Math.floor(Math.random() * 4) + 1; // variiert
+    let out = `p cnf ${numVars} ${numClauses}\n`;
+    for (let i=0; i<numClauses; i++) {
+      const clause = [];
+      const used = new Set();
+      for (let j=0; j<3; j++) {
+        let lit = 0;
+        do {
+          const var_ = 1 + Math.floor(Math.random() * numVars);
+          const sign = Math.random() < 0.5 ? 1 : -1;
+          lit = sign * var_;
+        } while (used.has(lit));
+        used.add(lit);
+        clause.push(lit);
+      }
+      out += clause.join(' ') + ' 0\n';
+    }
+    cnfInput.value = out;
+    output.innerHTML = '<span class="dim">Zufällige Formel generiert. Klicke „Lösen".</span>';
+  }
+
+  // ---------- Events ----------
+  solveBtn.addEventListener('click', solve);
+  clearBtn.addEventListener('click', clearInput);
+  exampleBtn.addEventListener('click', setExample);
+  randBtn.addEventListener('click', setRandom);
+
+  // Strg+Enter im Textarea
+  cnfInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      solve();
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -71,7 +71,7 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                             pass
 
                     from gnom_hub.soul.zwc_soul import add_agent_metadata
-                    r = f"[System: Datei '{fname}' gespeichert.{auto_open}]" + add_agent_metadata(agent["name"], "")
+                    r = f"[System: Datei '{fname}' gespeichert unter {os.path.abspath(fpath)}.{auto_open}]" + add_agent_metadata(agent["name"], "")
 
                 except Exception as e: r = f"[System-Fehler: {fname}: {e}]"
         answer = answer.replace(m.group(0), r)

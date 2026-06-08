@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hammer 4 – Multi-Layer Belastungstest</title>
+<style>
+  body {
+    font-family: monospace;
+    background: #111;
+    color: #0f0;
+    padding: 20px;
+  }
+  h1 {
+    color: #f44;
+    text-shadow: 0 0 10px #f44;
+  }
+  .stat {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+  }
+  .box {
+    background: #1a1a2e;
+    border: 1px solid #0f0;
+    padding: 10px;
+    border-radius: 8px;
+  }
+  .box h3 {
+    margin: 0 0 5px;
+    color: #ff8;
+  }
+  .box .value {
+    font-size: 2em;
+    font-weight: bold;
+  }
+  #controls {
+    margin: 20px 0;
+  }
+  button {
+    background: #222;
+    color: #0f0;
+    border: 1px solid #0f0;
+    padding: 10px 20px;
+    font-size: 1.2em;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  button:hover {
+    background: #0f0;
+    color: #111;
+  }
+  #log {
+    background: #0a0a0a;
+    padding: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 0.8em;
+    border: 1px solid #333;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+<!-- GNOM-HUB PAGE NAV -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(7,9,19,0.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,229,255,0.15);padding:6px 12px;font-family:'Inter',sans-serif;font-size:0.75rem;display:flex;align-items:center;gap:10px;overflow-x:auto;white-space:nowrap;">
+  <span style="color:#00e5ff;font-weight:600;margin-right:4px;">🧪 GNOM-HUB</span>
+  <a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;">Übersicht</a>
+  <a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">a0</a>
+  <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_0</a>
+  <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_11</a>
+  <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_14</a>
+  <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_15</a>
+  <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_17</a>
+  <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_18</a>
+  <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_20</a>
+  <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_21</a>
+  <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_24</a>
+  <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_26</a>
+  <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_5</a>
+  <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_3</a>
+  <a href="/flood_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_4</a>
+  <a href="/flood_7.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_7</a>
+  <a href="/hammer_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_0</a>
+  <a href="/hammer_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_1</a>
+  <a href="/hammer_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_2</a>
+  <a href="/hammer_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_3</a>
+  <a href="/hammer_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_4</a>
+  <a href="/hammer_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_5</a>
+  <a href="/hammer_6.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_6</a>
+  <a href="/hammer_8.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_8</a>
+  <a href="/index.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index</a>
+  <a href="/index1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index1</a>
+  <a href="/index2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index2</a>
+  <a href="/rsat_16.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">rsat_16</a>
+  <a href="/seq_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">seq_1</a>
+  <a href="/t0a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">t0a</a>
+  <span style="flex:1;"></span>
+  <span style="color:#666;font-size:0.65rem;">test.netzwerkpunkt.de</span>
+</div>
+<style> body { padding-top: 36px !important; } </style>
+<!-- END GNOM-HUB PAGE NAV -->
+>
+  <h1>⚡ Hammer 4: Multi-Layer Stress Test</h1>
+  <p>CPU (Web Workers) · Memory · DOM Rendering · Netzwerk (XHR)</p>
+  <div id="controls">
+    <button id="startBtn">Start Hammer</button>
+    <button id="stopBtn" disabled>Stop Hammer</button>
+  </div>
+  <div class="stat">
+    <div class="box"><h3>CPU Load</h3><div id="cpuLoad" class="value">0</div></div>
+    <div class="box"><h3>DOM Nodes</h3><div id="domNodes" class="value">0</div></div>
+    <div class="box"><h3>Memory (MB)</h3><div id="memoryMB" class="value">0</div></div>
+  </div>
+  <div id="log"></div>
+  <script>
+    (function() {
+      let hammerRunning = false;
+      let domInterval, memoryInterval, xhrInterval, cpuInterval;
+      let worker = null;
+      const logEl = document.getElementById('log');
+      const cpuLoadEl = document.getElementById('cpuLoad');
+      const domNodesEl = document.getElementById('domNodes');
+      const memoryMBEl = document.getElementById('memoryMB');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+
+      function log(msg) {
+        const entry = document.createElement('div');
+        entry.textContent = `[${new Date().toISOString()}] ${msg}`;
+        logEl.appendChild(entry);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      // --- CPU Worker Code ---
+      function createWorker() {
+        const blob = new Blob([`
+          let running = false;
+          let counter = 0;
+          self.onmessage = function(e) {
+            if (e.data === 'start') {
+              running = true;
+              loop();
+            } else if (e.data === 'stop') {
+              running = false;
+            }
+          };
+          function loop() {
+            if (!running) return;
+            for (let i = 0; i < 1000000; i++) {
+              counter += Math.sqrt(Math.random() * 1000);
+            }
+            self.postMessage({ type: 'done', count: counter });
+            setTimeout(loop, 10);
+          }
+        `], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        const w = new Worker(url);
+        w.onmessage = function(e) {
+          if (hammerRunning) {
+            cpuLoadEl.textContent = Math.round(e.data.count / 1000000);
+          }
+        };
+        return w;
+      }
+
+      // --- DOM Hammer ---
+      function hammerDOM() {
+        const container = document.createElement('div');
+        container.id = 'hammerDomContainer';
+        container.style.display = 'none';
+        document.body.appendChild(container);
+        let nodeCount = 0;
+        domInterval = setInterval(() => {
+          if (!hammerRunning) return;
+          // Erzeuge 5000 kleine Elemente
+          const frag = document.createDocumentFragment();
+          for (let i = 0; i < 5000; i++) {
+            const el = document.createElement('span');
+            el.textContent = 'x';
+            el.style.fontSize = Math.random() * 20 + 'px';
+            el.style.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            frag.appendChild(el);
+          }
+          container.appendChild(frag);
+          nodeCount += 5000;
+          domNodesEl.textContent = nodeCount;
+          // Entferne alte Nodes, wenn über 100k
+          if (nodeCount > 100000) {
+            while (container.firstChild) {
+              container.removeChild(container.firstChild);
+            }
+            nodeCount = 0;
+            domNodesEl.textContent = 'reset';
+          }
+        }, 200);
+      }
+
+      // --- Memory Hammer ---
+      function hammerMemory() {
+        let bigArray = [];
+        memoryInterval = setInterval(() => {
+          if (!hammerRunning) return;
+          // Allokiere 500k Float64Array
+          const chunk = new Float64Array(500000);
+          for (let i = 0; i < chunk.length; i++) {
+            chunk[i] = Math.random();
+          }
+          bigArray.push(chunk);
+          // Verwerfe alte chunks, wenn over 10MB (10 chunks = ~40MB)
+          if (bigArray.length > 20) {
+            bigArray = bigArray.slice(-10);
+          }
+          // Schätze Memory via performance.memory (Chrome)
+          if (performance.memory) {
+            memoryMBEl.textContent = Math.round(performance.memory.usedJSHeapSize / 1048576);
+          } else {
+            memoryMBEl.textContent = 'N/A';
+          }
+        }, 500);
+      }
+
+      // --- Netzwerk Hammer (XHR) ---
+      function hammerNetwork() {
+        xhrInterval = setInterval(() => {
+          if (!hammerRunning) return;
+          for (let i = 0; i < 5; i++) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/?t=' + Date.now() + Math.random(), true);
+            xhr.send();
+          }
+        }, 100);
+      }
+
+      function startHammer() {
+        hammerRunning = true;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        log('Hammer gestartet');
+        // CPU Worker
+        worker = createWorker();
+        worker.postMessage('start');
+        // DOM
+        hammerDOM();
+        // Memory
+        hammerMemory();
+        // Netzwerk
+        hammerNetwork();
+      }
+
+      function stopHammer() {
+        hammerRunning = false;
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        log('Hammer gestoppt');
+        if (worker) {
+          worker.postMessage('stop');
+          worker.terminate();
+          worker = null;
+        }
+        clearInterval(domInterval);
+        clearInterval(memoryInterval);
+        clearInterval(xhrInterval);
+        cpuLoadEl.textContent = '0';
+        domNodesEl.textContent = '0';
+        memoryMBEl.textContent = '0';
+      }
+
+      startBtn.addEventListener('click', startHammer);
+      stopBtn.addEventListener('click', stopHammer);
+      log('Bereit. Drücke Start um Hammer zu aktivieren.');
+    })();
+  </script>
+</body>
+</html>

@@ -1,7 +1,9 @@
 import logging
-import time, threading
+import time, threading, os
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.infrastructure.process.process_manager import AGENTS, _get_proc
+
+BUSY_TIMEOUT = 15 if os.environ.get("TESTING") == "true" else 60
 
 def pulse_janitor():
     repo = SQLiteAgentRepository()
@@ -16,7 +18,7 @@ def pulse_janitor():
                 diff = (now_utc - last_seen).total_seconds()
             else:
                 diff = (now_local - last_seen).total_seconds()
-            if diff > 60:
+            if diff > BUSY_TIMEOUT:
                 agent.status = "online"
                 agent.active_job = None
                 repo.save(agent)

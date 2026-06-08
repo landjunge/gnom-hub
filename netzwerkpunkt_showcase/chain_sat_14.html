@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chain Satellite 14 – Orbital Interface</title>
+  <style>
+    /* ===== BASE RESET & VARIABLES ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a;
+      --panel: rgba(20, 28, 52, 0.85);
+      --border: rgba(0, 200, 255, 0.3);
+      --accent: #00e5ff;
+      --accent2: #7c4dff;
+      --text: #e0eaff;
+      --text-dim: #6a7a9a;
+      --danger: #ff3d6f;
+      --success: #00e676;
+      --warning: #ffc107;
+      --glow: 0 0 20px rgba(0, 229, 255, 0.15);
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --radius: 12px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(0, 229, 255, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(124, 77, 255, 0.04) 0%, transparent 50%);
+    }
+
+    /* ===== DASHBOARD WRAPPER ===== */
+    .dashboard {
+      width: 100%;
+      max-width: 1440px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto 1fr auto;
+      gap: 1.25rem;
+      padding: 1.25rem;
+      background: rgba(10, 14, 26, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--glow), inset 0 0 60px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--accent);
+      background: rgba(0, 229, 255, 0.08);
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      padding: 0.35rem 1rem;
+      border-radius: 30px;
+      background: rgba(0, 230, 118, 0.12);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+      color: var(--success);
+    }
+    .status-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ===== CANVAS (Topologie) ===== */
+    .canvas-wrapper {
+      grid-column: 1 / 2;
+      grid-row: 2 / 3;
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      min-height: 480px;
+    }
+    .canvas-wrapper canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .canvas-overlay {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      background: rgba(0, 0, 0, 0.5);
+      padding: 0.3rem 0.8rem;
+      border-radius: 6px;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.05);
+      pointer-events: none;
+    }
+
+    /* ===== SIDEBAR (Telemetrie + Log) ===== */
+    .sidebar {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    /* Telemetrie-Panel */
+    .telemetry {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      backdrop-filter: blur(6px);
+    }
+    .telemetry h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .metric {
+      background: rgba(0,0,0,0.25);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid rgba(255,255,255,0.04);
+      transition: var(--transition);
+    }
+    .metric:hover {
+      border-color: rgba(0, 229, 255, 0.2);
+      background: rgba(0, 229, 255, 0.04);
+    }
+    .metric .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 0.2rem;
+    }
+    .metric .value {
+      font-size: 1.2rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .metric .value .unit {
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--text-dim);
+      margin-left: 0.25rem;
+    }
+    .metric.alarm .value { color: var(--danger); }
+
+    /* Event-Log */
+    .event-log {
+      flex: 1;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      min-height: 180px;
+    }
+    .event-log h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .event-log h2 .log-count {
+      font-size: 0.7rem;
+      background: rgba(0, 229, 255, 0.12);
+      padding: 0.1rem 0.5rem;
+      border-radius: 20px;
+      color: var(--accent);
+    }
+    .log-container {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .log-container::-webkit-scrollbar {
+      width: 4px;
+    }
+    .log-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .log-container::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.3rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      background: rgba(255,255,255,0.02);
+      border-left: 3px solid var(--accent);
+      animation: slide-in 0.25s ease-out;
+    }
+    .log-entry .time {
+      color: var(--text-dim);
+      font-size: 0.65rem;
+      white-space: nowrap;
+      min-width: 3.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .log-entry .msg { flex: 1; }
+    .log-entry.warning { border-left-color: var(--warning); }
+    .log-entry.error { border-left-color: var(--danger); }
+    .log-entry.success { border-left-color: var(--success); }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(-8px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+    .footer .sys-indicators {
+      display: flex;
+      gap: 1rem;
+    }
+    .footer .sys-indicators span {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .footer .sys-indicators .led {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .led.green { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .led.blue { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .led.yellow { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        padding: 0.75rem;
+        gap: 1rem;
+      }
+      .canvas-wrapper {
+        grid-column: 1 / 2;
+        grid-row: 2 / 3;
+        min-height: 320px;
+      }
+      .sidebar {
+        grid-column: 1 / 2;
+        grid-row: 3 / 4;
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .telemetry, .event-log {
+        flex: 1;
+        min-width: 220px;
+      }
+      .telemetry-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 480px) {
+      .header .logo { font-size: 1.1rem; }
+      .status-badge { font-size: 0.75rem; padding: 0.2rem 0.7rem; }
+      .telemetry-grid { grid-template-columns: 1fr; }
+      .sidebar { flex-direction: column; }
+      .metric .value { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- GNOM-HUB PAGE NAV -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(7,9,19,0.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,229,255,0.15);padding:6px 12px;font-family:'Inter',sans-serif;font-size:0.75rem;display:flex;align-items:center;gap:10px;overflow-x:auto;white-space:nowrap;">
+  <span style="color:#00e5ff;font-weight:600;margin-right:4px;">🧪 GNOM-HUB</span>
+  <a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;">Übersicht</a>
+  <a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">a0</a>
+  <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_0</a>
+  <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_11</a>
+  <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_14</a>
+  <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_15</a>
+  <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_17</a>
+  <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_18</a>
+  <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_20</a>
+  <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_21</a>
+  <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_24</a>
+  <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_26</a>
+  <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_5</a>
+  <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_3</a>
+  <a href="/flood_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_4</a>
+  <a href="/flood_7.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_7</a>
+  <a href="/hammer_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_0</a>
+  <a href="/hammer_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_1</a>
+  <a href="/hammer_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_2</a>
+  <a href="/hammer_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_3</a>
+  <a href="/hammer_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_4</a>
+  <a href="/hammer_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_5</a>
+  <a href="/hammer_6.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_6</a>
+  <a href="/hammer_8.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_8</a>
+  <a href="/index.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index</a>
+  <a href="/index1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index1</a>
+  <a href="/index2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index2</a>
+  <a href="/rsat_16.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">rsat_16</a>
+  <a href="/seq_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">seq_1</a>
+  <a href="/t0a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">t0a</a>
+  <span style="flex:1;"></span>
+  <span style="color:#666;font-size:0.65rem;">test.netzwerkpunkt.de</span>
+</div>
+<style> body { padding-top: 36px !important; } </style>
+<!-- END GNOM-HUB PAGE NAV -->
+>
+  <main class="dashboard" role="main" aria-label="Chain Satellite 14 Orbital Interface">
+    <!-- HEADER -->
+    <header class="header" role="banner">
+      <div class="logo">
+        <div class="logo-icon" aria-hidden="true">⛓️</div>
+        <span>CHAIN SAT <span style="color:var(--accent);">14</span></span>
+      </div>
+      <div class="status-badge" role="status" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span>SYSTEM AKTIV</span>
+      </div>
+    </header>
+
+    <!-- CANVAS (Topologie) -->
+    <section class="canvas-wrapper" aria-label="Netzwerktopologie">
+      <canvas id="networkCanvas" aria-hidden="true"></canvas>
+      <div class="canvas-overlay">⏺ ECHTZEIT • 4.2k NODES</div>
+    </section>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" aria-label="Telemetrie und Ereignisprotokoll">
+      <!-- Telemetrie -->
+      <section class="telemetry" aria-label="Telemetrie">
+        <h2><span aria-hidden="true">📡</span> Telemetrie</h2>
+        <div class="telemetry-grid" id="telemetryGrid">
+          <div class="metric" id="metricOrbit">
+            <div class="label">Orbit</div>
+            <div class="value">LEO <span class="unit">km</span></div>
+          </div>
+          <div class="metric" id="metricAlt">
+            <div class="label">Altitude</div>
+            <div class="value" id="altValue">412 <span class="unit">km</span></div>
+          </div>
+          <div class="metric" id="metricSpeed">
+            <div class="label">Velocity</div>
+            <div class="value" id="speedValue">7.66 <span class="unit">km/s</span></div>
+          </div>
+          <div class="metric" id="metricTemp">
+            <div class="label">Temp.</div>
+            <div class="value" id="tempValue">22.4 <span class="unit">°C</span></div>
+          </div>
+          <div class="metric" id="metricSignal">
+            <div class="label">Signal</div>
+            <div class="value" id="signalValue">-72 <span class="unit">dBm</span></div>
+          </div>
+          <div class="metric" id="metricPower">
+            <div class="label">Power</div>
+            <div class="value" id="powerValue">94 <span class="unit">%</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Event-Log -->
+      <section class="event-log" aria-label="Ereignisprotokoll">
+        <h2>
+          <span aria-hidden="true">📋</span> Event Log
+          <span class="log-count" id="logCount">0</span>
+        </h2>
+        <div class="log-container" id="logContainer" role="log" aria-live="polite" aria-relevant="additions">
+          <!-- Log entries werden via JS eingefügt -->
+        </div>
+      </section>
+    </aside>
+
+    <!-- FOOTER -->
+    <footer class="footer" role="contentinfo">
+      <span>⛓️ Chain Satellite 14 • Interface v2.0</span>
+      <div class="sys-indicators">
+        <span><span class="led green"></span> Link</span>
+        <span><span class="led blue"></span> Sync</span>
+        <span><span class="led yellow"></span> Buffer</span>
+        <span id="clockDisplay">00:00:00 UTC</span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // ===== CANVAS NETWORK =====
+      const canvas = document.getElementById('networkCanvas');
+      const ctx = canvas.getContext('2d');
+      let width, height;
+      const nodes = [];
+      const NUM_NODES = 35;
+      const CONNECTION_DIST = 120;
+
+      function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        width = rect.width;
+        height = rect.height;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        ctx.scale(dpr, dpr);
+        initNodes();
+      }
+
+      function initNodes() {
+        nodes.length = 0;
+        for (let i = 0; i < NUM_NODES; i++) {
+          nodes.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.6,
+            vy: (Math.random() - 0.5) * 0.6,
+            radius: 2 + Math.random() * 3,
+            pulse: Math.random() * Math.PI * 2,
+          });
+        }
+      }
+
+      function updateNodes(time) {
+        for (const n of nodes) {
+          n.x += n.vx;
+          n.y += n.vy;
+          // wrap
+          if (n.x < -20) n.x = width + 20;
+          if (n.x > width + 20) n.x = -20;
+          if (n.y < -20) n.y = height + 20;
+          if (n.y > height + 20) n.y = -20;
+          n.pulse += 0.02;
+        }
+      }
+
+      function drawNetwork(time) {
+        ctx.clearRect(0, 0, width, height);
+
+        // Verbindungen
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const a = nodes[i];
+            const b = nodes[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < CONNECTION_DIST) {
+              const alpha = (1 - dist / CONNECTION_DIST) * 0.35;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.strokeStyle = `rgba(0, 229, 255, ${alpha})`;
+              ctx.lineWidth = 0.8;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Nodes
+        for (const n of nodes) {
+          const glow = 0.3 + 0.2 * Math.sin(n.pulse + time * 0.002);
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(0, 229, 255, ${0.6 + glow * 0.4})`;
+          ctx.shadowColor = 'rgba(0, 229, 255, 0.3)';
+          ctx.shadowBlur = 12;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // kleiner innerer Kern
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.radius * 0.4, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+        }
+
+        // Zentrale Verbindungs-Highlights (einige grössere Nodes)
+        const bigNodes = nodes.filter((_, i) => i % 7 === 0);
+        for (const n of bigNodes) {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, n.radius + 4 + 2 * Math.sin(time * 0.003 + n.pulse), 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(124, 77, 255, ${0.2 + 0.15 * Math.sin(time * 0.004 + n.pulse)})`;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      function animateCanvas(time) {
+        updateNodes(time);
+        drawNetwork(time);
+        requestAnimationFrame(animateCanvas);
+      }
+
+      // ===== TELEMETRIE SIMULATION =====
+      const telemetry = {
+        altitude: 412,
+        speed: 7.66,
+        temp: 22.4,
+        signal: -72,
+        power: 94,
+      };
+
+      function updateTelemetry() {
+        // Realistische Fluktuationen
+        telemetry.altitude += (Math.random() - 0.5) * 0.6;
+        telemetry.altitude = Math.max(390, Math.min(440, telemetry.altitude));
+        telemetry.speed += (Math.random() - 0.5) * 0.02;
+        telemetry.speed = Math.max(7.55, Math.min(7.8, telemetry.speed));
+        telemetry.temp += (Math.random() - 0.5) * 0.4;
+        telemetry.temp = Math.max(18, Math.min(30, telemetry.temp));
+        telemetry.signal += (Math.random() - 0.5) * 1.2;
+        telemetry.signal = Math.max(-85, Math.min(-60, telemetry.signal));
+        telemetry.power += (Math.random() - 0.5) * 0.8;
+        telemetry.power = Math.max(85, Math.min(100, telemetry.power));
+
+        document.getElementById('altValue').innerHTML = telemetry.altitude.toFixed(1) + ' <span class="unit">km</span>';
+        document.getElementById('speedValue').innerHTML = telemetry.speed.toFixed(2) + ' <span class="unit">km/s</span>';
+        document.getElementById('tempValue').innerHTML = telemetry.temp.toFixed(1) + ' <span class="unit">°C</span>';
+        document.getElementById('signalValue').innerHTML = telemetry.signal.toFixed(0) + ' <span class="unit">dBm</span>';
+        document.getElementById('powerValue').innerHTML = telemetry.power.toFixed(0) + ' <span class="unit">%</span>';
+
+        // Alarme simulieren bei niedrigem Signal
+        const signalMetric = document.getElementById('metricSignal');
+        if (telemetry.signal < -80) {
+          signalMetric.classList.add('alarm');
+        } else {
+          signalMetric.classList.remove('alarm');
+        }
+      }
+
+      // ===== EVENT LOG =====
+      const logContainer = document.getElementById('logContainer');
+      const logCount = document.getElementById('logCount');
+      const eventMessages = [
+        'Telemetrie-Paket empfangen',
+        'Orbit-Korrektur durchgeführt',
+        'Signal-Rausch-Verhältnis optimiert',
+        'Solarpanel-Nachführung aktiv',
+        'Batterieladung zyklisch',
+        'Temperatur stabil',
+        'Verbindung zu Ground Station bestätigt',
+        'Datenburst gesendet (2.4 MB)',
+        'Systemdiagnose läuft…',
+        'Netzwerk-Topologie aktualisiert',
+        'Gyroskop-Kalibrierung abgeschlossen',
+        'Downlink-Fenster geöffnet',
+        'Umlaufbahn leicht korrigiert (+0.02°)',
+        'Sensordaten konsistent',
+        'Keine Anomalien erkannt',
+      ];
+      const logTypes = ['', 'warning', 'success', 'error'];
+
+      function addLogEntry() {
+        const msg = eventMessages[Math.floor(Math.random() * eventMessages.length)];
+        const type = logTypes[Math.floor(Math.random() * logTypes.length)];
+        const now = new Date();
+        const timeStr = now.toUTCString().slice(17, 25) + '.' + String(now.getMilliseconds()).padStart(3,'0');
+
+        const entry = document.createElement('div');
+        entry.className = 'log-entry' + (type ? ' ' + type : '');
+        entry.innerHTML = `<span class="time">${timeStr}</span><span class="msg">${msg}</span>`;
+        logContainer.appendChild(entry);
+
+        // Limit auf 50 Einträge
+        while (logContainer.children.length > 50) {
+          logContainer.removeChild(logContainer.firstChild);
+        }
+
+        logCount.textContent = logContainer.children.length;
+
+        // Automatisch nach unten scrollen
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+
+      // Initial einige Logs
+      for (let i = 0; i < 6; i++) addLogEntry();
+
+      // ===== UHR =====
+      function updateClock() {
+        const now = new Date();
+        document.getElementById('clockDisplay').textContent = now.toUTCString().slice(17, 25) + ' UTC';
+      }
+
+      // ===== INIT =====
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // Canvas-Animation starten
+      requestAnimationFrame(animateCanvas);
+
+      // Telemetrie updaten alle 800ms
+      setInterval(updateTelemetry, 800);
+
+      // Event-Log alle 2–4 Sekunden
+      setInterval(addLogEntry, 2000 + Math.random() * 2000);
+
+      // Uhr jede Sekunde
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // ARIA-Live-Mitteilung initial
+      const statusBadge = document.querySelector('.status-badge');
+      statusBadge.setAttribute('aria-label', 'Systemstatus: Aktiv. Alle Subsysteme nominal.');
+
+    })();
+  </script>
+</body>
+</html>

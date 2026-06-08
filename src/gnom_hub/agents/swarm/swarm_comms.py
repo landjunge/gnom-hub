@@ -299,7 +299,9 @@ def dispatch_mention(
 
             tgt_name = agent_map[tgt_lower]
 
-            if not can_accept_message(tgt_name, conn):
+            is_critical = (isinstance(priority, str) and priority.lower() == "critical") or priority == 0
+
+            if not is_critical and not can_accept_message(tgt_name, conn):
                 continue
 
             active_count = conn.execute(
@@ -315,6 +317,9 @@ def dispatch_mention(
                     prio_val = priority
             if prio_val is None:
                 prio_val = 7 if active_count >= MAX_CONCURRENT else 5
+
+            if is_critical:
+                prio_val = 0  # überspringt alle normalen Tasks
 
             # Nachricht persistent speichern
             conn.execute("""

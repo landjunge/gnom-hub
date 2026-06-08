@@ -36,6 +36,16 @@ def get_jobs():
 def handle_free(q):
     t = q.replace("@","").strip().lower()
     SQLiteAgentRepository().clear_jobs(t or None)
+    # Alte Queue-Messages des Agents löschen, damit neue Tasks nicht hinten versinken
+    from gnom_hub.db.connection import get_db_connection
+    with get_db_connection() as conn:
+        with conn:
+            if t:
+                conn.execute("DELETE FROM agent_messages WHERE recipient=? AND status IN ('pending','processing')", (t,))
+                conn.execute("UPDATE agents SET status='online' WHERE name=?", (t,))
+            else:
+                conn.execute("DELETE FROM agent_messages WHERE status IN ('pending','processing')")
+                conn.execute("UPDATE agents SET status='online' WHERE status IN ('busy','paused')")
     _post_chat("System", f"Jobs cleared: {t or 'ALL'}")
     return {"status": "ok"}
 

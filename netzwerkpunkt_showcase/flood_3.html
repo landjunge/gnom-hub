@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flood-It – Level 3</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #1a2a3a 0%, #0d1b2a 100%);
+    color: #e0e0e0;
+    padding: 1.5rem;
+  }
+  h1 {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: 1px;
+    background: linear-gradient(to right, #56ccf2, #2f80ed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(47,128,237,0.3);
+  }
+  .game-container {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(8px);
+    padding: 1.8rem 2rem 2rem;
+    border-radius: 2.5rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.2rem;
+    font-size: 1.1rem;
+  }
+  .info span {
+    background: rgba(0,0,0,0.4);
+    padding: 0.4rem 1rem;
+    border-radius: 2rem;
+    backdrop-filter: blur(4px);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    gap: 3px;
+    width: 500px;
+    height: 500px;
+    margin-bottom: 1.5rem;
+  }
+  .cell {
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .cell:hover {
+    transform: scale(1.07);
+    box-shadow: 0 0 12px rgba(255,255,255,0.2);
+    z-index: 2;
+  }
+  .palette {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+  .color-btn {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  }
+  .color-btn:hover {
+    transform: scale(1.15);
+    border-color: white;
+  }
+  .color-btn.selected {
+    border-color: #fff;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+    transform: scale(1.1);
+  }
+  .color-btn:focus-visible {
+    outline: 2px solid #56ccf2;
+    outline-offset: 3px;
+  }
+  #resetBtn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #e0e0e0;
+    padding: 0.6rem 1.8rem;
+    border-radius: 2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    margin-top: 1rem;
+    backdrop-filter: blur(4px);
+  }
+  #resetBtn:hover {
+    background: rgba(255,255,255,0.18);
+    transform: scale(1.02);
+  }
+  #resetBtn:active { transform: scale(0.96); }
+  .win-message {
+    margin-top: 0.8rem;
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #56f2a0;
+    text-shadow: 0 0 20px rgba(86,242,160,0.3);
+    height: 2rem;
+  }
+  @media (max-width: 560px) {
+    .grid { width: 94vw; height: 94vw; gap: 2px; }
+    .game-container { padding: 1rem; }
+    h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- GNOM-HUB PAGE NAV -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:rgba(7,9,19,0.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(0,229,255,0.15);padding:6px 12px;font-family:'Inter',sans-serif;font-size:0.75rem;display:flex;align-items:center;gap:10px;overflow-x:auto;white-space:nowrap;">
+  <span style="color:#00e5ff;font-weight:600;margin-right:4px;">🧪 GNOM-HUB</span>
+  <a href="/" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;">Übersicht</a>
+  <a href="/a0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">a0</a>
+  <a href="/chain_sat_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_0</a>
+  <a href="/chain_sat_11.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_11</a>
+  <a href="/chain_sat_14.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_14</a>
+  <a href="/chain_sat_15.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_15</a>
+  <a href="/chain_sat_17.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_17</a>
+  <a href="/chain_sat_18.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_18</a>
+  <a href="/chain_sat_20.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_20</a>
+  <a href="/chain_sat_21.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_21</a>
+  <a href="/chain_sat_24.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_24</a>
+  <a href="/chain_sat_26.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_26</a>
+  <a href="/chain_sat_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">chain_sat_5</a>
+  <a href="/flood_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_3</a>
+  <a href="/flood_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_4</a>
+  <a href="/flood_7.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">flood_7</a>
+  <a href="/hammer_0.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_0</a>
+  <a href="/hammer_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_1</a>
+  <a href="/hammer_2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_2</a>
+  <a href="/hammer_3.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_3</a>
+  <a href="/hammer_4.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_4</a>
+  <a href="/hammer_5.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_5</a>
+  <a href="/hammer_6.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_6</a>
+  <a href="/hammer_8.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">hammer_8</a>
+  <a href="/index.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index</a>
+  <a href="/index1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index1</a>
+  <a href="/index2.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">index2</a>
+  <a href="/rsat_16.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">rsat_16</a>
+  <a href="/seq_1.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">seq_1</a>
+  <a href="/t0a.html" style="color:#8b9bb4;text-decoration:none;padding:2px 8px;border-radius:4px;" onmouseover="this.style.color='#39ff14'" onmouseout="this.style.color='#8b9bb4'">t0a</a>
+  <span style="flex:1;"></span>
+  <span style="color:#666;font-size:0.65rem;">test.netzwerkpunkt.de</span>
+</div>
+<style> body { padding-top: 36px !important; } </style>
+<!-- END GNOM-HUB PAGE NAV -->
+>
+<div class="game-container" role="application" aria-label="Flood-It Spiel">
+  <h1>🌊 Flood-It · Level 3</h1>
+  <div class="info">
+    <span id="movesDisplay">Züge: 0</span>
+    <span id="maxMovesDisplay">Max: 25</span>
+  </div>
+  <div class="grid" id="grid" role="grid" aria-label="Spielraster 14x14"></div>
+  <div class="palette" id="palette" role="toolbar" aria-label="Farbauswahl"></div>
+  <button id="resetBtn" aria-label="Neues Spiel starten">🔄 Neues Spiel</button>
+  <div class="win-message" id="winMessage" aria-live="polite"></div>
+</div>
+<script>
+  (function() {
+    const SIZE = 14;
+    const COLORS = ['#e74c3c', '#2ecc71', '#3498db', '#f1c40f', '#9b59b6', '#e67e22']; // red, green, blue, yellow, purple, orange
+    const MAX_MOVES = 25;
+
+    let grid = [];
+    let moves = 0;
+    let selectedColor = COLORS[0];
+    let gameOver = false;
+
+    const gridEl = document.getElementById('grid');
+    const movesDisplay = document.getElementById('movesDisplay');
+    const maxMovesDisplay = document.getElementById('maxMovesDisplay');
+    const winMessage = document.getElementById('winMessage');
+    const paletteEl = document.getElementById('palette');
+    const resetBtn = document.getElementById('resetBtn');
+
+    maxMovesDisplay.textContent = `Max: ${MAX_MOVES}`;
+
+    // --- helpers ---
+    function getNeighbors(row, col) {
+      const nb = [];
+      if (row > 0) nb.push([row-1, col]);
+      if (row < SIZE-1) nb.push([row+1, col]);
+      if (col > 0) nb.push([row, col-1]);
+      if (col < SIZE-1) nb.push([row, col+1]);
+      return nb;
+    }
+
+    // Flood-fill from (0,0) with selectedColor
+    function floodFill() {
+      const targetColor = grid[0][0];
+      if (targetColor === selectedColor) return false; // nothing changes
+
+      const visited = Array.from({length: SIZE}, () => Array(SIZE).fill(false));
+      const queue = [[0,0]];
+      visited[0][0] = true;
+
+      while (queue.length > 0) {
+        const [r, c] = queue.shift();
+        grid[r][c] = selectedColor;
+        for (const [nr, nc] of getNeighbors(r, c)) {
+          if (!visited[nr][nc] && grid[nr][nc] === targetColor) {
+            visited[nr][nc] = true;
+            queue.push([nr, nc]);
+          }
+        }
+      }
+      return true;
+    }
+
+    function checkWin() {
+      const first = grid[0][0];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (grid[r][c] !== first) return false;
+        }
+      }
+      return true;
+    }
+
+    function render() {
+      let idx = 0;
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const cell = gridEl.children[idx];
+          cell.style.backgroundColor = grid[r][c];
+          idx++;
+        }
+      }
+      movesDisplay.textContent = `Züge: ${moves}`;
+      if (gameOver) {
+        if (checkWin()) {
+          winMessage.textContent = '🎉 Gewonnen! 🎉';
+        } else {
+          winMessage.textContent = '😢 Keine Züge mehr übrig.';
+        }
+      } else {
+        winMessage.textContent = '';
+      }
+    }
+
+    function handleCellClick(row, col) {
+      if (gameOver) return;
+      // Clicking on a cell selects its color? But we have palette. We can ignore click on cell.
+      // Alternatively we could set selected color to the cell's color. But palette is primary.
+      // For better UX: clicking a cell changes flood to that cell's color if different from top-left.
+      const clickedColor = grid[row][col];
+      if (clickedColor === grid[0][0]) return; // same as current flood color
+      // set selectedColor = clickedColor, then flood
+      selectedColor = clickedColor;
+      // Update palette selection
+      document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.color === selectedColor);
+      });
+      makeMove();
+    }
+
+    function makeMove() {
+      if (gameOver) return;
+      if (selectedColor === grid[0][0]) return; // no change
+      const changed = floodFill();
+      if (!changed) return;
+      moves++;
+      render();
+      if (checkWin()) {
+        gameOver = true;
+        render();
+        return;
+      }
+      if (moves >= MAX_MOVES) {
+        gameOver = true;
+        render();
+      }
+    }
+
+    function initGrid() {
+      grid = [];
+      for (let r = 0; r < SIZE; r++) {
+        const row = [];
+        for (let c = 0; c < SIZE; c++) {
+          row.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
+        }
+        grid.push(row);
+      }
+      // Ensure at least 3 different colors present for challenge
+      // Usually flood-it starts with random, fine.
+    }
+
+    function buildUI() {
+      gridEl.innerHTML = '';
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.style.backgroundColor = grid[r][c];
+          cell.setAttribute('role', 'gridcell');
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.addEventListener('click', () => handleCellClick(r, c));
+          cell.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleCellClick(r, c);
+            }
+          });
+          cell.setAttribute('tabindex', '0');
+          gridEl.appendChild(cell);
+        }
+      }
+      // Palette
+      paletteEl.innerHTML = '';
+      COLORS.forEach(color => {
+        const btn = document.createElement('button');
+        btn.className = 'color-btn';
+        btn.style.backgroundColor = color;
+        btn.dataset.color = color;
+        btn.setAttribute('aria-label', `Farbe ${color}`);
+        btn.addEventListener('click', () => {
+          if (gameOver) return;
+          selectedColor = color;
+          document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          makeMove();
+        });
+        if (color === selectedColor) btn.classList.add('selected');
+        paletteEl.appendChild(btn);
+      });
+    }
+
+    function resetGame() {
+      moves = 0;
+      gameOver = false;
+      selectedColor = COLORS[0];
+      initGrid();
+      buildUI();
+      render();
+      // Reset palette selection
+      document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.color === selectedColor);
+      });
+    }
+
+    resetBtn.addEventListener('click', resetGame);
+
+    // Start
+    resetGame();
+  })();
+</script>
+</body>
+</html>

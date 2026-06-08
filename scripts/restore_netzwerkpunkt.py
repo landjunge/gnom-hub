@@ -19,8 +19,8 @@ def _load_env():
         print("⚠️  python-dotenv nicht installiert. Bitte FTP_HOST, FTP_USER, FTP_PASS als Umgebungsvariablen setzen.")
 
 FTP_DIR = "netzwerkpunkt.de/httpdocs"
-SCRATCH_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../gnom_workspace/default"))
-FILES = ["index.html", "gnom_landing.html", "gnom_hub.html", "gnom_hub_v2.html", "gnom_hub_landing.html", "charaktere.md", "README.md", "style.css"]
+SCRATCH_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../netzwerkpunkt_showcase"))
+FILES = sorted([f for f in os.listdir(SCRATCH_DIR) if os.path.isfile(os.path.join(SCRATCH_DIR, f)) and not f.startswith(".")]) if os.path.isdir(SCRATCH_DIR) else []
 
 def main():
     _load_env()
