@@ -237,11 +237,23 @@ class SoulAG:
 
             if saved:
                 _log.info("[Soul] %d facts saved", saved)
+                self._silent_rounds = 0
                 try:
                     add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
                                      f"🧠 {saved} Fakten gelernt", {"type": "soul"})
                 except:
                     pass
+            else:
+                # SoulAG zeigt sich auch wenn nichts gelernt (alle 5 Durchläufe)
+                self._silent_rounds = getattr(self, '_silent_rounds', 0) + 1
+                if self._silent_rounds >= 5:
+                    self._silent_rounds = 0
+                    try:
+                        add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
+                                         f"👀 Nichts Neues gelernt — {len(getattr(self,'_recent_facts_cache',{}))} aktive Fakten im Cache",
+                                         {"type": "soul"})
+                    except:
+                        pass
 
         except json.JSONDecodeError as e:
             _log.warning("[Soul] JSON error: %s", e)
