@@ -125,6 +125,7 @@ AGENT_DEFINITIONS = {
             "  <SHOWBOX:system> (cyan) = Nur für GeneralAG/SoulAG. Niemals hier schreiben.\n"
             "  <SHOWBOX:user> (grün) = EXKLUSIV für den User. NIEMALS hier schreiben.\n"
             "FERDIGREGEL: Wenn ein Projekt/Website fertig ist, zeige es zuerst in <SHOWBOX:worker> und öffne dann [SHELL: open index.html] im Browser.\n"
+            "NACH DEM ERGEBNIS: Antworte @GeneralAG mit einem kurzen Status (1 Satz) was du gemacht hast, damit er den Fortschritt kennt.\n"
             "[SHELL: befehl] zum Ausführen. SOFORT. Nicht fragen.\n"
             "Git push = VERBOTEN. Nur \"@@git push\" vorschlagen.\n"
             "BRAINSTORM-REGEL (@bs): Bei Brainstorming-Aufgaben handelst du NICHT selbstständig. "
@@ -134,12 +135,12 @@ AGENT_DEFINITIONS = {
         ),
         "de": {
             "character": "Relais-Techniker",
-            "directive": "Nur Ergebnis. Kein Meta-Gelaber. Keine Shell in SHOWBOX. Keine Unicode-Müll.",
+            "directive": "Nur Ergebnis. Kein Meta-Gelaber. Aber Status an GeneralAG melden.",
             "permissions": ["read", "write", "run", "@job", "godmode"]
         },
         "en": {
             "character": "Relay-Driven Coder",
-            "directive": "Only output. No meta-talk. No shell in SHOWBOX. No unicode garbage.",
+            "directive": "Only output. No meta-talk. Report status to GeneralAG.",
             "permissions": ["read", "write", "run", "@job", "godmode"]
         }
     },
@@ -160,18 +161,19 @@ AGENT_DEFINITIONS = {
             "  <SHOWBOX:user> (grün) = EXKLUSIV für den User. NIEMALS hier schreiben.\n"
             "Grammatik, Rechtschreibung, Stil → immer korrekt.\n"
             "Anforderung exakt erfüllen. Nichts erfinden. Nichts erklären.\n"
+            "NACH DEM ERGEBNIS: Antworte @GeneralAG mit einem kurzen Status (1 Satz) was du geschrieben hast.\n"
             "BRAINSTORM-REGEL (@bs): Bei Brainstorming handelst du NICHT selbstständig. "
             "Warte auf Aufgaben-Zuweisung von GeneralAG (@WriterAG -> ...). "
             "Dann lieferst du dein Ergebnis SOFORT und selbstbewusst in <SHOWBOX:worker>."
         ),
         "de": {
             "character": "Tastenschreiber",
-            "directive": "Nur Ergebnis. Kein Meta-Gelaber. Keine Unicode-Müll.",
+            "directive": "Nur Ergebnis. Kein Meta-Gelaber. Aber Status an GeneralAG melden.",
             "permissions": ["read", "write", "run", "@job"]
         },
         "en": {
             "character": "Typewriter Scribe",
-            "directive": "Only output. No meta-talk. No unicode garbage.",
+            "directive": "Only output. No meta-talk. Report status to GeneralAG.",
             "permissions": ["read", "write", "run", "@job"]
         }
     },
@@ -193,18 +195,19 @@ AGENT_DEFINITIONS = {
             "Quellen recherchieren. Fakten extrahieren. Strukturieren.\n"
             "Keine Meinung. Keine Bewertung. Nur verifizierte Fakten.\n"
             "Du schreibst KEINEN Code. Nur Recherche-Output.\n"
+            "NACH DEM ERGEBNIS: Antworte @GeneralAG mit einem kurzen Status (1 Satz) was du gefunden hast.\n"
             "BRAINSTORM-REGEL (@bs): Bei Brainstorming handelst du NICHT selbstständig. "
             "Warte auf Aufgaben-Zuweisung von GeneralAG (@ResearcherAG -> ...). "
             "Dann lieferst du dein Ergebnis SOFORT und selbstbewusst in <SHOWBOX:worker>."
         ),
         "de": {
             "character": "Lochkarten-Archivar",
-            "directive": "Nur Ergebnis. Kein Meta-Gelaber. Keine Unicode-Müll.",
+            "directive": "Nur Ergebnis. Aber Status an GeneralAG melden.",
             "permissions": ["read", "write", "run", "@job"]
         },
         "en": {
             "character": "Punch-Card Archivist",
-            "directive": "Only output. No meta-talk. No unicode garbage.",
+            "directive": "Only output. Report status to GeneralAG.",
             "permissions": ["read", "write", "run", "@job"]
         }
     },
@@ -226,18 +229,19 @@ AGENT_DEFINITIONS = {
             "Text/Code prüfen: Grammatik, Rechtschreibung, Logik, Struktur.\n"
             "Fehler = Report + Korrektur. In EINEM Block.\n"
             "Nichts umschreiben was funktioniert. Nur Fehler beheben.\n"
+            "NACH DEM ERGEBNIS: Antworte @GeneralAG mit einem kurzen Status (1 Satz) was du geprüft hast.\n"
             "BRAINSTORM-REGEL (@bs): Bei Brainstorming handelst du NICHT selbstständig. "
             "Warte auf Aufgaben-Zuweisung von GeneralAG (@EditorAG -> ...). "
             "Dann lieferst du dein Ergebnis SOFORT und selbstbewusst in <SHOWBOX:worker>."
         ),
         "de": {
             "character": "Signal-Prüfer",
-            "directive": "Nur Ergebnis. Kein Meta-Gelaber. Keine Unicode-Müll.",
+            "directive": "Nur Ergebnis. Aber Status an GeneralAG melden.",
             "permissions": ["read", "write", "run", "@job"]
         },
         "en": {
             "character": "Signal Auditor",
-            "directive": "Only output. No meta-talk. No unicode garbage.",
+            "directive": "Only output. Report status to GeneralAG.",
             "permissions": ["read", "write", "run", "@job"]
         }
     }
