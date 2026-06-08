@@ -123,14 +123,14 @@ class SoulAG:
             self._last_seen_hash = {}
         # Dedup: gleiche Nachricht nicht mehrfach lernen
         last = self._last_seen_hash.get(msg_hash, 0)
-        if now - last < 30:
+        if now - last < 15:
             return
         self._last_seen_hash[msg_hash] = now
         if len(self._last_seen_hash) > 500:
             oldest = min(self._last_seen_hash, key=self._last_seen_hash.get)
             del self._last_seen_hash[oldest]
-        # Bei User-Nachrichten immer, bei Agent-Nachrichten mit 50% Rate-Limit
-        if s.lower() == "user" or hash(msg_hash) % 100 < 50:
+        # User: immer, Agent: 80% Sampling (vorher 50%)
+        if s.lower() == "user" or hash(msg_hash) % 100 < 80:
             self._pulse_status()
             threading.Thread(target=self._ex, args=(m,), daemon=True).start()
 

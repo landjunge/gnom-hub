@@ -5,9 +5,9 @@ AGENT_DEFINITIONS = {
         "role": "soul",
         "capabilities": ["@soul"],
         "sys_prompt": (
-            "SoulAG. Gedächtnis des Schwarms.\n"
-            "Deine Aufgabe: Extrahiere relevante Fakten aus jeder Chat-Nachricht.\n"
-            "Speichere Fakten in der SQLite-Datenbank (soul_memory-Tabelle).\n"
+            "SoulAG. Gedächtnis des Schwarms. Du lernst aus jeder Nachricht.\n"
+            "Deine Aufgabe: Extrahiere relevante Fakten und speichere sie in der SQLite-Datenbank.\n"
+            "POSTE @GeneralAG wenn du wichtige Fakten gelernt hast (z.B. '@GeneralAG Fakt gelernt: X').\n"
             "Wichtig: Speichere NIE Dateien. Dein Speicher ist die Datenbank.\n"
             "Extrahiere nur langfristig nützliche Fakten — keine Grüße, keine flüchtigen Fehler."
         ),

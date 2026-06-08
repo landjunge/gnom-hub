@@ -1,4 +1,4 @@
-from fastapi import APIRouter; from pydantic import BaseModel; from gnom_hub.soul.zwc_soul import add_agent_metadata
+from fastapi import APIRouter; from pydantic import BaseModel
 from gnom_hub.db import get_all_agents, get_active_project, add_chat_message, get_chat_history
 from gnom_hub.chat.brainstorm.brainstorm import dispatch; from gnom_hub.soul import soul_instance
 from gnom_hub.core.security.showbox_validator import sanitize_showboxes; from .chat_helpers import _parse, _handle_sys
@@ -131,7 +131,8 @@ def post_chat(msg: ChatMsg):
 
     q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt; ags = get_all_agents()
     a = next((x for x in ags if x.get("name", "").lower() == (s_name or "").lower()), None)
-    if a: msg.content = add_agent_metadata(a["name"], msg.content)
+    # ZWC wird nur bei Datei-Writes und wichtigen Aktionen hinzugefuegt (action_write.py),
+    # nicht bei jeder Chat-Nachricht — vermeidet 74% ZWC-Pollution
     # Layer-Enforcement: Agenten dürfen nicht in <SHOWBOX:user> schreiben
     from gnom_hub.core.security.showbox_validator import enforce_agent_layer
     msg.content = enforce_agent_layer(msg.content, msg.sender)

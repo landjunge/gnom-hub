@@ -171,19 +171,20 @@ class TestIsCommandSafeAndWhitelisted:
         assert safe is False
         assert sev == "medium"
 
-    def test_git_status_allowed(self):
-        safe, sev, _ = self._call("git status")
-        assert safe is True
+    def test_git_status_blocked(self):
+        safe, sev, reason = self._call("git status")
+        assert safe is False
+        assert "Agenten nicht erlaubt" in reason
 
     def test_git_push_blocked(self):
         safe, sev, reason = self._call("git push origin main")
         assert safe is False
-        assert "push" in reason.lower() or "nicht erlaubt" in reason.lower()
+        assert "Agenten nicht erlaubt" in reason
 
     def test_git_no_subcommand_blocked(self):
         safe, sev, reason = self._call("git")
         assert safe is False
-        assert sev == "medium"
+        assert sev == "high"
 
     def test_pip_known_safe_package(self):
         """pytest ist in safe_packages → kein PyPI-Request nötig"""
