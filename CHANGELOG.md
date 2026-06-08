@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.2.0] - 2026-06-08
+### Added
+- **Event-basierter Gatekeeper**: `threading.Event` statt `while True: sleep(0.3); poll()` — 0% CPU im Wait, 0 DB-Operationen, instant Wake-up bei User-Entscheidung.
+- **ZWC-Direktivensystem**: SoulAG kann via `emit_directive()` TTL-begrenzte Anweisungen als unsichtbare ZWC-Metadaten einbetten. Agents lesen sie via `get_directives()`.
+- **154 Tests** (vorher 139): 15 Queue-Load-Tests für SQLite-Message-Queue unter Last.
+- **index.html-Versionierung**: Automatische Hochzählung (index1.html, index2.html) statt Überschreiben.
+
+### Fixed
+- **dispatch_sequence() respektiert Backpressure**: Prüft jetzt `MAX_QUEUE_DEPTH` via zentraler `can_accept_message()`.
+- **ack_message() resetiert child.deliver_after**: Parent-Completion macht Children sofort abholbar (keine 3s Verzögerung).
+- **DEPENDENCY_TIMEOUT prüft processing_since**: Statt created_at — Timeout zählt ab Prozessstart, nicht ab Queue-Einreihen.
+- **fail_dependent_messages() via SQL-Recursive-CTE**: Flach statt Python-Rekursion. Kaskade überspringt done-Messages, erreicht aber deren Children.
+- **pulse.py**: Print → logging, Timeout 60s→30s, Nachricht korrigiert ("1 Minute" statt "5 Minuten").
+- **chat_helpers.py**: `@blockade`/`@blokade` in Parser-Whitelist ergänzt.
+- **pulse.py**: SyntaxError im try/except-Block behoben (indentation).
+
 ## [v1.0.0] - 2026-05-26
 ### Added
 - **Phase 14 (Integration Features)**:
