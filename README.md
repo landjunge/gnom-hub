@@ -4,7 +4,7 @@
 > *8 Agents. 180 Modules. Zero cloud dependency. Zero uncontrolled sprawl.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-139-blue.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-154-blue.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#)
 [![LLM](https://img.shields.io/badge/LLM-DeepSeek_R1-brightgreen.svg)](#)
@@ -66,7 +66,7 @@ Gnom-Hub includes an isolated, database-mocked test suite using `pytest`:
 python3 -m pytest tests/ -v
 ```
 
-This runs **139 automated unit and integration tests** covering connection, state, agents, chat, admin auth, routing, stability, workflow engine, and security.
+This runs **154 automated unit and integration tests** covering connection, state, agents, chat, admin auth, routing, stability, workflow engine, security, and queue load testing.
 
 ---
 
@@ -311,7 +311,13 @@ The Showbox is a unique multi-channel display for agent output:
 - **All learning is disabled in SuperGNOM mode** — behavior stays frozen
 
 ### Steganographic Tracing (ZWC)
-*Experimental security/audit feature:* Agent metadata is encoded as invisible **zero-width Unicode characters** in message text using base64 → binary → ZWC encoding with 3-bit majority-vote error correction. Every message carries an invisible agent fingerprint that survives copy-paste, designed for provenance tracking.
+Agent metadata is encoded as invisible **zero-width Unicode characters** in message text using base64 → binary → ZWC encoding with 3-bit majority-vote error correction. Every message carries an invisible agent fingerprint that survives copy-paste, designed for provenance tracking.
+
+**ZWC Directives** — SoulAG can embed real-time directives via ZWC that agents decode and act upon:
+  - `add_directive(agent, msg, ttl)` — creates a TTL-gated directive
+  - `get_directives(text)` — extracts non-expired directives from messages
+  - `SoulAG.emit_directive(target, msg)` — posts directive as chat message
+  - Agents can realign behavior based on SoulAG's ZWC instructions
 
 ---
 
@@ -349,7 +355,7 @@ Agents interact with the system by generating markdown-like tags in their LLM ou
 | `@@clear` | Clear chat timeline |
 | `@@clear db` / `@@clear database` | Reset database tables (chats, showbox presentations, jobs) except agent definitions and prompts |
 | `@@diagnose` | Run diagnostics on daemon processes, database tables, and blocked gatekeeper decisions |
-| `@blockade [aus/an]` / `@blokade [off/on]` | Toggle Gatekeeper confirmations. When turning off, auto-approves all currently pending agent decisions to let active tasks resume. |
+| `@blockade [aus/an]` / `@blokade [off/on]` | Toggle Gatekeeper confirmations. Uses `threading.Event` for instant OS-scheduled wait (0% CPU). When turning off, auto-approves all pending decisions. |
 | `@free` | Reset all active jobs and paused statuses |
 | `@merken [text]` | Memorize written text anywhere in the message as a high-priority fact in long-term memory |
 | `@spass [off/ende]` | Toggle all agents to a loose/casual tone, maximum creativity, high risk tolerance, and inject humor. Pass `off`, `ende`, `stop`, or `aus` to deactivate and reset sliders to default (3). |
