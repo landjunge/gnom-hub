@@ -353,11 +353,12 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
             "npm", "npx", "node", "yarn", "pnpm", "bun",
             # Git
             "git", "gh",
-            # Dateisystem
+            # Dateisystem / Navigation
             "ls", "echo", "cat", "tail", "head", "find", "mkdir", "cp",
             "rm", "wc", "which", "touch", "chmod", "mv", "grep", "pwd",
             "stat", "date", "sort", "uniq", "du", "df", "diff", "tree",
             "cut", "awk", "sed", "xargs", "tee", "tr",
+            "cd", "file", "command",
             # Archive
             "zip", "unzip", "tar", "gzip", "gunzip",
             # Netzwerk / Tools
@@ -365,7 +366,7 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
             "java", "mvn", "gradle", "docker", "docker-compose",
             "open", "pbcopy", "pbpaste", "xclip", "xdg-open",
             # Shell builtins (oft in commands)
-            "bash", "sh", "zsh", "env", "export", "source",
+            "bash", "sh", "zsh", "env", "export", "source", "type",
         }
 
         if exec_name not in allowed_execs:
@@ -443,13 +444,11 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                 "clone", "stash", "branch", "merge", "rebase", "tag",
                 "remote", "show", "blame", "shortlog", "describe"
             }
-            if args_tokens and args_tokens[0] == "push":
-                return False, "high", (
-                    "git push ist Agenten nicht erlaubt. "
-                    "Nur der User darf pushen — nutze @@git push im Chat."
-                )
-            if not args_tokens or args_tokens[0] not in allowed_git_subcmds:
-                return False, "medium", f"Git Subbefehl '{args_tokens[0] if args_tokens else ''}' ist nicht autorisiert."
+            # Git NUR ueber @@git push (User-Chat-Command), NIEMALS ueber [SHELL:]
+            return False, "high", (
+                "git ist Agenten nicht erlaubt. "
+                "Nutze @@git push, @@git status etc. im Chat (nur User)."
+            )
                 
     return True, None, ""
 
