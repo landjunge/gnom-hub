@@ -35,6 +35,7 @@ def get_jobs():
     return sorted(SQLiteStateRepository().get_value("jobs", []), key=lambda j: j.get("ts",""), reverse=True)[:20]
 
 def handle_free(q):
+    from gnom_hub.infrastructure.process.process_manager import AGENTS, restart_single_agent
     t = q.replace("@","").strip().lower()
     SQLiteAgentRepository().clear_jobs(t or None)
     from gnom_hub.db.connection import get_db_connection
@@ -46,7 +47,15 @@ def handle_free(q):
             else:
                 conn.execute("UPDATE agent_messages SET status='done', completed_at=? WHERE status IN ('pending','processing')", (time.time(),))
                 conn.execute("UPDATE agents SET status='online', active_job=NULL WHERE status IN ('busy','paused')")
-    _post_chat("System", f"Jobs cleared: {t or 'ALL'}")
+    targets = [a for a in AGENTS if a.lower().startswith(t)] if t else AGENTS
+    restarted = []
+    for agent in targets:
+        try:
+            restart_single_agent(agent)
+            restarted.append(agent)
+        except Exception as e:
+            _post_chat("System", f"Restart von {agent} fehlgeschlagen: {e}")
+    _post_chat("System", f"Jobs cleared + Neustart: {', '.join(restarted) or 'keine'}")
     return {"status": "ok"}
 
 def handle_git(q, rb=False):
