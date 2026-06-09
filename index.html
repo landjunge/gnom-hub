@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnom-Hub – Lokale Multi-Agenten-Orchstrierung</title>
+    <meta name="description" content="Gnom-Hub ist ein lokaler Multi-Agenten-Orchestrator. 8 KI-Agenten arbeiten zusammen – ohne Cloud, ohne API-Kosten.">
+    <meta name="keywords" content="KI-Agenten, Multi-Agent, Orchestrator, lokale KI, Agenten-Swarm, FastAPI, DeepSeek, OpenRouter, LLM, SQLite">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://landjunge.github.io/gnom-hub/">
+    <meta property="og:title" content="Gnom-Hub – Lokale Multi-Agenten-Orchstrierung">
+    <meta property="og:description" content="8 KI-Agenten arbeiten zusammen – ohne Cloud, ohne API-Kosten. Dein lokaler KI-Swarm.">
+    <meta property="og:url" content="https://landjunge.github.io/gnom-hub/">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://landjunge.github.io/gnom-hub/screenshot_warroom.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=MedievalSharp&family=Inter:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --gnom-emerald: #2d6a4f;
+            --gnom-forest: #1b4332;
+            --gnom-moss: #40916c;
+            --gnom-gold: #d4a017;
+            --gnom-amber: #f0a500;
+            --gnom-copper: #b87333;
+            --gnom-bronze: #cd7f32;
+            --gnom-stone: #5c4033;
+            --gnom-dark: #1a120b;
+            --gnom-darker: #0d0805;
+            --gnom-cream: #f5e6c8;
+            --gnom-parchment: #e8d5b0;
+            --gnom-cave: #2c1810;
+            --gnom-depth: #1a0f08;
+            --gnom-rune: #7fff7f;
+            --gnom-fire: #ff6b35;
+            --gnom-crystal: #7fffd4;
+        }
+
+        body {
+            background: var(--gnom-darker);
+            color: var(--gnom-cream);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── ANIMATED BACKGROUND ── */
+        .bg-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(45, 106, 79, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(212, 160, 23, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(184, 115, 51, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .sparkle-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: var(--gnom-gold);
+            border-radius: 50%;
+            animation: float-up linear infinite;
+            opacity: 0;
+            box-shadow: 0 0 6px var(--gnom-gold), 0 0 12px var(--gnom-amber);
+        }
+
+        @keyframes float-up {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        .sparkle:nth-child(1) { left: 10%; animation-duration: 12s; animation-delay: 0s; width: 2px; height: 2px; }
+        .sparkle:nth-child(2) { left: 25%; animation-duration: 15s; animation-delay: 2s; width: 4px; height: 4px; background: var(--gnom-crystal); box-shadow: 0 0 8px var(--gnom-crystal); }
+        .sparkle:nth-child(3) { left: 40%; animation-duration: 10s; animation-delay: 4s; }
+        .sparkle:nth-child(4) { left: 55%; animation-duration: 18s; animation-delay: 1s; width: 3px; height: 3px; background: var(--gnom-rune); box-shadow: 0 0 6px var(--gnom-rune); }
+        .sparkle:nth-child(5) { left: 70%; animation-duration: 14s; animation-delay: 3s; }
+        .sparkle:nth-child(6) { left: 85%; animation-duration: 11s; animation-delay: 5s; width: 2px; height: 2px; }
+        .sparkle:nth-child(7) { left: 50%; animation-duration: 16s; animation-delay: 7s; width: 5px; height: 5px; background: var(--gnom-fire); box-shadow: 0 0 10px var(--gnom-fire); }
+        .sparkle:nth-child(8) { left: 15%; animation-duration: 13s; animation-delay: 6s; }
+        .sparkle:nth-child(9) { left: 90%; animation-duration: 17s; animation-delay: 8s; width: 3px; height: 3px; background: var(--gnom-copper); box-shadow: 0 0 8px var(--gnom-copper); }
+        .sparkle:nth-child(10) { left: 35%; animation-duration: 9s; animation-delay: 9s; }
+
+        /* ── FLOATING CRYSTAL ORBS ── */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(60px);
+            opacity: 0.3;
+            animation: orb-float 20s ease-in-out infinite alternate;
+        }
+        .orb-1 { width: 400px; height: 400px; background: var(--gnom-emerald); top: -100px; left: -100px; }
+        .orb-2 { width: 300px; height: 300px; background: var(--gnom-amber); bottom: -50px; right: -50px; animation-delay: -7s; }
+        .orb-3 { width: 250px; height: 250px; background: var(--gnom-copper); top: 50%; left: 50%; animation-delay: -14s; }
+
+        @keyframes orb-float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, -30px) scale(1.2); }
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+
+        /* ── HEADER ── */
+        header {
+            text-align: center;
+            padding: 5rem 0 3rem;
+            position: relative;
+        }
+
+        header::before {
+            content: '⚒️';
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 20px rgba(212, 160, 23, 0.3));
+            animation: anvil-glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes anvil-glow {
+            0% { filter: drop-shadow(0 0 10px rgba(212, 160, 23, 0.2)); transform: scale(1); }
+            100% { filter: drop-shadow(0 0 30px rgba(212, 160, 23, 0.5)); transform: scale(1.05); }
+        }
+
+        header h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--gnom-gold) 0%, var(--gnom-amber) 30%, var(--gnom-copper) 70%, var(--gnom-gold) 100%);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 4s ease-in-out infinite alternate;
+            text-shadow: none;
+            margin-bottom: 0.5rem;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        header .subtitle {
+            font-size: 1.2rem;
+            color: var(--gnom-parchment);
+            opacity: 0.8;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+        }
+
+        header .subtitle span {
+            color: var(--gnom-gold);
+            font-weight: 600;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(45, 106, 79, 0.15);
+            border: 1px solid rgba(45, 106, 79, 0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--gnom-moss);
+            font-weight: 500;
+        }
+        .badge.gold { background: rgba(212, 160, 23, 0.1); border-color: rgba(212, 160, 23, 0.3); color: var(--gnom-gold); }
+        .badge.fire { background: rgba(255, 107, 53, 0.1); border-color: rgba(255, 107, 53, 0.3); color: var(--gnom-fire); }
+        .badge.crystal { background: rgba(127, 255, 212, 0.08); border-color: rgba(127, 255, 212, 0.2); color: var(--gnom-crystal); }
+
+        /* ── FEATURES ── */
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.2rem; margin: 3rem 0; }
+
+        .card {
+            background: linear-gradient(145deg, rgba(44, 24, 16, 0.8), rgba(26, 15, 8, 0.9));
+            border: 1px solid rgba(92, 64, 51, 0.4);
+            border-radius: 16px;
+            padding: 1.8rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: linear-gradient(90deg, var(--gnom-emerald), var(--gnom-gold), var(--gnom-copper));
+            opacity: 0.5;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(212, 160, 23, 0.3);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3), 0 0 20px rgba(212, 160, 23, 0.05);
+        }
+
+        .card .icon { font-size: 2rem; margin-bottom: 0.8rem; display: block; }
+        .card h3 { font-size: 1.1rem; color: var(--gnom-gold); font-weight: 600; margin-bottom: 0.5rem; }
+        .card p { font-size: 0.9rem; color: var(--gnom-parchment); opacity: 0.7; line-height: 1.6; }
+
+        /* ── AGENTS ── */
+        .section-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            padding-left: 1rem;
+            border-left: 4px solid var(--gnom-gold);
+            color: var(--gnom-cream);
+        }
+        .section-title small { font-size: 0.9rem; font-weight: 400; opacity: 0.5; }
+
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .agent-card {
+            background: linear-gradient(145deg, rgba(44, 24, 16, 0.6), rgba(26, 15, 8, 0.8));
+            border: 1px solid rgba(92, 64, 51, 0.3);
+            border-radius: 12px;
+            padding: 1.2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .agent-card:hover {
+            border-color: var(--gnom-moss);
+            box-shadow: 0 0 20px rgba(45, 106, 79, 0.15);
+        }
+
+        .agent-card .emoji { font-size: 2.2rem; margin-bottom: 0.5rem; }
+        .agent-card .role { color: var(--gnom-gold); font-weight: 600; font-size: 1rem; }
+        .agent-card .desc { color: var(--gnom-parchment); opacity: 0.6; font-size: 0.8rem; margin-top: 0.3rem; line-height: 1.4; }
+        .agent-card .rune {
+            display: inline-block;
+            margin-top: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--gnom-moss);
+            background: rgba(45, 106, 79, 0.1);
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            border: 1px solid rgba(45, 106, 79, 0.2);
+        }
+
+        /* ── QUICK START ── */
+        .forge-box {
+            background: linear-gradient(145deg, rgba(44, 24, 16, 0.9), rgba(26, 15, 8, 1));
+            border: 1px solid rgba(92, 64, 51, 0.5);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .forge-box::after {
+            content: '🔥';
+            position: absolute;
+            top: -15px; right: 20px;
+            font-size: 2rem;
+            animation: anvil-glow 2s ease-in-out infinite alternate;
+        }
+
+        .forge-box h2 { color: var(--gnom-gold); font-size: 1.2rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+
+        code {
+            display: block;
+            background: rgba(13, 8, 5, 0.8);
+            border: 1px solid rgba(92, 64, 51, 0.3);
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+            font-family: 'JetBrains Mono', 'SF Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--gnom-rune);
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+
+        code .comment { color: var(--gnom-stone); }
+        code .cmd { color: var(--gnom-gold); }
+        code .path { color: var(--gnom-crystal); }
+
+        code .copy-btn {
+            float: right;
+            background: rgba(212, 160, 23, 0.1);
+            border: 1px solid rgba(212, 160, 23, 0.2);
+            color: var(--gnom-gold);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+        code .copy-btn:hover { background: rgba(212, 160, 23, 0.2); }
+
+        /* ── SCREENSHOTS ── */
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .screenshots img {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(92, 64, 51, 0.3);
+            transition: all 0.3s;
+        }
+        .screenshots img:hover {
+            border-color: var(--gnom-gold);
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(212, 160, 23, 0.1);
+        }
+
+        /* ── STATS BAR ── */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: linear-gradient(145deg, rgba(45, 106, 79, 0.08), rgba(212, 160, 23, 0.05));
+            border-radius: 16px;
+            border: 1px solid rgba(92, 64, 51, 0.2);
+        }
+        .stat { text-align: center; }
+        .stat .num { font-size: 1.8rem; font-weight: 700; color: var(--gnom-gold); }
+        .stat .label { font-size: 0.75rem; color: var(--gnom-parchment); opacity: 0.6; margin-top: 0.2rem; }
+
+        /* ── CTA ── */
+        .cta { text-align: center; padding: 3rem 0; }
+        .cta .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--gnom-amber), var(--gnom-copper));
+            color: var(--gnom-darker);
+            padding: 0.9rem 2.5rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            margin: 0.5rem;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .cta .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(212, 160, 23, 0.3);
+        }
+        .cta .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gnom-gold);
+            color: var(--gnom-gold);
+        }
+        .cta .btn-outline:hover {
+            background: rgba(212, 160, 23, 0.1);
+            box-shadow: 0 8px 25px rgba(212, 160, 23, 0.15);
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid rgba(92, 64, 51, 0.3);
+            color: var(--gnom-stone);
+            font-size: 0.8rem;
+            position: relative;
+            z-index: 1;
+        }
+        footer a { color: var(--gnom-moss); text-decoration: none; }
+        footer a:hover { color: var(--gnom-gold); }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 640px) {
+            .container { padding: 1rem; }
+            header h1 { font-size: 2.5rem; }
+            header { padding: 3rem 0 2rem; }
+            .features { grid-template-columns: 1fr; }
+            .agent-grid { grid-template-columns: repeat(2, 1fr); }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-layer"></div>
+    <div class="sparkle-container">
+        <div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div>
+        <div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div><div class="sparkle"></div>
+    </div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="container">
+        <header>
+            <h1>GNOM-HUB</h1>
+            <p class="subtitle">⚒️ Eine <span>KI-Schmiede</span>. Acht <span>Agenten</span>. Keine <span>Cloud</span>.</p>
+            <div class="badge-row">
+                <span class="badge">⚔️ 8 Agenten</span>
+                <span class="badge gold">🔮 DeepSeek / OpenRouter</span>
+                <span class="badge crystal">🐍 Python 3.10</span>
+                <span class="badge fire">📦 154 Prüfungen</span>
+                <span class="badge">🏠 Lokal</span>
+            </div>
+        </header>
+
+        <div class="stats">
+            <div class="stat"><div class="num">8</div><div class="label">KI-Agenten</div></div>
+            <div class="stat"><div class="num">180+</div><div class="label">Module</div></div>
+            <div class="stat"><div class="num">154</div><div class="label">Tests bestanden</div></div>
+            <div class="stat"><div class="num">0</div><div class="label">Cloud-Abhängigkeiten</div></div>
+            <div class="stat"><div class="num">1</div><div class="label">Befehl zum Start</div></div>
+        </div>
+
+        <h2 class="section-title">⚒️ Was dich in der Schmiede erwartet</h2>
+        <div class="features">
+            <div class="card">
+                <span class="icon">🏠</span>
+                <h3>Local First</h3>
+                <p>Läuft komplett auf deinem Rechner. Keine Cloud, keine versteckten Kosten, keine Daten nach außen.</p>
+            </div>
+            <div class="card">
+                <span class="icon">🧩</span>
+                <h3>8 Spezialisten</h3>
+                <p>Vom Anführer bis zum Wächter – jeder Agent hat eine eigene Rolle, Persönlichkeit und Werkzeuge.</p>
+            </div>
+            <div class="card">
+                <span class="icon">🔗</span>
+                <h3>Multi-Provider</h3>
+                <p>DeepSeek, OpenRouter, Ollama – fällt einer aus, springt der nächste ein. Null Ausfallzeit.</p>
+            </div>
+            <div class="card">
+                <span class="icon">📊</span>
+                <h3>AGtuning Dashboard</h3>
+                <p>7 Tab-Icons für Prompt, Gedächtnis, Sicherheit, Werkzeuge, Verhalten, Presets und Backen.</p>
+            </div>
+            <div class="card">
+                <span class="icon">🛡️</span>
+                <h3>Gatekeeper</h3>
+                <p>Erkennt gefährliche Code-Muster, schützt Systemdateien und lässt Gutes einfach durch.</p>
+            </div>
+            <div class="card">
+                <span class="icon">🧠</span>
+                <h3>SoulAG Gedächtnis</h3>
+                <p>FAISS-Embeddings mit Alterung, Bewertung und Deduplizierung – lernt mit jeder Unterhaltung.</p>
+            </div>
+        </div>
+
+        <h2 class="section-title">🤖 Die Acht <small>– Jeder Gnom hat seinen Job</small></h2>
+        <div class="agent-grid">
+            <div class="agent-card"><div class="emoji">👑</div><div class="role">GeneralAG</div><div class="desc">Der Anführer. Zerlegt Aufgaben, führt die Gruppe.</div><span class="rune">⚡ Koordination</span></div>
+            <div class="agent-card"><div class="emoji">⚡</div><div class="role">CoderAG</div><div class="desc">Der Schmied. Code, Shell, alles Handfeste.</div><span class="rune">🔨 Code & Shell</span></div>
+            <div class="agent-card"><div class="emoji">📜</div><div class="role">WriterAG</div><div class="desc">Der Schreiber. Texte, Doku, Geschichten.</div><span class="rune">✍️ Content</span></div>
+            <div class="agent-card"><div class="emoji">🔍</div><div class="role">ResearcherAG</div><div class="desc">Der Späher. Recherchiert, sammelt Fakten.</div><span class="rune">🌐 Recherche</span></div>
+            <div class="agent-card"><div class="emoji">📋</div><div class="role">EditorAG</div><div class="desc">Der Prüfer. Findet Fehler, macht besser.</div><span class="rune">✅ Qualität</span></div>
+            <div class="agent-card"><div class="emoji">💎</div><div class="role">SoulAG</div><div class="desc">Das Gedächtnis. Merkt sich alles Wichtige.</div><span class="rune">🧠 Fakten</span></div>
+            <div class="agent-card"><div class="emoji">🛡️</div><div class="role">SecurityAG</div><div class="desc">Der Wächter. Scannt Code auf Gefahren.</div><span class="rune">🔒 Sicherheit</span></div>
+            <div class="agent-card"><div class="emoji">👁️</div><div class="role">WatchdogAG</div><div class="desc">Der Patrouilleur. Schützt Systemdateien.</div><span class="rune">📁 Dateiwache</span></div>
+        </div>
+
+        <div class="forge-box">
+            <h2>🔥 Schmiede deinen eigenen Schwarm</h2>
+            <code>
+                <span class="comment"># Hol dir die Werkzeuge</span><br>
+                <span class="cmd">git clone</span> <span class="path">https://github.com/landjunge/gnom-hub.git</span><br>
+                <span class="cmd">cd</span> gnom-hub &amp;&amp; <span class="cmd">python3</span> install.py<br><br>
+                <span class="comment"># Anfeuern</span><br>
+                <span class="cmd">python3</span> -m gnom_hub
+            </code>
+        </div>
+
+        <h2 class="section-title">📸 Ein Blick in die Werkstatt</h2>
+        <div class="screenshots">
+            <img src="screenshot_warroom.png" alt="War Room Dashboard">
+            <img src="screenshot_dashboard.png" alt="Metrics Dashboard">
+            <img src="screenshot_llm_global.png" alt="LLM Configuration">
+            <img src="screenshot_workspace.png" alt="Workspace">
+        </div>
+
+        <div class="cta">
+            <a href="https://github.com/landjunge/gnom-hub" class="btn">📦 In die Schmiede</a>
+            <a href="demo.html" class="btn btn-outline">🎬 Vorführung</a>
+            <a href="https://github.com/landjunge/gnom-hub/discussions" class="btn btn-outline">💬 Gildengespräch</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>⚒️ Geschmiedet mit Python, FastAPI & DeepSeek · <a href="https://github.com/landjunge/gnom-hub">GitHub</a> · <a href="https://landjunge.github.io/gnom-hub/">Gnom-Hub</a></p>
+        <p style="margin-top: 0.5rem; opacity: 0.5;">Keine Gnome wurden beim Bau dieser Software verletzt.</p>
+    </footer>
+
+    <script>
+        // Glow-Effekt für Karten beim Rumnavigieren
+        document.querySelectorAll('.card, .agent-card').forEach(el => {
+            el.addEventListener('mousemove', e => {
+                const rect = el.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+                el.style.setProperty('--mouse-x', x);
+                el.style.setProperty('--mouse-y', y);
+            });
+        });
+    </script>
+</body>
+</html>
