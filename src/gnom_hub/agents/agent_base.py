@@ -96,7 +96,7 @@ class BaseAgent:
                 text = msg["payload"]["text"]
 
                 from gnom_hub.soul import soul_instance
-                sys_prompt = soul_instance.inject_context(self.sys, text, agent_name=self.n)
+                sys_prompt = soul_instance.inject_context(self.sys, text, agent_name=self.n) if soul_instance is not None else self.sys
 
                 from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
                 wd = get_workspace_dir()
