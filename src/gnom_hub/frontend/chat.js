@@ -9,6 +9,59 @@ window._pageLoadTime = Date.now();
 // TTS Queue State
 const _ttsQ = [];
 var _ttsBusy = false;
+var _ttsVoicesReady = false;
+var _ttsUnlocked = false;
+
+// AudioContext für AutoPlay-Unlock (zuverlässiger als SpeechSynthesis-Utterance-Trick)
+let _ttsAudioCtx = null;
+function unlockAudio() {
+  if (_ttsUnlocked) return true;
+  try {
+    if (!_ttsAudioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        _ttsAudioCtx = new AC();
+        // Leeren Buffer erzeugen und abspielen (entsperrt Audio)
+        const buf = _ttsAudioCtx.createBuffer(1, 1, 22050);
+        const src = _ttsAudioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(_ttsAudioCtx.destination);
+        src.start(0);
+      }
+    }
+    if (_ttsAudioCtx && _ttsAudioCtx.state === 'suspended') {
+      _ttsAudioCtx.resume();
+    }
+    _ttsUnlocked = true;
+  } catch(e) {
+    console.warn("AudioContext unlock failed:", e);
+  }
+  // SpeechSynthesis zusätzlich unlocken
+  if (typeof speechSynthesis !== 'undefined') {
+    try {
+      const u = new SpeechSynthesisUtterance('');
+      speechSynthesis.speak(u);
+    } catch(e) {}
+  }
+  return _ttsUnlocked;
+}
+
+// Voices laden (auf Chrome asynchron)
+function loadTTSVoices() {
+  if (typeof speechSynthesis === 'undefined') return false;
+  if (speechSynthesis.getVoices().length > 0) {
+    _ttsVoicesReady = true;
+    return true;
+  }
+  // Event-Listener für async voices
+  speechSynthesis.addEventListener('voiceschanged', () => {
+    _ttsVoicesReady = true;
+  }, { once: true });
+  // Timeout: nach 3s trotzdem weitermachen (Default-Voice reicht)
+  setTimeout(() => { _ttsVoicesReady = true; }, 3000);
+  return false;
+}
+loadTTSVoices();
 
 // STT Recognition State
 let recognition;
@@ -507,12 +560,7 @@ function toggleMainTTS() {
       btn.style.background = 'rgba(57,255,20,0.15)';
       btn.style.borderColor = 'rgba(57,255,20,0.4)';
       btn.style.color = 'var(--green)';
-      // Unlock Web Speech API
-      if (typeof speechSynthesis !== 'undefined') {
-        speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-      }
-      // Unlock HTML5 Audio
-      try { new Audio('data:audio/mp3;base64,//OkwAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq').play().catch(()=>{}); } catch(e){}
+      unlockAudio();
       toast('🗣️ TTS Aktiviert', 'success');
     } else {
       btn.innerHTML = '🔇 TTS';
@@ -535,10 +583,7 @@ function toggleThoughtTTS() {
       btn.style.background = 'rgba(57,255,20,0.15)';
       btn.style.borderColor = 'rgba(57,255,20,0.4)';
       btn.style.color = 'var(--green)';
-      if (typeof speechSynthesis !== 'undefined') {
-        speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-      }
-      try { new Audio('data:audio/mp3;base64,//OkwAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq').play().catch(()=>{}); } catch(e){}
+      unlockAudio();
       toast('🗣️ Denkprozess-TTS Aktiviert', 'success');
     } else {
       btn.innerHTML = '🔇 TTS Aus';
@@ -907,23 +952,33 @@ async function deleteChatMsg(id) {
 function getVoiceForAgent(agentName, lang) {
   if (typeof speechSynthesis === 'undefined') return null;
   const voices = speechSynthesis.getVoices();
-  if (!voices.length) return null;
+  if (!voices.length) {
+    // Chrome: voices noch nicht geladen — Default-Stimme verwenden
+    return null;
+  }
   const langPrefix = lang.split('-')[0].toLowerCase();
   let filtered = voices.filter(v => v.lang.toLowerCase().startsWith(langPrefix));
-  if (!filtered.length) return null;
+  if (!filtered.length) {
+    // Fallback: alle Stimmen (language ignorieren)
+    filtered = voices;
+  }
   
-  // Prioritize premium/high-quality voices, but EXCLUDE Siri which fails to play on Webkit/Safari on macOS
+  // Premium-Stimmen bevorzugen, Siri ausschließen (Webkit-Bug auf macOS)
   const premium = filtered.filter(v => 
+    !v.name.includes('Siri') &&
     (v.name.includes('Premium') || 
      v.name.includes('Enhanced') || 
      v.name.includes('Google') || 
      v.name.includes('Yannick') || 
-     v.name.includes('Anna')) &&
-    !v.name.includes('Siri')
+     v.name.includes('Anna'))
   );
   if (premium.length > 0) {
     filtered = premium;
+  } else {
+    // Fallback: alle Filter-Ergebnisse außer Siri
+    filtered = filtered.filter(v => !v.name.includes('Siri'));
   }
+  if (!filtered.length) return null;
   
   let hash = 0;
   for (let i = 0; i < agentName.length; i++) {
@@ -1036,7 +1091,7 @@ async function speak(text, agentId = '') {
             audio.onended = done;
             audio.onerror = done;
             audio.onstop = done;
-            const timeoutId = setTimeout(done, 15000); // 15 seconds safety timeout
+            const timeoutId = setTimeout(done, 15000);
             audio.play().catch(err => {
               console.error("ElevenLabs audio play failed:", err);
               done();
@@ -1053,17 +1108,20 @@ async function speak(text, agentId = '') {
     
     if (typeof speechSynthesis === 'undefined') continue;
     
+    // AudioContext unlocken falls noch nicht passiert
+    unlockAudio();
+    
     const u = new SpeechSynthesisUtterance(t);
     u.lang = 'de-DE';
     u.rate = 1.0;
     const voice = getVoiceForAgent(a || 'System', u.lang);
     if (voice) u.voice = voice;
     
-    // Crucial: Keep a reference on window to prevent garbage collection on Webkit/Blink which hangs speech synthesis callbacks
     window._activeUtterance = u;
     
-    // Resume to prevent Chrome/Safari speech from staying paused
+    // Chrome Bug: speechSynthesis bleibt manchmal "paused" oder "pending"
     speechSynthesis.resume();
+    if (speechSynthesis.paused) speechSynthesis.resume();
     
     await new Promise(ok => {
       let resolved = false;
@@ -1079,7 +1137,6 @@ async function speak(text, agentId = '') {
       u.onerror = done;
       u.onstop = done;
       
-      // Safety timeout: 150ms per character, minimum 5 seconds, maximum 120 seconds to prevent cutting off long messages
       const duration = Math.min(120000, Math.max(5000, t.length * 150));
       const timeoutId = setTimeout(() => {
         console.warn("Browser SpeechSynthesis timeout exceeded, cancelling");
@@ -1096,6 +1153,13 @@ async function speak(text, agentId = '') {
         done();
       }
     });
+    
+    // Chrome Bug: Nach jedem Speak speechSynthesis in einen sauberen Zustand versetzen
+    try {
+      if (speechSynthesis.speaking) {
+        // Nicht cancellen — nur sicherstellen dass der Status korrekt ist
+      }
+    } catch(e) {}
   }
   _ttsBusy = false;
   if (stopBtn) stopBtn.style.display = 'none';
@@ -1168,17 +1232,8 @@ function checkTimers() {
   }
 }
 
-// Unlocks Browser SpeechSynthesis on first user click
+// Unlocks Browser SpeechSynthesis + AudioContext on first user click
 window.addEventListener('click', () => {
-  if (typeof speechSynthesis !== 'undefined' && !window._speechSynthesisUnlocked) {
-    try {
-      const u = new SpeechSynthesisUtterance('');
-      speechSynthesis.speak(u);
-      window._speechSynthesisUnlocked = true;
-      console.log("SpeechSynthesis unlocked successfully via click interaction");
-    } catch (e) {
-      console.warn("Failed to unlock SpeechSynthesis:", e);
-    }
-  }
+  unlockAudio();
 }, { once: true });
 

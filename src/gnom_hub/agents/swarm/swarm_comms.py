@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 
 # ── Konfiguration (statt Magic Numbers im Code) ────────────────────────────
 MAX_DEPTH           = 8
-MAX_CONCURRENT      = 12
+MAX_CONCURRENT      = 8       # (war 12) — nur 8 Agenten
 RETRY_MAX           = 3
-RETRY_BACKOFF_BASE  = 5.0
-MAX_QUEUE_DEPTH     = 50
+RETRY_BACKOFF_BASE  = 3.0     # (war 5.0) — schnellere Retries
+MAX_QUEUE_DEPTH     = 30      # (war 50) — engere Backpressure
 DEPENDENCY_TIMEOUT  = 120.0  # Max. Wartezeit auf eine Abhängigkeit (Sekunden)
-DEPENDENCY_POLL_S   = 3.0    # Poll-Intervall für Dependency-Checks
+DEPENDENCY_POLL_S   = 1.0     # (war 3.0) — schnellere Dependency-Auflösung    # Poll-Intervall für Dependency-Checks
 
 # ── Notification-Bus: Agenten warten auf dieses Event statt zu pollen ──────
 _new_message_event: Dict[str, threading.Event] = {}

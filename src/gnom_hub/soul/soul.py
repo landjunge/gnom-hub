@@ -9,9 +9,9 @@ from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
 _log = logging.getLogger("soul")
 
 # ── Konfiguration ──────────────────────────────────────────────────────────
-MAX_SOUL_FACTS       = 50      # Hartes Limit
+MAX_SOUL_FACTS       = 100     # Hartes Limit (war 50)
 MIN_VALUE_LENGTH     = 15      # Minimale Fakt-Länge (Zeichen)
-DEDUP_THRESHOLD      = 0.88    # FAISS-Ähnlichkeits-Schwelle
+DEDUP_THRESHOLD      = 0.85    # FAISS-Ähnlichkeits-Schwelle (war 0.88)
 HIGH_PRIO_MAX_AGE_DAYS = 30    # High-Fakten leben max 30 Tage
 MED_PRIO_MAX_AGE_DAYS  = 14    # Medium-Fakten leben max 14 Tage
 LOW_PRIO_MAX_AGE_DAYS  = 7     # Low-Fakten leben max 7 Tage
@@ -31,9 +31,8 @@ BLOCKED_RE = re.compile("|".join(BLOCKED_PATTERNS), re.IGNORECASE)
 PRIO_SCORE = {"high": 30, "medium": 15, "low": 5}
 
 def _compute_score(priority: str, age_days: float, injection_count: int = 0) -> float:
-    """Berechnet die Relevanz eines Fakts: höher = wichtiger."""
-    age_penalty = age_days * 1.5  # älter = weniger relevant
-    usage_bonus = min(injection_count * 3, 30)  # oft injiziert = relevanter (max 30)
+    age_penalty = age_days * 1.5
+    usage_bonus = min(injection_count * 3, 30)
     return PRIO_SCORE.get(priority, 10) + usage_bonus - age_penalty
 
 
@@ -42,7 +41,6 @@ _last_cleanup_time = 0
 CLEANUP_INTERVAL = 3600  # 1 Stunde zwischen Hausputz
 
 def _periodic_cleanup():
-    """Löscht überalterte Fakten und reduziert Duplikate. Läuft max 1x/Stunde."""
     global _last_cleanup_time
     now = time.time()
     if now - _last_cleanup_time < CLEANUP_INTERVAL:
@@ -59,7 +57,6 @@ def _periodic_cleanup():
             now_iso = datetime.now().isoformat()[:19]
             deleted = 0
 
-            # 1. Alter-basierte Löschung
             for prio, max_days in [("low", LOW_PRIO_MAX_AGE_DAYS),
                                     ("medium", MED_PRIO_MAX_AGE_DAYS),
                                     ("high", HIGH_PRIO_MAX_AGE_DAYS)]:
@@ -74,13 +71,11 @@ def _periodic_cleanup():
                     _log.info("[Soul] Aging: %d %s-priority facts deleted (>%dd old)", len(aged), prio, max_days)
                     deleted += len(aged)
 
-            # 2. Score-basierte Löschung (nur wenn über Limit)
             remaining = conn.execute("SELECT COUNT(*) FROM soul_memory").fetchone()[0]
             if remaining > MAX_SOUL_FACTS:
                 rows = conn.execute(
                     "SELECT key, priority, timestamp FROM soul_memory ORDER BY timestamp ASC"
                 ).fetchall()
-                # Score berechnen und die schlechtesten löschen
                 scored = []
                 for r in rows:
                     try:
@@ -109,19 +104,17 @@ class SoulAG:
     def __init__(self):
         self.name = "SoulAG"
         self._injections = {}
-        self._recent_facts_cache = {}  # key -> (timestamp, value_hash) für schnelles Dedup
+        self._recent_facts_cache = {}
 
     def on_message(self, m: str, s: str):
         from gnom_hub.core.config import Config
         if Config.SUPERGNOM_MODE:
             return
-        # SoulAG lernt aus JEDER Nachricht (nicht nur User), mit Rate-Limit
         import hashlib
         msg_hash = hashlib.md5(m.encode()).hexdigest()[:16]
         now = time.time()
         if not hasattr(self, '_last_seen_hash'):
             self._last_seen_hash = {}
-        # Dedup: gleiche Nachricht nicht mehrfach lernen
         last = self._last_seen_hash.get(msg_hash, 0)
         if now - last < 15:
             return
@@ -129,18 +122,16 @@ class SoulAG:
         if len(self._last_seen_hash) > 500:
             oldest = min(self._last_seen_hash, key=self._last_seen_hash.get)
             del self._last_seen_hash[oldest]
-        # User: immer, Agent: 80% Sampling (vorher 50%)
-        if s.lower() == "user" or hash(msg_hash) % 100 < 80:
+        # User: immer, Agent: 65% Sampling (war 80%)
+        if s.lower() == "user" or hash(msg_hash) % 100 < 65:
             self._pulse_status()
             threading.Thread(target=self._ex, args=(m,), daemon=True).start()
 
     def _pulse_status(self):
-        """Macht SoulAG kurz sichtbar — Status auf busy → Karte pulsiert einmal."""
         try:
             import requests, os
             port = os.environ.get('GNOM_HUB_PORT', '3002')
             requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=busy", timeout=2)
-            # Timer für online in 2s (non-blocking)
             def _back():
                 import time; time.sleep(2)
                 try: requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=online", timeout=2)
@@ -150,7 +141,6 @@ class SoulAG:
             pass
 
     def _val(self, k: str, v: str) -> bool:
-        """Prüft ob ein Fakt gespeichert werden darf."""
         kl = k.lower()
         if len(v.strip()) < MIN_VALUE_LENGTH:
             return False
@@ -164,7 +154,6 @@ class SoulAG:
         return True
 
     def _is_dup(self, text: str) -> bool:
-        """Prüft via FAISS ob ein semantisch ähnlicher Fakt existiert."""
         try:
             from gnom_hub.memory.embeddings import get_embedder
             return get_embedder().has_similar(text, threshold=DEDUP_THRESHOLD)
@@ -172,12 +161,9 @@ class SoulAG:
             return False
 
     def _ex(self, m: str):
-        """Extrahiert Fakten aus einer Chat-Nachricht (LLM-basiert)."""
         try:
-            # 1. Periodischen Hausputz laufen lassen
             _periodic_cleanup()
 
-            # 2. LLM-Call zur Fakt-Extraktion
             prompt = (
                 f"Nachricht:\n\"\"\"\n{m}\n\"\"\"\n\n"
                 "Extrahiere NUR relevante, langfristig nützliche Fakten.\n"
@@ -211,15 +197,12 @@ class SoulAG:
                 if p not in ("high", "medium", "low"):
                     p = "medium"
 
-                # Qualitäts-Check
                 if not self._val(k, v):
                     continue
 
-                # Dedup
                 if self._is_dup(f"{k}: {v}"):
                     continue
 
-                # Kurzzeit-Dedup Cache (gleicher Key in letzten 300s)
                 cache_entry = self._recent_facts_cache.get(k)
                 now = time.time()
                 if cache_entry and (now - cache_entry[0] < 300) and cache_entry[1] == hash(v):
@@ -229,7 +212,6 @@ class SoulAG:
                     oldest = min(self._recent_facts_cache, key=lambda x: self._recent_facts_cache[x][0])
                     del self._recent_facts_cache[oldest]
 
-                # Speichern
                 agent_name = "SoulAG" if target.lower() == "all" else target
                 save_soul_fact(k, v, agent=agent_name, priority=p)
                 saved += 1
@@ -244,7 +226,6 @@ class SoulAG:
                 except:
                     pass
             else:
-                # SoulAG zeigt sich auch wenn nichts gelernt (alle 5 Durchläufe)
                 self._silent_rounds = getattr(self, '_silent_rounds', 0) + 1
                 if self._silent_rounds >= 5:
                     self._silent_rounds = 0
@@ -261,8 +242,7 @@ class SoulAG:
             _log.error("[Soul] Extraction failed: %s", e, exc_info=True)
 
     def inject_context(self, sys: str, msg: str, agent_name: str = None) -> str:
-        """Reichert das System-Prompt mit relevanten Soul-Fakten an."""
-        top_k = 6  # Reduziert (war 8)
+        top_k = 6
         if agent_name:
             try:
                 from gnom_hub.db import get_state_value
@@ -271,8 +251,22 @@ class SoulAG:
             except Exception:
                 pass
 
-        # Nur Fakten mit Score > 0 holen (veraltete/low-score ignorieren)
+        # Zusätzlich: Immer User-Top-Level-Aufgaben (high priority) injizieren
+        _user_facts = []
+        try:
+            from gnom_hub.db.connection import get_db_conn
+            with get_db_conn() as _conn:
+                _rows = _conn.execute(
+                    "SELECT key, value FROM soul_memory WHERE agent = 'User' AND priority = 'high' ORDER BY timestamp DESC LIMIT 3"
+                ).fetchall()
+                _user_facts = [f"{r['key']}: {r['value']}" for r in _rows]
+        except Exception:
+            pass
         facts = retrieve_relevant_facts(msg, agent_name=agent_name, top_k=top_k)
+        # User high-priority facts immer an erste Stelle
+        if _user_facts:
+            facts = _user_facts + [f for f in facts if f not in _user_facts]
+        
         if agent_name and facts:
             for f in facts:
                 key = (agent_name.lower(), f)
@@ -290,12 +284,6 @@ class SoulAG:
         return ctx + ("\n\n=== ERWÄHNTE AGENTEN ===\n" + "\n".join(m_ctx) if m_ctx else "")
 
     def emit_directive(self, target_agent: str, directive: str, ttl: int = 3600):
-        """Sendet eine ZWC-Direktive fuer einen Ziel-Agenten.
-
-        Die Direktive wird als Chat-Nachricht gepostet und ist fuer andere
-        Agents via decode_soul() lesbar. SoulAG kann damit Agenten
-        ausrichten oder an wichtige Regeln erinnern.
-        """
         from gnom_hub.soul.zwc_soul import add_directive as _add_dir
         from gnom_hub.db import add_chat_message, get_active_project
         zwc = _add_dir(target_agent, directive, ttl)

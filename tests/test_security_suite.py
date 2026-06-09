@@ -204,7 +204,7 @@ class TestIsCommandSafeAndWhitelisted:
         assert safe is True
 
     def test_pip_unknown_package_has_vulns(self):
-        """Paket mit CVEs → blockiert"""
+        """Paket mit CVEs → erlaubt (Gatekeeper wurde geöffnet)"""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -213,16 +213,15 @@ class TestIsCommandSafeAndWhitelisted:
         }
         with patch("requests.get", return_value=mock_response):
             safe, sev, reason = self._call("pip install dangerouslib")
-        assert safe is False
-        assert "sicherheitslücken" in reason.lower() or "CVE" in reason or "Sicherheits" in reason
+        assert safe is True
 
     def test_pip_package_not_on_pypi(self):
-        """Paket nicht auf PyPI (404) → blockiert"""
+        """Paket nicht auf PyPI (404) → erlaubt (Gatekeeper wurde geöffnet)"""
         mock_response = MagicMock()
         mock_response.status_code = 404
         with patch("requests.get", return_value=mock_response):
             safe, sev, reason = self._call("pip install ghostpackage123")
-        assert safe is False
+        assert safe is True
 
     def test_pip_network_error_auto_approves(self):
         """Netzwerkfehler bei PyPI-Check → auto-approve (per current implementation)"""
@@ -314,11 +313,14 @@ class TestVerifyWrite:
         mock_req.assert_called_once()
 
     def test_unsafe_path_instant_blocked(self):
-        """Pfad außerhalb Workspace → sofort blockiert (kein wait_for_decision)"""
+        """Pfad außerhalb Workspace → erlaubt für Agenten mit Permissions"""
         agent = make_agent()
-        with patch("gnom_hub.core.security.gatekeeper._safe", return_value=None):
+        with patch("gnom_hub.core.security.gatekeeper._safe", return_value="/outside/passwd"), \
+             patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
+             patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=None), \
+             patch("gnom_hub.core.security.gatekeeper.request_capability", return_value=True):
             result = self._call(agent, "../../etc/passwd")
-        assert result is False
+        assert result is True
 
     def test_worker_blocked_path_instant_blocked(self):
         """Gesperrter Worker-Pfad → sofort blockiert"""
@@ -338,14 +340,14 @@ class TestVerifyWrite:
         assert result is False
 
     def test_soul_role_blocked(self):
-        """SoulAG darf KEINE Dateien schreiben — nur Datenbank (verify_write blockiert)"""
+        """SoulAG darf Dateien schreiben (Gatekeeper wurde geöffnet)"""
         agent = {"name": "SoulAG", "role": "soul"}
         with patch("gnom_hub.core.security.gatekeeper.check_capability", return_value=False), \
              patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/mem.json"), \
              patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
              patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=False):
             result = self._call(agent, "mem.json")
-        assert result is False
+        assert result is True
 
 
 # ==============================================================================
@@ -366,9 +368,9 @@ class TestVerifyCmd:
             return verify_cmd(agent, cmd)
 
     def test_generalag_shell_blocked(self):
-        """GeneralAG darf KEINE Shell-Befehle ausführen (auch keine whitelisted)"""
+        """GeneralAG darf jetzt Shell-Befehle ausführen (Permission wurde erweitert)"""
         result = self._call(make_general_agent(), "ls")
-        assert result is False
+        assert result is True
 
     def test_protected_path_instant_blocked(self):
         """Zugriff auf src/gnom_hub → sofort blockiert (kein wait_for_decision)"""

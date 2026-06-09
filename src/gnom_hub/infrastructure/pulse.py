@@ -3,7 +3,7 @@ import time, threading, os
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.infrastructure.process.process_manager import AGENTS, _get_proc
 
-BUSY_TIMEOUT = 15 if os.environ.get("TESTING") == "true" else 60
+BUSY_TIMEOUT = 15 if os.environ.get("TESTING") == "true" else 120  # (war 60)
 
 def pulse_janitor():
     repo = SQLiteAgentRepository()
@@ -25,19 +25,16 @@ def pulse_janitor():
                 try:
                     from gnom_hub.db import add_chat_message, get_active_project
                     add_chat_message(get_active_project(), "System", "war-room", "chat",
-                                     f"⚠️ [System] Agent **{agent.name}** wurde nach 1 Minute Inaktivität automatisch freigegeben (@free).",
+                                     f"⚠️ [System] Agent **{agent.name}** wurde nach 2 Minuten Inaktivität automatisch freigegeben (@free).",
                                      {"type": "chat"})
                 except Exception as e:
                     logging.getLogger(__name__).error('Fehler in Agenten-Freigabe-Benachrichtigung: %s', e)
     for name in AGENTS:
         proc = _get_proc(name)
-        status = "running" if proc else "stopped"
         agent = repo.get_by_name(name)
-        if agent:
-            if agent.status != status or (proc and agent.pid != proc.pid):
-                agent.status = status
-                agent.pid = proc.pid if proc else None
-                repo.save(agent)
+        if agent and agent.pid != (proc.pid if proc else None):
+            agent.pid = proc.pid if proc else None
+            repo.save(agent)
 
 def start_pulse(interval=30):
     def loop():

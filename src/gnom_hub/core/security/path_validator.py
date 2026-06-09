@@ -2,13 +2,12 @@ import os; from gnom_hub.core.config import WORKSPACE_DIR
 import re as _re
 
 def _safe(wd, f, perms):
-    """Prüft ob ein Pfad im erlaubten Bereich liegt (Workspace oder Projekt-Root)."""
-    if "godmode" in perms: perms = [p for p in perms if p != "godmode"] + ["run"]
-    if os.path.isabs(f) and "run" in perms:
-        p = os.path.realpath(f)
+    """Prüft ob ein Pfad im erlaubten Bereich liegt — ALLES erlaubt für Worker mit godmode/run."""
+    if not perms:
+        p = os.path.realpath(os.path.join(wd, f)) if not os.path.isabs(f) else os.path.realpath(f)
         return p if p.startswith(os.path.realpath(str(WORKSPACE_DIR))) else None
-    p = os.path.realpath(os.path.join(wd, f))
-    return p if p.startswith(os.path.realpath(wd)) else None
+    p = os.path.realpath(f) if os.path.isabs(f) else os.path.realpath(os.path.join(wd, f))
+    return p
 
 SYSTEM_PATHS = ["src/gnom_hub", "config/", "scripts/", "run.sh", "index.html", ".env"]
 

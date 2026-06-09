@@ -5,14 +5,13 @@ class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
         from collections import OrderedDict
         self.n, self.d, self.t, self.sys, self.p = name, desc, trigger, sys_prompt, poll
-        self._seen_ids = OrderedDict()  # Bounded LRU set (replaces deque+set)
+        self._seen_ids = OrderedDict()
         self._seen_max = 1000
         self._seen_lock = threading.Lock()
         from gnom_hub.agents.tool_registry import format_tools_prompt
         t_p = format_tools_prompt(get_soul(name), name)
         self.sys = (self.sys + "\n\n" + t_p) if self.sys else t_p
-        
-        # Injektion der geistigen Denkprozess-Richtlinie fuer die Showbox-Anzeige
+
         think_guideline = (
             "\n\n[WICHTIGE GEISTIGE RICHTLINIE]\n"
             "Beginne JEDE Antwort zwingend mit einem ausfuehrlichen Denkprozess in <think>...</think>-Tags.\n"
@@ -21,7 +20,6 @@ class BaseAgent:
         )
         self.sys += think_guideline
 
-        # Map agent name to capabilities
         name_lower = name.lower()
         if "coder" in name_lower:
             self.CAPABILITIES = [("code_generation", 1.0), ("code_review", 0.9), ("debugging", 0.8)]
@@ -74,16 +72,14 @@ class BaseAgent:
         await _to_thread(self._register_capabilities)
 
         while True:
-            # Heartbeat senden
             self._req("post", f"/api/agents/{self.n}/heartbeat")
 
-            # Hole nächste Nachricht aus der DB-Warteschlange (Timeout 5s)
-            msg = await _to_thread(fetch_next_message, self.n, str(DB_PATH), 5.0)
+            # Hole nächste Nachricht (Timeout 3s, war 5s)
+            msg = await _to_thread(fetch_next_message, self.n, str(DB_PATH), 3.0)
             if msg is None:
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)  # (war 1.0)
                 continue
 
-            # Status auf beschäftigt setzen
             self._req("put", f"/api/agents/{self.n}/status?status=busy")
 
             logger = logging.getLogger(__name__)
@@ -95,26 +91,37 @@ class BaseAgent:
             ctx_logger.info(f"Agent {self.n} verarbeitet Nachricht {msg['msg_id']}")
 
             try:
-                # Timeout für einzelne Nachrichtenverarbeitung (max 5 Minuten)
                 _processing_start = time.time()
 
-                # Payload parsen
                 text = msg["payload"]["text"]
 
                 from gnom_hub.soul import soul_instance
                 sys_prompt = soul_instance.inject_context(self.sys, text, agent_name=self.n)
 
-                # Workspace und Dateien-Kontext für den Agenten hinzufügen
                 from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
                 wd = get_workspace_dir()
                 fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
                 sys_prompt += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
 
+                # Chat-Verlauf injizieren (letzte 20 Nachrichten)
+                try:
+                    from gnom_hub.db import get_chat_history
+                    _history = get_chat_history(limit=20)
+                    if _history:
+                        _ctx = "\n\n=== CHAT-VERLAUF (letzte 20) ===\n"
+                        for _h in reversed(_history):
+                            _s = _h.get('sender', '?')
+                            _c = _h.get('content', '')[:200]
+                            _ctx += f"[{_s}]: {_c}\n"
+                        sys_prompt += _ctx
+                except Exception:
+                    pass
+
                 r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
 
-                # Timeout-Check nach LLM-Call
-                if time.time() - _processing_start > 300:
-                    raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >5 Min (msg_id={msg['msg_id']})")
+                # Timeout-Check (600s = 10 Min, war 300s)
+                if time.time() - _processing_start > 600:
+                    raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >10 Min (msg_id={msg['msg_id']})")
 
                 processed = ""
                 if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
@@ -125,7 +132,6 @@ class BaseAgent:
 
                     import re as _re
                     raw = processed or r.content
-                    # Think-Block formatieren statt löschen: in Chat sichtbar machen
                     think_display = _re.sub(
                         r'<think>([\s\S]*?)</think>',
                         r'\n[💭 \1]\n',
@@ -133,10 +139,8 @@ class BaseAgent:
                     ).strip()
                     self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
 
-                # Acknowledge in the queue
                 await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))
 
-                # Signal completion to coordinator (cross-process HTTP)
                 self._req("post", "/api/swarm/complete", {
                     "context_id": msg["context_id"],
                     "agent_name": self.n,

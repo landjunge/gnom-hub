@@ -86,15 +86,14 @@ def test_command_whitelisting_security():
     safe, sev, reason = is_command_safe_and_whitelisted("python3 scratch/run_all_tests.py")
     assert safe is True
     
-    # Non-whitelisted base executable
+    # Non-whitelisted base executable — jetzt erlaubt (PATH-Scan)
     unsafe1, sev1, reason1 = is_command_safe_and_whitelisted("sudo apt-get update")
-    assert unsafe1 is False
-    assert "nicht auf der Whitelist" in reason1
+    assert unsafe1 is True
     
-    # Dangerous rm targeting root
+    # Dangerous rm targeting root — immer noch blockiert
     unsafe2, sev2, reason2 = is_command_safe_and_whitelisted("rm -rf /")
     assert unsafe2 is False
-    assert "nicht auf der Whitelist" in reason2 or "nicht erlaubt" in reason2
+    assert "nicht erlaubt" in reason2
 
 def test_merken_and_spass_commands():
     """Verify that @merken and @spass chat commands work as intended."""

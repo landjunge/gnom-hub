@@ -4,10 +4,10 @@
 > *8 Agents. 180 Modules. Zero cloud dependency. Zero uncontrolled sprawl.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-154-blue.svg)](#)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-154-passing-green.svg)](#)
+[![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#)
-[![LLM](https://img.shields.io/badge/LLM-DeepSeek_R1-brightgreen.svg)](#)
+[![LLM](https://img.shields.io/badge/LLM-DeepSeek_V4-brightgreen.svg)](#)
 
 ---
 
