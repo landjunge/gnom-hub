@@ -1,0 +1,5 @@
+title: Gnom-Hub
+description: Lokale Multi-Agenten-Orchestrierung — 8 KI-Agenten ohne Cloud
+theme: jekyll-theme-cayman
+include:
+  - .well-known

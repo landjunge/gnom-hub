@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnom-Hub – Lokale Multi-Agenten-Orchestrierung</title>
+    <meta name="description" content="Gnom-Hub ist ein lokaler Multi-Agenten-Orchestrator. 8 KI-Agenten (GeneralAG, CoderAG, WriterAG, ResearcherAG, EditorAG, SoulAG, SecurityAG, WatchdogAG) arbeiten zusammen – ohne Cloud, ohne API-Kosten.">
+    <meta name="keywords" content="KI-Agenten, Multi-Agent, Orchestrator, lokale KI, Agenten-Swarm, FastAPI, DeepSeek, OpenRouter, LLM, SQLite">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://landjunge.github.io/gnom-hub/">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Gnom-Hub – Lokale Multi-Agenten-Orchestrierung">
+    <meta property="og:description" content="8 KI-Agenten arbeiten zusammen – ohne Cloud, ohne API-Kosten. Dein lokaler KI-Swarm.">
+    <meta property="og:url" content="https://landjunge.github.io/gnom-hub/">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://landjunge.github.io/gnom-hub/docs/screenshot_warroom.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Gnom-Hub – Lokale Multi-Agenten-Orchestrierung">
+    <meta name="twitter:description" content="8 KI-Agenten arbeiten zusammen – ohne Cloud, ohne API-Kosten.">
+    <meta name="twitter:image" content="https://landjunge.github.io/gnom-hub/docs/screenshot_warroom.png">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        a { color: #00ff88; text-decoration: none; }
+        a:hover { color: #00cc66; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+        header { text-align: center; padding: 4rem 0 2rem; }
+        header h1 { font-size: 3rem; font-weight: 700; background: linear-gradient(135deg, #00ff88, #00ccff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header p { font-size: 1.2rem; color: #888; margin-top: 0.5rem; }
+        header .badge { display: inline-block; background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); padding: 0.3rem 1rem; border-radius: 20px; font-size: 0.85rem; margin: 1rem 0.3rem; }
+
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 3rem 0; }
+        .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.5rem; }
+        .card h3 { color: #00ff88; font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .card p { color: #999; font-size: 0.9rem; }
+
+        .agents { margin: 3rem 0; }
+        .agents h2 { font-size: 1.5rem; margin-bottom: 1rem; border-left: 4px solid #00ff88; padding-left: 1rem; }
+        .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .agent-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 1rem; text-align: center; }
+        .agent-card .role { color: #00ff88; font-weight: 600; }
+        .agent-card .desc { color: #888; font-size: 0.8rem; margin-top: 0.3rem; }
+
+        .code-block { background: #0a0a14; border-radius: 8px; padding: 1rem; margin: 1rem 0; overflow-x: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.06); }
+        .code-block .comment { color: #666; }
+
+        .cta { text-align: center; padding: 3rem 0; }
+        .cta .btn { display: inline-block; background: #00ff88; color: #0f0f1a; padding: 0.8rem 2rem; border-radius: 8px; font-weight: 600; margin: 0.5rem; transition: transform 0.2s; }
+        .cta .btn:hover { transform: translateY(-2px); color: #0f0f1a; }
+        .cta .btn-secondary { background: transparent; border: 1px solid #00ff88; color: #00ff88; }
+
+        footer { text-align: center; padding: 2rem; border-top: 1px solid rgba(255,255,255,0.06); color: #666; font-size: 0.85rem; }
+
+        @media (max-width: 600px) { header h1 { font-size: 2rem; } .container { padding: 1rem; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 Gnom-Hub</h1>
+            <p>Lokale Multi-Agenten-Orchestrierung — ohne Cloud, ohne Vendor-Lock-in</p>
+            <div>
+                <span class="badge">⚡ 8 Agenten</span>
+                <span class="badge">🐍 Python 3.10</span>
+                <span class="badge">🔗 DeepSeek / OpenRouter</span>
+                <span class="badge">📦 154 Tests</span>
+            </div>
+        </header>
+
+        <section class="features">
+            <div class="card">
+                <h3>🚀 Local First</h3>
+                <p>Läuft komplett lokal. Keine Cloud-Abhängigkeit, keine versteckten Kosten. Deine Daten bleiben bei dir.</p>
+            </div>
+            <div class="card">
+                <h3>🧩 8 Spezialisierte Agenten</h3>
+                <p>GeneralAG, CoderAG, WriterAG, ResearcherAG, EditorAG, SoulAG, SecurityAG, WatchdogAG – jeder mit eigener Rolle und Persönlichkeit.</p>
+            </div>
+            <div class="card">
+                <h3>🔌 Multi-Provider</h3>
+                <p>DeepSeek, OpenRouter, Ollama – automatische Fallback-Kette. Kein Single-Point-of-Failure beim LLM.</p>
+            </div>
+            <div class="card">
+                <h3>📊 AGtuning Dashboard</h3>
+                <p>7-Tab-Tuning-Seite: Prompt-Editor, Soul-Fakten, Blockaden, Tools, Verhalten, Presets, SuperGNOM-Baking.</p>
+            </div>
+            <div class="card">
+                <h3>🔒 Sicherheit</h3>
+                <p>Gatekeeper-System mit Regex-basierter Pattern-Erkennung. Geschützte Systempfade. Auto-Approved oder manuelle Freigabe.</p>
+            </div>
+            <div class="card">
+                <h3>🧠 SoulAG Gedächtnis</h3>
+                <p>FAISS-basierte semantische Suche. Lernt aus jedem Chat. Scoring, Aging, Dedup – intelligentes Langzeitgedächtnis.</p>
+            </div>
+        </section>
+
+        <section class="agents">
+            <h2>🤖 Die 8 Agenten</h2>
+            <div class="agent-grid">
+                <div class="agent-card"><div class="role">GeneralAG</div><div class="desc">Koordinator – zerlegt Aufgaben, delegiert an Worker</div></div>
+                <div class="agent-card"><div class="role">CoderAG</div><div class="desc">Code-Implementierung, Shell-Befehle</div></div>
+                <div class="agent-card"><div class="role">WriterAG</div><div class="desc">Texte, Dokumentation, Inhalte</div></div>
+                <div class="agent-card"><div class="role">ResearcherAG</div><div class="desc">Web-Recherche, Fakten-sammeln</div></div>
+                <div class="agent-card"><div class="role">EditorAG</div><div class="desc">Qualitätsprüfung, Review, Korrektur</div></div>
+                <div class="agent-card"><div class="role">SoulAG</div><div class="desc">Gedächtnis, semantisches Lernen</div></div>
+                <div class="agent-card"><div class="role">SecurityAG</div><div class="desc">Code-Scanning, Sicherheitsrisiken</div></div>
+                <div class="agent-card"><div class="role">WatchdogAG</div><div class="desc">Dateischutz, Regel-Patrouille</div></div>
+            </div>
+        </section>
+
+        <section>
+            <h2 style="border-left: 4px solid #00ff88; padding-left: 1rem; margin-bottom: 1rem;">⚡ Quick Start</h2>
+            <div class="code-block">
+                <span class="comment"># Repository klonen</span><br>
+                git clone https://github.com/landjunge/gnom-hub.git<br>
+                cd gnom-hub<br><br>
+                <span class="comment"># Installieren & starten</span><br>
+                python3 install.py<br>
+                python3 -m gnom_hub
+            </div>
+        </section>
+
+        <section>
+            <h2 style="border-left: 4px solid #00ff88; padding-left: 1rem; margin-bottom: 1rem;">📸 Screenshots</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                <img src="screenshot_warroom.png" alt="War Room Dashboard" style="width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                <img src="screenshot_dashboard.png" alt="Metrics Dashboard" style="width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                <img src="screenshot_llm_global.png" alt="LLM Configuration" style="width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                <img src="screenshot_workspace.png" alt="Workspace" style="width:100%; border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+            </div>
+        </section>
+
+        <div class="cta">
+            <a href="https://github.com/landjunge/gnom-hub" class="btn">📦 GitHub Repo</a>
+            <a href="https://github.com/landjunge/gnom-hub/blob/master/README.md" class="btn btn-secondary">📖 Dokumentation</a>
+            <a href="demo.html" class="btn btn-secondary">🎬 Demo</a>
+        </div>
+
+        <footer>
+            <p>Gnom-Hub · MIT License · Built with Python, FastAPI & DeepSeek</p>
+            <p style="margin-top:0.5rem; font-size:0.75rem;">
+                <a href="https://github.com/landjunge/gnom-hub">GitHub</a> · 
+                <a href="sitemap.xml">Sitemap</a> · 
+                <a href="robots.txt">robots.txt</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
