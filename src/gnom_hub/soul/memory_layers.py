@@ -128,6 +128,8 @@ class CoordinationDB:
                 candidates.append((name, success_rate, qd))
             elif total >= 5 and success_rate < 40:
                 _log.info("[CoordDB] Skipping %s: %d%% success rate after %d jobs", name, success_rate, total)
+            else:
+                candidates.append((name, success_rate, qd))
 
         candidates.sort(key=lambda x: (-x[1], x[2]))
         if candidates:
