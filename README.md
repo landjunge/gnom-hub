@@ -400,6 +400,31 @@ To avoid performance bottlenecks in tight agent interaction loops, Gnom-Hub uses
 
 ---
 
+## 🗄️ Database Architecture
+
+Gnom-Hub uses three SQLite databases with different lifetimes and purposes:
+
+| Database | Location | Purpose | Persistence |
+|----------|----------|---------|-------------|
+| **gnomhub.db** | `~/.gnom-hub/data/` | Chat, agents, state, config, soul_memory, messages, workflows | Wiped on pre-push cleanup |
+| **coordination.db** | `~/.gnom-hub/data/` | Worker stats, job history, workflow results | **Permanent** — survives cleanup |
+| **soul_passive.db** | `~/.gnom-hub/data/` | Long-term fact archive (SoulAG Layer 3) | Permanent |
+
+### coordination.db — Self-Learning Agent Routing
+
+```text
+worker_stats        — Per-agent success rates, avg duration, last job type
+job_history         — Every job: worker, task, result, duration
+workflow_results    — Workflow chains: task_sequence, result, failed_at, duration
+```
+
+`find_best_agent_for_task()` uses 3-stage routing:
+1. **Stage 1:** Query coordination.db for success rates — skip workers below 40% after 5+ jobs
+2. **Stage 2:** Capability match + queue depth + success score
+3. **Stage 3:** Keyword heuristic fallback
+
+→ After a few jobs, the swarm optimizes itself automatically.
+
 ## 📁 Project Structure
 
 ```text
