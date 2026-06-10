@@ -421,7 +421,7 @@ gnom-hub/
 ├── agents/                # Startup scripts for 8 background agents (1-line wrappers)
 ├── config/                # Presets, .env, routing overrides
 ├── scripts/               # Installer & shortcuts
-├── tests/                 # Unit test suite (32 tests: connection, state, agents, chat, admin_auth)
+├── tests/                 # Unit test suite (154 tests: connection, state, agents, chat, admin_auth)
 ├── docs/                  # Architecture docs & screenshots
 └── pyproject.toml         # Ruff config & dependencies
 ```
@@ -477,7 +477,7 @@ Architect of the hardening & consolidation phases. Key contributions:
 - Full code audit: 120 findings → 26 fixes across security, crashes, stability, and cleanup
 - Consolidated monolithic `legacy_db` into modular domain repositories (`system_repo`, `showbox_repo`) with package-root imports
 - Replaced 8 duplicate agent startup scripts with a single universal argument-driven runner (`agents/run_agent.py`) and backward-compatible wrappers
-- Designed and built a comprehensive isolated test suite (32 unit/integration tests) with in-memory SQLite fixtures
+- Designed and built a comprehensive isolated test suite (154 unit/integration tests) with in-memory SQLite fixtures
 
 ---
 

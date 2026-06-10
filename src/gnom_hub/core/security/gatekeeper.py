@@ -3,8 +3,6 @@ import os
 import uuid
 import time
 import threading
-import logging
-import json
 from html import escape as html_escape
 from gnom_hub.db import (
     add_chat_message, 
@@ -16,9 +14,8 @@ from gnom_hub.db import (
     set_agent_status,
     log_blockade,
 )
-import gnom_hub.infrastructure.router.router as router
 from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
-from gnom_hub.agents.capability_manager import check_capability, request_capability
+from gnom_hub.agents.capability_manager import request_capability
 
 # ── Event-basierte Entscheidungs-Warteschlange ──
 # Ersetzt das while-True-Polling (3000 Iterationen in 5min) durch

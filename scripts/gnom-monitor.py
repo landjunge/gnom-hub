@@ -1,5 +1,5 @@
 import requests, json, time, sys
-BASE = 'http://127.0.0.1:3002'
+import os; BASE = f"http://127.0.0.1:{os.environ.get("GNOM_HUB_PORT", "3002")}"
 log = open('/tmp/gnom-monitor.log', 'a')
 
 def chat(c):

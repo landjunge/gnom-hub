@@ -6,8 +6,10 @@ echo "🚀 Starte GnomHub..."
 source .venv/bin/activate
 export PYTHONPATH=src
 
-# Monitor starten (Hintergrund) - freed haengende Agenten nach 2 Min automatisch
+# Monitor starten (nach Hub-Start)
 pkill -f "scripts/gnom-monitor.py" 2>/dev/null
+# warte bis Hub bereit
+sleep 3
 python3 scripts/gnom-monitor.py &
 echo "✅ Monitor gestartet (PID $!)"
 
