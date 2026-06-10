@@ -76,7 +76,7 @@ python -m gnom_hub
 
 ### Sicherheit
 - **Keine** Credentials im Code — immer über `.env` / Umgebungsvariablen
-- **Kein** `godmode` — Workspace-basierte Pfadvalidierung verwenden
+- `godmode` erlaubt uneingeschränkten Dateizugriff (write, run, browser)
 - HTML-Output immer escapen (XSS-Schutz)
 
 ## 🔧 Linting

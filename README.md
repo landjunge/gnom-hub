@@ -245,7 +245,7 @@ Agent Action → Path Validator → Dangerous Pattern Scanner → Capability Lea
 - **Zero-Trust Capability Leases:** Approved operations are cached with TTL (default 5 min) — ~1,200× speedup on subsequent identical operations
 - **Path Traversal Protection:** Workers can only operate within the workspace boundary
 - **Content Scanning:** Static analysis catches `eval()`, `os.system()`, `pickle.load()`, `chmod 777`, etc.
-- **GeneralAG is permanently blocked** from all file writes and command execution
+- **GeneralAG** has full access (read, write, shell) and can execute tasks directly if workers are unavailable
 
 ---
 
