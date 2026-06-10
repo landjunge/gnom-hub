@@ -2,21 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v1.1.1] - 2026-06-08
+## [v1.2.0] - 2026-06-10
 ### Added
-- **Event-basierter Gatekeeper**: `threading.Event` statt `while True: sleep(0.3); poll()` — 0% CPU im Wait, 0 DB-Operationen, instant Wake-up bei User-Entscheidung.
-- **ZWC-Direktivensystem**: SoulAG kann via `emit_directive()` TTL-begrenzte Anweisungen als unsichtbare ZWC-Metadaten einbetten. Agents lesen sie via `get_directives()`.
-- **154 Tests** (vorher 139): 15 Queue-Load-Tests für SQLite-Message-Queue unter Last.
-- **index.html-Versionierung**: Automatische Hochzählung (index1.html, index2.html) statt Überschreiben.
+- **Permissions erweitert**: Alle Worker haben godmode. GeneralAG hat write/run/godmode.
+- **Workspace-Confinement aufgehoben**: Agents mit Permissions können außerhalb des Workspace schreiben.
+- **PRE_PUSH_CHECKLIST.md**: 10-Schritte-Checkliste vor jedem git push.
+- **GNOM_HUB_FULL_REPORT.md**: Vollständiger Systemreport für andere KI-Assistenten.
+- **Monitor-Skript** (`scripts/gnom-monitor.py`): Freed automatisch hängende Agents nach 2 Min.
+- **GitHub Pages**: Projekt-Website live unter `landjunge.github.io/gnom-hub/`.
+- **Forum (Discussions)** auf GitHub aktiviert + 2 Beiträge.
+- **Gnom-Theme-Design**: Schmiede-Optik für die Projektseite.
+
+### Changed
+- **`@@free` killt+restartet jetzt Agent-Prozesse** (nicht nur DB-Reset).
+- **Whitelist verschärft**: Unbekannte Executables werden high risk blockiert statt nur gewarnt.
+- **run.sh**: Monitor startet automatisch, Startup-Reihenfolge Hub→Monitor.
+- **pyproject.toml**: target-version py39→py310, version 1.1.1→1.2.0.
+- **README/Badges**: Test-Count 32→154, Python 3.9→3.10.
+- **Relative Imports** → absolute Imports in router_stage.py.
+- **Leere `__init__.py`** in 4 Modulen ergänzt.
 
 ### Fixed
-- **dispatch_sequence() respektiert Backpressure**: Prüft jetzt `MAX_QUEUE_DEPTH` via zentraler `can_accept_message()`.
-- **ack_message() resetiert child.deliver_after**: Parent-Completion macht Children sofort abholbar (keine 3s Verzögerung).
-- **DEPENDENCY_TIMEOUT prüft processing_since**: Statt created_at — Timeout zählt ab Prozessstart, nicht ab Queue-Einreihen.
-- **fail_dependent_messages() via SQL-Recursive-CTE**: Flach statt Python-Rekursion. Kaskade überspringt done-Messages, erreicht aber deren Children.
-- **pulse.py**: Print → logging, Timeout 60s→30s, Nachricht korrigiert ("1 Minute" statt "5 Minuten").
-- **chat_helpers.py**: `@blockade`/`@blokade` in Parser-Whitelist ergänzt.
-- **pulse.py**: SyntaxError im try/except-Block behoben (indentation).
+- **pulse.py**: Überschrieb Agent-Status mit "running" statt "online" (Bug).
+- **gatekeeper.py**: Toter `router`-Import entfernt (circular import Risiko).
+- **gatekeeper.py**: Tote imports (`json`, `logging`, `check_capability`) bereinigt.
+- **soul.py**: Bare `except: pass` → `except Exception`.
+- **config.py**: `LOG_DIR.mkdir` in try/except geschützt.
+- **monitor.py**: F-string Syntax gefixt, Port jetzt dynamisch per env var.
+- **agent_base.py**: None-check für `soul_instance` hinzugefügt.
+
+### Cleanup
+- **7 alte Workspaces** (`gnom_workspace_*`) gelöscht.
+- **`data_backup/`, `netzwerkpunkt_showcase/`, `scratch/`, `gnom-hub-fresh/`** entfernt.
+- **Temp-Dateien** (`config/tmpgrbh*.tmp`, Token-Logs) gelöscht.
+- **DB**: Alte soul_facts (83), chats, blockaden, FAISS-Indizes geleert.
+- **Workspace default**: Komplett geleert (frischer Start).
 
 ## [v1.0.0] - 2026-05-26
 ### Added
