@@ -49,6 +49,13 @@ def pulse_janitor():
             recover_stuck_messages(str(DB_PATH))
         except Exception as e:
             logging.getLogger(__name__).error("Stuck message recovery failed: %s", e)
+        try:
+            from gnom_hub.agents.swarm.workflow_engine import recover_stuck_workflows
+            recovered = recover_stuck_workflows()
+            if recovered:
+                logging.getLogger(__name__).info("Stuck workflow recovery: %d workflows freed", recovered)
+        except Exception as e:
+            logging.getLogger(__name__).error("Stuck workflow recovery failed: %s", e)
 
 def start_pulse(interval=30):
     def loop():
