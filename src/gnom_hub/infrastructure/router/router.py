@@ -118,6 +118,10 @@ def _build_sys(n, sys, agent_name):
     except Exception:
         pass
 
+    obedience_level = settings.get("obedience", 3)
+    sys += _get_obedience_instructions(obedience_level)
+    sys += _get_behavioral_instructions(settings)
+
     if settings.get("custom_prompt"):
         sys += "\n\n=== BENUTZERDEFINIERTER SUFFIX ===\n" + settings["custom_prompt"]
     active_preset = (get_state_value("active_preset") or "Web Development").strip('"\'')

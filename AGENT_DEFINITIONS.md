@@ -91,6 +91,50 @@
 
 ---
 
+## 1.9 Kommunikationsdiagramm
+
+```mermaid
+flowchart TB
+    User["👤 User"] -->|"@GeneralAG Aufgabe"| GA["👑 GeneralAG<br/><i>Koordinator</i>"]
+
+    GA -->|"@CoderAG -> Task"| CA["⚡ CoderAG<br/><i>Code</i>"]
+    GA -->|"@WriterAG -> Task"| WA["📜 WriterAG<br/><i>Texte</i>"]
+    GA -->|"@ResearcherAG -> Task"| RA["🔍 ResearcherAG<br/><i>Recherche</i>"]
+    GA -->|"@EditorAG -> Task"| EA["📋 EditorAG<br/><i>Review</i>"]
+
+    CA -->|"Status @GeneralAG"| GA
+    WA -->|"Status @GeneralAG"| GA
+    RA -->|"Status @GeneralAG"| GA
+    EA -->|"Status @GeneralAG"| GA
+
+    GA -->|"<SHOWBOX:system>"| User
+
+    GA -.->|"wissen anfragen"| SA["🧠 SoulAG<br/><i>Gedächtnis</i>"]
+    SA -.->|"Fakten injizieren"| CA
+    SA -.->|"Fakten injizieren"| WA
+    SA -.->|"Fakten injizieren"| RA
+    SA -.->|"Fakten injizieren"| EA
+    SA -->|"gelernte Fakten"| WD["🛡️ WatchdogAG<br/><i>Regeln</i>"]
+    SA -->|"gelernte Fakten"| SC["🔒 SecurityAG<br/><i>Sicherheit</i>"]
+
+    subgraph BLOCKADE ["Blockade-Auflösung (optimiert)"]
+        CA -.-|"blockiert"| WD
+        CA -.-|"blockiert"| SC
+        WD -->|"Freigegeben. Los gehts!"| CA
+        SC -->|"Freigegeben. Los gehts!"| CA
+    end
+
+    style User fill:#2d2d3d,stroke:#00e5ff,color:#fff
+    style GA fill:#1a1a2e,stroke:#ffd700,color:#fff
+    style CA fill:#1a1a2e,stroke:#ff6b6b,color:#fff
+    style WA fill:#1a1a2e,stroke:#69db7c,color:#fff
+    style RA fill:#1a1a2e,stroke:#74c0fc,color:#fff
+    style EA fill:#1a1a2e,stroke:#da77f2,color:#fff
+    style SA fill:#1a1a2e,stroke:#ff922b,color:#fff
+    style WD fill:#1a1a2e,stroke:#ffa94d,color:#fff
+    style SC fill:#1a1a2e,stroke:#ff6b9d,color:#fff
+```
+
 ## 2. KOMMUNIKATION & WORKFLOW
 
 ### 2.1 Standard-Chat-Flow
@@ -232,7 +276,7 @@ __builtins__|__globals__|__getattribute__
 - [ ] **TTS im SuperGNOM** — Sprachausgabe-Konfiguration im Bake-Paket
 - [ ] **USB-Stick-Fallback** — Automatischer Fallback auf lokales LLM
 - [ ] **Preset als Standard setzen** — UI-Button fehlt
-- [ ] **Obedience-Slider auswerten** — Daten gespeichert, nicht im Router
+- [x] **Obedience-Slider auswerten** — Daten gespeichert, jetzt im Router aktiv (router.py:121-123)
 - [ ] **Live-Demo-Video** — Agents sollen selbst ein Screen-Recording + TTS-Video erstellen
 
 ---
