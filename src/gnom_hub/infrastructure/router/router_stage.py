@@ -1,4 +1,4 @@
-from ...core.config import Config
+from gnom_hub.core.config import Config
 from .router_config import DS_KEY, OR_KEY
 
 

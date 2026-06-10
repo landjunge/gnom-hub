@@ -61,4 +61,7 @@ class Config:
         "openai/gpt-oss-120b:free",
     ]
 
-Config.LOG_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    Config.LOG_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass

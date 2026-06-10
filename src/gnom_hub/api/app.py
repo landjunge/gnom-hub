@@ -60,7 +60,7 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                         pass
 
                 drift = (now - last_seen).total_seconds() if last_seen else 999999
-                should_be_online = status in ("online", "busy", "running")
+                should_be_online = status in ("online", "busy")
 
                 if status == "degraded":
                     if drift > 60.0:

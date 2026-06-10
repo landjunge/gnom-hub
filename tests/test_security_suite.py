@@ -166,10 +166,10 @@ class TestIsCommandSafeAndWhitelisted:
         assert "nicht erlaubt" in reason  # Begründung vorhanden
 
     def test_unknown_exec_blocked(self):
-        """Truly unknown binary not on whitelist → blocked (medium severity = warning+allow)"""
+        """Unbekannter Befehl wird jetzt high risk blockiert"""
         safe, sev, reason = self._call("custom_evil_binary --payload")
         assert safe is False
-        assert sev == "medium"
+        assert sev == "high"
 
     def test_git_status_blocked(self):
         safe, sev, reason = self._call("git status")
@@ -384,9 +384,9 @@ class TestVerifyCmd:
         assert result is True
 
     def test_non_whitelisted_cmd_warning_allowed(self):
-        """Nicht-whitelisted Befehl → warning (medium) + allow (nicht high-risk)"""
-        result = self._call(make_agent(), "custom_evil_binary --payload")
-        assert result is True
+        """Unbekannter Befehl wird jetzt high risk blockiert"""
+        result = self._call(make_agent(), "some_unknown_binary --param")
+        assert result is False
 
     def test_python3_cmd_allowed(self):
         """python3 mit Script ist whitelisted → True"""
@@ -894,11 +894,11 @@ class TestGodmodeWhitelistHardening:
         return is_command_safe_and_whitelisted(cmd, agent)
 
     def test_godmode_agent_unknown_binary_blocked(self):
-        """godmode-Agent mit unbekanntem Binary → blocked (medium)"""
+        """godmode-Agent mit unbekanntem Binary → blocked (high)"""
         agent = {"name": "CoderAG", "permissions": ["godmode"]}
         safe, sev, reason = self._call("custom_evil_binary --payload", agent)
         assert safe is False
-        assert sev == "medium"
+        assert sev == "high"
 
     def test_godmode_agent_whitelisted_binary_allowed(self):
         """godmode-Agent mit whitelisted Binary → erlaubt"""
@@ -907,11 +907,11 @@ class TestGodmodeWhitelistHardening:
         assert safe is True
 
     def test_normal_agent_unknown_binary_blocked(self):
-        """Normaler Agent ohne godmode → auch blocked (medium)"""
+        """Normaler Agent → unbekanntes Binary blocked (high)"""
         agent = {"name": "CoderAG", "permissions": ["read", "write"]}
         safe, sev, reason = self._call("custom_evil_binary", agent)
         assert safe is False
-        assert sev == "medium"
+        assert sev == "high"
 
 
 # ==============================================================================

@@ -80,7 +80,7 @@ def handle_git(q, rb=False):
         subprocess.run(["git", "init"], cwd=wd, capture_output=True)
         subprocess.run(["git", "config", "user.name", "Gnom-Hub Agents"], cwd=wd, capture_output=True)
         subprocess.run(["git", "config", "user.email", "agents@gnom-hub.local"], cwd=wd, capture_output=True)
-    try: 
+    try:
         import shlex
         r = subprocess.run(["git"] + shlex.split(cmd), cwd=wd, capture_output=True, text=True, timeout=10).stdout.strip()
     except Exception as e: 

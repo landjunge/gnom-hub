@@ -15,7 +15,7 @@ from gnom_hub.db import (
     log_blockade,
 )
 from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
-from gnom_hub.agents.capability_manager import request_capability
+from gnom_hub.agents.capability_manager import check_capability, request_capability
 
 # ── Event-basierte Entscheidungs-Warteschlange ──
 # Ersetzt das while-True-Polling (3000 Iterationen in 5min) durch
@@ -344,7 +344,7 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
             if _is_high_risk_exec(exec_name, args_tokens):
                 return False, "high", f"Hochrisiko-Befehl '{exec_name}' blockiert."
             # Unbekannt aber nicht hochriskant → warning + allow
-            return False, "medium", f"Befehl '{exec_name}' ist nicht auf der Whitelist — gewarnt."
+            return False, "high", f"Unbekannter Befehl '{exec_name}' blockiert (nicht auf Whitelist)."
 
         # 3. Argument-Validierung für spezifische Befehle
         if exec_name in ("pip", "pip3"):
