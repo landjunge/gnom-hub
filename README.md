@@ -109,6 +109,7 @@ We analyzed **12+ leading multi-agent frameworks** (CrewAI, AutoGen/AG2, LangGra
 | 🔐 | **Live PyPI Vulnerability Scanning** | When agents run `pip install`, unknown packages are verified against PyPI's live API for existence, valid releases, and known vulnerabilities *before* execution | ❌ No framework validates agent package installs in real-time |
 | 🌐 | **Multi-Instance Isolation** | Isolated data directories and workspace folders based on port configurations (`~/.gnom-hub-{port}`) to support multiple concurrent server instances | ❌ Competitors share configuration environments |
 | ⛓️ | **Extended Mention Limit** | Communication depth raised to 6 hops to allow complex multi-agent workflows (Coder → Writer → Researcher → Editor) to complete without interruptions | ❌ Rigid limits or infinite loops without synthesis |
+| 📊 | **Self-Optimizing Agent Routing** | Coordination DB tracks every job per worker (success rate, duration, queue depth). `find_best_agent_for_task()` uses 3-stage routing: stats → capabilities → keywords. Workers below 40% success rate after 5+ jobs are actively skipped | ❌ No competitor learns from job history to route tasks |
 
 ### 📊 Framework Comparison
 

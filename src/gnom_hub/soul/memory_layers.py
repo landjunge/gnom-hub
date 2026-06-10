@@ -49,8 +49,26 @@ class CoordinationDB:
                     notes TEXT DEFAULT ''
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS workflow_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    workflow_id TEXT,
+                    context_id TEXT,
+                    name TEXT,
+                    task_chain TEXT NOT NULL,
+                    overall_result TEXT NOT NULL,
+                    failed_at_task TEXT,
+                    failure_reason TEXT,
+                    duration_s REAL DEFAULT 0,
+                    task_count INTEGER DEFAULT 0,
+                    user_feedback TEXT DEFAULT 'none',
+                    created_at TEXT NOT NULL
+                )
+            """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_worker ON job_history(worker)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_result ON job_history(result)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_wf_result ON workflow_results(overall_result)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_wf_chain ON workflow_results(task_chain)")
             conn.commit()
 
     def record_job(self, worker: str, task_summary: str, result: str,
@@ -152,6 +170,71 @@ class CoordinationDB:
                     (worker, limit)
                 ).fetchall()
             return [f"{r[0]}: {r[1]}" for r in rows]
+        except Exception:
+            return []
+
+    def record_workflow(self, workflow_id: str, context_id: str, name: str,
+                        task_chain: list[str], overall_result: str,
+                        duration_s: float, failed_at_task: str = None,
+                        failure_reason: str = None):
+        try:
+            with sqlite3.connect(self._path) as conn:
+                conn.execute("""
+                    INSERT INTO workflow_results
+                        (workflow_id, context_id, name, task_chain, overall_result,
+                         failed_at_task, failure_reason, duration_s, task_count, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    workflow_id, context_id, name, json.dumps(task_chain),
+                    overall_result, failed_at_task, failure_reason,
+                    duration_s, len(task_chain), datetime.now().isoformat()
+                ))
+                conn.commit()
+        except Exception as e:
+            _log.warning("[CoordDB] record_workflow failed: %s", e)
+
+    def get_best_workflow_patterns(self, min_samples: int = 3, limit: int = 5) -> list[dict]:
+        try:
+            with sqlite3.connect(self._path) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute("""
+                    SELECT task_chain,
+                           COUNT(*) as total,
+                           SUM(CASE WHEN overall_result = 'success' THEN 1 ELSE 0 END) as successes,
+                           ROUND(AVG(CASE WHEN overall_result = 'success' THEN duration_s ELSE NULL END), 1) as avg_duration_s
+                    FROM workflow_results
+                    GROUP BY task_chain
+                    HAVING total >= ?
+                    ORDER BY successes DESC, avg_duration_s ASC
+                    LIMIT ?
+                """, (min_samples, limit)).fetchall()
+            result = []
+            for r in rows:
+                total = r["total"]
+                successes = r["successes"] or 0
+                result.append({
+                    "task_chain": json.loads(r["task_chain"]),
+                    "total": total,
+                    "successes": successes,
+                    "success_rate": round((successes / total) * 100, 1),
+                    "avg_duration_s": r["avg_duration_s"] or 0,
+                })
+            return result
+        except Exception:
+            return []
+
+    def get_workflow_summary(self, limit: int = 10) -> list[dict]:
+        try:
+            with sqlite3.connect(self._path) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute("""
+                    SELECT name, task_chain, overall_result, failed_at_task,
+                           duration_s, user_feedback, created_at
+                    FROM workflow_results
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                """, (limit,)).fetchall()
+            return [dict(r) for r in rows]
         except Exception:
             return []
 

@@ -89,6 +89,57 @@ def interpolate_template(template: str, variables: Dict[str, str]) -> str:
     return result
 
 
+def _get_workflow_name(workflow_id: str) -> str:
+    conn = get_db_connection()
+    try:
+        row = conn.execute("SELECT name FROM workflows WHERE id=?", (workflow_id,)).fetchone()
+        return row["name"] if row else ""
+    finally:
+        conn.close()
+
+
+def _get_context_id(tasks: list) -> str:
+    for t in tasks:
+        try:
+            inp = json.loads(t.get("input_template", "{}")) if isinstance(t.get("input_template"), str) else {}
+            if isinstance(inp, dict) and inp.get("context_id"):
+                return inp["context_id"]
+        except Exception:
+            pass
+    return ""
+
+
+def _record_wf_result(workflow_id: str, task_chain: list, overall_result: str,
+                       failed_at_task: str = None):
+    try:
+        from gnom_hub.soul.memory_layers import get_coordination_db
+        conn = get_db_connection()
+        try:
+            wf = conn.execute("SELECT name, created_at FROM workflows WHERE id=?", (workflow_id,)).fetchone()
+            if not wf:
+                return
+            start = wf["created_at"] or time.time()
+            tasks = conn.execute(
+                "SELECT capability, status FROM workflow_tasks WHERE workflow_id=?", (workflow_id,)
+            ).fetchall()
+            capabilities = [t["capability"] for t in tasks]
+        finally:
+            conn.close()
+
+        get_coordination_db().record_workflow(
+            workflow_id=workflow_id,
+            context_id="",
+            name=wf["name"],
+            task_chain=capabilities,
+            overall_result=overall_result,
+            duration_s=time.time() - start,
+            failed_at_task=failed_at_task,
+            failure_reason=None,
+        )
+    except Exception as e:
+        logger.warning("Failed to record workflow result: %s", e)
+
+
 # ── Core Workflow Functions ─────────────────────────────────────────────────
 
 def create_workflow(name: str, tasks: List[Dict]) -> str:
@@ -193,14 +244,17 @@ def evaluate_workflow(workflow_id: str) -> None:
             task_map = {t["task_id"]: t for t in tasks}
 
         # 2. Prüfen, ob irgendein Task fehlgeschlagen ist
+        task_chain = [t["capability"] for t in tasks]
         any_failed = any(t["status"] == "failed" for t in tasks)
         if any_failed:
+            failed_task = next((t["task_id"] for t in tasks if t["status"] == "failed"), None)
             with conn:
                 conn.execute(
                     "UPDATE workflows SET status='failed', completed_at=? WHERE id=? AND status='running'",
                     (time.time(), workflow_id)
                 )
-            _log_wf(workflow_id, "ABORTED — at least one task failed", "error")
+            _log_wf(workflow_id, f"ABORTED — failed at {failed_task}", "error")
+            _record_wf_result(workflow_id, task_chain, "failed", failed_at_task=failed_task)
             return
 
         # 3. Alle Tasks completed?
@@ -212,6 +266,7 @@ def evaluate_workflow(workflow_id: str) -> None:
                     (time.time(), workflow_id)
                 )
             _log_wf(workflow_id, "COMPLETED successfully", "info")
+            _record_wf_result(workflow_id, task_chain, "success")
             return
 
         # 4. Tasks finden, die bereit zum Start sind
@@ -376,11 +431,13 @@ def recover_stuck_workflows() -> int:
                         "UPDATE workflows SET status='failed', completed_at=? WHERE id=?",
                         (time.time(), wf["id"])
                     )
+                    _record_wf_result(wf["id"], [], "failed")
                 else:
                     conn.execute(
                         "UPDATE workflows SET status='completed', completed_at=? WHERE id=?",
                         (time.time(), wf["id"])
                     )
+                    _record_wf_result(wf["id"], [], "success")
                 recovered += 1
                 _log_wf(wf["id"], f"Recovered (orphan cleanup): {wf['name']}", "warning")
         if recovered:

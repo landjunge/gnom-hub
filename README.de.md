@@ -117,6 +117,7 @@ Wir haben **mehr als 12 führende Multi-Agenten-Frameworks** analysiert (CrewAI,
 | 🔐 | **Live PyPI-Schwachstellenscan** | Bei Ausführung von `pip install` durch Agenten werden Pakete in Echtzeit gegen die Live-API von PyPI auf Existenz, valide Releases und bekannte CVEs geprüft, *befür* Code ausgeführt wird. | ❌ Keine Echtzeit-Validierung von externen Paketen |
 | 🌐 | **Multi-Instanzen-Isolation** | Isolierte Daten- und Arbeitsverzeichnisse basierend auf Port-Konfigurationen (`~/.gnom-hub-{port}`), um mehrere parallele Hub-Instanzen ohne Konflikte zu betreiben. | ❌ Konkurrenten nutzen meist geteilte Konfigurationspfade |
 | ⛓️ | **Erweitertes Mention-Limit** | Auf 6 Hops angehobene Kommunikationstiefe, um komplexe multi-agentielle Workflows (Coder → Writer → Researcher → Editor) ohne Unterbrechungen auszuführen. | ❌ Starre Limits oder unendliche Schleifen ohne Synthese |
+| 📊 | **Selbstoptimierendes Agenten-Routing** | Coordination-DB trackt jeden Job pro Worker (Erfolgsrate, Dauer, Queue-Tiefe). `find_best_agent_for_task()` nutzt 3-Stufen-Routing: Statistiken → Fähigkeiten → Keywords. Worker unter 40% Erfolg nach 5+ Jobs werden aktiv übersprungen | ❌ Kein Wettbewerber lernt aus der Job-History |
 
 ### 📊 Vergleich der Frameworks
 
