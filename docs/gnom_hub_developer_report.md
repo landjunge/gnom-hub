@@ -109,7 +109,7 @@ Die Agenten führen Aktionen aus, indem sie spezielle Markup-Tags in ihre Chat-A
 ### 5.2 Pfad-Sicherheit (`path_validator.py`)
 Das System sperrt Agenten standardmäßig in das Workspace-Verzeichnis (`gnom_workspace/`).
 *   Jeder Dateizugriff über `[READ:]` oder `[WRITE:]` wird durch die Hilfsfunktion `_safe(working_dir, file_path, perms)` validiert.
-*   Pfade außerhalb des Workspace werden abgefangen und blockiert, es sei denn, der Agent besitzt die Berechtigung `run` (die alte, unsichere `godmode`-Berechtigung wurde zugunsten von `run` deprecated).
+*   Pfade außerhalb des Workspace sind für Agenten mit Berechtigungen erlaubt (`godmode`/`run`/`write`). Nur Agents ohne Berechtigungen sind auf den Workspace beschränkt. System-Pfade (`src/gnom_hub/`, `config/`, `.env`) sind weiterhin geschützt.
 
 ---
 
