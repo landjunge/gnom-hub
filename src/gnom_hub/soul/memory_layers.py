@@ -1,3 +1,4 @@
+from __future__ import annotations
 import sqlite3, time, logging, json
 from datetime import datetime
 from pathlib import Path

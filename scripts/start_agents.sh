@@ -6,9 +6,13 @@ set -a
 [ -f config/.env ] && source config/.env
 set +a
 
-# Alte Agenten killen falls sie noch laufen
-pkill -f "[pP]ython.*agents\..*AG"
-pkill -f "[pP]ython.*AG\.py"
+# Alte Agenten per PID-File killen
+for pidfile in "$HOME"/.gnom-hub/run/*.pid "$HOME"/.gnom-hub-*/run/*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile" 2>/dev/null)
+  [ -n "$pid" ] && kill "$pid" 2>/dev/null
+  rm -f "$pidfile"
+done
 sleep 1
 
 # Start in background with -u for unbuffered output
@@ -22,4 +26,3 @@ python3 -u -m agents.run_agent --name editorag > logs/logs_editor.txt 2>&1 &
 python3 -u -m agents.run_agent --name coderag > logs/logs_coder.txt 2>&1 &
 
 echo "✅ Die 8 Hintergrund-Agenten wurden gestartet."
-

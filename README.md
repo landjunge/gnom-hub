@@ -4,7 +4,7 @@
 > *8 Agents. 180 Modules. Zero cloud dependency. Zero uncontrolled sprawl.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-154-passing-green.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-225-passing-green.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#)
 [![LLM](https://img.shields.io/badge/LLM-DeepSeek_V4-brightgreen.svg)](#)
@@ -66,7 +66,7 @@ Gnom-Hub includes an isolated, database-mocked test suite using `pytest`:
 python3 -m pytest tests/ -v
 ```
 
-This runs **154 automated unit and integration tests** covering connection, state, agents, chat, admin auth, routing, stability, workflow engine, security, and queue load testing.
+This runs **225 automated unit and integration tests** covering connection, state, agents, chat, admin auth, routing, stability, workflow engine, security, and queue load testing.
 
 ---
 
@@ -447,7 +447,7 @@ gnom-hub/
 ├── agents/                # Startup scripts for 8 background agents (1-line wrappers)
 ├── config/                # Presets, .env, routing overrides
 ├── scripts/               # Installer & shortcuts
-├── tests/                 # Unit test suite (154 tests: connection, state, agents, chat, admin_auth)
+├── tests/                 # Unit test suite (225 tests: connection, state, agents, chat, admin_auth)
 ├── docs/                  # Architecture docs & screenshots
 └── pyproject.toml         # Ruff config & dependencies
 ```
@@ -503,7 +503,7 @@ Architect of the hardening & consolidation phases. Key contributions:
 - Full code audit: 120 findings → 26 fixes across security, crashes, stability, and cleanup
 - Consolidated monolithic `legacy_db` into modular domain repositories (`system_repo`, `showbox_repo`) with package-root imports
 - Replaced 8 duplicate agent startup scripts with a single universal argument-driven runner (`agents/run_agent.py`) and backward-compatible wrappers
-- Designed and built a comprehensive isolated test suite (154 unit/integration tests) with in-memory SQLite fixtures
+- Designed and built a comprehensive isolated test suite (225 unit/integration tests) with in-memory SQLite fixtures
 
 ---
 

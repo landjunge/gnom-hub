@@ -1,6 +1,7 @@
-# soul_retrieval.py — Semantic Retrieval via local embeddings / fallbacks
 from gnom_hub.db.connection import get_db_conn
 from gnom_hub.memory.embeddings import get_embedder
+from gnom_hub.memory.smr.smr_retrieve import retrieve_similar_sync
+from gnom_hub.core.constants import SMR_TOP_K_DEFAULT
 
 def retrieve_relevant_facts(query: str, agent_name: str = None, top_k: int = 5) -> list:
     q_clean = query.strip()
@@ -11,14 +12,13 @@ def retrieve_relevant_facts(query: str, agent_name: str = None, top_k: int = 5) 
     try:
         return get_embedder().search_sync(query, agent_name=agent_name, top_k=top_k)
     except Exception:
-        return []
+        return retrieve_similar_sync(query, top_k=SMR_TOP_K_DEFAULT, agent_name=agent_name)
 
 def _fetch_recent(agent_name: str, limit: int) -> list:
     try:
         with get_db_conn() as conn:
             if agent_name:
                 if agent_name.lower() == 'generalag':
-                    # GeneralAG is the coordinator and needs to see facts for all agents
                     rows = conn.execute("""
                         SELECT key, value FROM soul_memory 
                         ORDER BY 
@@ -60,4 +60,5 @@ def _fetch_recent(agent_name: str, limit: int) -> list:
                     LIMIT ?
                 """, (limit,)).fetchall()
             return [f"{r['key']}: {r['value']}" for r in rows]
-    except Exception: return []
+    except Exception:
+        return []

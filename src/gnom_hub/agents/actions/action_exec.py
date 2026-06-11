@@ -1,5 +1,5 @@
 import json, re as _re
-SHELL_BLOCK = _re.compile(r"rm\s+-rf\s+/|curl.*\|\s*sh|wget.*\|\s*sh|dd\s+if=|mkfs|>\s*/etc/|:(){ :|:& };:", _re.I)
+SHELL_BLOCK = _re.compile(r"rm\s+-rf\s+/|curl.*\|\s*sh|wget.*\|\s*sh|dd\s+if=|dd.*of=\s*/dev/|mkfs|>\s*/etc/|>\s*/dev/\w+|:(){ :|:& };:", _re.I)
 def handle_shell(ans, ms, ag, perms, bs, wd):
     for m in ms:
         c, o = m.group(1).strip(), m.group(0)

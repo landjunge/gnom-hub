@@ -38,9 +38,13 @@ source .venv/bin/activate
 set -a; [ -f config/.env ] && source config/.env; set +a
 mkdir -p logs
 
-# Kill alte Prozesse
-pkill -f "[pP]ython.*gnom_hub" 2>/dev/null
-pkill -f "[pP]ython.*agents\..*AG" 2>/dev/null
+# Kill alte Prozesse via PID-Files
+for pidfile in "$HOME"/.gnom-hub/run/*.pid "$HOME"/.gnom-hub-*/run/*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile" 2>/dev/null)
+  [ -n "$pid" ] && kill "$pid" 2>/dev/null
+  rm -f "$pidfile"
+done
 sleep 1
 
 # Hub starten

@@ -390,8 +390,8 @@ def handle_blockade(q):
         try:
             from gnom_hub.db import set_active_showbox
             set_active_showbox("")
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).warning("Showbox-Clear fehlgeschlagen: %s", e)
             
         msg = "⚡ **System-Blockaden deaktiviert:** Alle Datei- und Befehlszugriffe werden automatisch freigegeben (Auto-Approve)."
         if approved_count > 0:

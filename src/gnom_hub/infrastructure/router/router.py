@@ -115,8 +115,8 @@ def _build_sys(n, sys, agent_name):
             agent_tools_block=f"Perms: {perms_str}",
             agent_security_block=sec,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).debug("System-Prompt-Bau fehlgeschlagen: %s", e)
 
     obedience_level = settings.get("obedience", 3)
     sys += _get_obedience_instructions(obedience_level)

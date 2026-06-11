@@ -121,11 +121,14 @@ source .venv/bin/activate
 set -a; [ -f config/.env ] && source config/.env; set +a
 mkdir -p logs
 
-# ── Zombie-Killer: ALLE alten Gnom-Prozesse killen ──
-pkill -9 -f "[Pp]ython.*gnom_hub" 2>/dev/null
-pkill -9 -f "[Pp]ython.*agents\\." 2>/dev/null
-pkill -9 -f "[Pp]ython.*agents\\\\." 2>/dev/null
-sleep 2
+# ── PID-basiertes Cleanup: alte Prozesse sanft beenden ──
+for pidfile in "$HOME"/.gnom-hub/run/*.pid "$HOME"/.gnom-hub-*/run/*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile" 2>/dev/null)
+  [ -n "$pid" ] && kill "$pid" 2>/dev/null
+  rm -f "$pidfile"
+done
+sleep 1
 
 # Hub starten (startet automatisch alle 8 Agenten via start_background_agents)
 python3 -m gnom_hub > logs/logs_hub.txt 2>&1 &
@@ -145,8 +148,16 @@ echo "Stop: ./stop_gnom_hub.sh"
         stop_sh = os.path.join(repo_dir, "stop_gnom_hub.sh")
         with open(stop_sh, 'w', encoding='utf-8') as f:
             f.write("""#!/bin/bash
-pkill -9 -f "[Pp]ython.*gnom_hub" 2>/dev/null && echo "Hub gestoppt"
-pkill -9 -f "[Pp]ython.agents\\." 2>/dev/null && echo "Agenten gestoppt"
+for pidfile in "$HOME"/.gnom-hub/run/*.pid "$HOME"/.gnom-hub-*/run/*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile" 2>/dev/null)
+  procname=$(basename "$pidfile" .pid)
+  [ -n "$pid" ] && kill "$pid" 2>/dev/null && echo "$procname gestoppt"
+  rm -f "$pidfile"
+done
+sleep 1
+remaining=$(ps aux | grep -i "[g]nom_hub\|[a]gents\\." | awk '{print $2}')
+[ -n "$remaining" ] && kill $remaining 2>/dev/null && echo "Verbleibende Prozesse gestoppt"
 echo "Gnom-Hub komplett beendet."
 """)
             

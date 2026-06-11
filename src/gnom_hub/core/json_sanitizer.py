@@ -1,4 +1,5 @@
 import json, logging, re as _re
+logger = logging.getLogger(__name__)
 
 
 def _sanitize_json(raw):
@@ -19,8 +20,8 @@ def _sanitize_json(raw):
         if isinstance(result, dict) and "slides" in result:
             return result
         return {"slides": [str(result)]}
-    except Exception:
-        pass
+    except json.JSONDecodeError:
+        logger.debug("JSON parse failed, trying manual extraction")
 
     # Try to extract JSON array from within the content
     match = _re.search(r'\[\s*(.*)\s*\]', raw, _re.DOTALL)

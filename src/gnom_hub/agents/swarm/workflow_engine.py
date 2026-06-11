@@ -7,13 +7,11 @@ from typing import List, Dict, Optional, Tuple
 from gnom_hub.db.connection import get_db_connection
 from gnom_hub.agents.swarm.swarm_comms import dispatch_by_capability
 from gnom_hub.core.config import DB_PATH
+from gnom_hub.core.constants import (
+    WORKFLOW_MAX_RETRIES, WORKFLOW_RETRY_DELAY, WORKFLOW_STUCK_TIMEOUT,
+)
 
 logger = logging.getLogger(__name__)
-
-# ── Konfiguration ───────────────────────────────────────────────────────────
-MAX_RETRIES     = 2                    # Max. Wiederholungen bei transienten Fehlern
-RETRY_DELAY_S   = 30.0                 # Sekunden zwischen Retries
-STUCK_TIMEOUT_S = 300.0                # 5 Min — Task in 'running' ohne Update -> failed
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
@@ -104,7 +102,7 @@ def _get_context_id(tasks: list) -> str:
             inp = json.loads(t.get("input_template", "{}")) if isinstance(t.get("input_template"), str) else {}
             if isinstance(inp, dict) and inp.get("context_id"):
                 return inp["context_id"]
-        except Exception:
+        except (json.JSONDecodeError, TypeError, AttributeError):
             pass
     return ""
 
@@ -188,7 +186,7 @@ def evaluate_workflow(workflow_id: str) -> None:
     """
     Evaluiert den Workflow-Status:
     - Erkennt fehlgeschlagene Tasks → Workflow FAILED
-    - Erkennt stuck Tasks (running > STUCK_TIMEOUT_S) → Task FAILED
+    - Erkennt stuck Tasks (running > WORKFLOW_STUCK_TIMEOUT) → Task FAILED
     - Findet bereite Tasks → startet diese
     - Prüft auf Completion
     """
@@ -214,7 +212,7 @@ def evaluate_workflow(workflow_id: str) -> None:
         task_map = {t["task_id"]: t for t in tasks}
         now = time.time()
 
-        # 1. Stuck-Task-Erkennung: 'running' + kein Update in STUCK_TIMEOUT_S
+        # 1. Stuck-Task-Erkennung: 'running' + kein Update in WORKFLOW_STUCK_TIMEOUT
         stuck_found = False
         for t in tasks:
             if t["status"] == "running" and t["msg_id"]:
@@ -224,7 +222,7 @@ def evaluate_workflow(workflow_id: str) -> None:
                 ).fetchone()
                 if msg:
                     ts = msg["processing_since"] or msg["created_at"] or 0
-                    if (now - ts) > STUCK_TIMEOUT_S:
+                    if (now - ts) > WORKFLOW_STUCK_TIMEOUT:
                         _log_wf(workflow_id, f"Task {t['task_id']} stuck ({int(now-ts)}s) -> FAILED", "warning")
                         summary = f"[STUCK] No update for {int(now-ts)}s"
                         with conn:

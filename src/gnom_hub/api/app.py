@@ -56,7 +56,7 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                 if last_seen_str:
                     try:
                         last_seen = datetime.fromisoformat(last_seen_str).replace(tzinfo=timezone.utc)
-                    except Exception:
+                    except (ValueError, TypeError):
                         pass
 
                 drift = (now - last_seen).total_seconds() if last_seen else 999999
@@ -159,8 +159,8 @@ async def lifespan(app: FastAPI):
                         "Falls nicht — mögliche Manipulation!"
                     )
                     add_chat_message(proj, "WatchdogAG", "watchdogag", "chat", msg)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"⚠️ Integritäts-Chat-Nachricht fehlgeschlagen: {e}")
             else:
                 print("✅ [INTEGRITÄT] Alle Systemdateien unverändert.")
     except Exception as e:

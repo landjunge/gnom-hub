@@ -12,11 +12,21 @@ from playwright.async_api import async_playwright
 # Terminate running browsers at the start to ensure clean state
 def kill_browsers():
     print("Schließe alle vorhandenen Browser-Instanzen...")
-    for proc_pattern in ["Chromium", "Google Chrome", "Chrome"]:
-        try:
-            subprocess.run(["pkill", "-f", proc_pattern], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception as e:
-            print(f"Fehler beim Schließen von {proc_pattern}: {e}")
+    try:
+        import psutil
+        for proc in psutil.process_iter(["pid", "name"]):
+            try:
+                name = proc.info.get("name", "")
+                if any(b in name for b in ["Chromium", "Chrome"]):
+                    proc.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+    except ImportError:
+        for proc_pattern in ["Chromium", "Google Chrome", "Chrome"]:
+            try:
+                subprocess.run(["pkill", "-f", proc_pattern], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                print(f"Fehler beim Schließen von {proc_pattern}: {e}")
 
 async def speak(text):
     print(f"TTS: {text}")

@@ -114,8 +114,9 @@ class BaseAgent:
                             _c = _h.get('content', '')[:200]
                             _ctx += f"[{_s}]: {_c}\n"
                         sys_prompt += _ctx
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger = logging.getLogger(__name__)
+                    logger.warning("Chat-History-Injection fehlgeschlagen: %s", e)
 
                 r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
 

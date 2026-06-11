@@ -38,15 +38,21 @@ fi
 # 1. Prozesse killen
 echo ""
 echo "▸ Prozesse stoppen..."
-pkill -f "python.*gnom_hub" 2>/dev/null && echo "  Hub gestoppt ✓" || echo "  Kein Hub-Prozess ✓"
-pkill -f "python3.*agents\..*AG" 2>/dev/null
-pkill -f "python3.*AG\.py" 2>/dev/null && echo "  Agenten gestoppt ✓" || echo "  Keine Agenten ✓"
+for pidfile in "$HOME"/.gnom-hub/run/*.pid "$HOME"/.gnom-hub-*/run/*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile" 2>/dev/null)
+  [ -n "$pid" ] && kill "$pid" 2>/dev/null
+  rm -f "$pidfile"
+done
+# Fallback: verbleibende Prozesse
+ps aux | grep -i "[g]nom_hub\|[a]gents\." | awk '{print $2}' | xargs kill 2>/dev/null
+echo "  Hub gestoppt ✓"
 sleep 1
 
 # 2. Ports freigeben
 echo "▸ Ports freigeben..."
 for port in 3002 3100; do
-    lsof -ti:$port 2>/dev/null | xargs kill -9 2>/dev/null && echo "  Port $port freigegeben ✓" || echo "  Port $port frei ✓"
+    lsof -ti:$port 2>/dev/null | xargs kill 2>/dev/null && echo "  Port $port freigegeben ✓" || echo "  Port $port frei ✓"
 done
 
 # 3. Virtuelle Umgebung löschen

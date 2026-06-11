@@ -121,8 +121,12 @@ cd "\$DIR"
 source .venv/bin/activate
 set -a; [ -f config/.env ] && source config/.env; set +a
 mkdir -p logs
-pkill -f "[pP]ython.*gnom_hub" 2>/dev/null
-pkill -f "[pP]ython.*agents\..*AG" 2>/dev/null
+for pidfile in "$HOME"/.gnom-hub/run/*.pid "$HOME"/.gnom-hub-*/run/*.pid; do
+  [ -f "$pidfile" ] || continue
+  pid=$(cat "$pidfile" 2>/dev/null)
+  [ -n "$pid" ] && kill "$pid" 2>/dev/null
+  rm -f "$pidfile"
+done
 sleep 1
 python3 -m gnom_hub > logs/logs_hub.txt 2>&1 &
 sleep 2

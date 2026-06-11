@@ -1,6 +1,7 @@
 import logging
 import os, sys, subprocess, psutil
 from gnom_hub.core.config import RUN_DIR, PROJECT_ROOT
+from gnom_hub.core.constants import PROCESS_TERMINATE_TIMEOUT, PROCESS_KILL_SLEEP
 AGENTS = ["generalAG", "soulAG", "researcherAG", "writerAG", "editorAG", "coderAG", "watchdogAG", "securityAG"]
 
 def _get_proc(name: str):
@@ -19,31 +20,35 @@ def _kill_proc(name: str) -> None:
     if p:
         try:
             p.terminate()
-            p.wait(timeout=2)
+            p.wait(timeout=PROCESS_TERMINATE_TIMEOUT)
         except psutil.Error:
             try: p.kill()
             except OSError as e:
                 logging.getLogger(__name__).error('Fehler in Prozess-Beendigung: %s', e)
     (RUN_DIR / f"{matched}.pid").unlink(missing_ok=True)
 
+def _kill_all_agents_by_pid_files() -> None:
+    for pid_file in RUN_DIR.glob("*.pid"):
+        try:
+            pid = int(pid_file.read_text().strip())
+            try:
+                p = psutil.Process(pid)
+                p.terminate()
+                p.wait(timeout=PROCESS_TERMINATE_TIMEOUT)
+            except (psutil.NoSuchProcess, psutil.Error):
+                pass
+        except (ValueError, OSError):
+            pass
+        pid_file.unlink(missing_ok=True)
+
 def start_background_agents() -> None:
     log_dir = PROJECT_ROOT / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Aggressiv ALLE alten Agent-Prozesse killen (auch Zombies ohne PID-File)
-    import signal
+    _kill_all_agents_by_pid_files()
     for a in AGENTS:
         _kill_proc(a)
-    # Zusätzlich: pkill für standalone runner
-    try:
-        subprocess.run(["pkill", "-f", "agents\\.run_agent"], capture_output=True, timeout=5)
-    except Exception:
-        pass
-    try:
-        subprocess.run(["pkill", "-f", "agents\\.[a-z]+AG"], capture_output=True, timeout=5)
-    except Exception:
-        pass
-    import time; time.sleep(1)
+    import time; time.sleep(PROCESS_KILL_SLEEP)
 
     # 2. Alle Agenten in DB auf online zurücksetzen
     try:

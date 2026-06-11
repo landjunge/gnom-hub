@@ -79,7 +79,7 @@ def prometheus_metrics():
                     # Parse standard SQLite last_seen (isoformat)
                     dt = datetime.fromisoformat(last_seen_str.replace("Z", "+00:00"))
                     drift = now - dt.timestamp()
-                except Exception:
+                except (ValueError, TypeError):
                     pass
             lines.append(
                 f'gnomhub_heartbeat_drift_seconds{{agent="{a["name"]}"}} {drift:.1f}'

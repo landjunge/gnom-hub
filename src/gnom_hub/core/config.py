@@ -63,5 +63,5 @@ class Config:
 
 try:
     Config.LOG_DIR.mkdir(parents=True, exist_ok=True)
-except Exception:
-    pass
+except OSError as e:
+    logging.getLogger(__name__).warning("Log-Verzeichnis konnte nicht erstellt werden: %s", e)

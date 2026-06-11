@@ -516,7 +516,7 @@ def list_presets():
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
             presets.append({"name": data.get("name","?"), "description": data.get("description",""), "file": f.name})
-        except Exception:
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
             pass
     return presets
 
@@ -566,8 +566,8 @@ def swarm_complete(data: SwarmCompletePayload):
             """, (data.context_id, data.agent_name)).fetchone()
             if task_row:
                 workflow_msg_id = task_row["msg_id"]
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).debug("Workflow-Task-Lookup fehlgeschlagen: %s", e)
 
     if workflow_msg_id is not None:
         key = f"{data.context_id}:{data.agent_name}:{workflow_msg_id}"

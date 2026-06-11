@@ -83,11 +83,23 @@ def check_capability(agent_name: str, cap_type: str, resource: str) -> bool:
 
     with _cache_lock:
         _cache.pop(key, None)
+
+    _evict_expired()
     return False
 
 
+def _evict_expired() -> int:
+    """Remove expired entries from the in-memory cache. Returns count removed."""
+    now = time.time()
+    with _cache_lock:
+        expired = [k for k, exp in _cache.items() if exp <= now]
+        for k in expired:
+            del _cache[k]
+    return len(expired)
+
+
 def cleanup_expired():
-    """Deactivate expired capabilities in DB and clear the in-memory cache."""
+    """Deactivate expired capabilities in DB and evict expired cache entries."""
     try:
         now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         with get_db_conn() as conn, conn:
@@ -95,7 +107,8 @@ def cleanup_expired():
                 "UPDATE capabilities SET is_active = 0 WHERE expires_at <= ?",
                 (now_str,),
             )
-        with _cache_lock:
-            _cache.clear()
+        evicted = _evict_expired()
+        if evicted:
+            logger.debug("Evicted %d expired cache entries", evicted)
     except Exception as e:
         logger.error("Failed to clean up expired capabilities: %s", e)

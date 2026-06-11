@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 import time
 import json
@@ -6,25 +7,14 @@ import logging
 from typing import Optional, List, Dict, Union, Tuple
 import sqlite3
 from gnom_hub.db.connection import get_db_connection
-
-PRIORITY_MAPPING = {
-    "critical": 1,
-    "high": 3,
-    "normal": 5,
-    "low": 7
-}
+from gnom_hub.core.constants import (
+    MAX_DEPTH, MAX_CONCURRENT, RETRY_MAX, RETRY_BACKOFF_BASE,
+    MAX_QUEUE_DEPTH, DEPENDENCY_TIMEOUT, DEPENDENCY_POLL_S,
+    STUCK_MESSAGE_TIMEOUT, MIN_JOBS_THRESHOLD, PRIORITY_MAPPING,
+)
 
 
 logger = logging.getLogger(__name__)
-
-# ── Konfiguration (statt Magic Numbers im Code) ────────────────────────────
-MAX_DEPTH           = 8
-MAX_CONCURRENT      = 8       # (war 12) — nur 8 Agenten
-RETRY_MAX           = 3
-RETRY_BACKOFF_BASE  = 3.0     # (war 5.0) — schnellere Retries
-MAX_QUEUE_DEPTH     = 30      # (war 50) — engere Backpressure
-DEPENDENCY_TIMEOUT  = 120.0  # Max. Wartezeit auf eine Abhängigkeit (Sekunden)
-DEPENDENCY_POLL_S   = 1.0     # (war 3.0) — schnellere Dependency-Auflösung    # Poll-Intervall für Dependency-Checks
 
 # ── Notification-Bus: Agenten warten auf dieses Event statt zu pollen ──────
 _new_message_event: Dict[str, threading.Event] = {}
@@ -298,7 +288,8 @@ def _get_success_rate(conn: sqlite3.Connection, agent_name: str) -> float:
     return 0.0
 
 
-def _has_enough_jobs(conn: sqlite3.Connection, agent_name: str, threshold: int = 5) -> bool:
+def _has_enough_jobs(conn: sqlite3.Connection, agent_name: str, threshold: int = None) -> bool:
+    threshold = threshold or MIN_JOBS_THRESHOLD
     try:
         from gnom_hub.soul.memory_layers import get_coordination_db
         cdb = get_coordination_db()
@@ -740,7 +731,8 @@ def dispatch_by_capability(
         conn.close()
 
 
-def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
+def recover_stuck_messages(db_path: str, timeout: float = None) -> None:
+    timeout = timeout or STUCK_MESSAGE_TIMEOUT
     """
     Findet blockierte/abgestürzte Nachrichten und gibt sie wieder frei oder schiebt sie in die DLQ.
     """

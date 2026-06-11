@@ -1,6 +1,8 @@
 """STT Engine — Whisper lokal, OpenAI API Fallback."""
+import logging
 import os, io, tempfile
 from typing import Optional
+_log = logging.getLogger(__name__)
 def stt_local(audio_bytes: bytes) -> Optional[str]:
     """Lokales faster-whisper STT."""
     try:
@@ -12,7 +14,9 @@ def stt_local(audio_bytes: bytes) -> Optional[str]:
         segs, _ = model.transcribe(tmp.name, language=get_language())
         os.unlink(tmp.name)
         return " ".join(s.text for s in segs).strip()
-    except: return None
+    except Exception as e:
+        _log.warning("Lokales STT fehlgeschlagen: %s", e)
+        return None
 def stt_cloud(audio_bytes: bytes) -> Optional[str]:
     """OpenAI Whisper API Fallback."""
     key = os.environ.get("OPENAI_API_KEY", "")
@@ -25,7 +29,9 @@ def stt_cloud(audio_bytes: bytes) -> Optional[str]:
             files={"file": ("audio.wav", io.BytesIO(audio_bytes), "audio/wav")},
             data={"model": "whisper-1", "language": get_language()}, timeout=30)
         return r.json().get("text") if r.status_code == 200 else None
-    except: return None
+    except Exception as e:
+        _log.warning("Cloud-STT fehlgeschlagen: %s", e)
+        return None
 def transcribe(audio_bytes: bytes) -> str:
     """Versucht lokal, dann Cloud. Gibt '' bei totalem Fehler zurück."""
     return stt_local(audio_bytes) or stt_cloud(audio_bytes) or ""

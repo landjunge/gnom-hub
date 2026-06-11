@@ -34,8 +34,8 @@ def resolve_local_model(requested_model: str) -> str:
                     return m
             # 4. Fallback to first installed model
             return installed_models[0]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).debug("Lokales Model-Resolving fehlgeschlagen: %s", e)
     return requested_model
 
 def _call(pvd, mdl, key, msgs, n):
@@ -78,7 +78,7 @@ def _call(pvd, mdl, key, msgs, n):
             r = requests.post(url, headers=h, json=pyld, timeout=req_timeout)
             if r.status_code == 200:
                 try: res_json = r.json()
-                except Exception: res_json = {}
+                except (json.JSONDecodeError, ValueError): res_json = {}
                 if pvd == "anthropic": ans = res_json.get("content", [{}])[0].get("text")
                 elif pvd == "lokal" and not res_json: ans = "".join(json.loads(l).get("message", {}).get("content", "") for l in r.text.strip().split("\n") if l).strip()
                 elif pvd == "lokal": ans = res_json.get("message", {}).get("content", "")

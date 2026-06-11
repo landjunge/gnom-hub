@@ -44,7 +44,7 @@ async def check_and_update_models():
                     r = await client.post(url, json={"model": model, "messages": [{"role": "user", "content": "Ping"}]}, headers=headers)
                     if r.status_code == 200:
                         working_models.append(model)
-                except Exception:
+                except (httpx.HTTPError, httpx.TimeoutException, OSError):
                     pass
                 if "pytest" not in sys.modules:
                     await asyncio.sleep(1.0)

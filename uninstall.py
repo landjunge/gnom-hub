@@ -62,10 +62,30 @@ def main():
         else:
             subprocess.run('taskkill /f /fi "imagename eq python.exe" /fi "windowtitle eq Gnom-Hub*"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
-        # macOS / Linux
-        subprocess.run('pkill -f "[pP]ython.*gnom_hub"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run('pkill -f "[pP]ython.*agents\..*AG"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run('pkill -f "[pP]ython.*agents\.run_agent"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # macOS / Linux — psutil-basiert
+        try:
+            import psutil
+            for proc in psutil.process_iter(["pid", "cmdline"]):
+                try:
+                    cmd = " ".join(proc.info.get("cmdline") or [])
+                    if "gnom_hub" in cmd or "agents." in cmd:
+                        proc.terminate()
+                        try:
+                            proc.wait(timeout=3)
+                        except psutil.TimeoutExpired:
+                            proc.kill()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except ImportError:
+            subprocess.run('pkill -f "[g]nom_hub"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Clean up PID files
+            import glob
+            for pidfile in glob.glob(os.path.expanduser("~/.gnom-hub*/run/*.pid")):
+                try:
+                    pid = int(open(pidfile).read().strip())
+                    subprocess.run(["kill", str(pid)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except (ValueError, OSError):
+                    pass
     print(f"  Processes terminated {Colors.GREEN}✓{Colors.RESET}")
 
     # 2. Delete Virtual Environment

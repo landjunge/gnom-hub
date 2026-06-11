@@ -67,7 +67,7 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                             import subprocess
                             subprocess.Popen(["open", fpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                             auto_open = " [Browser geöffnet]"
-                        except Exception:
+                        except (FileNotFoundError, OSError):
                             pass
 
                     from gnom_hub.soul.zwc_soul import add_agent_metadata

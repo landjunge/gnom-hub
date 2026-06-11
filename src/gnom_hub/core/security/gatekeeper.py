@@ -3,6 +3,7 @@ import os
 import uuid
 import time
 import threading
+from typing import Dict
 from html import escape as html_escape
 from gnom_hub.db import (
     add_chat_message, 
@@ -14,7 +15,7 @@ from gnom_hub.db import (
     set_agent_status,
     log_blockade,
 )
-from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
+from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe, _blockade_level
 from gnom_hub.agents.capability_manager import check_capability, request_capability
 
 # ── Event-basierte Entscheidungs-Warteschlange ──
@@ -22,7 +23,7 @@ from gnom_hub.agents.capability_manager import check_capability, request_capabil
 # threading.Event. Der Thread blockiert im OS-Scheduler mit 0% CPU.
 # _signal_decision() wird von @@approve_decision / @@reject_decision
 # im Chat aufgerufen und weckt den wartenden Agent-Thread via event.set().
-_decisions: dict[str, dict] = {}
+_decisions: Dict[str, dict] = {}  # type: ignore[misc]  # Python 3.8 compat
 _decisions_lock = threading.Lock()
 
 def _signal_decision(decision_id: str, status: str):
@@ -142,7 +143,6 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
     decision_id = str(uuid.uuid4())
     event = threading.Event()
 
-    # Module-level Entscheidungs-Store (kein DB-Polling nötig)
     with _decisions_lock:
         _decisions[decision_id] = {"status": "pending", "event": event}
 
@@ -234,13 +234,17 @@ def wait_for_decision(agent_name, action_type, detail, content, rule) -> bool:
 def verify_write(agent, fn, content, wd, perms) -> bool:
     """
     Risikobasierte Prüfung vor Schreibaktionen.
-    - Benutzerregeln (whitelist/block) haben Vorfahrt
-    - Workspace-Dateien → Auto-Approve
-    - System-Dateien (src/gnom_hub, config/, .env, ...) → Hard Block
-    - Hochriskante Code-Patterns → Hard Block
-    - Mittelriskante Code-Patterns → Warning (log + allow)
+    - Level 0: Alles erlaubt
+    - Level 1: Nur System-Pfad-Schutz
+    - Level 2: + high-risk code patterns blocken
+    - Level 3: + medium-risk patterns warnen
+    - Level 4: + medium-risk patterns blocken
     """
     name = (agent or {}).get("name", "Unknown")
+
+    level = _blockade_level()
+    if level == 0:
+        return True
 
     # SoulAG darf Dateien schreiben (User erlaubt)
     if name.lower() == "soulag":
@@ -259,21 +263,27 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
         log_blockade(name, "WRITE", fn, f"System-Pfad blockiert: {fn}", "blocked", "PathValidator")
         return False
 
-    sev = is_security_block(agent, fn, content, wd, perms)
-    if sev == "high":
-        log_blockade(name, "WRITE", fn, f"Hochriskantes Code-Pattern blockiert", "blocked", "SecurityAG", content[:200] if content else "")
-        return False
-    if sev == "medium":
-        log_blockade(name, "WRITE", fn, f"Mittelriskantes Code-Pattern — gewarnt", "warning", "SecurityAG", content[:200] if content else "")
-        # Allow with warning
+    if level >= 2:
+        sev = is_security_block(agent, fn, content, wd, perms)
+        if sev == "high":
+            log_blockade(name, "WRITE", fn, f"Hochriskantes Code-Pattern blockiert", "blocked", "SecurityAG", content[:200] if content else "")
+            return False
+        if sev == "medium":
+            if level >= 4:
+                log_blockade(name, "WRITE", fn, f"Mittelriskantes Code-Pattern blockiert", "blocked", "SecurityAG", content[:200] if content else "")
+                return False
+            log_blockade(name, "WRITE", fn, f"Mittelriskantes Code-Pattern — gewarnt", "warning", "SecurityAG", content[:200] if content else "")
+            # Allow with warning
 
     request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
     return True
 
 def _is_high_risk_exec(exec_name: str, args_tokens: list) -> bool:
     """Bestimmt ob ein Befehl wirklich hochriskant ist (hard block) oder nur mittel (warning)."""
-    high_risk_execs = {"mkfs", "fdisk", "reboot"}
-    if exec_name in high_risk_execs:
+    high_risk_execs = {"fdisk", "reboot", "shutdown", "init", "halt", "poweroff"}
+    if exec_name in high_risk_execs or exec_name.startswith("mkfs"):
+        return True
+    if exec_name == "rm":
         return True
     # Check if any arg contains an rm -rf targeting system paths (even via sudo/other wrappers)
     full_args = " ".join(args_tokens).lower()
@@ -281,13 +291,33 @@ def _is_high_risk_exec(exec_name: str, args_tokens: list) -> bool:
         for arg in args_tokens:
             if arg.startswith("-"): continue
             resolved = os.path.realpath(os.path.expanduser(arg))
-            if resolved == "/" or resolved.startswith(("/etc", "/usr", "/bin", "/sbin", "/var", "/private")):
+            if resolved == "/" or _is_system_prefix(resolved):
                 return True
             if any(sys_path in resolved for sys_path in ["src/gnom_hub", "run.sh", ".env"]):
                 return True
     # Check for pipe-to-sh patterns in args
     if "|" in full_args:
         if "sh" in full_args or "bash" in full_args:
+            return True
+    return False
+
+
+_SAFE_TEMP_PREFIXES = ("/private/tmp", "/private/var/tmp", "/tmp", "/var/tmp",
+                       "/private/var/folders", "/var/folders")
+
+def _is_system_prefix(resolved: str) -> bool:
+    """Check if a resolved path is a system directory (excluding user temp dirs)."""
+    system_prefixes = ("/etc", "/usr", "/bin", "/sbin", "/var", "/boot", "/lib")
+    if resolved.startswith(system_prefixes):
+        if resolved.startswith(_SAFE_TEMP_PREFIXES):
+            return False
+        return True
+    # macOS: /private/X where X is a system dir, but not temp
+    if resolved.startswith("/private/"):
+        stripped = "/" + resolved[len("/private/"):]
+        if stripped.startswith(system_prefixes):
+            if resolved.startswith(_SAFE_TEMP_PREFIXES):
+                return False
             return True
     return False
 
@@ -343,8 +373,7 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
         if exec_name not in allowed_execs:
             if _is_high_risk_exec(exec_name, args_tokens):
                 return False, "high", f"Hochrisiko-Befehl '{exec_name}' blockiert."
-            # Unbekannt aber nicht hochriskant → warning + allow
-            return False, "high", f"Unbekannter Befehl '{exec_name}' blockiert (nicht auf Whitelist)."
+            return False, "medium", f"Unbekannter Befehl '{exec_name}' — gewarnt (nicht auf Whitelist)."
 
         # 3. Argument-Validierung für spezifische Befehle
         if exec_name in ("pip", "pip3"):
@@ -363,16 +392,12 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                         
         elif exec_name == "rm":
             dangerous_roots = {"/", os.path.expanduser("~")}
-            system_prefixes = (
-                "/etc", "/usr", "/bin", "/sbin", "/var", "/boot", "/proc", "/sys", "/lib",
-                "/private/etc", "/private/var"
-            )
             for arg in args_tokens:
                 if arg.startswith("-"): continue
                 resolved = os.path.realpath(os.path.expanduser(arg))
                 if resolved in dangerous_roots:
                     return False, "high", f"rm auf '{resolved}' ist nicht erlaubt."
-                if resolved.startswith(system_prefixes):
+                if _is_system_prefix(resolved):
                     return False, "high", f"rm auf Systempfad '{resolved}' ist nicht erlaubt."
             if "-rf" in args_tokens or "-fr" in args_tokens:
                 for arg in args_tokens:
@@ -388,25 +413,51 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                 "clone", "stash", "branch", "merge", "rebase", "tag",
                 "remote", "show", "blame", "shortlog", "describe"
             }
-            # Git NUR ueber @@git push (User-Chat-Command), NIEMALS ueber [SHELL:]
-            return False, "high", (
-                "git ist Agenten nicht erlaubt. "
-                "Nutze @@git push, @@git status etc. im Chat (nur User)."
-            )
+            if args_tokens:
+                subcmd = args_tokens[0]
+                if subcmd not in allowed_git_subcmds:
+                    return False, "medium", f"git subcommand '{subcmd}' nicht in der Whitelist."
+            # git clone etc. für Worker-Tool-Installation erlaubt
+
+        elif exec_name == "chmod":
+            dangerous_modes = {"777", "a+rwx", "0777", "4755", "6755"}
+            has_dangerous_mode = any(m in args_tokens for m in dangerous_modes)
+            if has_dangerous_mode:
+                found_system = False
+                for arg in args_tokens:
+                    if arg.startswith("-"): continue
+                    resolved = os.path.realpath(os.path.expanduser(arg))
+                    if _is_system_prefix(resolved):
+                        return False, "high", f"chmod mit gefährlicher Berechtigung auf Systempfad '{arg}'."
+                    if any(sys_path in resolved for sys_path in ["src/gnom_hub", "run.sh", ".env"]):
+                        return False, "high", f"chmod auf geschützte Projektdatei '{arg}'."
+                    found_system = True
+                return False, "medium", "chmod mit riskanter Berechtigung — erlaubt, aber gewarnt."
+
+        elif exec_name == "dd":
+            full_args_lower = " ".join(args_tokens).lower()
+            # Block dd targeting block devices directly
+            if any(dev in full_args_lower for dev in ["/dev/sd", "/dev/nvme", "/dev/vd", "/dev/mmc", "/dev/loop"]):
+                return False, "high", f"dd auf Blockdevice ist nicht erlaubt."
                 
     return True, None, ""
 
 def verify_cmd(agent, cmd):
     """
     Nicht-blockierende Prüfung vor Shell-Befehlen.
-    - Benutzerregeln (whitelist/block) haben Vorfahrt
-    - GeneralAG (role=general): KEINE Shell-Befehle erlaubt
-    - Whitelist-Prüfung (erlaubte Befehle)
-    - System-Pfad-Schutz (kein Zugriff auf src/gnom_hub, config/, .env, ...)
-    - Keine Warte-Dialoge.
+    - Level 0: Alles erlaubt, keine Prüfung
+    - Level 1: Nur System-Pfad-Schutz
+    - Level 2: + High-Risk-Execs blocken
+    - Level 3: + Volle Whitelist-Prüfung (medium = warn)
+    - Level 4: + Volle Whitelist-Prüfung (medium = block)
+    - Benutzerregeln (whitelist/block) haben immer Vorfahrt
     """
     name = (agent or {}).get("name", "Unknown")
     role = (agent or {}).get("role", "")
+
+    level = _blockade_level()
+    if level == 0:
+        return True
 
     # SoulAG darf Shell-Befehle ausführen (User erlaubt)
     if name.lower() == "soulag":
@@ -440,7 +491,7 @@ def verify_cmd(agent, cmd):
                 if abs_path == real_wd or abs_path.startswith(real_wd + os.sep):
                     cleaned_tokens.append("[safe_workspace_path]")
                     continue
-            except Exception:
+            except (OSError, ValueError):
                 pass
         cleaned_tokens.append(token)
     cleaned_cmd = " ".join(cleaned_tokens).lower()
@@ -449,14 +500,18 @@ def verify_cmd(agent, cmd):
         log_blockade(name, "SHELL", cmd[:150], f"Befehl enthält System-Pfad", "blocked", "PathValidator", cmd[:100])
         return False
 
-    is_safe, sev, _block_reason = is_command_safe_and_whitelisted(cmd, agent)
-    if not is_safe:
-        if sev == "high":
-            log_blockade(name, "SHELL", cmd[:150], f"Blockiert: {_block_reason}", "blocked", "Gatekeeper", cmd[:200])
-            return False
-        else:
-            log_blockade(name, "SHELL", cmd[:150], f"Gewarnt: {_block_reason}", "warning", "Gatekeeper", cmd[:200])
-            # Medium risk → warn but allow
+    if level >= 2:
+        is_safe, sev, _block_reason = is_command_safe_and_whitelisted(cmd, agent)
+        if not is_safe:
+            if sev == "high":
+                log_blockade(name, "SHELL", cmd[:150], f"Blockiert: {_block_reason}", "blocked", "Gatekeeper", cmd[:200])
+                return False
+            elif sev == "medium" and level >= 4:
+                log_blockade(name, "SHELL", cmd[:150], f"Blockiert: {_block_reason}", "blocked", "Gatekeeper", cmd[:200])
+                return False
+            else:
+                log_blockade(name, "SHELL", cmd[:150], f"Gewarnt: {_block_reason}", "warning", "Gatekeeper", cmd[:200])
+                # Medium risk → warn but allow
 
     request_capability(name, "SHELL", cmd, "AutoApprovedWhitelistedCommand")
     return True

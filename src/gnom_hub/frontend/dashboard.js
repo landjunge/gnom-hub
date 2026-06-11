@@ -29,6 +29,20 @@ async function showDashboard() {
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px;">
         <h2 style="margin:0; font-size:0.95rem; font-weight:600; border:none; letter-spacing:0.5px;">Agent Health Dashboard</h2>
       </div>
+      <div class="slider-group" style="margin-top:12px; padding:10px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius);">
+        <label style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px; font-weight:500;">
+          <span>🛡️ Blockade-Level</span>
+          <span id="blockade-level-label" style="color:var(--accent); font-weight:bold;">Keine</span>
+        </label>
+        <input type="range" id="blockade-level-slider" min="0" max="4" value="0" oninput="updateBlockadeLabel(this.value)" style="cursor:pointer; width:100%;">
+        <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-dim); margin-top:2px;">
+          <span>0 — Keine</span>
+          <span>1 — Leicht</span>
+          <span>2 — Mittel</span>
+          <span>3 — Streng</span>
+          <span>4 — Max</span>
+        </div>
+      </div>
       <div id="swarm-status-banner" style="display:none; margin-top:15px; padding:15px; background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2); border-radius:var(--radius); box-shadow:0 0 20px rgba(0,229,255,0.05); backdrop-filter:blur(10px);">
         <div style="font-weight:bold; color:var(--accent); font-size:1.05rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
           <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); animation: pulse-glow 1.5s infinite;"></span>
@@ -64,6 +78,7 @@ async function showDashboard() {
       </div>
     </div>
   `;
+  await loadBlockadeLevel();
   await loadDashboardData();
   stopDashboardPolling();
   dashboardInterval = setInterval(runDashboardPolling, 3000);
@@ -90,8 +105,26 @@ window.submitFeedbackComment = async function() {
   }
 };
 
+window.updateBlockadeLabel = function(val) {
+  const v = parseInt(val);
+  const labels = ['Keine (0)', 'Leicht (1)', 'Mittel (2)', 'Streng (3)', 'Max (4)'];
+  const el = document.getElementById('blockade-level-label');
+  if (el) el.innerText = labels[v] || v;
+  api('PUT', '/api/admin/blockade-level', { level: v });
+};
+
+async function loadBlockadeLevel() {
+  const slider = document.getElementById('blockade-level-slider');
+  if (!slider) return;
+  const res = await api('GET', '/api/admin/blockade-level');
+  if (res && typeof res.level === 'number') {
+    slider.value = res.level;
+    updateBlockadeLabel(res.level);
+  }
+}
+
 async function loadDashboardData() {
-  const metrics = await api('GET', '/metrics');
+  const metrics = await api('GET', '/api/metrics');
   const grid = document.getElementById('dashboard-grid');
   if (!grid) return;
   

@@ -15,29 +15,20 @@ def is_system_path(path_str: str) -> bool:
     """Prüft ob ein Pfad auf geschützte Systemdateien zeigt."""
     return any(part in path_str.replace("\\", "/").lower() for part in SYSTEM_PATHS)
 
+def _blockade_level() -> int:
+    from gnom_hub.db import get_state_value
+    return int(get_state_value("blockade_level", 0))
+
 def is_worker_blocked(agent, f, wd, perms):
     """
-    Prüft ob ein Worker-Zugriff auf eine geschützte Systemdatei erfolgt.
-    Immer aktiv. System-Agenten (soul, watchdog, security) sind ausgenommen.
+    WatchdogAG — Blockade-Level-respektierend.
+    Level 0: nie blocken
+    Level 1+: System-Pfad-Schutz aktiv
     """
-    name = (agent or {}).get("name", "Unknown")
-    role = (agent or {}).get("role", "")
-    if role in ["soul", "watchdog", "security"]:
+    level = _blockade_level()
+    if level == 0:
         return False
-    p = _safe(wd, f, perms)
-    if p:
-        real_wd = os.path.realpath(wd)
-        real_p = os.path.realpath(p)
-        if real_p == real_wd or real_p.startswith(real_wd + os.sep):
-            return False
-    check = p or os.path.join(wd, f)
-    path_str = os.path.realpath(check).replace("\\", "/").lower()
-    if is_system_path(path_str):
-        from gnom_hub.db import add_chat_message
-        msg = f"[WatchdogAG] {name} auf Systemdatei '{f}' BLOCKIERT."
-        add_chat_message("default", "WatchdogAG", "watchdogag", "chat", msg)
-        return True
-    return False
+    return is_system_path(f)
 
 # Gefährliche Code-Patterns — aufgeteilt in hohes und mittleres Risiko
 _HIGH_RISK_RE = _re.compile(
@@ -68,28 +59,18 @@ _MEDIUM_RISK_RE = _re.compile(
 
 def is_security_block(agent, f, content, wd, perms):
     """
-    Regex-basierte Prüfung auf gefährliche Code-Patterns.
-    Gibt zurück: ("high"|"medium"|None) — high = hart blocken, medium = warnen
+    SecurityAG — Blockade-Level-respektierend.
+    Level 0: nie blocken
+    Level 1: nie blocken (nur system paths)
+    Level 2: high-risk patterns blocken
+    Level 3: high + medium risk patterns blocken (medium = warn)
+    Level 4: high + medium risk patterns blocken (medium = block)
     """
-    role = (agent or {}).get("role", "")
-    if role in ["soul", "watchdog", "security"]:
+    level = _blockade_level()
+    if level == 0 or level == 1 or not content:
         return None
-
-    if not content or not content.strip():
-        return None
-
     if _HIGH_RISK_RE.search(content):
-        from gnom_hub.db import add_chat_message
-        name = (agent or {}).get("name", "Unknown")
-        msg = f"[SecurityAG] {name} verwendet HOCHRISIKO-Code-Pattern. BLOCKIERT."
-        add_chat_message("default", "SecurityAG", "securityag", "chat", msg)
         return "high"
-
-    if _MEDIUM_RISK_RE.search(content):
-        from gnom_hub.db import add_chat_message
-        name = (agent or {}).get("name", "Unknown")
-        msg = f"[SecurityAG] {name} verwendet mittelriskantes Code-Pattern. GEWARNT."
-        add_chat_message("default", "SecurityAG", "securityag", "chat", msg)
-        return "medium"
-
+    if level >= 3 and _MEDIUM_RISK_RE.search(content):
+        return "medium" if level == 3 else "high"
     return None

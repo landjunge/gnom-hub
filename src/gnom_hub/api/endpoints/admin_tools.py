@@ -1,6 +1,8 @@
+import logging
 from fastapi import APIRouter
 from pydantic import BaseModel
 from gnom_hub.db.state_repo import SQLiteStateRepository
+_log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin")
 
@@ -73,7 +75,8 @@ def clean_all():
                 'explainable_outputs','agent_messages','swarm_callbacks','agent_capabilities',
                 'workflows','workflow_tasks','soul_memory','token_budget_logs','token_budget_alerts']:
         try: conn.execute(f'DELETE FROM {tbl}')
-        except: pass
+        except Exception as e:
+            _log.warning("Cleanup: Tabelle %s nicht leerbar: %s", tbl, e)
     # State reset
     conn.execute("DELETE FROM state WHERE key NOT IN ('active_project','language','active_showbox','enable_confirmations')")
     conn.execute("UPDATE agents SET status='online', circuit_state='CLOSED', consecutive_failures=0")
@@ -83,17 +86,20 @@ def clean_all():
     # Token-File löschen
     for token_file in list(CONFIG_DIR.glob('.gnom-hub-tokens*.json')):
         try: token_file.unlink()
-        except: pass
+        except OSError as e:
+            _log.warning("Token-File %s nicht löschbar: %s", token_file.name, e)
 
     # Passive DB
     try:
         pconn = get_passive_conn()
         for t in pconn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall():
             try: pconn.execute(f'DELETE FROM {t["name"]}')
-            except: pass
+            except Exception as e:
+                _log.warning("Passive DB: Tabelle %s nicht leerbar: %s", t["name"], e)
         pconn.commit()
         pconn.close()
-    except: pass
+    except Exception as e:
+        _log.warning("Passive DB nicht verfügbar: %s", e)
 
     # Workspace leeren
     wd = os.path.join(str(WORKSPACE_DIR), 'default')
@@ -103,7 +109,8 @@ def clean_all():
             try:
                 if os.path.isdir(item_path): shutil.rmtree(item_path)
                 else: os.remove(item_path)
-            except: pass
+            except OSError as e:
+                _log.warning("Workspace: %s nicht löschbar: %s", item, e)
 
     # Neustart in 3s (nachdem die Antwort zurück ist)
     import threading
