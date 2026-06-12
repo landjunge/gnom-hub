@@ -28,7 +28,7 @@ def _to_ag(r) -> Optional[Agent]:
     for pn in (n, n[0].lower() + n[1:] if n else ""):
         try: pid = int((RUN_DIR / f"{pn}.pid").read_text().strip())
         except Exception as e:
-            logging.getLogger(__name__).error('Fehler in PID-Datei-Lesen: %s', e)
+            logging.getLogger(__name__).warning('PID-Datei fehlt (erwartet nach Cleanup): %s', e)
     model = (get_state_value("llm_agents") or {}).get(n.lower(), {}).get("model")
     return Agent(id=UUID(r["id"]), name=n, status=r["status"], pid=pid, model=model, last_seen=parse_dt(r["last_seen"]), port=r["port"], description=r["description"], capabilities=json.loads(r["capabilities"] or "[]"), role=r["role"], active_job=r["active_job"])
 class SQLiteAgentRepository(AgentRepository):

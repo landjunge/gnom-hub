@@ -11,7 +11,7 @@ def _get_proc(name: str):
         p = psutil.Process(pid)
         if any(f"agents.{matched}" in arg for arg in p.cmdline()): return p
     except (ValueError, OSError, psutil.Error) as e:
-        logging.getLogger(__name__).error('Fehler in Prozess-Abfrage: %s', e)
+        logging.getLogger(__name__).warning('PID-Datei fehlt oder Prozess nicht erreichbar (erwartet nach Cleanup): %s', e)
     return None
 
 def _kill_proc(name: str) -> None:
