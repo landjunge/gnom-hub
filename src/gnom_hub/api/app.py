@@ -15,7 +15,7 @@ async def start_openrouter_updater():
         try:
             from gnom_hub.api.endpoints.llm_models import check_and_update_models
             print("Running scheduled OpenRouter free models check...")
-            await check_and_update_models()
+            await check_and_update_models(skip_ping=True)
             print("Scheduled OpenRouter free models check complete.")
         except asyncio.CancelledError:
             print("OpenRouter updater cancelled.")

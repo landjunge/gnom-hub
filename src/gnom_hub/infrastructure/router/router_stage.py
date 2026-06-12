@@ -232,47 +232,49 @@ class SmartRouter:
     def get_stage_options(stage: str, role: str) -> list:
         or_model = SmartRouter.get_best_openrouter_model(role)
         role_lower = (role or "normal").lower()
-        
-        # Customize s4 options based on role (deepseek-reasoner is premium for coding/security/research)
+
+        # Lokale Modelle zuerst (schnell, kein Rate-Limit)
+        lokal = [
+            ("lokal", "phi3"),
+            ("lokal", "gemma2"),
+            ("lokal", "mistral"),
+            ("lokal", "qwen2"),
+            ("lokal", "llama3"),
+        ]
+
+        # Premium-APIs (nur wenn Keys vorhanden)
         if role_lower in ("coder", "researcher", "security"):
-            s4 = [
+            premium = [
                 ("anthropic", "claude-3-5-sonnet-20241022"),
                 ("deepseek", "deepseek-v4-pro"),
                 ("openai", "gpt-4o"),
                 ("gemini", "gemini-1.5-pro")
             ]
         else:
-            s4 = [
+            premium = [
                 ("anthropic", "claude-3-5-sonnet-20241022"),
                 ("openai", "gpt-4o"),
                 ("gemini", "gemini-1.5-pro"),
                 ("deepseek", "deepseek-v4-flash")
             ]
-            
-        s3 = [
+
+        remote = [
             ("deepseek", "deepseek-v4-flash"),
             ("gemini", "gemini-1.5-flash"),
             ("openrouter", or_model),
             ("openai", "gpt-4o-mini"),
-            ("mistral", "mistral-large-latest")
-        ]
-        s2 = [
-            ("openrouter", or_model),
-            ("deepseek", "deepseek-v4-flash")
-        ]
-        s1 = [
-            ("lokal", "llama3"),
-            ("lokal", "mistral")
+            ("mistral", "mistral-large-latest"),
         ]
 
         if stage == "stage_4":
-            return s4 + s3 + s2 + s1
+            # Schwere Aufgaben: lokal -> premium -> remote
+            return lokal + premium + remote
         elif stage == "stage_3":
-            return s3 + s2 + s1
+            return lokal + remote
         elif stage == "stage_2":
-            return s2 + s1
+            return lokal + [("openrouter", or_model)]
         else:
-            return s1
+            return lokal
 
     @staticmethod
     def resolve_stage(stage: str, kdb: dict, agent_name: str) -> tuple:

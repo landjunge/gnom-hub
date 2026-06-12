@@ -1,6 +1,10 @@
 # router_call.py — Router API calls executor with token tracking
 import logging
 import requests, time, json; from .router_tokens import track_tokens; from .router_keys import get_keys
+
+# Simple rate limiter für OpenRouter (free tier: ~1 RPM)
+_last_or_call = 0
+_OR_MIN_INTERVAL = 3.0  # Sekunden Mindestabstand zwischen OpenRouter-Calls (nur Fallback)
 def _track(pvd, mdl, n, r_json, msgs, ans):
     try:
         u = r_json.get("usage") or {}
@@ -72,9 +76,16 @@ def _call(pvd, mdl, key, msgs, n):
             if pvd == "lokal": pyld.setdefault("options", {})["temperature"] = temp
             else: pyld["temperature"] = temp
 
-    req_timeout = 30
-    for attempt in range(3):
+    req_timeout = 15 if pvd == "lokal" else 30
+    max_retries = 1 if pvd == "lokal" else 3
+    for attempt in range(max_retries):
         try:
+            if pvd == "openrouter":
+                global _last_or_call
+                elapsed = time.time() - _last_or_call
+                if elapsed < _OR_MIN_INTERVAL:
+                    time.sleep(_OR_MIN_INTERVAL - elapsed)
+                _last_or_call = time.time()
             r = requests.post(url, headers=h, json=pyld, timeout=req_timeout)
             if r.status_code == 200:
                 try: res_json = r.json()
@@ -89,13 +100,18 @@ def _call(pvd, mdl, key, msgs, n):
                     if reasoning:
                         ans = f"<think>\n{reasoning}\n</think>\n\n{ans}"
                 if ans: _track(pvd, mdl, n, res_json, msgs, ans); return ans
+                else:
+                    logging.getLogger(__name__).warning("Lokales Modell %s lieferte leere Antwort (status=%d)", mdl, r.status_code)
             
             if r.status_code in (429, 502, 503, 504):
+                if attempt >= max_retries - 1: break
                 time.sleep(1.5 * (attempt + 1))
             else:
+                if pvd == "lokal":
+                    logging.getLogger(__name__).warning("Lokales Modell %s fehlgeschlagen mit Status %d", mdl, r.status_code)
                 break
         except Exception as e:
-            if attempt == 2: raise e
+            if attempt >= max_retries - 1: raise e
             time.sleep(1.5 * (attempt + 1))
 def _try_keys(pvd, mdl, kdb, msgs, an):
     for k in get_keys(pvd, kdb):
