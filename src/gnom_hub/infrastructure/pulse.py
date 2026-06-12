@@ -40,6 +40,68 @@ def pulse_janitor():
 _last_recovery = 0
 RECOVERY_INTERVAL = 300  # 5 Minuten
 
+_last_security_check = 0
+SECURITY_CHECK_INTERVAL = 60  # 1 Minute
+
+def _maybe_security_dispatch():
+    """Prüft auf blockierte Messages und dispatched an SecurityAG/WatchdogAG."""
+    global _last_security_check
+    now = time.time()
+    if now - _last_security_check < SECURITY_CHECK_INTERVAL:
+        return
+    _last_security_check = now
+    try:
+        from gnom_hub.core.config import DB_PATH
+        from gnom_hub.agents.swarm.swarm_comms import dispatch_mention, get_db_connection
+        conn = get_db_connection()
+        try:
+            # Finde Messages die an Gatekeeper gescheitert sind (retry_count > 0, aber nicht done)
+            rows = conn.execute("""
+                SELECT id, recipient, sender, context_id, depth, parent_msg_id
+                FROM agent_messages
+                WHERE status IN ('pending', 'processing')
+                  AND retry_count > 0
+                  AND recipient NOT IN ('SecurityAG', 'WatchdogAG')
+                  AND (sender = 'Gatekeeper' OR payload LIKE '%Gatekeeper%')
+                ORDER BY created_at DESC
+                LIMIT 5
+            """).fetchall()
+            
+            for row in rows:
+                # Dispatch an SecurityAG + WatchdogAG
+                context_id = row["context_id"]
+                depth = row["depth"]
+                parent_id = row["parent_msg_id"]
+                
+                # SecurityAG
+                dispatch_mention(
+                    sender="System",
+                    text="@SecurityAG Prüfe Gatekeeper-Blockade und erteile Freigabe falls User es verlangt. MSG-ID: " + str(row["id"]),
+                    context_id=context_id,
+                    db_path=str(DB_PATH),
+                    current_depth=depth + 1,
+                    parent_msg_id=parent_id,
+                    priority="high"
+                )
+                
+                # WatchdogAG
+                dispatch_mention(
+                    sender="System",
+                    text="@WatchdogAG Prüfe Gatekeeper-Blockade auf geschützte Pfade. Erteile Alternativpfad falls nötig. MSG-ID: " + str(row["id"]),
+                    context_id=context_id,
+                    db_path=str(DB_PATH),
+                    current_depth=depth + 1,
+                    parent_msg_id=parent_id,
+                    priority="high"
+                )
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.getLogger(__name__).warning("Security dispatch fehlgeschlagen: %s", e)
+
+_last_recovery = 0
+RECOVERY_INTERVAL = 300  # 5 Minuten
+
 _last_ctx_cleanup = 0
 CLEANUP_INTERVAL = 86400  # 24 Stunden
 

@@ -174,7 +174,7 @@ AGENT_DEFINITIONS = {
             "3-LAYER-SYSTEM:\n"
             "  <SHOWBOX:worker> (orange) = DEIN Layer — deine Ergebnisse\n"
             "  <SHOWBOX:system> (cyan) = NUR für GeneralAG/SoulAG\n"
-            "  <SHOWBOX:user> (grün) = EXKLUSIV für den User\n"
+            "  <SHOWBOX:user> (grün) = FÜR ALLE AGENTEN FREIGEGEBEN — jeder darf hier schreiben\n"
             "Shell-Meldungen gehören nicht in <SHOWBOX:worker>, nur reines Ergebnis."
         ),
         "de": {
@@ -204,7 +204,7 @@ AGENT_DEFINITIONS = {
             "3-LAYER-SYSTEM:\n"
             "  <SHOWBOX:worker> (orange) = DEIN Layer — deine Textergebnisse\n"
             "  <SHOWBOX:system> (cyan) = NUR für GeneralAG/SoulAG\n"
-            "  <SHOWBOX:user> (grün) = EXKLUSIV für den User"
+            "  <SHOWBOX:user> (grün) = FÜR ALLE AGENTEN FREIGEGEBEN — jeder darf hier schreiben\n"
         ),
         "de": {
             "character": "Tastenschreiber",
@@ -232,9 +232,9 @@ AGENT_DEFINITIONS = {
             "Extrahiere Fakten, strukturiere sie, keine Meinung oder Bewertung.\n"
             "Du schreibst keinen Code — nur Recherche-Output.\n"
             "3-LAYER-SYSTEM:\n"
-            "  <SHOWBOX:worker> (orange) = DEIN Layer — Recherche-Ergebnisse\n"
+            "  <SHOWBOX:worker> (orange) = DEIN Layer — deine Textergebnisse\n"
             "  <SHOWBOX:system> (cyan) = NUR für GeneralAG/SoulAG\n"
-            "  <SHOWBOX:user> (grün) = EXKLUSIV für den User"
+            "  <SHOWBOX:user> (grün) = FÜR ALLE AGENTEN FREIGEGEBEN — jeder darf hier schreiben"
         ),
         "de": {
             "character": "Lochkarten-Archivar",
@@ -265,7 +265,7 @@ AGENT_DEFINITIONS = {
             "3-LAYER-SYSTEM:\n"
             "  <SHOWBOX:worker> (orange) = DEIN Layer — Prüfergebnisse\n"
             "  <SHOWBOX:system> (cyan) = NUR für GeneralAG/SoulAG\n"
-            "  <SHOWBOX:user> (grün) = EXKLUSIV für den User"
+            "  <SHOWBOX:user> (grün) = FÜR ALLE AGENTEN FREIGEGEBEN — jeder darf hier schreiben"
         ),
         "de": {
             "character": "Signal-Prüfer",

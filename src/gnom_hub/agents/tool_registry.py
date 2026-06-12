@@ -34,7 +34,7 @@ def format_tools_prompt(soul: dict, name: str):
     syn += '\n  3-LAYER-SYSTEM (hart durchgesetzt):'
     syn += '\n    <SHOWBOX:worker> (orange) → Worker (CoderAG, WriterAG, ResearcherAG, EditorAG)'
     syn += '\n    <SHOWBOX:system> (cyan) → System (GeneralAG, SoulAG)'
-    syn += '\n    <SHOWBOX:user> (grün) → EXKLUSIV für den User. NIEMALS als Agent hier schreiben!'
+    syn += '\n    <SHOWBOX:user> (grün) → FÜR ALLE AGENTEN FREIGEGEBEN. Jeder Agent darf hier schreiben!'
     syn += '\n  Jeder Agent liefert NUR in SEINEM Layer.'
     char = f" – {soul['character']}" if soul.get("character") else ""
     intro = f"You are {name} ({soul.get('role', 'Agent')}{char})."

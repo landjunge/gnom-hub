@@ -155,6 +155,10 @@ class BaseAgent:
                 if time.time() - _processing_start > 600:
                     raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >10 Min (msg_id={msg['msg_id']})")
 
+                # LLM-Call Timeout (30s max pro Request)
+                if hasattr(r, 'latency_ms') and r.latency_ms > 30000:
+                    ctx_logger.warning(f"LLM latency {r.latency_ms}ms > 30s - möglicher Timeout")
+
                 processed = ""
                 if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
                     from gnom_hub.agents.actions.action_handlers import process_actions
