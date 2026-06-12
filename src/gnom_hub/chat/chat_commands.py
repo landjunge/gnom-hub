@@ -47,6 +47,7 @@ def handle_free(q):
             else:
                 conn.execute("UPDATE agent_messages SET status='done', completed_at=? WHERE status IN ('pending','processing')", (time.time(),))
                 conn.execute("UPDATE agents SET status='online', active_job=NULL WHERE status IN ('busy','paused')")
+    # Prozess(e) killen und neu starten - DB-Reset allein reicht nicht bei haengenden Prozessen
     targets = [a for a in AGENTS if a.lower().startswith(t)] if t else AGENTS
     restarted = []
     for agent in targets:
@@ -80,7 +81,7 @@ def handle_git(q, rb=False):
         subprocess.run(["git", "init"], cwd=wd, capture_output=True)
         subprocess.run(["git", "config", "user.name", "Gnom-Hub Agents"], cwd=wd, capture_output=True)
         subprocess.run(["git", "config", "user.email", "agents@gnom-hub.local"], cwd=wd, capture_output=True)
-    try:
+    try: 
         import shlex
         r = subprocess.run(["git"] + shlex.split(cmd), cwd=wd, capture_output=True, text=True, timeout=10).stdout.strip()
     except Exception as e: 
@@ -390,8 +391,8 @@ def handle_blockade(q):
         try:
             from gnom_hub.db import set_active_showbox
             set_active_showbox("")
-        except Exception as e:
-            logging.getLogger(__name__).warning("Showbox-Clear fehlgeschlagen: %s", e)
+        except Exception:
+            pass
             
         msg = "⚡ **System-Blockaden deaktiviert:** Alle Datei- und Befehlszugriffe werden automatisch freigegeben (Auto-Approve)."
         if approved_count > 0:

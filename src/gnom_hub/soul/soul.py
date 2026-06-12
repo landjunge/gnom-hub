@@ -5,17 +5,20 @@ from gnom_hub.db import save_soul_fact, add_chat_message, get_active_project
 from gnom_hub.infrastructure.router.router import ask_router
 from gnom_hub.core.config import WORKSPACE_DIR
 from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
+from gnom_hub.soul.memory_layers import (
+    get_cache, get_passive_db, get_rules_db, get_coordination_db,
+    query_memory, save_fact_all_layers
+)
 
 _log = logging.getLogger("soul")
 
-from gnom_hub.core.constants import (
-    MAX_SOUL_FACTS, MIN_VALUE_LENGTH, DEDUP_THRESHOLD,
-    HIGH_PRIO_MAX_AGE_DAYS, MED_PRIO_MAX_AGE_DAYS, LOW_PRIO_MAX_AGE_DAYS,
-    CLEANUP_INTERVAL, SOUL_CACHE_TTL, SOUL_CACHE_MAX, SOUL_HASH_SEEN_MAX,
-    SOUL_HASH_DEDUP_SECONDS, SOUL_USER_SAMPLE_RATE, SOUL_TOP_K_DEFAULT,
-    SOUL_INJECTIONS_MAX, SOUL_INJECTIONS_TRIM, SOUL_DIRECTIVE_TTL,
-    SOUL_SILENT_ROUNDS, MEMORY_STRENGTH_MAP,
-)
+# ── Konfiguration ──────────────────────────────────────────────────────────
+MAX_SOUL_FACTS       = 100     # Hartes Limit (war 50)
+MIN_VALUE_LENGTH     = 15      # Minimale Fakt-Länge (Zeichen)
+DEDUP_THRESHOLD      = 0.85    # FAISS-Ähnlichkeits-Schwelle (war 0.88)
+HIGH_PRIO_MAX_AGE_DAYS = 30    # High-Fakten leben max 30 Tage
+MED_PRIO_MAX_AGE_DAYS  = 14    # Medium-Fakten leben max 14 Tage
+LOW_PRIO_MAX_AGE_DAYS  = 7     # Low-Fakten leben max 7 Tage
 
 # Patterns, die NIEMALS gespeichert werden
 BLOCKED_PATTERNS = [
@@ -39,6 +42,8 @@ def _compute_score(priority: str, age_days: float, injection_count: int = 0) -> 
 
 # ── Periodische Hausputz-Funktion ─────────────────────────────────────────
 _last_cleanup_time = 0
+CLEANUP_INTERVAL = 3600  # 1 Stunde zwischen Hausputz
+
 def _periodic_cleanup():
     global _last_cleanup_time
     now = time.time()
@@ -102,6 +107,8 @@ def _periodic_cleanup():
 class SoulAG:
     def __init__(self):
         self.name = "SoulAG"
+        # Layer 1 Cache beim Start befüllen
+        threading.Thread(target=get_cache().warm_up, daemon=True).start()
         self._injections = {}
         self._recent_facts_cache = {}
 
@@ -134,11 +141,10 @@ class SoulAG:
             def _back():
                 import time; time.sleep(2)
                 try: requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=online", timeout=2)
-                except requests.RequestException:
-                    pass
+                except: pass
             threading.Thread(target=_back, daemon=True).start()
-        except requests.RequestException as e:
-            _log.debug("Status-Pulse fehlgeschlagen: %s", e)
+        except:
+            pass
 
     def _val(self, k: str, v: str) -> bool:
         kl = k.lower()
@@ -213,7 +219,7 @@ class SoulAG:
                     del self._recent_facts_cache[oldest]
 
                 agent_name = "SoulAG" if target.lower() == "all" else target
-                save_soul_fact(k, v, agent=agent_name, priority=p)
+                save_fact_all_layers(k, v, p, agent_name)
                 saved += 1
                 _log.debug("[Soul] Saved: %s [%s -> %s]", k, p, agent_name)
 
@@ -223,8 +229,8 @@ class SoulAG:
                 try:
                     add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
                                      f"🧠 {saved} Fakten gelernt", {"type": "soul"})
-                except Exception as e:
-                    _log.debug("Chat-Add fehlgeschlagen: %s", e)
+                except:
+                    pass
             else:
                 self._silent_rounds = getattr(self, '_silent_rounds', 0) + 1
                 if self._silent_rounds >= 5:
@@ -233,8 +239,8 @@ class SoulAG:
                         add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
                                          f"👀 Nichts Neues gelernt — {len(getattr(self,'_recent_facts_cache',{}))} aktive Fakten im Cache",
                                          {"type": "soul"})
-                    except Exception as e:
-                        _log.debug("Chat-Add (silent) fehlgeschlagen: %s", e)
+                    except:
+                        pass
 
         except json.JSONDecodeError as e:
             _log.warning("[Soul] JSON error: %s", e)
@@ -247,9 +253,9 @@ class SoulAG:
             try:
                 from gnom_hub.db import get_state_value
                 settings = get_state_value("agent_settings", {}).get(agent_name.lower(), {})
-                top_k = MEMORY_STRENGTH_MAP.get(settings.get("memory_strength", 3), 6)
-            except Exception as e:
-                _log.debug("Memory-Strength Laden fehlgeschlagen: %s", e)
+                top_k = {1: 2, 2: 4, 3: 6, 4: 8, 5: 12}.get(settings.get("memory_strength", 3), 6)
+            except Exception:
+                pass
 
         # Zusätzlich: Immer User-Top-Level-Aufgaben (high priority) injizieren
         _user_facts = []
@@ -260,9 +266,9 @@ class SoulAG:
                     "SELECT key, value FROM soul_memory WHERE agent = 'User' AND priority = 'high' ORDER BY timestamp DESC LIMIT 3"
                 ).fetchall()
                 _user_facts = [f"{r['key']}: {r['value']}" for r in _rows]
-        except Exception as e:
-            _log.debug("User-Facts Laden fehlgeschlagen: %s", e)
-        facts = retrieve_relevant_facts(msg, agent_name=agent_name, top_k=top_k)
+        except Exception:
+            pass
+        facts = query_memory(msg, agent_name=agent_name or "all", top_k=top_k)
         # User high-priority facts immer an erste Stelle
         if _user_facts:
             facts = _user_facts + [f for f in facts if f not in _user_facts]

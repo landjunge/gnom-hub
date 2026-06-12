@@ -1,4 +1,3 @@
-from __future__ import annotations
 import re
 import time
 import json
@@ -7,14 +6,25 @@ import logging
 from typing import Optional, List, Dict, Union, Tuple
 import sqlite3
 from gnom_hub.db.connection import get_db_connection
-from gnom_hub.core.constants import (
-    MAX_DEPTH, MAX_CONCURRENT, RETRY_MAX, RETRY_BACKOFF_BASE,
-    MAX_QUEUE_DEPTH, DEPENDENCY_TIMEOUT, DEPENDENCY_POLL_S,
-    STUCK_MESSAGE_TIMEOUT, MIN_JOBS_THRESHOLD, PRIORITY_MAPPING,
-)
+
+PRIORITY_MAPPING = {
+    "critical": 1,
+    "high": 3,
+    "normal": 5,
+    "low": 7
+}
 
 
 logger = logging.getLogger(__name__)
+
+# ── Konfiguration (statt Magic Numbers im Code) ────────────────────────────
+MAX_DEPTH           = 8
+MAX_CONCURRENT      = 8       # (war 12) — nur 8 Agenten
+RETRY_MAX           = 3
+RETRY_BACKOFF_BASE  = 3.0     # (war 5.0) — schnellere Retries
+MAX_QUEUE_DEPTH     = 30      # (war 50) — engere Backpressure
+DEPENDENCY_TIMEOUT  = 120.0  # Max. Wartezeit auf eine Abhängigkeit (Sekunden)
+DEPENDENCY_POLL_S   = 1.0     # (war 3.0) — schnellere Dependency-Auflösung    # Poll-Intervall für Dependency-Checks
 
 # ── Notification-Bus: Agenten warten auf dieses Event statt zu pollen ──────
 _new_message_event: Dict[str, threading.Event] = {}
@@ -167,15 +177,16 @@ def dispatch_sequence(
     return dispatched
 
 
-def _get_queue_depths(conn: sqlite3.Connection) -> dict[str, int]:
-    rows = conn.execute(
-        "SELECT recipient, COUNT(*) as cnt FROM agent_messages "
-        "WHERE status IN ('pending','processing') GROUP BY recipient"
-    ).fetchall()
-    return {r["recipient"].lower(): r["cnt"] for r in rows}
+def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> Optional[str]:
+    """
+    3-stufige Agent-Auswahl:
+    1. coordination.db — Erfolgsrate + Fehlerhistorie (lernt aus echten Jobs)
+    2. agent_capabilities — Confidence-Score + Queue-Tiefe
+    3. Keyword-Heuristik — letzter Fallback
+    """
+    task_lower = task.lower()
 
-
-def _find_capability_for_task(task_lower: str) -> Optional[str]:
+    # Capability → Task-Keyword Mapping
     keywords = {
         "code_generation":  ["code", "schreib", "python", "html", "js", "script", "programm", "implementier", "bash"],
         "web_research":     ["recherchier", "suche", "finde", "google", "research", "analyse"],
@@ -184,77 +195,87 @@ def _find_capability_for_task(task_lower: str) -> Optional[str]:
         "summarization":    ["zusammenfass", "summary", "kurzfass"],
         "security_audit":   ["sicherheit", "security", "audit", "vulnerab", "scan"],
     }
-    for cap, words in keywords.items():
-        if any(w in task_lower for w in words):
-            return cap
-    return None
 
+    # Welche Capabilities passen zum Task?
+    matched_caps = [cap for cap, words in keywords.items() if any(w in task_lower for w in words)]
 
-def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> Optional[str]:
-    """
-    Dreistufige Agenten-Wahl:
-      1. coordination.db: Wer hat ähnliche Jobs am besten erledigt?
-      2. agent_capabilities + Queue-Tiefe: Wer ist frei + kompetent?
-      3. Keyword-Heuristik: Letzter Fallback
-    """
-    task_lower = task.lower()
-    queue_depths = _get_queue_depths(conn)
+    # 1. coordination.db — Erfolgsrate entscheidet
+    if matched_caps:
+        try:
+            from gnom_hub.soul.memory_layers import get_coordination_db
+            coord = get_coordination_db()
+            import sqlite3 as _sq
+            with _sq.connect(str(coord._path)) as cdb:
+                cdb.row_factory = _sq.Row
+                # Agenten mit Jobs in den letzten 7 Tagen — nach Erfolgsrate sortiert
+                # Nur Agenten nehmen die auch online/busy sind
+                rows = cdb.execute("""
+                    SELECT ws.agent_name,
+                           ws.total_jobs,
+                           ws.successful_jobs,
+                           ws.failed_jobs,
+                           CASE WHEN ws.total_jobs > 0
+                                THEN CAST(ws.successful_jobs AS REAL) / ws.total_jobs
+                                ELSE 0.5
+                           END AS success_rate
+                    FROM worker_stats ws
+                    WHERE ws.total_jobs >= 2
+                    ORDER BY success_rate DESC, ws.total_jobs DESC
+                """).fetchall()
 
-    # Stufe 1: coordination.db — Erfolgsrate aus der Job-History
-    try:
-        from gnom_hub.soul.memory_layers import get_coordination_db
-        capability = _find_capability_for_task(task_lower)
-        if capability:
-            preferred, fallback = get_coordination_db().get_best_worker(capability, queue_depths)
-            if preferred:
-                row = conn.execute(
-                    "SELECT name FROM agents WHERE LOWER(name) = ? AND status IN ('online','busy','running')",
-                    (preferred.lower(),)
+            for row in rows:
+                agent_name = row["agent_name"]
+                # Ist dieser Agent online?
+                a_row = conn.execute(
+                    "SELECT name FROM agents WHERE name = ? AND status IN ('online','busy','running')",
+                    (agent_name,)
                 ).fetchone()
-                if row:
-                    _log.info("Agent-Wahl: coordination.db → %s (%.0f%% Erfolg, Queue %d)",
-                              preferred,
-                              _get_success_rate(conn, preferred),
-                              queue_depths.get(preferred.lower(), 0))
-                    return row["name"]
-    except Exception as e:
-        _log.debug("coordination.db nicht verfügbar: %s", e)
+                if not a_row:
+                    continue
+                # Hat dieser Agent eine passende Capability?
+                for cap in matched_caps:
+                    cap_row = conn.execute(
+                        "SELECT agent_name FROM agent_capabilities WHERE agent_name = ? AND capability = ?",
+                        (agent_name, cap)
+                    ).fetchone()
+                    if cap_row:
+                        # Schlechte Erfolgsrate (<40%) → überspringen, nächsten nehmen
+                        if row["success_rate"] < 0.4 and row["total_jobs"] >= 5:
+                            logger.warning(
+                                "[Routing] %s übersprungen (Erfolgsrate %.0f%% bei %d Jobs)",
+                                agent_name, row["success_rate"] * 100, row["total_jobs"]
+                            )
+                            break
+                        logger.info(
+                            "[Routing] %s gewählt via coordination.db (%.0f%% Erfolg, %d Jobs)",
+                            agent_name, row["success_rate"] * 100, row["total_jobs"]
+                        )
+                        return agent_name
+        except Exception as e:
+            logger.debug("[Routing] coordination.db Fehler: %s", e)
 
-    # Stufe 2: agent_capabilities + Queue-Tiefe + Erfolgsrate
-    capability = _find_capability_for_task(task_lower)
-    if capability:
-        rows = conn.execute("""
-            SELECT ac.agent_name, ac.confidence
+    # 2. agent_capabilities — Confidence + Queue-Tiefe
+    for cap in matched_caps:
+        row = conn.execute("""
+            SELECT ac.agent_name
             FROM agent_capabilities ac
             JOIN agents a ON a.name = ac.agent_name AND a.status IN ('online','busy','running')
+            LEFT JOIN (
+                SELECT recipient, COUNT(*) AS pending_count
+                FROM agent_messages WHERE status = 'pending'
+                GROUP BY recipient
+            ) q ON q.recipient = ac.agent_name
             WHERE ac.capability = ?
-            ORDER BY ac.confidence DESC
-        """, (capability,)).fetchall()
+            ORDER BY COALESCE(q.pending_count, 0) ASC, ac.confidence DESC
+            LIMIT 1
+        """, (cap,)).fetchone()
+        if row:
+            logger.info("[Routing] %s gewählt via agent_capabilities (%s)", row["agent_name"], cap)
+            return row["agent_name"]
 
-        scored = []
-        for r in rows:
-            name = r["agent_name"]
-            qd = queue_depths.get(name.lower(), 0)
-            success_rate = _get_success_rate(conn, name)
-            score = r["confidence"] * 10 - qd * 2 + success_rate * 0.3
-            scored.append((score, name, qd, success_rate))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        for score, name, qd, sr in scored:
-            if sr >= 40 or not _has_enough_jobs(conn, name):
-                _log.info("Agent-Wahl: capabilities → %s (Score=%.1f, Queue=%d, Erfolg=%.0f%%)",
-                          name, score, qd, sr)
-                return name
-            else:
-                _log.info("Agent übersprungen: %s (nur %.0f%% Erfolg nach mehreren Jobs)", name, sr)
-
-        if scored:
-            _log.info("Agent-Wahl: capabilities → %s (letzter, trotz niedriger Erfolgsrate)", scored[-1][1])
-            return scored[-1][1]
-
-    # Stufe 3: Keyword-Heuristik als letzter Fallback
+    # 3. Keyword-Heuristik — letzter Fallback
     agent_hints = {
-        "coderag":     ["code", "python", "html", "js", "create", "erstell", "bau", "implementier", "script", "write"],
+        "coderag":     ["code", "python", "html", "js", "create", "erstell", "bau", "implementier", "script"],
         "writerag":    ["text", "slogan", "artikel", "blog", "dokument", "schreib", "content"],
         "researcherag":["recherchier", "suche", "finde", "research", "analyse", "fakten"],
         "editorag":    ["korrigier", "review", "prüf", "lektorat", "refaktor", "qualität"],
@@ -266,40 +287,10 @@ def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> Optional[st
                 (agent_key,)
             ).fetchone()
             if row:
-                _log.info("Agent-Wahl: keyword fallback → %s", row["name"])
+                logger.info("[Routing] %s gewählt via Keyword-Heuristik", row["name"])
                 return row["name"]
 
     return None
-
-
-def _get_success_rate(conn: sqlite3.Connection, agent_name: str) -> float:
-    try:
-        from gnom_hub.soul.memory_layers import get_coordination_db
-        cdb = get_coordination_db()
-        with sqlite3.connect(cdb._path) as c:
-            row = c.execute(
-                "SELECT total_jobs, successful_jobs FROM worker_stats WHERE agent_name = ?",
-                (agent_name,)
-            ).fetchone()
-            if row and row[0] > 0:
-                return (row[1] / row[0]) * 100
-    except Exception:
-        pass
-    return 0.0
-
-
-def _has_enough_jobs(conn: sqlite3.Connection, agent_name: str, threshold: int = None) -> bool:
-    threshold = threshold or MIN_JOBS_THRESHOLD
-    try:
-        from gnom_hub.soul.memory_layers import get_coordination_db
-        cdb = get_coordination_db()
-        with sqlite3.connect(cdb._path) as c:
-            row = c.execute(
-                "SELECT total_jobs FROM worker_stats WHERE agent_name = ?", (agent_name,)
-            ).fetchone()
-            return row and row[0] >= threshold
-    except Exception:
-        return False
 
 
 def get_agent_event(agent_name: str) -> threading.Event:
@@ -731,8 +722,7 @@ def dispatch_by_capability(
         conn.close()
 
 
-def recover_stuck_messages(db_path: str, timeout: float = None) -> None:
-    timeout = timeout or STUCK_MESSAGE_TIMEOUT
+def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
     """
     Findet blockierte/abgestürzte Nachrichten und gibt sie wieder frei oder schiebt sie in die DLQ.
     """

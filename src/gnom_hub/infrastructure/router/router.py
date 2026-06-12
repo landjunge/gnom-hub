@@ -115,11 +115,14 @@ def _build_sys(n, sys, agent_name):
             agent_tools_block=f"Perms: {perms_str}",
             agent_security_block=sec,
         )
-    except Exception as e:
-        logging.getLogger(__name__).debug("System-Prompt-Bau fehlgeschlagen: %s", e)
+    except Exception:
+        pass
 
+    # Obedience-Slider auswerten (war definiert aber nie aufgerufen)
     obedience_level = settings.get("obedience", 3)
     sys += _get_obedience_instructions(obedience_level)
+
+    # Behavioral-Sliders (Persönlichkeit, Antwort-Stil, Risikobereitschaft)
     sys += _get_behavioral_instructions(settings)
 
     if settings.get("custom_prompt"):

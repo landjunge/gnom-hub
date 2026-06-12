@@ -98,6 +98,27 @@ class BaseAgent:
                 from gnom_hub.soul import soul_instance
                 sys_prompt = soul_instance.inject_context(self.sys, text, agent_name=self.n) if soul_instance is not None else self.sys
 
+                # GeneralAG bekommt Worker-Statistiken aus CoordinationDB
+                if self.n.lower() == "generalag":
+                    try:
+                        from gnom_hub.soul.memory_layers import get_coordination_db
+                        summary = get_coordination_db().get_worker_summary()
+                        if summary:
+                            sys_prompt += f"\n\n=== WORKER STATISTIKEN ===\n{summary}"
+                    except Exception:
+                        pass
+
+                # WatchdogAG + SecurityAG bekommen aktuelle Regeln aus RulesDB
+                if self.n.lower() in ("watchdogag", "securityag"):
+                    try:
+                        from gnom_hub.soul.memory_layers import get_rules_db
+                        rules = get_rules_db().get_rules_for_agent(self.n)
+                        if rules:
+                            rule_lines = [f"  [{r['rule_type']}] {r['pattern']} — {r['reason']}" for r in rules[:15]]
+                            sys_prompt += f"\n\n=== AKTUELLE REGELN ===\n" + "\n".join(rule_lines)
+                    except Exception:
+                        pass
+
                 from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
                 wd = get_workspace_dir()
                 fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
@@ -114,9 +135,8 @@ class BaseAgent:
                             _c = _h.get('content', '')[:200]
                             _ctx += f"[{_s}]: {_c}\n"
                         sys_prompt += _ctx
-                except Exception as e:
-                    logger = logging.getLogger(__name__)
-                    logger.warning("Chat-History-Injection fehlgeschlagen: %s", e)
+                except Exception:
+                    pass
 
                 r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
 
@@ -147,6 +167,18 @@ class BaseAgent:
                     "agent_name": self.n,
                     "result": {"status": "success", "content": processed}
                 })
+                # Job-Erfolg in CoordinationDB aufzeichnen
+                try:
+                    from gnom_hub.soul.memory_layers import get_coordination_db
+                    get_coordination_db().record_job(
+                        worker=self.n,
+                        task_summary=text[:100],
+                        result="success",
+                        duration_s=round(time.time() - _processing_start, 1),
+                        context_id=msg.get("context_id")
+                    )
+                except Exception:
+                    pass
 
             except Exception as e:
                 ctx_logger.error(f"Fehler bei Verarbeitung: {e}", exc_info=True)
@@ -156,6 +188,19 @@ class BaseAgent:
                     "agent_name": self.n,
                     "result": {"status": "error", "error": str(e)}
                 })
+                # Job-Fehler in CoordinationDB aufzeichnen
+                try:
+                    from gnom_hub.soul.memory_layers import get_coordination_db
+                    get_coordination_db().record_job(
+                        worker=self.n,
+                        task_summary=text[:100] if "text" in dir() else "unknown",
+                        result="failed",
+                        duration_s=round(time.time() - _processing_start, 1),
+                        context_id=msg.get("context_id"),
+                        notes=str(e)[:200]
+                    )
+                except Exception:
+                    pass
 
             finally:
                 self._req("put", f"/api/agents/{self.n}/status?status=online")
