@@ -95,16 +95,27 @@ class BaseAgent:
 
                 text = msg["payload"]["text"]
 
+                # Context in ContextDB öffnen
+                try:
+                    from gnom_hub.soul.memory_layers import get_context_db
+                    get_context_db().open_context(msg["context_id"], text[:200], created_by=msg.get("sender","user"))
+                    get_context_db().add_event(msg["context_id"], "started", self.n)
+                except Exception:
+                    pass
+
                 from gnom_hub.soul import soul_instance
                 sys_prompt = soul_instance.inject_context(self.sys, text, agent_name=self.n) if soul_instance is not None else self.sys
 
-                # GeneralAG bekommt Worker-Statistiken aus CoordinationDB
+                # GeneralAG bekommt Worker-Statistiken + offene Contexts
                 if self.n.lower() == "generalag":
                     try:
-                        from gnom_hub.soul.memory_layers import get_coordination_db
+                        from gnom_hub.soul.memory_layers import get_coordination_db, get_context_db
                         summary = get_coordination_db().get_worker_summary()
                         if summary:
                             sys_prompt += f"\n\n=== WORKER STATISTIKEN ===\n{summary}"
+                        ctx_summary = get_context_db().get_summary_for_generalag()
+                        if ctx_summary:
+                            sys_prompt += f"\n\n{ctx_summary}"
                     except Exception:
                         pass
 
@@ -167,9 +178,9 @@ class BaseAgent:
                     "agent_name": self.n,
                     "result": {"status": "success", "content": processed}
                 })
-                # Job-Erfolg in CoordinationDB aufzeichnen
+                # Job-Erfolg in CoordinationDB + ContextDB aufzeichnen
                 try:
-                    from gnom_hub.soul.memory_layers import get_coordination_db
+                    from gnom_hub.soul.memory_layers import get_coordination_db, get_context_db
                     get_coordination_db().record_job(
                         worker=self.n,
                         task_summary=text[:100],
@@ -177,6 +188,9 @@ class BaseAgent:
                         duration_s=round(time.time() - _processing_start, 1),
                         context_id=msg.get("context_id")
                     )
+                    get_context_db().add_event(msg["context_id"], "completed", self.n, processed[:100] if processed else "")
+                    if self.n.lower() == "generalag":
+                        get_context_db().close_context(msg["context_id"], "completed", processed[:200] if processed else "")
                 except Exception:
                     pass
 
@@ -188,17 +202,36 @@ class BaseAgent:
                     "agent_name": self.n,
                     "result": {"status": "error", "error": str(e)}
                 })
-                # Job-Fehler in CoordinationDB aufzeichnen
+                # Job-Fehler in CoordinationDB + ContextDB aufzeichnen
                 try:
-                    from gnom_hub.soul.memory_layers import get_coordination_db
+                    from gnom_hub.soul.memory_layers import get_coordination_db, get_context_db
+                    _task_text = text[:100] if "text" in dir() else "unknown"
                     get_coordination_db().record_job(
                         worker=self.n,
-                        task_summary=text[:100] if "text" in dir() else "unknown",
+                        task_summary=_task_text,
                         result="failed",
                         duration_s=round(time.time() - _processing_start, 1),
                         context_id=msg.get("context_id"),
                         notes=str(e)[:200]
                     )
+                    get_context_db().add_event(msg["context_id"], "failed", self.n, str(e)[:200])
+                except Exception:
+                    pass
+
+                # Dead-Letter Benachrichtigung im Chat wenn retry_count >= 3
+                try:
+                    retry_count = msg.get("retry_count", 0) or 0
+                    if retry_count >= 2:
+                        self._req("post", "/api/chat", {
+                            "content": (
+                                f"💀 **[Dead-Letter]** Nachricht #{msg['msg_id']} von **{msg.get('sender','?')}** "
+                                f"an **{self.n}** ist nach {retry_count+1} Versuchen fehlgeschlagen.\n"
+                                f"Aufgabe: `{(_task_text)[:80]}`\n"
+                                f"Fehler: `{str(e)[:120]}`\n"
+                                f"→ Admin: `/api/admin/dead-letters` für Details + Retry."
+                            ),
+                            "sender": "System"
+                        })
                 except Exception:
                     pass
 

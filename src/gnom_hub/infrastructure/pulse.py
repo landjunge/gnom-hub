@@ -40,6 +40,21 @@ def pulse_janitor():
 _last_recovery = 0
 RECOVERY_INTERVAL = 300  # 5 Minuten
 
+_last_ctx_cleanup = 0
+CLEANUP_INTERVAL = 86400  # 24 Stunden
+
+def _maybe_cleanup_contexts():
+    global _last_ctx_cleanup
+    now = time.time()
+    if now - _last_ctx_cleanup < CLEANUP_INTERVAL:
+        return
+    _last_ctx_cleanup = now
+    try:
+        from gnom_hub.soul.memory_layers import get_context_db
+        get_context_db().cleanup_old(days=7)
+    except Exception as e:
+        logging.getLogger(__name__).warning("ContextDB cleanup fehlgeschlagen: %s", e)
+
 def _maybe_recover_stuck():
     global _last_recovery
     now = time.time()
@@ -60,6 +75,8 @@ def start_pulse(interval=30):
             except Exception as e: logging.getLogger(__name__).error("Pulse janitor failed: %s", e)
             try: _maybe_recover_stuck()
             except Exception as e: logging.getLogger(__name__).error("Recovery check fehlgeschlagen: %s", e)
+            try: _maybe_cleanup_contexts()
+            except Exception as e: logging.getLogger(__name__).error("Context cleanup fehlgeschlagen: %s", e)
             time.sleep(interval)
     t = threading.Thread(target=loop, daemon=True)
     t.start()

@@ -593,3 +593,143 @@ def save_fact_all_layers(key: str, value: str, priority: str, agent: str):
     # Layer 3 — nur high priority als Backup
     if priority == "high":
         get_passive_db().archive(key, value, priority, agent)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CONTEXT DB — GeneralAG Task-Koordination über Neustarts hinweg
+# ══════════════════════════════════════════════════════════════════════════════
+class ContextDB:
+    """
+    GeneralAGs Arbeitsgedächtnis für laufende Tasks.
+    Überlebt Hub-Neustarts — GeneralAG weiß nach Restart was er koordiniert hatte.
+    """
+
+    def __init__(self):
+        self._path = str(_db_dir() / "context.db")
+        self._init_db()
+
+    def _init_db(self):
+        try:
+            with sqlite3.connect(self._path) as conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS contexts (
+                        context_id TEXT PRIMARY KEY,
+                        original_task TEXT NOT NULL,
+                        status TEXT DEFAULT 'active',   -- active, completed, failed, abandoned
+                        created_by TEXT DEFAULT 'user',
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        workers_involved TEXT DEFAULT '[]',  -- JSON array
+                        last_result TEXT DEFAULT '',
+                        notes TEXT DEFAULT ''
+                    )
+                """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS context_events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        context_id TEXT NOT NULL,
+                        event_type TEXT NOT NULL,   -- 'delegated', 'completed', 'failed', 'retry'
+                        agent TEXT NOT NULL,
+                        detail TEXT DEFAULT '',
+                        ts TEXT NOT NULL
+                    )
+                """)
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_ctx_status ON contexts(status)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_ctx_events ON context_events(context_id)")
+                conn.commit()
+        except Exception as e:
+            _log.warning("[ContextDB] Init fehlgeschlagen: %s", e)
+
+    def open_context(self, context_id: str, task: str, created_by: str = "user"):
+        try:
+            now = datetime.now().isoformat()
+            with sqlite3.connect(self._path) as conn:
+                conn.execute(
+                    "INSERT OR IGNORE INTO contexts "
+                    "(context_id, original_task, created_by, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (context_id, task[:500], created_by, now, now)
+                )
+                conn.commit()
+        except Exception as e:
+            _log.debug("[ContextDB] open_context: %s", e)
+
+    def add_event(self, context_id: str, event_type: str, agent: str, detail: str = ""):
+        try:
+            now = datetime.now().isoformat()
+            with sqlite3.connect(self._path) as conn:
+                conn.execute(
+                    "INSERT INTO context_events (context_id, event_type, agent, detail, ts) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (context_id, event_type, agent, detail[:300], now)
+                )
+                conn.execute(
+                    "UPDATE contexts SET updated_at=? WHERE context_id=?",
+                    (now, context_id)
+                )
+                conn.commit()
+        except Exception as e:
+            _log.debug("[ContextDB] add_event: %s", e)
+
+    def close_context(self, context_id: str, status: str = "completed", result: str = ""):
+        try:
+            now = datetime.now().isoformat()
+            with sqlite3.connect(self._path) as conn:
+                conn.execute(
+                    "UPDATE contexts SET status=?, last_result=?, updated_at=? WHERE context_id=?",
+                    (status, result[:500], now, context_id)
+                )
+                conn.commit()
+        except Exception as e:
+            _log.debug("[ContextDB] close_context: %s", e)
+
+    def get_active_contexts(self) -> list[dict]:
+        """Gibt alle aktiven Contexts zurück — für GeneralAG nach Neustart."""
+        try:
+            with sqlite3.connect(self._path) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(
+                    "SELECT * FROM contexts WHERE status = 'active' "
+                    "ORDER BY updated_at DESC LIMIT 10"
+                ).fetchall()
+            return [dict(r) for r in rows]
+        except Exception:
+            return []
+
+    def get_summary_for_generalag(self) -> str:
+        """Kurze Zusammenfassung offener Tasks für GeneralAG Prompt."""
+        active = self.get_active_contexts()
+        if not active:
+            return ""
+        lines = ["=== OFFENE TASKS (nach Neustart) ==="]
+        for ctx in active[:5]:
+            age = ""
+            try:
+                ts = datetime.fromisoformat(ctx["updated_at"])
+                mins = int((datetime.now() - ts).total_seconds() / 60)
+                age = f" (vor {mins}m)"
+            except Exception:
+                pass
+            lines.append(f"  [{ctx['context_id'][:8]}] {ctx['original_task'][:80]}{age}")
+        return "\n".join(lines)
+
+    def cleanup_old(self, days: int = 7):
+        """Alte abgeschlossene Contexts aufräumen."""
+        try:
+            from datetime import timedelta
+            cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+            with sqlite3.connect(self._path) as conn:
+                conn.execute(
+                    "DELETE FROM contexts WHERE status != 'active' AND updated_at < ?",
+                    (cutoff,)
+                )
+                conn.commit()
+        except Exception:
+            pass
+
+
+# Singleton
+_context_db = ContextDB()
+
+def get_context_db() -> ContextDB:
+    return _context_db
