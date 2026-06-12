@@ -18,7 +18,7 @@ PRIORITY_MAPPING = {
 logger = logging.getLogger(__name__)
 
 # ── Konfiguration (statt Magic Numbers im Code) ────────────────────────────
-MAX_DEPTH           = 5
+MAX_DEPTH           = 15
 MAX_CONCURRENT      = 8       # (war 12) — nur 8 Agenten
 RETRY_MAX           = 3
 RETRY_BACKOFF_BASE  = 3.0     # (war 5.0) — schnellere Retries
@@ -351,27 +351,11 @@ def dispatch_mention(
             ).fetchall()
         }
 
-        # Bereits in diesem Context beteiligte Agenten ermitteln (Loop-Schutz)
-        already_in_chain = set()
-        if context_id and current_depth > 1:
-            try:
-                chain_rows = conn.execute(
-                    "SELECT DISTINCT sender FROM agent_messages WHERE context_id = ? AND sender != ? AND status = 'done'",
-                    (context_id, sender)
-                ).fetchall()
-                already_in_chain = {r["sender"].lower() for r in chain_rows}
-            except Exception:
-                pass
-
         for mention in set(mentions):  # Deduplizieren
             tgt_lower = mention.lower()
 
             if tgt_lower == sender.lower():
                 continue  # Kein Self-Dispatch
-
-            if tgt_lower in already_in_chain:
-                logger.info("Loop-Schutz: @%s hat bereits in context %s geantwortet – übersprungen", mention, context_id)
-                continue
 
             if tgt_lower in offline_agents:
                 logger.info("Agent '%s' offline – Nachricht wird verworfen", mention)

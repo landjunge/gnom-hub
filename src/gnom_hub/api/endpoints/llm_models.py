@@ -9,12 +9,8 @@ from gnom_hub.db.state_repo import SQLiteStateRepository
 
 router = APIRouter()
 
-async def check_and_update_models(skip_ping: bool = False):
-    """Fetches, tests all openrouter free models, and caches the working ones in DB.
-    
-    Args:
-        skip_ping: If True, skip per-model ping verification (use on startup to avoid 429).
-    """
+async def check_and_update_models():
+    """Fetches, tests all openrouter free models, and caches the working ones in DB."""
     repo = SQLiteStateRepository()
     
     # 1. Fetch free models list from OpenRouter API
@@ -38,7 +34,7 @@ async def check_and_update_models(skip_ping: bool = False):
 
     # 3. Verify each model individually with sequential completions ping
     working_models = []
-    if api_key and not skip_ping:
+    if api_key:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "HTTP-Referer": "http://localhost:8000", "X-Title": "Gnom-Hub"}
         url = "https://openrouter.ai/api/v1/chat/completions"
         
@@ -59,9 +55,7 @@ async def check_and_update_models(skip_ping: bool = False):
         except Exception as e:
             logging.getLogger(__name__).error("Error saving models: %s", e)
 
-    if skip_ping:
-        return list(Config.OPENROUTER_FREE_MODELS)
-    return repo.get_value("openrouter_working_models") or list(Config.OPENROUTER_FREE_MODELS)
+    return repo.get_value("openrouter_working_models") or []
 
 
 _cached_available_models = None

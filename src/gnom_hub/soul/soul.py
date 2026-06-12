@@ -226,25 +226,19 @@ class SoulAG:
             if saved:
                 _log.info("[Soul] %d facts saved", saved)
                 self._silent_rounds = 0
-                self._last_saved_count = self._last_saved_count + saved if hasattr(self, '_last_saved_count') else saved
-                # Nur alle 10 Lernvorgänge in den Chat posten
-                if not hasattr(self, '_chat_rounds'): self._chat_rounds = 0
-                self._chat_rounds += 1
-                if self._chat_rounds >= 10:
-                    self._chat_rounds = 0
-                    try:
-                        add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
-                                         f"🧠 {self._last_saved_count} neue Fakten gelernt (kumuliert)", {"type": "soul"})
-                    except:
-                        pass
-                    self._last_saved_count = 0
+                try:
+                    add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
+                                     f"🧠 {saved} Fakten gelernt", {"type": "soul"})
+                except:
+                    pass
             else:
                 self._silent_rounds = getattr(self, '_silent_rounds', 0) + 1
-                if self._silent_rounds >= 20:
+                if self._silent_rounds >= 5:
                     self._silent_rounds = 0
                     try:
-                        _log.info("[Soul] Nichts Neues gelernt — %d aktive Fakten im Cache",
-                                  len(getattr(self,'_recent_facts_cache',{})))
+                        add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
+                                         f"👀 Nichts Neues gelernt — {len(getattr(self,'_recent_facts_cache',{}))} aktive Fakten im Cache",
+                                         {"type": "soul"})
                     except:
                         pass
 

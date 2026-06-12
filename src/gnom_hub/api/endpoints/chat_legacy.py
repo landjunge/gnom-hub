@@ -74,7 +74,7 @@ def handle_workflow(q):
 CMDS = {"clear": handle_clear, "status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs, "resume": handle_resume, "approve_decision": handle_approve_decision, "reject_decision": handle_reject_decision, "bake": handle_bake, "emergency": handle_emergency, "notfall": handle_emergency, "diagnose": handle_diagnose, "confirmations": handle_confirmations, "spass": handle_spass, "worker": handle_worker, "workers": handle_worker, "blockade": handle_blockade, "blokade": handle_blockade, "workflow": handle_workflow, "help": handle_help, "hilfe": handle_help, "allclear000": handle_allclear}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
-    if msg.sender.lower() == "user":
+    if msg.sender == "user":
         from gnom_hub.core.security.injection_validator import validate_input
         is_safe, reason = validate_input(msg.content)
         if not is_safe:
@@ -90,7 +90,7 @@ def post_chat(msg: ChatMsg):
             )
             return {"status": "blocked", "msg": f"Prompt-Injection blockiert: {reason}", "message": reason}
 
-    if msg.sender.lower() == "user" and "@merken" in msg.content.lower():
+    if msg.sender == "user" and "@merken" in msg.content.lower():
         import re, uuid
         from gnom_hub.db import save_soul_fact
         
@@ -109,7 +109,7 @@ def post_chat(msg: ChatMsg):
     soul_instance.on_message(msg.content, msg.sender)
     
     # Intercept simple approvals/rejections of pending decisions
-    if msg.sender.lower() == "user":
+    if msg.sender == "user":
         content_clean = msg.content.strip().lower().strip("!.?,")
         if content_clean in ("ja", "nein", "yes", "no", "allow", "block", "erlauben", "ablehnen"):
             from gnom_hub.db import get_state_value
@@ -129,7 +129,7 @@ def post_chat(msg: ChatMsg):
                 add_chat_message(get_active_project(), "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
                 return r
 
-    q, tgt, cmd = _parse(msg.content); is_user = msg.sender.lower() == "user"; s_name = tgt if is_user else msg.sender; ags = get_all_agents()
+    q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt; ags = get_all_agents()
     a = next((x for x in ags if x.get("name", "").lower() == (s_name or "").lower()), None)
     # ZWC wird nur bei Datei-Writes und wichtigen Aktionen hinzugefuegt (action_write.py),
     # nicht bei jeder Chat-Nachricht — vermeidet 74% ZWC-Pollution
@@ -137,7 +137,7 @@ def post_chat(msg: ChatMsg):
     from gnom_hub.core.security.showbox_validator import enforce_agent_layer
     msg.content = enforce_agent_layer(msg.content, msg.sender)
     add_chat_message(get_active_project(), msg.sender, "war-room", cmd or "chat", msg.content, {"type": cmd or "chat", "sender": msg.sender})
-    if not is_user: return {"status": "saved"}
+    if msg.sender != "user": return {"status": "saved"}
     if cmd in CMDS: return CMDS[cmd](q)
     _SYS = ("soulag", "generalag", "watchdogag")
     if cmd == "research":

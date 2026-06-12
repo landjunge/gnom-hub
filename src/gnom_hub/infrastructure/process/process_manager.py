@@ -61,7 +61,7 @@ def start_background_agents() -> None:
     except Exception as e:
         logging.getLogger(__name__).warning("DB cleanup bei Agent-Start fehlgeschlagen: %s", e)
 
-    # 3. Frische Agenten starten (parallel, da sie erst bei Nachrichten LLM aufrufen)
+    # 3. Frische Agenten starten
     for a in AGENTS:
         with open(log_dir / f"logs_{a}.txt", "w") as f:
             p = subprocess.Popen([sys.executable, "-u", "-m", f"agents.{a}"], stdout=f, stderr=subprocess.STDOUT, cwd=str(PROJECT_ROOT))
