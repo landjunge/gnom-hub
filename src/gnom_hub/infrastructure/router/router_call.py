@@ -72,8 +72,11 @@ def _call(pvd, mdl, key, msgs, n):
             if pvd == "lokal": pyld.setdefault("options", {})["temperature"] = temp
             else: pyld["temperature"] = temp
 
-    req_timeout = 30
-    for attempt in range(3):
+    # CoderAG braucht mehr Zeit — komplexe Tasks brauchen 60-120s
+    # Lokal: 20s, OpenRouter/DeepSeek: 90s
+    req_timeout = 20 if pvd == "lokal" else 90
+    max_retries = 1 if pvd == "lokal" else 2
+    for attempt in range(max_retries):
         try:
             r = requests.post(url, headers=h, json=pyld, timeout=req_timeout)
             if r.status_code == 200:
