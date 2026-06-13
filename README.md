@@ -4,10 +4,12 @@
 > *8 Agents. 180 Modules. Zero cloud dependency. Zero uncontrolled sprawl.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-225-passing-green.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-218_passed,_1_skipped-green.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#)
+[![Modules](https://img.shields.io/badge/Modules-180-blue.svg)](#)
 [![LLM](https://img.shields.io/badge/LLM-DeepSeek_V4-brightgreen.svg)](#)
+[![Backups](https://img.shields.io/badge/Backups-Immutable-orange.svg)](#)
 
 ---
 
@@ -66,7 +68,35 @@ Gnom-Hub includes an isolated, database-mocked test suite using `pytest`:
 python3 -m pytest tests/ -v
 ```
 
-This runs **225 automated unit and integration tests** covering connection, state, agents, chat, admin auth, routing, stability, workflow engine, security, and queue load testing.
+This runs **218 automated unit and integration tests** (1 skipped) covering connection, state, agents, chat, admin auth, routing, stability, workflow engine, security, and queue load testing.
+
+> **Note:** `tests/test_stress_50.py` is a manual end-to-end stress test that requires a running Gnom-Hub server. It is excluded from the default suite.
+
+---
+
+## 💾 Immutable Database Backups
+
+Gnom-Hub **never overwrites** backups. Every run creates a new timestamped snapshot.
+
+```bash
+# Manual backup
+./scripts/backup_all_dbs.sh manual
+
+# Automatic before any push (see PRE_PUSH_CHECKLIST.md step 0)
+./scripts/backup_all_dbs.sh pre-push
+
+# Automatic before the 🧹 Clean button (triggered by /admin/clean-all)
+./scripts/backup_all_dbs.sh cleanAll    # called by the backend
+```
+
+Each backup lands in `dev/backups_datenbanken/<YYYY-MM-DD_HH-MM-SS>_<trigger>/` with:
+
+- Full `gnomhub.db` + `passive_archive.db` (and WAL/SHM)
+- `soul_embeddings_*.index` and `soul_fact_ids_*.json`
+- `manifest.json` (SHA256 hashes, sizes, git rev)
+- `_INDEX.md` (auto-updated master log of all snapshots)
+
+Restore any snapshot with `./scripts/restore_backup.sh <backup-name>`.
 
 ---
 
@@ -447,7 +477,7 @@ gnom-hub/
 ├── agents/                # Startup scripts for 8 background agents (1-line wrappers)
 ├── config/                # Presets, .env, routing overrides
 ├── scripts/               # Installer & shortcuts
-├── tests/                 # Unit test suite (225 tests: connection, state, agents, chat, admin_auth)
+├── tests/                 # Unit test suite (218 tests: connection, state, agents, chat, admin_auth)
 ├── docs/                  # Architecture docs & screenshots
 └── pyproject.toml         # Ruff config & dependencies
 ```
@@ -503,7 +533,7 @@ Architect of the hardening & consolidation phases. Key contributions:
 - Full code audit: 120 findings → 26 fixes across security, crashes, stability, and cleanup
 - Consolidated monolithic `legacy_db` into modular domain repositories (`system_repo`, `showbox_repo`) with package-root imports
 - Replaced 8 duplicate agent startup scripts with a single universal argument-driven runner (`agents/run_agent.py`) and backward-compatible wrappers
-- Designed and built a comprehensive isolated test suite (225 unit/integration tests) with in-memory SQLite fixtures
+- Designed and built a comprehensive isolated test suite (218 unit/integration tests, 1 skipped) with in-memory SQLite fixtures
 
 ---
 

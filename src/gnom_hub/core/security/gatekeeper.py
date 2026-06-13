@@ -363,12 +363,8 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
             if "rm -rf" in full_cmd or "curl|sh" in full_cmd:
                 return False, "high", "Gefaehrliche Verkettung in Paketmanager-Befehl."
 
-        # pip: erlaubt, keine PyPI-Verifizierung (zu langsam, blockiert Agenten)
+        # pip: erlaubt, keine PyPI-Verifizierung (Total Support für Worker)
         elif exec_name in ("pip", "pip3"):
-            if args_tokens and args_tokens[0] == "install":
-                packages = [a for a in args_tokens[1:] if not a.startswith("-")]
-                if not packages:
-                    return False, "medium", "pip install ohne Paketnamen."
             # pip uninstall system-kritischer Pakete blocken
             if args_tokens and args_tokens[0] == "uninstall":
                 protected = {"pip", "setuptools", "wheel", "fastapi", "uvicorn"}
@@ -376,16 +372,12 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                     if pkg.lower().strip() in protected:
                         return False, "high", f"pip uninstall '{pkg}' nicht erlaubt."
 
-        # git: fuer Agenten erlaubt ausser push/force-push
+        # git: NUR ueber @@git User-Chat-Command, NIEMALS ueber [SHELL:]
         elif exec_name == "git":
-            agent_blocked_git = {"push", "force-push"}
-            subcmd = args_tokens[0].lower() if args_tokens else ""
-            if subcmd in agent_blocked_git:
-                return False, "medium", (
-                    f"git {subcmd} ist Agenten nicht erlaubt — "
-                    "nutze @@git push im Chat."
-                )
-            # Alle anderen git-Befehle (status, log, add, commit, diff...) erlaubt
+            return False, "high", (
+                "git ist Agenten nicht erlaubt. "
+                "Nutze @@git status, @@git push etc. im Chat (nur User)."
+            )
 
     return True, None, ""
 

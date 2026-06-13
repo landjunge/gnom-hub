@@ -66,3 +66,15 @@ stop_gnom_hub.bat
 # Scratch files
 scratch/
 
+# Local development notes & experiments (NEVER publish)
+dev/
+.dev/
+
+# Local tool development sandbox
+tools_dev/
+
+# Random CSV exports (not part of the project)
+*.csv
+table.csv
+table (1).csv
+

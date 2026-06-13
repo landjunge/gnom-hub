@@ -166,25 +166,28 @@ class TestIsCommandSafeAndWhitelisted:
         assert "nicht erlaubt" in reason  # Begründung vorhanden
 
     def test_unknown_exec_blocked(self):
-        """Unbekannter Befehl wird jetzt medium risk gewarnt (früher high)"""
+        """Unbekannter Befehl — Total Support: erlaubt (kein high, keine Warnung nötig)"""
         safe, sev, reason = self._call("custom_evil_binary --payload")
-        assert safe is False
-        assert sev == "medium"
+        assert safe is True
+        assert sev is None
 
     def test_git_status_allowed(self):
-        """git status ist in der Whitelist → erlaubt"""
+        """git status ist nur über @@git User-Command erlaubt, nicht via Shell"""
         safe, sev, reason = self._call("git status")
-        assert safe is True
+        assert safe is False
+        assert sev == "high"
+        assert "User" in reason
 
     def test_git_push_blocked(self):
         safe, sev, reason = self._call("git push origin main")
         assert safe is False
-        assert "nicht in der Whitelist" in reason
+        assert sev == "high"
 
     def test_git_no_subcommand_allowed(self):
-        """git ohne Subcommand ist erlaubt"""
+        """git ohne Subcommand ist nur über @@git User-Command erlaubt, nicht via Shell"""
         safe, sev, reason = self._call("git")
-        assert safe is True
+        assert safe is False
+        assert sev == "high"
 
     def test_pip_known_safe_package(self):
         """pytest ist in safe_packages → kein PyPI-Request nötig"""
@@ -249,9 +252,9 @@ class TestIsCommandSafeAndWhitelisted:
         assert safe is False
 
     def test_chained_commands_one_bad(self):
-        """Kette: erlaubter Befehl && verbotener Befehl → blockiert"""
+        """Kette: erlaubter Befehl && unbekannter Befehl → erlaubt (Total Support)"""
         safe, sev, reason = self._call("python3 script.py && custom_evil_binary --payload")
-        assert safe is False
+        assert safe is True
 
     def test_env_var_prefix_ignored(self):
         """Umgebungsvariablen-Prefix wird korrekt ignoriert"""
@@ -303,8 +306,7 @@ class TestVerifyWrite:
     def test_safe_path_auto_approved(self):
         """Sicherer Pfad ohne Blocking → AutoApproved ohne LLM"""
         agent = make_agent()
-        with patch("gnom_hub.core.security.gatekeeper._blockade_level", return_value=4), \
-             patch("gnom_hub.core.security.gatekeeper.check_capability", return_value=False), \
+        with patch("gnom_hub.core.security.gatekeeper.check_capability", return_value=False), \
              patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/output.py"), \
              patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
              patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=False), \
@@ -316,8 +318,7 @@ class TestVerifyWrite:
     def test_unsafe_path_instant_blocked(self):
         """Pfad außerhalb Workspace → erlaubt für Agenten mit Permissions"""
         agent = make_agent()
-        with patch("gnom_hub.core.security.gatekeeper._blockade_level", return_value=2), \
-             patch("gnom_hub.core.security.gatekeeper._safe", return_value="/outside/passwd"), \
+        with patch("gnom_hub.core.security.gatekeeper._safe", return_value="/outside/passwd"), \
              patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
              patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=None), \
              patch("gnom_hub.core.security.gatekeeper.request_capability", return_value=True):
@@ -325,23 +326,24 @@ class TestVerifyWrite:
         assert result is True
 
     def test_worker_blocked_path_instant_blocked(self):
-        """Gesperrter Worker-Pfad → sofort blockiert"""
+        """Gesperrter Worker-Pfad → WatchdogAG unterstützt Worker voll, nie blocken (level 0)"""
         agent = make_agent()
-        with patch("gnom_hub.core.security.gatekeeper._blockade_level", return_value=2), \
-             patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/src/gnom_hub/core.py"), \
-             patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=True):
+        with patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/src/gnom_hub/core.py"), \
+             patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
+             patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=None), \
+             patch("gnom_hub.core.security.gatekeeper.request_capability", return_value=True):
             result = self._call(agent, "src/gnom_hub/core.py")
-        assert result is False
+        assert result is True
 
     def test_security_block_instant_blocked(self):
-        """Gefährliches Code-Pattern → sofort blockiert"""
+        """Gefährliches Code-Pattern → SecurityAG unterstützt Worker voll, nie blocken (level 0)"""
         agent = make_agent()
-        with patch("gnom_hub.core.security.gatekeeper._blockade_level", return_value=4), \
-             patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/evil.py"), \
+        with patch("gnom_hub.core.security.gatekeeper._safe", return_value="/workspace/evil.py"), \
              patch("gnom_hub.core.security.gatekeeper.is_worker_blocked", return_value=False), \
-             patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value="high"):
+             patch("gnom_hub.core.security.gatekeeper.is_security_block", return_value=None), \
+             patch("gnom_hub.core.security.gatekeeper.request_capability", return_value=True):
             result = self._call(agent, "evil.py", "rm -rf")
-        assert result is False
+        assert result is True
 
     def test_soul_role_blocked(self):
         """SoulAG darf Dateien schreiben (Gatekeeper wurde geöffnet)"""
@@ -377,9 +379,9 @@ class TestVerifyCmd:
         assert result is True
 
     def test_protected_path_instant_blocked(self):
-        """Zugriff auf src/gnom_hub → sofort blockiert (kein wait_for_decision)"""
+        """Zugriff auf src/gnom_hub in Befehl → blockiert (PathValidator)"""
         agent = make_agent()
-        with patch("gnom_hub.core.security.gatekeeper._blockade_level", return_value=2):
+        with patch("gnom_hub.core.security.gatekeeper.is_command_safe_and_whitelisted", return_value=(True, None, "")):
             result = self._call(agent, "cat /opt/gnom-hub/src/gnom_hub/core/config.py")
         assert result is False
 
@@ -899,11 +901,10 @@ class TestGodmodeWhitelistHardening:
         return is_command_safe_and_whitelisted(cmd, agent)
 
     def test_godmode_agent_unknown_binary_blocked(self):
-        """godmode-Agent mit unbekanntem Binary → medium (warn+allow)"""
+        """godmode-Agent mit unbekanntem Binary → erlaubt (Total Support)"""
         agent = {"name": "CoderAG", "permissions": ["godmode"]}
         safe, sev, reason = self._call("custom_evil_binary --payload", agent)
-        assert safe is False
-        assert sev == "medium"
+        assert safe is True
 
     def test_godmode_agent_whitelisted_binary_allowed(self):
         """godmode-Agent mit whitelisted Binary → erlaubt"""
@@ -912,11 +913,10 @@ class TestGodmodeWhitelistHardening:
         assert safe is True
 
     def test_normal_agent_unknown_binary_blocked(self):
-        """Normaler Agent → unbekanntes Binary medium (warn+allow)"""
+        """Normaler Agent → unbekanntes Binary erlaubt (Total Support)"""
         agent = {"name": "CoderAG", "permissions": ["read", "write"]}
         safe, sev, reason = self._call("custom_evil_binary", agent)
-        assert safe is False
-        assert sev == "medium"
+        assert safe is True
 
 
 # ==============================================================================

@@ -3,6 +3,18 @@
 
 ---
 
+## SCHRITT 0: BACKUP ALLER DATENBANKEN ERSTELLEN
+
+```bash
+./scripts/backup_all_dbs.sh pre-push
+```
+
+→ Erstellt unveränderlichen Snapshot in `dev/backups_datenbanken/<timestamp>_pre-push/`
+→ _INDEX.md wird automatisch aktualisiert
+→ **Niemals überschrieben** — jeder Push bekommt eigenen Snapshot
+
+---
+
 ## SCHRITT 1: HUB STOPPEN + MONITOR KILLEN
 
 ```bash

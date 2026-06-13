@@ -63,11 +63,43 @@ def bake_status(job_id: str):
 
 @router.post("/clean-all")
 def clean_all():
-    """Alles zurücksetzen: DB, Tokens, Workspace, Logs. Dann Neustart."""
-    import os, shutil
+    """Alles zurücksetzen: DB, Tokens, Workspace, Logs. Dann Neustart.
+    Erstellt ZUERST ein unveränderliches Backup (cleanAll-Trigger)."""
+    import os, shutil, subprocess
+    from pathlib import Path
     from gnom_hub.db.connection import get_db_connection
     from gnom_hub.db.passive_db import get_passive_conn
     from gnom_hub.core.config import CONFIG_DIR, WORKSPACE_DIR, PROJECT_ROOT
+
+    # ── 1. Backup ZUERST (nie überschreiben, atomar) ─────────
+    backup_script = Path(PROJECT_ROOT) / "scripts" / "backup_all_dbs.sh"
+    backup_result = {"status": "skipped", "path": None}
+    if backup_script.exists():
+        try:
+            r = subprocess.run(
+                [str(backup_script), "cleanAll"],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True, text=True, timeout=120
+            )
+            if r.returncode == 0:
+                # Letzte Zeile enthält "✅ Backup erfolgreich: <pfad>"
+                for line in r.stdout.splitlines()[::-1]:
+                    if "Backup erfolgreich:" in line:
+                        backup_result["path"] = line.split(":", 1)[-1].strip()
+                        backup_result["status"] = "ok"
+                        break
+                _log.info("CleanAll-Backup erstellt: %s", backup_result["path"])
+            else:
+                _log.error("Backup fehlgeschlagen (rc=%d): %s", r.returncode, r.stderr)
+                return {
+                    "status": "aborted",
+                    "reason": "backup_failed",
+                    "stdout": r.stdout,
+                    "stderr": r.stderr,
+                }
+        except Exception as e:
+            _log.exception("Backup-Aufruf fehlgeschlagen: %s", e)
+            return {"status": "aborted", "reason": "backup_exception", "error": str(e)}
 
     conn = get_db_connection()
     # Alle nicht-essentiellen Tabellen leeren
@@ -120,7 +152,11 @@ def clean_all():
         restart_hub()
     threading.Thread(target=delayed_restart, daemon=True).start()
 
-    return {"status": "cleaned", "msg": "Alles geleert. Hub startet neu in 3s."}
+    return {
+        "status": "cleaned",
+        "msg": "Alles geleert. Hub startet neu in 3s.",
+        "backup": backup_result,
+    }
 
 class ToolDef(BaseModel):
     name: str

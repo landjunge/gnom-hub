@@ -244,23 +244,6 @@ async function showLLMConfig() {
       <div class="llm-container" id="settings-tab-global-content" style="flex:1; min-height:0; display:grid; grid-template-columns:1fr 1.5fr; gap:20px; overflow:hidden;">
         <!-- Left Column: Settings Modules -->
         <div style="display:flex; flex-direction:column; gap:15px; overflow-y:auto; padding-right:5px; height:100%; scrollbar-width:thin;">
-          <!-- Module 1: API Keys -->
-          <div class="llm-card" style="flex-shrink:0;">
-            <div class="llm-card-header">
-              <h3 class="llm-card-title">🔑 API Keys & Authentication</h3>
-              <label style="display:flex; align-items:center; gap:5px; font-size:0.75rem; color:var(--text-dim); cursor:pointer;" data-help="Zeigt oder verbirgt die API-Schlüssel im Eingabefeld." data-help-title="Schlüssel anzeigen">
-                <input type="checkbox" id="toggle-show-keys" onchange="toggleKeysVisibility(this.checked)" class="llm-toggle-input">
-                <span>Anzeigen</span>
-              </label>
-            </div>
-            <span class="llm-card-description">Füge deine API-Schlüssel ein (ein Schlüssel pro Zeile, z.B. <code>OPENAI_API_KEY=sk-...</code>).</span>
-            <textarea id="llm-keys-input" rows="2" class="llm-input-area" placeholder="Einfügen per Cmd+V oder manuell eingeben..." data-help="Trage hier deine Provider-Schlüssel ein (z.B. OPENROUTER_API_KEY=sk-... oder OLLAMA_BASE_URL=...). Ein Eintrag pro Zeile." data-help-title="API-Keys Textfeld"></textarea>
-            <div class="llm-btn-group">
-              <button class="btn-primary" id="save-keys-btn" onclick="saveAndTestKeys()" style="flex:1;" data-help="Speichert deine eingetragenen Schlüssel und testet direkt die Verbindung zu den Providern." data-help-title="Schlüssel verifizieren">Verifizieren & Speichern</button>
-            </div>
-            <div id="llm-keys-status" style="font-size:0.78rem; max-height:85px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding:6px; border-radius:8px; background:rgba(0,0,0,0.18); scrollbar-width:thin;"></div>
-          </div>
-          
           <!-- Module 3: Global Options -->
           <div class="llm-card" style="flex-shrink:0;">
             <div class="llm-card-header">

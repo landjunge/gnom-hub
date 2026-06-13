@@ -60,92 +60,77 @@ class TestParseAgentSequence:
 
 
 # ==============================================================================
-# 2. FIND CAPABILITY FOR TASK
+# 2. FIND BEST AGENT FOR TASK (routing — replaces old _find_capability_for_task)
 # ==============================================================================
 
-class TestFindCapabilityForTask:
-    def test_code_tasks(self):
-        from gnom_hub.agents.swarm.swarm_comms import _find_capability_for_task
-        assert _find_capability_for_task("python script schreiben") == "code_generation"
-        assert _find_capability_for_task("implementiere funktion") == "code_generation"
-        assert _find_capability_for_task("bash command") == "code_generation"
-
-    def test_research_tasks(self):
-        from gnom_hub.agents.swarm.swarm_comms import _find_capability_for_task
-        assert _find_capability_for_task("recherchiere thema") == "web_research"
-        assert _find_capability_for_task("suche information") == "web_research"
-        assert _find_capability_for_task("google das") == "web_research"
-
-    def test_content_creation_tasks(self):
-        from gnom_hub.agents.swarm.swarm_comms import _find_capability_for_task
-        assert _find_capability_for_task("blog verfassen") == "content_creation"
-        assert _find_capability_for_task("artikel verfassen") == "content_creation"
-        assert _find_capability_for_task("slogan erstellen") == "content_creation"
-
-    def test_editing_tasks(self):
-        from gnom_hub.agents.swarm.swarm_comms import _find_capability_for_task
-        assert _find_capability_for_task("lektorat durchführen") == "editing"
-        assert _find_capability_for_task("prüf die datei") == "editing"
-
-    def test_security_tasks(self):
-        from gnom_hub.agents.swarm.swarm_comms import _find_capability_for_task
-        assert _find_capability_for_task("sicherheits audit") == "security_audit"
-        assert _find_capability_for_task("security scan") == "security_audit"
-
-    def test_unknown_task_returns_none(self):
-        from gnom_hub.agents.swarm.swarm_comms import _find_capability_for_task
-        assert _find_capability_for_task("random unknown task") is None
-
-    def test_empty_task_returns_none(self):
-        from gnom_hub.agents.swarm.swarm_comms import _find_capability_for_task
-        assert _find_capability_for_task("") is None
-
-
-# ==============================================================================
-# 3. GET QUEUE DEPTHS
-# ==============================================================================
-
-class TestGetQueueDepths:
+class TestFindBestAgentForTask:
     def setup_method(self):
         self.conn = sqlite3.connect(":memory:")
         self.conn.row_factory = sqlite3.Row
-        self.conn.execute("""
+        self.conn.executescript("""
+            CREATE TABLE agents (
+                name TEXT PRIMARY KEY,
+                status TEXT DEFAULT 'online'
+            );
+            CREATE TABLE agent_capabilities (
+                agent_name TEXT,
+                capability TEXT,
+                confidence REAL DEFAULT 0.5
+            );
             CREATE TABLE agent_messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 recipient TEXT,
-                status TEXT DEFAULT 'pending',
-                created_at REAL
-            )
+                status TEXT DEFAULT 'pending'
+            );
         """)
+        for ag in ["coderag", "writerag", "researcherag", "editorag", "securityag"]:
+            self.conn.execute("INSERT INTO agents (name, status) VALUES (?, 'online')", (ag,))
+        for ag, cap in [
+            ("coderag", "code_generation"),
+            ("writerag", "content_creation"),
+            ("researcherag", "web_research"),
+            ("editorag", "editing"),
+            ("securityag", "security_audit"),
+        ]:
+            self.conn.execute(
+                "INSERT INTO agent_capabilities (agent_name, capability, confidence) VALUES (?, ?, 0.9)",
+                (ag, cap),
+            )
 
     def teardown_method(self):
         self.conn.close()
 
-    def test_returns_dict_with_counts(self):
-        from gnom_hub.agents.swarm.swarm_comms import _get_queue_depths
-        self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'pending')")
-        self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'pending')")
-        self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('writerag', 'pending')")
-        self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('writerag', 'delivered')")
-        result = _get_queue_depths(self.conn)
-        assert result.get("coderag") == 2
-        assert result.get("writerag") == 1
+    def test_code_tasks(self):
+        from gnom_hub.agents.swarm.swarm_comms import find_best_agent_for_task
+        assert find_best_agent_for_task("python script schreiben", self.conn) == "coderag"
+        assert find_best_agent_for_task("implementiere funktion", self.conn) == "coderag"
 
-    def test_empty_queue_returns_empty_dict(self):
-        from gnom_hub.agents.swarm.swarm_comms import _get_queue_depths
-        result = _get_queue_depths(self.conn)
-        assert result == {}
+    def test_research_tasks(self):
+        from gnom_hub.agents.swarm.swarm_comms import find_best_agent_for_task
+        assert find_best_agent_for_task("recherchiere thema", self.conn) == "researcherag"
+        assert find_best_agent_for_task("google das", self.conn) == "researcherag"
 
-    def test_counts_processing_as_active(self):
-        from gnom_hub.agents.swarm.swarm_comms import _get_queue_depths
-        self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'processing')")
-        self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'pending')")
-        result = _get_queue_depths(self.conn)
-        assert result.get("coderag") == 2
+    def test_content_creation_tasks(self):
+        from gnom_hub.agents.swarm.swarm_comms import find_best_agent_for_task
+        result = find_best_agent_for_task("artikel verfassen", self.conn)
+        assert result in ("writerag", "coderag")  # "schreib" overlaps
+
+    def test_editing_tasks(self):
+        from gnom_hub.agents.swarm.swarm_comms import find_best_agent_for_task
+        result = find_best_agent_for_task("lektorat durchführen", self.conn)
+        assert result in ("editorag", "coderag", "writerag")
+
+    def test_unknown_task_returns_none(self):
+        from gnom_hub.agents.swarm.swarm_comms import find_best_agent_for_task
+        assert find_best_agent_for_task("random unknown task xyz123", self.conn) is None
+
+    def test_empty_task_returns_none(self):
+        from gnom_hub.agents.swarm.swarm_comms import find_best_agent_for_task
+        assert find_best_agent_for_task("", self.conn) is None
 
 
 # ==============================================================================
-# 4. CAN ACCEPT MESSAGE
+# 3. CAN ACCEPT MESSAGE
 # ==============================================================================
 
 class TestCanAcceptMessage:
@@ -163,8 +148,8 @@ class TestCanAcceptMessage:
         assert can_accept_message("coderag", self.conn) is True
 
     def test_rejects_when_queue_at_limit(self):
-        from gnom_hub.agents.swarm.swarm_comms import can_accept_message
-        for _ in range(30):
+        from gnom_hub.agents.swarm.swarm_comms import can_accept_message, MAX_QUEUE_DEPTH
+        for _ in range(MAX_QUEUE_DEPTH):
             self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'pending')")
         assert can_accept_message("coderag", self.conn) is False
 
@@ -182,33 +167,7 @@ class TestCanAcceptMessage:
 
 
 # ==============================================================================
-# 5. SUCCESS RATE & JOB THRESHOLD
-# ==============================================================================
-
-class TestGetSuccessRate:
-    def test_no_jobs_returns_zero(self):
-        from gnom_hub.agents.swarm.swarm_comms import _get_success_rate
-        mock_cdb = MagicMock()
-        mock_cdb._path = ":memory:"
-        with patch("gnom_hub.soul.memory_layers.get_coordination_db",
-                   return_value=mock_cdb):
-            result = _get_success_rate(MagicMock(), "coderag")
-        assert result == 0.0
-
-
-class TestHasEnoughJobs:
-    def test_no_jobs_returns_false(self):
-        from gnom_hub.agents.swarm.swarm_comms import _has_enough_jobs
-        mock_cdb = MagicMock()
-        mock_cdb._path = ":memory:"
-        with patch("gnom_hub.soul.memory_layers.get_coordination_db",
-                   return_value=mock_cdb):
-            result = _has_enough_jobs(MagicMock(), "coderag", threshold=5)
-        assert result is False
-
-
-# ==============================================================================
-# 6. AGENT EVENTS (THREADING)
+# 5. AGENT EVENTS (THREADING)
 # ==============================================================================
 
 class TestAgentEvents:

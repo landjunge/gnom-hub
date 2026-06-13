@@ -4,10 +4,11 @@
 > *8 Agenten. 180 Module. Null Cloud-Abhängigkeiten. Keine unkontrollierte Ausbreitung.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-225-ok-green.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-218_OK,_1_übersprungen-green.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#)
 [![Module](https://img.shields.io/badge/Module-180-blue.svg)](#)
+[![Backups](https://img.shields.io/badge/Backups-Unveränderlich-orange.svg)](#)
 
 ---
 
@@ -67,7 +68,7 @@ Gnom-Hub enthält eine isolierte Test-Suite mit Mock-Datenbanken via `pytest`:
 python3 -m pytest tests/ -v
 ```
 
-Dies führt **154 automatisierte Unit- und Integrationstests** aus:
+Dies führt **218 automatisierte Unit- und Integrationstests** aus (1 übersprungen):
 - **Connection-Layer:** WAL-Modus, Foreign Keys, Row-Factories und Context-Management.
 - **State-Repository:** Zustands-Schlüssel-Wert-Zuweisung und Schema-Standards.
 - **Agent-Repository:** Agenten-Registrierung, Limits, Job-Tracking und Daemons.
@@ -75,6 +76,34 @@ Dies führt **154 automatisierte Unit- und Integrationstests** aus:
 - **Security-Suite:** Gatekeeper, Capability-Manager, Write/Shell-Validierung, Bake-Compiler, Prompt-Injection.
 - **Queue-Load-Tests:** 15 Stabilitäts- und Lastexperimente für die SQLite-Message-Queue.
 - **Admin-Authentifizierung:** IP-basierte und Bearer-Token-Sicherheitsprüfungen.
+
+> **Hinweis:** `tests/test_stress_50.py` ist ein manueller End-to-End-Stresstest, der einen laufenden Gnom-Hub-Server benötigt. Er ist aus der Standard-Suite ausgeschlossen.
+
+---
+
+## 💾 Unveränderliche Datenbank-Backups
+
+Gnom-Hub überschreibt **niemals** Backups. Jeder Lauf erzeugt einen neuen zeitstempelbasierten Snapshot.
+
+```bash
+# Manuelles Backup
+./scripts/backup_all_dbs.sh manual
+
+# Automatisch vor jedem Push (siehe PRE_PUSH_CHECKLIST.md Schritt 0)
+./scripts/backup_all_dbs.sh pre-push
+
+# Automatisch vor dem 🧹 Clean-Button (ausgelöst durch /admin/clean-all)
+./scripts/backup_all_dbs.sh cleanAll    # wird vom Backend aufgerufen
+```
+
+Jedes Backup landet in `dev/backups_datenbanken/<YYYY-MM-DD_HH-MM-SS>_<trigger>/` mit:
+
+- Vollständige `gnomhub.db` + `passive_archive.db` (inkl. WAL/SHM)
+- `soul_embeddings_*.index` und `soul_fact_ids_*.json`
+- `manifest.json` (SHA256-Hashes, Größen, Git-Revision)
+- `_INDEX.md` (automatisch gepflegtes Log aller Snapshots)
+
+Wiederherstellung mit `./scripts/restore_backup.sh <backup-name>`.
 
 ---
 
@@ -457,7 +486,7 @@ gnom-hub/
 ├── agents/                # Startskripte für die 8 Hintergrund-Agenten (1-Zeilen-Wrapper)
 ├── config/                # Presets, .env, Routing-Overrides
 ├── scripts/               # Setup- & Hilfs-Skripte
-├── tests/                 # Unit-Testsuite (225 Tests: connection, state, agents, chat, admin, security, stability, queue-load)
+├── tests/                 # Unit-Testsuite (218 Tests: connection, state, agents, chat, admin, security, stability, queue-load)
 ├── docs/                  # Systemberichte & Screenshots
 └── pyproject.toml         # Ruff-Konfiguration & Abhängigkeiten
 ```

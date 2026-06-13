@@ -93,15 +93,15 @@
           <div class="sb-layer-body" id="sb-layer-body-3">STANDBY</div>
         </div>
       </div>
-      <div class="showbox-controls">
-        <button class="sb-btn" id="sb-btn-prev" title="Zurück"></button>
-        <button class="sb-btn" id="sb-btn-delete" title="Löschen"></button>
-        <button class="sb-btn" id="sb-btn-switch" title="Layer wechseln"></button>
-        <button class="sb-btn" id="sb-btn-next" title="Vor"></button>
-      </div>
-      <div class="showbox-extra-controls">
-        <button class="sb-btn sb-btn-long" id="sb-btn-cancel"></button>
-        <button class="sb-btn sb-btn-long" id="sb-btn-ok"></button>
+      <div class="showbox-controls" id="showbox-control-buttons">
+        <button class="sb-btn" id="control-btn-0"></button>
+        <button class="sb-btn" id="control-btn-1"></button>
+        <button class="sb-btn" id="control-btn-2"></button>
+        <button class="sb-btn" id="control-btn-3"></button>
+        <button class="sb-btn" id="control-btn-4"></button>
+        <button class="sb-btn" id="control-btn-5"></button>
+        <button class="sb-btn" id="control-btn-6"></button>
+        <button class="sb-btn" id="control-btn-7"></button>
       </div>
     `;
   }

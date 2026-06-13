@@ -47,13 +47,18 @@ function toast(msg, type = 'info') {
 }
 
 async function cleanAll() {
-  if (!confirm('⚠️ ALLES löschen?\n\nChat, Workspace, Tokens, Soul-Memory — alles weg!\nHub startet danach neu.')) return;
-  toast('🧹 Räume auf...', 'info');
+  if (!confirm('⚠️ ALLES löschen?\n\nEs wird ZUERST ein Backup aller Datenbanken erstellt.\n\nChat, Workspace, Tokens, Soul-Memory — alles weg!\nHub startet danach neu.')) return;
+  toast('💾 Erstelle Backup vor dem Cleanup…', 'info');
   const r = await api('POST', '/admin/clean-all');
   if (r && r.status === 'cleaned') {
-    toast('✅ Sauber! Hub startet neu...', 'success');
+    const bp = r.backup && r.backup.path ? r.backup.path : '(unbekannt)';
+    toast('✅ Backup: ' + bp + ' — Hub startet neu…', 'success');
     setTimeout(() => location.reload(), 3000);
-  } else { toast('Fehler', 'error'); }
+  } else if (r && r.status === 'aborted') {
+    toast('🛑 ABGEBROCHEN: ' + (r.reason || 'Backup fehlgeschlagen') + ' — Daten NICHT gelöscht.', 'error');
+  } else {
+    toast('Fehler beim Cleanup', 'error');
+  }
 }
 
 // ── NUKE (G-Button Long Press & Retro TV Effect) ──
