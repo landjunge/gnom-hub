@@ -2,6 +2,31 @@
    GNOM-HUB — Bento Dashboard & LLM Config
    ═══════════════════════════════════════════ */
 
+// ── Custom SVG-Icons (line-art, agent-color) ────────────────────────────────
+// Jeder Agent bekommt ein eigenes Icon (keine Emoji). Die SVGs sind 24×24
+// line-art, mit currentColor färbbar — also passen sie sich der Frozen-
+// Color des Agenten an (cyan für System, orange für Worker).
+window.AgentIcons = {
+  // System-Agenten (cyan)
+  soulag:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c-3.6 0-6.5 2.9-6.5 6.5 0 2.3 1.2 4.3 3 5.5v3.5a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3.5c1.8-1.2 3-3.2 3-5.5 0-3.6-2.9-6.5-6.5-6.5z"/><path d="M9.5 19h5M10 21.5h4"/><circle cx="12" cy="9" r="1.2" fill="currentColor"/></svg>`,
+  watchdogag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/></svg>`,
+  generalag:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 17l4-4 3 3 8-8M14 8l4 0 0 4"/><path d="M3 21h18"/></svg>`,
+  securityag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8 3.5v6c0 4.5-3.4 8.6-8 10-4.6-1.4-8-5.5-8-10v-6l8-3.5z"/><path d="M9 12l2 2 4-4"/></svg>`,
+  // Worker-Agenten (orange)
+  writerag:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3l5 5-9 9H5v-5l9-9z"/><path d="M13 4l5 5"/></svg>`,
+  coderag:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6M14 4l-4 16"/></svg>`,
+  researcherag:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>`,
+  editorag:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l4 4 14-14"/><path d="M14 5h5v5"/></svg>`,
+};
+// Fallback-Icon (für unbekannte Namen)
+window.AgentIcons.default = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>`;
+// Helper: gibt das passende Icon-SVG für einen Agentennamen zurück
+window.agentIcon = function(name) {
+  if (!name) return window.AgentIcons.default;
+  const key = name.toLowerCase();
+  return window.AgentIcons[key] || window.AgentIcons.default;
+};
+
 // ── i18n (Sprachumschaltung DE/EN) ────────────────────────────────────────────
 // Single source of truth für UI-Strings und Help-Texte. Die aktive Sprache
 // wird in window.appLang gehalten (Default: 'de'). Per t('key') greifen
@@ -2035,7 +2060,7 @@ window.showAgentTuning = function(agentId) {
 
   let html = '<div class="tuning-compact" style="display:flex;flex-direction:column;gap:8px;height:100%;">';
   html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:4px;">';
-  html += '<img id="tuning-avatar" src="" style="width:48px;height:48px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);object-fit:cover;" onerror="this.src=\'/static/avatars/generalag.png\'">';
+  html += '<span id="tuning-avatar" style="width:48px;height:48px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);display:inline-flex;align-items:center;justify-content:center;color:var(--agent-color, #00e5ff);"></span>';
   html += '<div><h2 style="color:var(--accent);margin:0;font-size:1.1rem;">🎛️ Agent Tuning</h2><div id="tuning-agentname" style="font-size:0.8rem;font-weight:600;margin-top:2px;">Agent wählen</div></div>';
   html += '</div>';
 
@@ -2044,17 +2069,17 @@ window.showAgentTuning = function(agentId) {
   html += '</div>';
 
   const tabs = [
-    {id:'prompt', label:'📝 Prompt'},
-    {id:'soul', label:'💡 Soul'},
-    {id:'blockaden', label:'🛡️ Blockaden'},
-    {id:'tools', label:'🔧 Tools'},
-    {id:'tuning', label:'🎚️ Verhalten'},
-    {id:'presets', label:'💾 Presets'},
-    {id:'bake', label:'🏭 Bake'},
+    {id:'prompt',    label:'Prompt',    icon: window.AgentIcons.editorag},
+    {id:'soul',      label:'Soul',      icon: window.AgentIcons.soulag},
+    {id:'blockaden', label:'Blockaden', icon: window.AgentIcons.securityag},
+    {id:'tools',     label:'Tools',     icon: window.AgentIcons.coderag},
+    {id:'verhalten', label:'Verhalten', icon: window.AgentIcons.generalag},
+    {id:'presets',   label:'Presets',   icon: window.AgentIcons.writerag},
+    {id:'bake',      label:'Bake',      icon: window.AgentIcons.default},
   ];
   html += '<div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">';
   tabs.forEach(t => {
-    html += '<button class="ttab" id="ttab-' + t.id + '" onclick="tuningSwitchTab(\'' + t.id + '\')" style="padding:6px 14px;font-size:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;">' + t.label + '</button>';
+    html += '<button class="ttab" id="ttab-' + t.id + '" onclick="tuningSwitchTab(\'' + t.id + '\')" style="padding:6px 14px;font-size:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;display:inline-flex;align-items:center;gap:5px;color:var(--agent-color, #00e5ff);"><span style="width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;">' + (t.icon || '') + '</span><span>' + t.label + '</span></button>';
   });
   html += '</div>';
 
@@ -2069,13 +2094,15 @@ window.showAgentTuning = function(agentId) {
 window.tuningSelect = function(agentId) {
   window._tuningAgentId = agentId;
   const allAgents = (window.agents || []);
-  // Avatar im Header updaten
+  // Avatar im Header updaten (jetzt als SVG-Icon statt PNG)
   const agent = allAgents.find(a => a.id === agentId);
   if (agent) {
-    const avatarUrl = (window.getAgentAvatarUrl ? window.getAgentAvatarUrl(agent.name) : null) || '/static/avatars/' + agent.name.toLowerCase() + '.png';
     const avEl = document.getElementById('tuning-avatar');
     const avNameEl = document.getElementById('tuning-agentname');
-    if (avEl) avEl.src = avatarUrl;
+    if (avEl) {
+      avEl.innerHTML = (typeof window.agentIcon === 'function') ? window.agentIcon(agent.name) : '';
+      avEl.style.color = agentColor(agent.name);
+    }
     if (avNameEl) { avNameEl.textContent = agent.name; avNameEl.style.color = agentColor(agent.name); }
     if (window.applyAgentBorder) window.applyAgentBorder(agent.name);
   }

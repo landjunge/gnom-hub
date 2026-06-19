@@ -68,7 +68,7 @@ async function selectAgent(id) {
 
   const html = `
     <div class="panel" style="display:flex; gap:16px; align-items:center; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(145deg, rgba(20,25,40,0.8), rgba(10,15,30,0.95));">
-      <img src="${avatarUrl}" alt="${meta.name}" style="width: 54px; height: 54px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
+      <span style="width:54px;height:54px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.2);display:inline-flex;align-items:center;justify-content:center;color:${typeof agentColor === 'function' ? agentColor(agent.name) : '#00e5ff'};">${(typeof window.agentIcon === 'function') ? window.agentIcon(agent.name) : ''}</span>
       <div style="flex-grow:1;">
         <h2 style="margin:0 0 6px 0; display: flex; align-items: center; justify-content: space-between;">
           <span>${meta.name}</span>
@@ -99,7 +99,7 @@ async function selectAgent(id) {
         <div style="display:grid; grid-template-columns:85px 1fr 1fr 1fr; gap:8px;">
           <!-- Avatar Card -->
           <div id="identity-avatar" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center;">
-            <img src="${avatarUrl}" alt="${meta.name}" style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); object-fit: cover;" onerror="this.src='/static/avatars/generalag.png'">
+            <span style="width:48px;height:48px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.2);display:inline-flex;align-items:center;justify-content:center;color:${typeof agentColor === 'function' ? agentColor(agent.name) : '#00e5ff'};">${(typeof window.agentIcon === 'function') ? window.agentIcon(agent.name) : ''}</span>
             <div style="font-size:0.58rem; font-weight:600; color:rgba(255,255,255,0.7); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">${meta.desc}</div>
           </div>
           <!-- LLM Card -->

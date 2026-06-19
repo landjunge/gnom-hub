@@ -123,6 +123,18 @@ Restore any snapshot with `./scripts/restore_backup.sh <backup-name>`.
 
 ---
 
+## ✨ What's New (Latest Updates)
+
+- 🎨 **Custom SVG-Agent-Icons**: Alle 8 Agenten haben eigene Line-Art-SVG-Icons (kein Emoji mehr), gefärbt in der Frozen-Color des Agenten. Erscheinen in Agent-Cards, System-Lamps und Tuning-Panel.
+- 🎬 **Agent Art Show im Showbox-User-Layer**: Mouseover über eine Agent-Card öffnet die passende Folie mit dem 1950er-Retro-Futurismus-Prompt für den Bild-AI-Generator. 1 Intro-Folie + 8 Agent-Folien, DE/EN. Trigger via `@@artshow` oder per Maus.
+- 🧩 **Module im Tools-Tab**: Webhooks · Plugins · Skills (UI-Stubs, Backend folgt).
+- 💾 **DB-Backup-System**: `scripts/backup_all_dbs.sh` macht unveränderliche Snapshots nach `~/Desktop/gnom_dev/backups_datenbanken/`.
+- 🎚️ **Compact-Tuning + i18n**: Alle 7 Tuning-Tabs (Prompt/Soul/Blockaden/Tools/Verhalten/Presets/Bake) sind 60 % dichter, DE/EN umschaltbar im Header.
+- 📚 **Hilfe-Slideshow**: `@@slides` öffnet 6-Folien-Walkthrough im User-Layer.
+- 🛠 **Provider-Dispatch**: TTS wählt automatisch zwischen MiniMax / OpenAI / ElevenLabs je nach gewähltem Provider. MultiMax = single key für Text/Vision/Image/Audio/Video/Music/Tools.
+
+---
+
 ## What is Gnom-Hub?
 
 Gnom-Hub is a **local-first multi-agent orchestrator** with a fixed 4+4 agent topology, a built-in glassmorphic War Room dashboard, and a unique compilation pipeline that "bakes" evolved agent swarms into frozen, portable AI products called **SuperGNOMs**.

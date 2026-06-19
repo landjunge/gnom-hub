@@ -3,9 +3,9 @@
 
 <head>
   <script src="/api/showbox/themes"></script>
-  <link rel="stylesheet" href="/static/showbox.css?v=21">
-  <script src="/static/showbox-buttons.js?v=21"></script>
-  <script src="/static/showbox.js?v=21"></script>
+  <link rel="stylesheet" href="/static/showbox.css?v=22">
+  <script src="/static/showbox-buttons.js?v=22"></script>
+  <script src="/static/showbox.js?v=22"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gnom-Hub</title>
@@ -1236,6 +1236,42 @@
       font-size: 0.68rem !important;
       line-height: 1.35 !important;
       margin: 0 !important;
+    }
+
+    /* ── Sidebar-Divider (zwischen Header/Tokens, Tokens/Agents, Agents/Showbox) ── */
+    .sidebar-divider {
+      height: 12px;
+      width: 100%;
+      flex-shrink: 0;
+      position: relative;
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(255,255,255,0.05) 40%,
+        rgba(255,255,255,0.05) 60%,
+        transparent 100%);
+    }
+    .sidebar-divider::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 32%;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255,255,255,0.18) 50%,
+        transparent 100%);
+    }
+
+    /* ── Custom-SVG-Agent-Icons (line-art) ── */
+    .agent-card h3 svg,
+    .sys-agent-card svg {
+      flex-shrink: 0;
+    }
+    #tuning-avatar svg {
+      width: 70%;
+      height: 70%;
     }
 
 
@@ -2752,8 +2788,8 @@
     </div>
 
     <div class="sidebar">
-      <!-- Sidebar-Placeholder 1 — 12px (40% of the original 30px → −60% Höhe) -->
-      <div data-help-title="Sidebar-Spacer" data-help="Atemraum zwischen Header und Token-Modul. Reduziert auf 12px damit die Sidebar kompakter wirkt." data-help-en="Breathing room between header and token module. Reduced to 12px so the sidebar looks more compact." style="height: 12px; width: 100%; flex-shrink: 0;"></div>
+      <!-- Sidebar-Placeholder 1 — 12px Atemraum (Worker-Sektion Header→Tokens) -->
+      <div class="sidebar-divider" data-help-title="Sidebar-Spacer" data-help="Atemraum zwischen Header und Token-Modul. Reduziert auf 12px damit die Sidebar kompakter wirkt." data-help-en="Breathing room between header and token module. Reduced to 12px so the sidebar looks more compact."></div>
 
       <!-- Token Module -->
       <div class="sidebar-search" style="padding: 6px 15px !important; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-family: 'Inter', sans-serif; font-weight: 100 !important; font-size: 0.65rem; color: rgba(255,255,255,0.6); letter-spacing: 0.3px; flex-shrink: 0;">
@@ -2772,13 +2808,13 @@
         </div>
       </div>
 
-      <!-- Sidebar-Placeholder 2 — 12px (40% of original) -->
-      <div data-help-title="Sidebar-Spacer" data-help="Atemraum zwischen Token-Modul und Agent-Liste. Ebenfalls −60%." data-help-en="Breathing room between token module and agent list. Also −60%." style="height: 12px; width: 100%; flex-shrink: 0;"></div>
+      <!-- Sidebar-Placeholder 2 — 12px Atemraum (Worker-Sektion Tokens→Agents) -->
+      <div class="sidebar-divider" data-help-title="Sidebar-Spacer" data-help="Atemraum zwischen Token-Modul und Agent-Liste. Ebenfalls −60%." data-help-en="Breathing room between token module and agent list. Also −60%."></div>
 
       <div class="agent-list" id="agent-list"></div>
 
-      <!-- Sidebar-Placeholder 3 — 12px (40% of original) -->
-      <div data-help-title="Sidebar-Spacer" data-help="Atemraum zwischen Agent-Liste und Showbox. Dritter und letzter kompakter Spacer." data-help-en="Breathing room between agent list and showbox. Third and final compact spacer." style="height: 12px; width: 100%; flex-shrink: 0;"></div>
+      <!-- Sidebar-Placeholder 3 — 12px Atemraum (Worker-Sektion Agents→Showbox) -->
+      <div class="sidebar-divider" data-help-title="Sidebar-Spacer" data-help="Atemraum zwischen Agent-Liste und Showbox. Dritter und letzter kompakter Spacer." data-help-en="Breathing room between agent list and showbox. Third and final compact spacer."></div>
 
       <div id="modular-showbox-container"></div>
     </div>
@@ -2853,13 +2889,13 @@
     </div>
   </div>
 
-  <script src="/static/core.js?v=21"></script>
-  <script src="/static/system_dashboard.js?v=21"></script>
-  <script src="/static/worker_dashboard.js?v=21"></script>
-  <script src="/static/worker_sidebar.js?v=21"></script>
-  <script src="/static/chat.js?v=21"></script>
-  <script src="/static/workspace.js?v=21"></script>
-  <script src="/static/dashboard.js?v=21"></script>
+  <script src="/static/core.js?v=22"></script>
+  <script src="/static/system_dashboard.js?v=22"></script>
+  <script src="/static/worker_dashboard.js?v=22"></script>
+  <script src="/static/worker_sidebar.js?v=22"></script>
+  <script src="/static/chat.js?v=22"></script>
+  <script src="/static/workspace.js?v=22"></script>
+  <script src="/static/dashboard.js?v=22"></script>
   <script>
     // ── Init Bootstrap ──
     (async () => {

@@ -57,6 +57,9 @@ src/data/
 .hub_secret
 config/.hub_secret
 
+# Mini-Avatar-PNGs (durch SVG-Icons ersetzt)
+src/gnom_hub/frontend/static/avatars/
+
 # Local launcher scripts (the new ones in scripts/start_gnom_hub.sh + stop_gnom_hub.sh are tracked)
 start_gnom_hub.sh
 stop_gnom_hub.sh

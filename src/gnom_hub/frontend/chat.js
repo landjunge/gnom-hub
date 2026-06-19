@@ -363,6 +363,16 @@ function handleChatCommands(msg, ta) {
     }
     return true;
   }
+  if (m === '@@artshow' || m === '@@art' || m === '@@art-show') {
+    ta.value = '';
+    if (typeof window.triggerAgentArtShow === 'function') {
+      window.triggerAgentArtShow('generalag');
+      toast('🎬 Agent Art Show — Slide 1 / 8', 'success');
+    } else {
+      toast('Showbox noch nicht bereit', 'warning');
+    }
+    return true;
+  }
   return false;
 }
 

@@ -539,6 +539,142 @@
     }
   };
 
+  // ── Agent-Art-Show (1950er Sci-Fi Prompt-Slideshow) ──────────────────────
+  // 9 Slides: 1 Intro + 8 Agenten-Prompts. Sprache via appLang (DE/EN).
+  // Jede Folie enthält den fertigen 1950er-Sci-Fi-Prompt zum Kopieren
+  // in eine Bild-KI. Agent-SVG-Icon + Frozen-Color + Rolle + Prompt.
+  window.buildAgentArtShow = function () {
+    const lang = (window.appLang === 'en') ? 'en' : 'de';
+    const T = (de, en) => lang === 'en' ? en : de;
+
+    // Frozen-Color-Lookup (sync mit core/agent_names.py)
+    const COLORS = {
+      soulag: '#00e5ff', watchdogag: '#00e5ff', generalag: '#00e5ff', securityag: '#00e5ff',
+      writerag: '#ffa500', coderag: '#ffa500', researcherag: '#ffa500', editorag: '#ffa500'
+    };
+    const ROLES_DE = {
+      soulag: 'Gedächtnis & User-Interface', watchdogag: 'Regel-Patrolle & Sicherheit',
+      generalag: 'Koordination & Orchestrierung', securityag: 'System-Schutz',
+      writerag: 'Texte & Dokumentation', coderag: 'Code & Debugging',
+      researcherag: 'Web-Recherche & Fakten', editorag: 'QA & Refactoring'
+    };
+    const ROLES_EN = {
+      soulag: 'Memory & user interface', watchdogag: 'Rule patrol & safety',
+      generalag: 'Coordination & orchestration', securityag: 'System protection',
+      writerag: 'Texts & documentation', coderag: 'Code & debugging',
+      researcherag: 'Web research & facts', editorag: 'QA & refactoring'
+    };
+
+    // 1950er Sci-Fi Prompt (DE) — bilingual
+    const PROMPTS_DE = {
+      soulag: 'Retro-futuristisches 1950er Sci-Fi Interior, ein leuchtendes kühlschrankgroßes Gedächtnisarchiv aus poliertem Chrom und Bakelit mit pulsierenden Vakuumröhren im Inneren, unzählige bläulich-cyan #00e5ff leuchtende Kristallspulen die sachte vor sich hinsummen, im Hintergrund dezent ein chromblonder Androide mit Glaskuppelkopf der konzentriert in einem dicken Logbuch blättert, klarer Mid-Century-Look, sauberer Cinematic-Stil, atmosphärisch, hochwertig, kein billiger Plastik-Look, 16:9 Komposition, Kino-Look.',
+      watchdogag: 'Retro-futuristisches 1950er Sci-Fi Kontrollzentrum, eine ringförmige Patrouille-Konsole mit phosphor-grünen Radarschirmen und rotierenden Drehknöpfen in einer Kuppelstation, in der Mitte ein wachsamer chromfarbener Wachroboter mit einem einzelnen kreisrunden Teleskop-Auge, ständig alles im Blick behaltend, im Hintergrund abstrakte Cyan #00e5ff Funkensignale auf einer gekrümmten Weltkarte, klassischer 50er Sci-Fi Look, atmosphärisch, kein Plastik, saubere Komposition, 16:9, Kino-Stil.',
+      generalag: 'Retro-futuristisches 1950er Sci-Fi Orchestersaal, ein dirigentenhafter Androide mit schlanker Chromfigur und gläserner Kuppel auf einem erhöhten Podest, vor ihm eine halbkreisförmige Anordnung von Arbeitstischen mit leuchtenden Vakuumröhren und Notenblatt-Haltern, dezente Cyan #00e5ff Akzentbeleuchtung von unten, an den Wänden analoge Wanduhren mit römischen Ziffern, klassische 50er-Weltraum-Ästhetik, kein Plastik, sauberer Mid-Century-Stil, 16:9, atmosphärisch, cinematisch.',
+      securityag: 'Retro-futuristisches 1950er Sci-Fi Tresorraum, ein massiver gepanzerter Schutz-Androide mit Chrom-Helm und Schulterpanzerung steht Wache vor einer stählernen Safe-Tür mit analogen Zahlenrädern, dahinter deckenhohe Schränke mit roten und grünen Statuslämpchen in Reih und Glied, alles sauber in Bakelit und gebürstetem Stahl, Akzentfarbe Cyan #00e5ff auf den Sicherheits-Kontrollleuchten, dramatische seitliche Beleuchtung, 50er Sci-Fi ohne Plastik-Look, klar und atmosphärisch, 16:9, Kino-Komposition.',
+      writerag: 'Retro-futuristisches 1950er Sci-Fi Redaktionsraum, ein eleganter Schreib-Androide mit chromfarbenem Torso und langen Greifarmen sitzt an einer futuristischen Schreibmaschine aus gebürstetem Aluminium, umgeben von aufgeschlagenen Notizbüchern, halbvollen Kaffeetassen und einem rotierenden Telex-Gerät mit orangefarbenem #ffa500 Papierstreifen, an der Wand gerahmte Schlagzeilen, eine altmodische Stehlampe mit orangem Schirm, klassische 50er Newsroom-Ästhetik, kein Plastik, kein Neon, saubere Komposition, 16:9, cinematisch, atmosphärisch.',
+      coderag: 'Retro-futuristisches 1950er Sci-Fi Werkstatt, ein konzentriert arbeitender Schmied-Androide mit Lederschürze und chromfarbenen Greifarmen hämmert auf einer Lochkarten-Stanzmaschine aus Gusseisen, überall verstreute Pappkarten mit geheimnisvollen Lochmustern, im Hintergrund meterhohe Aktenschränke mit orangenen #ffa500 Beschriftungsschildern, hängende Industrielampen mit Metallschirm, ein oszilloskop zeigt eine ruhige Sinuskurve, klassischer 50er Maschinenraum-Look, kein Plastik, kein Cyberpunk, 16:9, Kino-Stil, atmosphärisch, sauber.',
+      researcherag: 'Retro-futuristisches 1950er Sci-Fi Observatorium, ein neugieriger Forschungs-Androide mit Brille und Notizblock steht vor einem gewaltigen Spiegelteleskop aus poliertem Messing, eine projizierte Sternkarte leuchtet orange #ffa500 an der Kuppelwand, ringsum Bücherstapel und ein Globus mit eingezeichneten Erkundungsrouten, sanftes Sternenlicht fällt durch die Beobachtungsöffnung, klassische 50er Astronomie-Ästhetik, kein Plastik, kein Neon, sauberer Mid-Century-Stil, 16:9, cinematisch, atmosphärisch.',
+      editorag: 'Retro-futuristisches 1950er Sci-Fi Prüflabor, ein pedantischer Inspektions-Androide mit chromglänzender Monokel-Lupe und rotem Prüfstift beugt sich über ein beleuchtetes Glaspanel auf dem ein Bauplan liegt, ein kleines orange #ffa500 Lämpchen leuchtet als Freigabe-Signal, im Hintergrund Registrierkassen-artige Messgeräte mit Skalen, ein Notizbuch mit roten Anmerkungen, alles aufgeräumt und symmetrisch wie in einem Schweizer Qualitätslabor, 50er Inspektions-Ästhetik, kein Plastik, kein Cyberpunk, 16:9, cinematisch, atmosphärisch.'
+    };
+    const PROMPTS_EN = {
+      soulag: 'Retro-futuristic 1950s sci-fi interior, a luminous refrigerator-sized memory archive made of polished chrome and Bakelite with pulsing vacuum tubes inside, countless cyan #00e5ff crystal coils humming softly, in the background a discreet chrome-blond android with a glass dome head concentrating on a thick leather-bound logbook, clean mid-century look, no cheap plastic, atmospheric, cinematic, 16:9.',
+      watchdogag: 'Retro-futuristic 1950s sci-fi control room, a circular patrol console with phosphor-green radar screens and rotating knobs in a domed station, in the middle a vigilant chrome sentry robot with a single circular telescope eye watching everything, abstract cyan #00e5ff signal sparks on a curved world map in the background, classic 50s sci-fi atmosphere, no plastic, clean composition, 16:9, cinematic.',
+      generalag: 'Retro-futuristic 1950s sci-fi orchestra hall, a conductor-like android with a slender chrome figure and glass dome on an elevated podium, in front of him a semi-circular arrangement of workstations with glowing vacuum tubes and music-stand holders, discreet cyan #00e5ff uplighting, on the walls analogue wall clocks with Roman numerals, classic 50s space-age aesthetic, no plastic, clean mid-century style, 16:9, cinematic.',
+      securityag: 'Retro-futuristic 1950s sci-fi vault, a massive armoured guardian android with chrome helmet and shoulder plating stands watch before a steel safe door with analogue number wheels, behind it ceiling-high cabinets with red and green status lamps in perfect rows, polished steel and Bakelite, cyan #00e5ff accent on the security lamps, dramatic side lighting, 50s sci-fi without plastic, clean and atmospheric, 16:9, cinematic composition.',
+      writerag: 'Retro-futuristic 1950s sci-fi editorial room, an elegant chrome writing-android sits at a futuristic typewriter made of brushed aluminium, surrounded by open notebooks, half-full coffee cups and a rotating telex machine with an orange #ffa500 paper strip, framed headlines on the wall, an old-fashioned floor lamp with orange shade, classic 50s newsroom aesthetic, no plastic, no neon, clean composition, 16:9, cinematic, atmospheric.',
+      coderag: 'Retro-futuristic 1950s sci-fi workshop, a focused smith-android in a leather apron and chrome arms hammers at a cast-iron punch-card machine, perforated cards scattered everywhere, towering filing cabinets with orange #ffa500 labels in the background, hanging industrial lamps with metal shades, an oscilloscope shows a calm sine wave, classic 50s machine-room look, no plastic, no cyberpunk, 16:9, cinematic, atmospheric, clean.',
+      researcherag: 'Retro-futuristic 1950s sci-fi observatory, a curious research-android with spectacles and notepad stands before a giant brass reflecting telescope, a projected star chart glows orange #ffa500 on the dome wall, books piled around and a globe with annotated exploration routes, soft starlight falling through the observation slit, classic 50s astronomy aesthetic, no plastic, no neon, clean mid-century, 16:9, cinematic, atmospheric.',
+      editorag: 'Retro-futuristic 1950s sci-fi inspection laboratory, a pedantic inspector-android with a gleaming chrome monocle-magnifier and red proofreading pen leans over an illuminated glass panel with a blueprint, a small orange #ffa500 lamp glows as an approval signal, in the background cash-register-like meters with scales, a notebook with red annotations, all tidy and symmetrical like a Swiss quality lab, 50s inspection aesthetic, no plastic, no cyberpunk, 16:9, cinematic, atmospheric.'
+    };
+
+    const AGENTS = [
+      ['soulag','SoulAG'],['watchdogag','WatchdogAG'],['generalag','GeneralAG'],['securityag','SecurityAG'],
+      ['writerag','WriterAG'],['coderag','CoderAG'],['researcherag','ResearcherAG'],['editorag','EditorAG']
+    ];
+
+    const slides = [];
+
+    // Slide 0 — Intro
+    slides.push(`
+      <div style="display:flex;flex-direction:column;gap:14px;padding:24px;height:100%;box-sizing:border-box;justify-content:center;text-align:center;">
+        <div style="font-size:2.6rem;">🎬</div>
+        <h1 style="margin:0;font-size:1.5rem;color:#fff;font-weight:700;letter-spacing:0.5px;">
+          ${T('Agent Art Show', 'Agent Art Show')}
+        </h1>
+        <p style="font-size:0.9rem;color:rgba(255,255,255,0.7);margin:6px 0;line-height:1.4;">
+          ${T('8 Retro-Futurismus-1950-Prompts für die 8 Agenten.',
+              '8 retro-futurism 1950s prompts for the 8 agents.')}
+        </p>
+        <p style="font-size:0.74rem;color:rgba(255,255,255,0.4);margin:0;">
+          ${T('Mouseover auf einen Agenten öffnet die passende Folie.',
+              'Mouseover on an agent card opens the matching slide.')}
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;">
+          ${AGENTS.map(([k]) => `<span style="display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;color:${COLORS[k]};">${window.agentIcon ? window.agentIcon(k) : ''}</span>`).join('')}
+        </div>
+      </div>`);
+
+    // Slides 1-8 — ein Agent pro Folie
+    AGENTS.forEach(([key, name], idx) => {
+      const color = COLORS[key];
+      const role = (lang === 'en' ? ROLES_EN : ROLES_DE)[key] || '';
+      const prompt = (lang === 'en' ? PROMPTS_EN : PROMPTS_DE)[key] || '';
+      const icon = window.agentIcon ? window.agentIcon(key) : '';
+      slides.push(`
+        <div style="display:flex;flex-direction:column;gap:10px;padding:18px 20px;height:100%;box-sizing:border-box;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+            <span style="display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;color:${color};border:1px solid ${color};border-radius:8px;flex-shrink:0;">${icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:1.05rem;font-weight:700;color:${color};">${name}</div>
+              <div style="font-size:0.7rem;color:rgba(255,255,255,0.55);">${role}</div>
+            </div>
+            <div style="font-size:0.62rem;color:rgba(255,255,255,0.35);text-align:right;flex-shrink:0;">
+              ${idx + 1} / 8<br><span style="color:${color};">${color}</span>
+            </div>
+          </div>
+          <div style="flex:1;min-height:0;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:10px 12px;overflow-y:auto;font-size:0.72rem;line-height:1.45;color:rgba(255,255,255,0.85);">
+            ${prompt}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button data-sb-action="send:@merken 1950er-prompt für ${name}" data-sb-icon="💾" data-sb-label="${T('Merken', 'Save')}" data-sb-color="green" style="flex:1;padding:6px 8px;background:rgba(57,255,20,0.1);border:1px solid rgba(57,255,20,0.3);color:#39ff14;border-radius:5px;font-size:0.72rem;cursor:pointer;font-family:inherit;">
+              ${T('💾 Prompt merken', '💾 Save prompt')}
+            </button>
+            <button data-sb-action="close" data-sb-icon="✕" data-sb-label="${T('Schließen', 'Close')}" data-sb-color="red" style="flex:1;padding:6px 8px;background:rgba(255,85,119,0.1);border:1px solid rgba(255,85,119,0.3);color:#ff5577;border-radius:5px;font-size:0.72rem;cursor:pointer;font-family:inherit;">
+              ${T('✕ Schließen', '✕ Close')}
+            </button>
+          </div>
+        </div>`);
+    });
+
+    return slides;
+  };
+
+  // Trigger: beim Mouseover auf eine Agent-Card springt die Showbox auf
+  // die passende Folie der Art-Show. Bei erneutem Trigger derselben Folie
+  // passiert nichts (idempotent).
+  window.triggerAgentArtShow = function (agentName) {
+    if (!agentName || typeof window.buildAgentArtShow !== 'function') return;
+    if (typeof window.__agentArtShowIndex !== 'number') return;
+    const KEY = (agentName || '').toLowerCase();
+    const order = ['soulag','watchdogag','generalag','securityag','writerag','coderag','researcherag','editorag'];
+    const idx = order.indexOf(KEY);
+    if (idx < 0) return;
+    // Folie ist idx+1 (0 = Intro), Index 1..8
+    const slideIdx = idx + 1;
+    if (typeof switchLayer === 'function') switchLayer(LAYERS.USER);
+    if (typeof window.triggerShowbox === 'function') {
+      window.triggerShowbox(window.__agentArtShowIndex, 'user');
+      // Auf richtige Slide springen
+      setTimeout(() => {
+        const pres = window.showboxPresentations && window.showboxPresentations[window.__agentArtShowIndex];
+        if (pres) {
+          pres.currentSlideIdx = slideIdx;
+          if (typeof window.renderLayerContent === 'function') window.renderLayerContent(LAYERS.USER);
+        }
+      }, 80);
+    }
+  };
+
   window.toggleSuperGnomDrawer = function () {
     const drawer = document.getElementById('supergnom-drawer');
     const btn = document.getElementById('supergnom-drawer-btn');
@@ -675,6 +811,28 @@
             ]
           };
           window.showboxes[userIdx] = slides;
+        }
+
+        // ── Inject Agent-Art-Show Präsentation (Index 3+) ──
+        // 1950er Sci-Fi-Bild-Prompts für jeden Agenten, fertig zum
+        // Kopieren in die Bild-KI. Wird per mouseover auf Agent-Cards
+        // oder via @@artshow-Command getriggert.
+        const artSlides = window.buildAgentArtShow ? window.buildAgentArtShow() : [];
+        if (artSlides.length) {
+          window.showboxPresentations.push({
+            id: 'agent-art-show',
+            name: 'Agent Art Show — 1950er Sci-Fi',
+            slides: artSlides,
+            sender: 'user',
+            buttons: [
+              { id: 'next', label: '▶', action: 'next-slide' },
+              { id: 'prev', label: '◀', action: 'prev-slide' },
+              { id: 'lang', label: 'DE/EN', action: 'toggle-lang' },
+              { id: 'overlay', label: '⛶', action: 'open-overlay' }
+            ]
+          });
+          window.showboxes.push(artSlides);
+          window.__agentArtShowIndex = window.showboxPresentations.length - 1;
         }
       }
 
