@@ -2060,7 +2060,7 @@ window.showAgentTuning = function(agentId) {
 
   let html = '<div class="tuning-compact" style="display:flex;flex-direction:column;gap:8px;height:100%;">';
   html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:4px;">';
-  html += '<span id="tuning-avatar" style="width:48px;height:48px;border-radius:8px;border:2px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.3);display:inline-flex;align-items:center;justify-content:center;color:var(--agent-color, #00e5ff);"></span>';
+  html += '<span id="tuning-avatar" style="display:none;"></span>';
   html += '<div><h2 style="color:var(--accent);margin:0;font-size:1.1rem;">🎛️ Agent Tuning</h2><div id="tuning-agentname" style="font-size:0.8rem;font-weight:600;margin-top:2px;">Agent wählen</div></div>';
   html += '</div>';
 
@@ -2069,17 +2069,17 @@ window.showAgentTuning = function(agentId) {
   html += '</div>';
 
   const tabs = [
-    {id:'prompt',    label:'Prompt',    icon: window.AgentIcons.editorag},
-    {id:'soul',      label:'Soul',      icon: window.AgentIcons.soulag},
-    {id:'blockaden', label:'Blockaden', icon: window.AgentIcons.securityag},
-    {id:'tools',     label:'Tools',     icon: window.AgentIcons.coderag},
-    {id:'verhalten', label:'Verhalten', icon: window.AgentIcons.generalag},
-    {id:'presets',   label:'Presets',   icon: window.AgentIcons.writerag},
-    {id:'bake',      label:'Bake',      icon: window.AgentIcons.default},
+    {id:'prompt',    label:'Prompt'},
+    {id:'soul',      label:'Soul'},
+    {id:'blockaden', label:'Blockaden'},
+    {id:'tools',     label:'Tools'},
+    {id:'verhalten', label:'Verhalten'},
+    {id:'presets',   label:'Presets'},
+    {id:'bake',      label:'Bake'},
   ];
   html += '<div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">';
   tabs.forEach(t => {
-    html += '<button class="ttab" id="ttab-' + t.id + '" onclick="tuningSwitchTab(\'' + t.id + '\')" style="padding:6px 14px;font-size:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;display:inline-flex;align-items:center;gap:5px;color:var(--agent-color, #00e5ff);"><span style="width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;">' + (t.icon || '') + '</span><span>' + t.label + '</span></button>';
+    html += '<button class="ttab" id="ttab-' + t.id + '" onclick="tuningSwitchTab(\'' + t.id + '\')" style="padding:6px 14px;font-size:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;">' + t.label + '</button>';
   });
   html += '</div>';
 
@@ -2094,15 +2094,9 @@ window.showAgentTuning = function(agentId) {
 window.tuningSelect = function(agentId) {
   window._tuningAgentId = agentId;
   const allAgents = (window.agents || []);
-  // Avatar im Header updaten (jetzt als SVG-Icon statt PNG)
   const agent = allAgents.find(a => a.id === agentId);
   if (agent) {
-    const avEl = document.getElementById('tuning-avatar');
     const avNameEl = document.getElementById('tuning-agentname');
-    if (avEl) {
-      avEl.innerHTML = (typeof window.agentIcon === 'function') ? window.agentIcon(agent.name) : '';
-      avEl.style.color = agentColor(agent.name);
-    }
     if (avNameEl) { avNameEl.textContent = agent.name; avNameEl.style.color = agentColor(agent.name); }
     if (window.applyAgentBorder) window.applyAgentBorder(agent.name);
   }

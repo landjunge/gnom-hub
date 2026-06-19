@@ -52,10 +52,8 @@ function renderAgentList(filter = '') {
       const helpTitle = `${displayName} (${statusLabel})`;
       const helpText = typeof getAgentHelpText === 'function' ? getAgentHelpText(a.name, a.description) : (displayDesc || 'Ein Agent im Gnom-Hub.');
       
-      const icon = (typeof window.agentIcon === 'function') ? window.agentIcon(a.name) : '';
-      const helpDataArt = 'data-help-art="' + a.name + '"';
       return `<div class="agent-card ${stClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="handleWorkerClick('${a.id}')" ondblclick="handleWorkerDblClick('${a.id}', '${a.status}')" onmouseenter="if(window.triggerAgentArtShow) window.triggerAgentArtShow('${a.name}')" style="--agent-color:${c}; --dur:${dur}s; --delay:${dly}s;" data-help-title="${helpTitle.replace(/"/g, '&quot;')}" data-help="${helpText.replace(/"/g, '&quot;')}">
-        <h3><span style="display:inline-flex;width:14px;height:14px;vertical-align:middle;color:${c};margin-right:5px;">${icon}</span><span>${displayName}</span>${roleIcon}</h3>
+        <h3><span>${displayName}</span>${roleIcon}</h3>
         <div class="desc">${displayDesc || '–'}</div>
         <div class="meta">${a.port ? `<span class="badge port">:${a.port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}</div>
       </div>`;

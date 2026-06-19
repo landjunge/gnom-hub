@@ -61,8 +61,7 @@ function updateLamps(hubAgents) {
       const helpTitle = `${a.name} (${statusLabel})`;
       const helpText = typeof getAgentHelpText === 'function' ? getAgentHelpText(a.name, '') : `${a.name} System-Agent.`;
       
-      const icon = (typeof window.agentIcon === 'function') ? window.agentIcon(a.name) : '';
-      return `<div class="sys-agent-card" data-ag="${a.name}" title="${a.name}" onclick="handleAgentClick('${a.name}')" ondblclick="handleAgentDblClick('${a.name}')" onmouseenter="if(window.triggerAgentArtShow) window.triggerAgentArtShow('${a.name}')" style="--agent-color:${col};--dur:${dur}s;--delay:${dly}s" data-help-title="${helpTitle.replace(/"/g, '&quot;')}" data-help="${helpText.replace(/"/g, '&quot;')}"><span style="display:inline-flex;width:12px;height:12px;vertical-align:middle;color:${col};margin-right:4px;">${icon}</span>${a.name}</div>`;
+      return `<div class="sys-agent-card" data-ag="${a.name}" title="${a.name}" onclick="handleAgentClick('${a.name}')" ondblclick="handleAgentDblClick('${a.name}')" onmouseenter="if(window.triggerAgentArtShow) window.triggerAgentArtShow('${a.name}')" style="--agent-color:${col};--dur:${dur}s;--delay:${dly}s" data-help-title="${helpTitle.replace(/"/g, '&quot;')}" data-help="${helpText.replace(/"/g, '&quot;')}">${a.name}</div>`;
     }).join('');
     _lastInternals = names;
   }
