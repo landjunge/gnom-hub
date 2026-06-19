@@ -1,0 +1,49 @@
+import sqlite3
+from pathlib import Path
+from datetime import datetime
+from typing import Optional
+from contextlib import contextmanager
+from gnom_hub.core.config import Config
+
+class Await:
+    def __init__(self, v): self._v = v
+    def __await__(self):
+        async def _f(): return self._v
+        return _f().__await__()
+    def __getattr__(self, k): return getattr(self._v, k)
+    def __getitem__(self, i): return self._v[i]
+    def __iter__(self): return iter(self._v)
+    def __len__(self): return len(self._v)
+    def __bool__(self): return bool(self._v)
+
+def parse_dt(s) -> Optional[datetime]:
+    if not s: return None
+    s = str(s)
+    if s.endswith("Z"): s = s[:-1] if ("+" in s[:-1] or "-" in s[:-1]) else s[:-1] + "+00:00"
+    try: return datetime.fromisoformat(s)
+    except Exception: return None
+
+def get_db_connection() -> sqlite3.Connection:
+    """Create a raw SQLite connection with all necessary PRAGMAs.
+    
+    This is the single source of truth for DB connections in the entire project.
+    Use get_db_conn() context manager for automatic cleanup.
+    """
+    db_path = str(Config.DB_PATH)
+    conn = sqlite3.connect(db_path, timeout=15.0)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA cache_size=-20000")
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@contextmanager
+def get_db_conn():
+    """Context manager that yields a DB connection and ensures it is closed."""
+    conn = get_db_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
+

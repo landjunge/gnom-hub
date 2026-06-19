@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnom-Hub – Dein Gnom fürs Grobe</title>
+    <style>
+        /* === GLOBAL STYLES === */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        a { color: #00ff88; text-decoration: none; transition: color 0.3s; }
+        a:hover { color: #00cc66; }
+
+        /* === NAVIGATION === */
+        .nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(15,15,26,0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0,255,136,0.2);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00ff88;
+            text-decoration: none;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+        .nav-links a {
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.3s;
+            padding: 0.5rem 0;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-links a:hover, .nav-links a.active {
+            color: #00ff88;
+            border-bottom-color: #00ff88;
+        }
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: #00ff88;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* === HERO === */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 6rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(0,255,136,0.08) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+            line-height: 1.1;
+        }
+        .hero p {
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            max-width: 700px;
+            line-height: 1.8;
+            color: #b0b0b0;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 2rem;
+        }
+        .hero-cta {
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, #00ff88, #00cc66);
+            color: #0f0f1a;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            z-index: 1;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .hero-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,255,136,0.3);
+        }
+
+        /* === FEATURES === */
+        .features {
+            padding: 4rem 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .feature-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(0,255,136,0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: #00ff88;
+            box-shadow: 0 8px 30px rgba(0,255,136,0.1);
+        }
+        .feature-card h3 {
+            color: #00ff88;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        .feature-card p {
+            color: #b0b0b0;
+            line-height: 1.7;
+        }
+
+        /* === FOOTER === */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid rgba(0,255,136,0.1);
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: rgba(15,15,26,0.98);
+                padding: 1rem;
+                gap: 1rem;
+            }
+            .nav-links.open { display: flex; }
+            .nav-toggle { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav" role="navigation" aria-label="Hauptnavigation">
+        <a href="index.html" class="nav-logo">⚡ Gnom-Hub</a>
+        <button class="nav-toggle" aria-label="Menü öffnen" onclick="this.nextElementSibling.classList.toggle('open')">☰</button>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active">Home</a></li>
+            <li><a href="demo.html">Demo</a></li>
+            <li><a href="control.html">Control</a></li>
+            <li><a href="vergleich.html">Vergleich</a></li>
+            <li><a href="roadmap_phase8.html">Roadmap</a></li>
+            <li><a href="competitors.html">Konkurrenz</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <h1>Dein Gnom fürs Grobe</h1>
+            <p>Gnom-Hub ist dein intelligenter Assistent für DevOps, Deployment und System-Orchestrierung. Clever, schnell, gnomenhaft effizient – und immer einen Schritt voraus.</p>
+            <button class="hero-cta" onclick="window.location.href='demo.html'" aria-label="Demo starten">Demo erleben →</button>
+        </section>
+
+        <section class="features" aria-label="Features">
+            <article class="feature-card">
+                <h3>🚀 Blitzschnelles Deployment</h3>
+                <p>Deploye deine Projekte mit einem einzigen Befehl. Gnom-Hub kümmert sich um den Rest – von FTP bis Docker.</p>
+            </article>
+            <article class="feature-card">
+                <h3>🛡️ Sicher &amp; Robust</h3>
+                <p>Verschlüsselte Verbindungen, sichere Credential-Verwaltung und automatische Backups. Dein Gnom schläft nie.</p>
+            </article>
+            <article class="feature-card">
+                <h3>🎯 Intelligent &amp; Autonom</h3>
+                <p>Lerne deine Workflows und optimiere sie automatisch. Der Gnom wird schlauer mit jeder Aufgabe, die du ihm gibst.</p>
+            </article>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© 2025 Gnom-Hub – Mit ❤️ und 🍺 gebaut von echten Gnomen</p>
+    </footer>
+</body>
+</html>
+<!-- ​​​‌‌‌‌‌‌​​​​​​‌‌‌​​​‌‌‌​​​‌‌‌‌‌‌‌‌‌‌‌‌​​​​​​‌‌‌​​​‌‌‌​​​​​​‌‌‌​​​‌‌‌​​​​​​‌‌‌‌‌‌​​​‌‌‌​​​​​​​​​​​​‌‌‌​​​‌‌‌‌‌‌​​​‌‌‌​​​​​​​​​‌‌‌‌‌‌​​​​​​‌‌‌​​​​​​‌‌‌​​​‌‌‌​​​‌‌‌‌‌‌​​​​​​‌‌‌‌‌‌‌‌‌​​​‌‌‌​​​‌‌‌​​​‌‌‌‌‌‌​​​​​​‌‌‌​​​​​​​​​‌‌‌​​​​​​​​​​​​‌‌‌‌‌‌​​​‌‌‌​​​​​​‌‌‌​​​​​​‌‌‌​​​​​​‌‌‌‌‌‌​​​‌‌‌‌‌‌​​​​​​‌‌‌​​​​​​‌‌‌​​​​​​‌‌‌​​​‌‌‌‌‌‌​​​‌‌‌​​​‌‌‌‌‌‌​​​‌‌‌​​​​​​‌‌‌‌‌‌‌‌‌​​​​​​‌‌‌‌‌‌‌‌‌​​​‌‌‌‌‌‌​​​​​​‌‌‌​​​‌‌‌‌‌‌​​​‌‌‌​​​​​​‌‌‌​​​​​​​​​‌‌‌‌‌‌‌‌‌​​​‌‌‌​​​‌‌‌​​​‌‌‌‌‌‌​​​​​​‌‌‌‌‌‌‌‌‌‌‌‌​​​​​​‌‌‌​​​‌‌‌​​​‌‌‌​​​​​​​​​‌‌‌​​​‌‌‌​​​‌‌‌​​​‌‌‌​​​‌‌‌​​​‌‌‌‌‌‌​​​​​​​​​‌‌‌‌‌‌​​​‌‌‌‌‌‌​​​‌‌‌​​​​​​‌‌‌​​​‌‌‌‌‌‌​​​​​​‌‌‌‌‌‌​​​​​​‌‌‌​​​‌‌‌​​​​​​​​​‌‌‌​​​​​​‌‌‌‌‌‌‌‌‌‌‌‌​​​‌‌‌​​​​​​‌‌‌‌‌‌‌‌‌‌‌‌​​​‌‌‌ -->

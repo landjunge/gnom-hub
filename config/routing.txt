@@ -1,0 +1,22 @@
+# =====================================================================
+# GNOM-HUB - Agent LLM Routing (Direkt, kein Auto-Routing)
+# =====================================================================
+# Format: agent_name = provider | model
+#
+# Kette pro Request: Provider → OpenRouter Free Models → Ollama (lokal)
+#
+# MiniMax = multimodal primary. Ein einziger sk-cp-… Key deckt
+#   Text + Vision + Image + Audio/TTS + Video + Music ab.
+#   Provider-Caps siehe src/gnom_hub/core/provider_registry.py &
+#   src/gnom_hub/infrastructure/llm/providers.py.
+# =====================================================================
+
+# --- Alle auf MiniMax M3 (multimodal) ---
+coderag = minimax | MiniMax-M3
+securityag = minimax | MiniMax-M3
+researcherag = minimax | MiniMax-M3
+generalag = minimax | MiniMax-M3
+soulag = minimax | MiniMax-M3
+writerag = minimax | MiniMax-M3
+editorag = minimax | MiniMax-M3
+watchdogag = minimax | MiniMax-M3

@@ -1,0 +1,97 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# === CREDENTIALS & SECRETS ===
+.env
+.env.*
+!.env.example
+*.env
+config/.env
+config/.env.*
+!config/.env.example
+config/.gnom-hub-tokens.json
+.gnom-hub-tokens.json
+*.gnom-hub-tokens-*.json
+
+# Local workspace and caches
+gnom_workspace/
+gnom_workspace_*/
+.gnom-hub/
+
+.backups/
+.visions/
+
+# Logs
+*.log
+logs/
+logs_*.txt
+startup_log.txt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Database & Archives
+*.db
+*.zip
+data/
+src/data/
+.hub_secret
+config/.hub_secret
+
+# Local launcher scripts (the new ones in scripts/start_gnom_hub.sh + stop_gnom_hub.sh are tracked)
+start_gnom_hub.sh
+stop_gnom_hub.sh
+start_gnom_hub.bat
+stop_gnom_hub.bat
+
+# Scratch files
+scratch/
+
+# Audio test artifacts (not part of the project — produced by TTS smoke tests)
+*.aiff
+file.aiff
+out.tts.aiff
+
+# Local development notes & experiments (NEVER publish)
+dev/
+.dev/
+
+# Local tool development sandbox
+tools_dev/
+
+# Random CSV exports (not part of the project)
+*.csv
+table.csv
+table (1).csv
+
+
+# Team Engine plans (local — not part of repo)
+.mavis/
+outputs/
+tmp_*.py
+
+# Canonical launchers (in scripts/) are part of the repo
+!scripts/start_gnom_hub.sh
+!scripts/stop_gnom_hub.sh
+!scripts/setup_macos_shortcut.sh
+!scripts/install.sh
+!scripts/uninstall.sh

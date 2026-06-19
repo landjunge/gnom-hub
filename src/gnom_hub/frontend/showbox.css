@@ -1,0 +1,230 @@
+/* showbox.css — Modular Showbox Styles */
+
+:root {
+  --sb-system-color: #00e5ff;
+  --sb-system-rgb: 0, 229, 255;
+  --sb-worker-color: #ffa500;
+  --sb-worker-rgb: 255, 165, 0;
+  --sb-user-color: #39ff14;
+  --sb-user-rgb: 57, 255, 20;
+}
+
+#modular-showbox-container {
+  margin-top: 20px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.modular-showbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.showbox-layers-container {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin: 0;
+  background: rgba(20, 24, 35, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.sb-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 24px 16px 16px 16px;
+  box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.96);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  /* Kein Scrollen — Inhalt wird stattdessen via autoFitText eingepasst. */
+  overflow: hidden;
+}
+
+/* Sicherheitsnetz: lange Wörter / Tabellen brechen um, statt zu scrollen. */
+.sb-layer-body,
+.sb-layer-body * {
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Inline-Elemente die zu Buttons promoted werden: dezent dargestellt. */
+.sb-layer-body .sb-promo,
+.sb-layer-body [data-sb-action] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: help;
+  pointer-events: none;  /* Klick passiert im Button-Grid unten */
+}
+.sb-layer-body .sb-promo::before {
+  content: "↳ ";
+  opacity: 0.6;
+}
+
+.sb-layer.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: scale(1);
+}
+
+.sb-layer-label {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 10;
+  transition: color 0.3s;
+  display: flex;
+  align-items: center;
+}
+
+#sb-layer-1 .sb-layer-label { color: var(--sb-system-color); }
+#sb-layer-2 .sb-layer-label { color: var(--sb-worker-color); }
+#sb-layer-3 .sb-layer-label { color: var(--sb-user-color); }
+
+.sb-layer-id {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  margin-right: 5px;
+  opacity: 0.6;
+}
+
+.sb-layer-description {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 0.52rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 10;
+  color: var(--text-dim, #94a3b8);
+}
+
+.sb-layer-body {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-dim, #94a3b8);
+  word-break: break-word;
+}
+
+/* Scrollbar styling for layer body */
+.sb-layer::-webkit-scrollbar {
+  width: 4px;
+}
+.sb-layer::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+.sb-layer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Layer slide styles */
+.sb-layer-body img,
+.sb-layer-body video,
+.sb-layer-body iframe,
+.sb-layer-body audio {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+/* 8 dynamic buttons in 2x4 grid below the showbox */
+.showbox-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 1px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin-top: 4px;
+}
+
+.sb-btn {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  padding: 0;
+  font-size: 0.7rem;
+}
+
+.sb-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sb-btn:active {
+  transform: translateY(1px);
+}
+
+.sb-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.sb-btn-red { color: #ff5577; border-color: rgba(255, 85, 119, 0.4); }
+.sb-btn-red:hover { background: rgba(255, 85, 119, 0.15); color: #ff7799; }
+.sb-btn-green { color: #39ff7a; border-color: rgba(57, 255, 122, 0.4); }
+.sb-btn-green:hover { background: rgba(57, 255, 122, 0.15); color: #6dff9e; }
+.sb-btn-orange { color: #ffa500; border-color: rgba(255, 165, 0, 0.4); }
+.sb-btn-orange:hover { background: rgba(255, 165, 0, 0.15); color: #ffc04d; }
+.sb-btn-yellow { color: #ffe14d; border-color: rgba(255, 225, 77, 0.4); }
+.sb-btn-yellow:hover { background: rgba(255, 225, 77, 0.15); color: #ffe97a; }
+.sb-btn-cyan { color: #00e5ff; border-color: rgba(0, 229, 255, 0.4); }
+.sb-btn-cyan:hover { background: rgba(0, 229, 255, 0.15); color: #5cf2ff; }
+.sb-btn-blue { color: #5b8cff; border-color: rgba(91, 140, 255, 0.4); }
+.sb-btn-blue:hover { background: rgba(91, 140, 255, 0.15); color: #88a8ff; }
+.sb-btn-purple { color: #b46bff; border-color: rgba(180, 107, 255, 0.4); }
+.sb-btn-purple:hover { background: rgba(180, 107, 255, 0.15); color: #c98eff; }

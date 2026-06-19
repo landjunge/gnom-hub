@@ -1,0 +1,37 @@
+"""STT Engine — Whisper lokal, OpenAI API Fallback."""
+import logging
+import os, io, tempfile
+from typing import Optional
+_log = logging.getLogger(__name__)
+def stt_local(audio_bytes: bytes) -> Optional[str]:
+    """Lokales faster-whisper STT."""
+    try:
+        from faster_whisper import WhisperModel
+        from gnom_hub.db import get_language
+        model = WhisperModel("tiny", compute_type="int8")
+        tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        tmp.write(audio_bytes); tmp.close()
+        segs, _ = model.transcribe(tmp.name, language=get_language())
+        os.unlink(tmp.name)
+        return " ".join(s.text for s in segs).strip()
+    except Exception as e:
+        _log.warning("Lokales STT fehlgeschlagen: %s", e)
+        return None
+def stt_cloud(audio_bytes: bytes) -> Optional[str]:
+    """OpenAI Whisper API Fallback."""
+    key = os.environ.get("OPENAI_API_KEY", "")
+    if not key: return None
+    try:
+        import requests
+        from gnom_hub.db import get_language
+        r = requests.post("https://api.openai.com/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {key}"},
+            files={"file": ("audio.wav", io.BytesIO(audio_bytes), "audio/wav")},
+            data={"model": "whisper-1", "language": get_language()}, timeout=30)
+        return r.json().get("text") if r.status_code == 200 else None
+    except Exception as e:
+        _log.warning("Cloud-STT fehlgeschlagen: %s", e)
+        return None
+def transcribe(audio_bytes: bytes) -> str:
+    """Versucht lokal, dann Cloud. Gibt '' bei totalem Fehler zurück."""
+    return stt_local(audio_bytes) or stt_cloud(audio_bytes) or ""

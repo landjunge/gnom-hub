@@ -1,0 +1,1 @@
+if __name__ == "__main__": import asyncio; from agents.run_agent import BaseAgent, AGENT_DEFINITIONS; cfg = AGENT_DEFINITIONS["watchdogag"]; asyncio.run(BaseAgent(cfg["name"], cfg["description"], cfg["capabilities"][0], sys_prompt=cfg["sys_prompt"], poll=15).run())

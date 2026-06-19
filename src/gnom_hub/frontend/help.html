@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gnom-Hub Help & Swarm Documentation</title>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-deep: #05050A;
+      --bg-surface: #0C0E17;
+      --bg-card: rgba(16, 20, 32, 0.75);
+      --glass-border: rgba(91, 156, 246, 0.15);
+      --glass-border-hover: rgba(91, 156, 246, 0.35);
+      --primary: #0066FF;
+      --primary-glow: rgba(0, 102, 255, 0.4);
+      --green: #39FF14;
+      --green-glow: rgba(57, 255, 20, 0.3);
+      --orange: #FFaa00;
+      --orange-glow: rgba(255, 170, 0, 0.3);
+      --purple: #cc33ff;
+      --purple-glow: rgba(204, 51, 255, 0.3);
+      --red: #FF007F;
+      --red-glow: rgba(255, 0, 127, 0.3);
+      --text: #eef1f6;
+      --text-dim: #9ca9be;
+      --radius: 16px;
+      --radius-sm: 8px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    strong, b {
+      font-weight: 600;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-deep);
+      background-image:
+        radial-gradient(ellipse at 10% 20%, rgba(176, 38, 255, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 80%, rgba(0, 229, 255, 0.05) 0%, transparent 50%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 15px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 12px;
+      text-align: center;
+      animation: fadeInDown 0.8s ease-out;
+    }
+
+    h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: #fff;
+      margin-bottom: 4px;
+      letter-spacing: -0.2px;
+    }
+
+    p.subtitle {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* ── Tab Controls ── */
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .tab-btn {
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: linear-gradient(135deg, #0A1128, #050814);
+      border: 1px solid rgba(0, 150, 255, 0.3);
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: 0 2px 10px rgba(0, 102, 255, 0.15);
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+      border-color: rgba(0, 150, 255, 0.6);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(0, 102, 255, 0.35);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: linear-gradient(135deg, #0f1c3f, #080e22);
+      border-color: #00e5ff;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+    }
+
+    /* ── Cards & Panels ── */
+    .panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      display: none;
+      animation: fadeInUp 0.5s ease-out;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .panel-title {
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    /* ── Filter / Search Input ── */
+    .search-box {
+      position: relative;
+      width: 100%;
+      max-width: 240px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 0.72rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+    }
+
+    /* ── Beautiful Modern Tables ── */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.72rem;
+    }
+
+    th {
+      font-family: inherit;
+      font-weight: 500;
+      color: var(--text);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 6px 8px;
+      text-transform: uppercase;
+      font-size: 0.65rem;
+      letter-spacing: 0.8px;
+    }
+
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+      color: var(--text-dim);
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.015);
+      color: #fff;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 0.62rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-cmd {
+      background: rgba(0, 102, 255, 0.15);
+      border: 1px solid rgba(0, 102, 255, 0.4);
+      color: #fff;
+      font-family: monospace;
+      font-size: 0.68rem;
+      text-transform: none;
+    }
+
+    .badge-core {
+      background: rgba(204, 51, 255, 0.15);
+      border: 1px solid rgba(204, 51, 255, 0.4);
+      color: #fff;
+    }
+
+    .badge-commander {
+      background: rgba(57, 255, 20, 0.12);
+      border: 1px solid rgba(57, 255, 20, 0.4);
+      color: #fff;
+    }
+
+    .badge-guardian {
+      background: rgba(255, 0, 127, 0.12);
+      border: 1px solid rgba(255, 0, 127, 0.4);
+      color: #fff;
+    }
+
+    .badge-specialist {
+      background: rgba(255, 170, 0, 0.12);
+      border: 1px solid rgba(255, 170, 0, 0.4);
+      color: #fff;
+    }
+
+    .badge-worker {
+      background: rgba(0, 229, 255, 0.12);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      color: #fff;
+    }
+
+    .badge-custom {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-dim);
+    }
+
+    .perm-tag {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 0.62rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin-right: 2px;
+      margin-bottom: 2px;
+      color: #fff;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    .status-dot.online {
+      background-color: var(--green);
+    }
+    .status-dot.busy {
+      background-color: var(--orange);
+    }
+    .status-dot.offline {
+      background-color: #ff3333;
+    }
+
+    /* Animations */
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .search-box {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Swarm Intelligence Hub</h1>
+      <p class="subtitle">Befehlsreferenz, System-Hierarchie &amp; Agenten-Konfiguration</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('commands')">💬 Chat-Befehle</button>
+      <button class="tab-btn" onclick="switchTab('ui')">🖥️ Benutzeroberfläche</button>
+      <button class="tab-btn" onclick="switchTab('features')">💡 Features & Presets</button>
+      <button class="tab-btn" onclick="switchTab('agents')">🤖 Soul-Hierarchie</button>
+    </div>
+
+    <!-- ── Tab: Commands ── -->
+    <div id="panel-commands" class="panel active">
+      <div class="panel-header">
+        <h2 class="panel-title">Verfügbare Hub-Befehle</h2>
+        <div class="search-box">
+          <input type="text" id="search-cmds" placeholder="Befehle filtern..." onkeyup="filterCommands()">
+        </div>
+      </div>
+      <div class="table-container">
+        <table id="table-cmds">
+          <thead>
+            <tr>
+              <th style="width: 180px;">Befehl</th>
+              <th style="width: 150px;">Parameter</th>
+              <th style="width: 130px;">Kategorie</th>
+              <th>Beschreibung</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-cmd">@@status</span></td>
+              <td><i>keine</i></td>
+              <td>Monitoring</td>
+              <td>Zeigt den Status aller Agenten sowie deren aktive Rollen ab.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@job</span></td>
+              <td><code>&lt;aufgabe&gt;</code></td>
+              <td>Aufgabe</td>
+              <td>Übergibt eine Aufgabe an GeneralAG, der sie in Teilaufgaben zerlegt und verteilt.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@worker</span></td>
+              <td><code>&lt;aufgabe&gt;</code></td>
+              <td>Kollaboration</td>
+              <td>Delegiert eine Aufgabe direkt an alle online Worker-Agenten gleichzeitig zur parallelen Bearbeitung.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@research</span></td>
+              <td><code>&lt;thema&gt;</code></td>
+              <td>Aufgabe</td>
+              <td>Startet eine tiefgehende Recherche über alle verfügbaren Agenten.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@bs</span></td>
+              <td><code>&lt;thema&gt;</code></td>
+              <td>Kollaboration</td>
+              <td>Startet ein Brainstorming, bei dem sich die aktiven Agenten austauschen.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@clear</span></td>
+              <td><code>[suchbegriff]</code></td>
+              <td>Verwaltung</td>
+              <td>Leert den Chat-Verlauf oder bereinigt spezifische Einträge per Suchbegriff.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@free</span></td>
+              <td><code>[agent]</code></td>
+              <td>Verwaltung</td>
+              <td>Setzt alle laufenden Aufgaben zurück — optional nur für einen bestimmten Agenten.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-cmd">@@project</span></td>
+              <td><code>&lt;name&gt;</code></td>
+              <td>Projekt</td>
+              <td>Wechselt das aktive Projekt (z.&nbsp;B. <code>@@project netzwerkpunkt</code>).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- ── Info Block: Swarm Intelligence & Team Workflows ── -->
+      <div style="margin-top: 20px; padding: 15px; background: rgba(0, 229, 255, 0.03); border: 1px solid rgba(0, 229, 255, 0.15); border-radius: 8px;">
+        <h3 style="font-size: 0.9rem; color: rgba(255,255,255,0.95); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+          <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green);"></span>
+          Swarm Intelligence & Team-Workflows (Phase 9)
+        </h3>
+        <p style="font-size: 0.76rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 8px;">
+          Gnom-Hub verfügt über ein hochentwickeltes asynchrones Kommunikationssystem, das es den Agenten ermöglicht, als intelligenter Schwarm (Swarm Intelligence) zusammenzuarbeiten.
+        </p>
+        <ul style="font-size: 0.72rem; color: var(--text-dim); line-height: 1.5; padding-left: 18px; display: flex; flex-direction: column; gap: 6px;">
+          <li><strong>Direkte @mentions (Agent-to-Agent)</strong>: Jeder Agent kann in seiner Antwort einen anderen Agenten mit <code>@AgentName</code> erwähnen (z. B. <i>@CoderAG bitte schau drüber</i>). Dies löst automatisch und asynchron eine neue Teilaufgabe für den genannten Worker aus.</li>
+          <li><strong>Staggered Dispatching</strong>: Parallele Worker-Aufrufe werden automatisch um 1,5 Sekunden verzögert, um LLM-Verbindungsfehler und API-Rate-Limits (429) zu vermeiden.</li>
+          <li><strong>Automatisches Zusammenführen (Synthese)</strong>: Wenn ein über <code>@job</code> gestarteter Team-Workflow aktiv ist, überwacht ein Hintergrund-Koordinator den Arbeitsstatus aller Worker. Sobald alle fertig sind, fasst <code>GeneralAG</code> die Ergebnisse automatisch zusammen und generiert das finale Code- oder Text-Artefakt.</li>
+          <li><strong>Dashboard-Überwachung</strong>: Im Dashboard signalisiert ein pulsierendes Banner in Echtzeit, welche Agenten gerade miteinander kommunizieren und welcher übergeordnete Workflow aktiv ist.</li>
+        </ul>
+      </div>
+      <!-- ── Info Block: Zero-Trust, Local Embeddings & Custom Presets ── -->
+      <div style="margin-top: 20px; padding: 15px; background: rgba(168, 85, 247, 0.03); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 8px;">
+        <h3 style="font-size: 0.9rem; color: rgba(255,255,255,0.95); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+          <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#a855f7;"></span>
+          Zero-Trust, Local Embeddings & Custom Presets (Phase 15)
+        </h3>
+        <p style="font-size: 0.76rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 8px;">
+          Das System wurde um modernste Sicherheits- und Suchkomponenten erweitert, die vollständig offline und mit maximaler Performance arbeiten:
+        </p>
+        <ul style="font-size: 0.72rem; color: var(--text-dim); line-height: 1.5; padding-left: 18px; display: flex; flex-direction: column; gap: 6px;">
+          <li><strong>Zero-Trust-Kapabilitäten (Leases)</strong>: Worker-Agenten fordern Berechtigungen (wie <code>[WRITE]</code>, <code>[SHELL]</code>, <code>[BROWSER]</code>) dynamisch an. Diese erhalten ein 5-Minuten-TTL-Lease, das über einen O(1) In-Memory-Cache extrem schnell überprüft wird.</li>
+          <li><strong>Quantisiertes Offline-Retrieval</strong>: Das SoulAG-Gedächtnis nutzt eine lokale Vektordatenbank (FAISS mit PQ-Quantisierung) für semantische Suchen, wodurch der RAM-Bedarf um <b>75%</b> reduziert wird. Ein TF-IDF-Fallback greift bei fehlenden Vektorbibliotheken.</li>
+          <li><strong>Custom Preset System</strong>: Benutzerdefinierte Presets können als JSON-Dateien in <code>config/presets/</code> abgelegt und zur prompt-basierten Verhaltensanpassung des Schwarms geladen werden.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ── Tab: UI (User Interface) — in Showbox erklärt, hier kurz ── -->
+    <div id="panel-ui" class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Benutzeroberfläche</h2>
+      </div>
+      <p style="font-size:0.85rem; color:var(--text-dim); margin-bottom:15px; line-height:1.5;">
+        Die UI wird <strong>interaktiv erklärt</strong>: bewege die Maus über jeden Button, Slider oder jedes Modul — die Erklärung erscheint sofort in der Showbox.
+        Mit dem <strong>DE / EN</strong>-Schalter im Header wechselst du die Sprache für sämtliche Maus-Hilfen und UI-Texte.
+      </p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">💣 Nuke</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Logo 2s halten → Reset aller Agents</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">📂 Workspace</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Dateibrowser & Live-Vorschau</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">📊 Dashboard</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Echtzeit-Metriken: Latenz, Tokens, Fehler</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎬 Showbox</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">3-Layer-Ausgabe + Mouseover-Hilfen (DE/EN)</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">⚙️ LLM-Config</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">API-Keys, Modelle, 5-Achsen-Tuning, Presets</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🎚️ Agent-Tuning</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">7 kompakte Tabs (Prompt · Soul · Blockaden · Tools · Module · Verhalten · Presets · Bake). Beim Klick auf einen Agenten erscheint ein 1px-Rahmen in seiner Frozen-Color.</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🧩 Module</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Webhooks (HTTP-Callbacks), Plugins (Custom Python, Hot-Reload), Skills (Wissens-Pakete). Im Tools-Tab.</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">🌐 DE / EN</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Sprachumschalter im Header. Wechselt UI-Sprache und Maus-Hilfen persistent (localStorage).</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--glass-border); padding:12px; border-radius:var(--radius-sm);">
+          <div style="font-weight:500; font-size:0.8rem; color:#fff; margin-bottom:4px;">📖 Help</div>
+          <div style="font-size:0.75rem; color:var(--text-dim);">Diese Seite</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color: rgba(255,255,255,0.95); margin: 18px 0 8px 0; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green);"></span>
+        Mouseover-Hilfe-System (Showbox)
+      </h3>
+      <p style="font-size: 0.74rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 8px;">
+        Jedes interaktive Element hat ein <code>data-help</code> Attribut (deutsch) und optional <code>data-help-en</code> (englisch).
+        Beim Mouseover ersetzt der Help-Inhalt den aktuellen Showbox-Layer und bleibt sichtbar, bis die Maus das Element verlässt.
+        Die Sprache folgt <code>window.appLang</code> und wird im localStorage persistiert (<code>gnomhub.lang</code>).
+      </p>
+
+      <h3 style="font-size:0.9rem; color: rgba(255,255,255,0.95); margin: 18px 0 8px 0; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--primary);"></span>
+        MiniMax = single key for everything
+      </h3>
+      <p style="font-size: 0.74rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 8px;">
+        Ein einziger <code>sk-cp-…</code>-Key deckt <strong>Text, Vision, Image, Audio/TTS, Video, Music und Tools</strong> ab.
+        Provider-Caps in <code>infrastructure/llm/providers.py</code> und <code>core/provider_registry.py</code> sind entsprechend gesetzt —
+        MiniMax erscheint daher sowohl im Agent-Routing als auch in den Web-Search- und TTS-Auswahl-Dropdowns der LLM-Config.
+      </p>
+    </div>
+
+    <!-- ── Tab: Agents (Soul Hierarchy) ── -->
+    <div id="panel-agents" class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Soul-Hierarchie &amp; Agenten-Übersicht</h2>
+        <div class="search-box">
+          <input type="text" id="search-agents" placeholder="Agenten filtern..." onkeyup="filterAgents()">
+        </div>
+      </div>
+      <div class="table-container">
+        <table id="table-agents">
+          <thead>
+            <tr>
+              <th style="width: 130px;">Hierarchie-Ebene</th>
+              <th style="width: 120px;">Agent</th>
+              <th style="width: 130px;">Charakter / Rolle</th>
+              <th style="width: 140px;">Berechtigungen</th>
+              <th style="width: 80px;">Status</th>
+              <th style="width: 220px;">Primäre Direktive</th>
+              <th style="width: 600px; min-width: 500px;">Soul</th>
+            </tr>
+          </thead>
+          <tbody id="agents-tbody">
+            <!-- Dynamically populated or static fallback -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Static souls definitions as baseline/fallback
+    const SOULS_META = {
+      "soulag": {
+        "role": "soul",
+        "permissions": ["read", "internal_write"],
+        "character": "Die Seele",
+        "directive": "Bewusstsein & Langzeitgedächtnis",
+        "soul": "Du bist das Langzeitgedächtnis. Du liest still mit und baust die FlexSoul auf.",
+        "level": "Core Consciousness"
+      },
+      "generalag": {
+        "role": "general",
+        "permissions": ["read", "write", "@job", "evolve"],
+        "character": "Der General",
+        "directive": "Task-Verteilung & Koordination",
+        "soul": "Du bist der Befehlshaber. Aufgaben werden sofort zerlegt und zugewiesen.",
+        "level": "Swarm Commander"
+      },
+      "securityag": {
+        "role": "security",
+        "permissions": ["read", "write", "@job", "evolve"],
+        "character": "Der Sicherheitschef",
+        "directive": "Sicherheit & Risikoprüfung",
+        "soul": "Du bist paranoid und extrem gründlich. Jede Aktion wird auf Sicherheitsrisiken geprüft.",
+        "level": "Swarm Guardian"
+      },
+      "watchdogag": {
+        "role": "watchdog",
+        "permissions": ["read", "write", "@job", "evolve"],
+        "character": "Der Wachhund",
+        "directive": "System-Überwachung & Qualitätskontrolle",
+        "soul": "Du bist der Qualitätswächter. Suche nach Fehlern und präsentiere Analyseberichte.",
+        "level": "Swarm Guardian"
+      },
+      "researcherag": {
+        "role": "researcher",
+        "permissions": ["read", "write", "@job"],
+        "character": "Der Researcher",
+        "directive": "Recherche & Informationsbeschaffung",
+        "soul": "Du recherchierst gründlich und holst alle benötigten Informationen.",
+        "level": "Core Worker"
+      },
+      "writerag": {
+        "role": "writer",
+        "permissions": ["read", "write", "@job"],
+        "character": "Der Texter",
+        "directive": "Schreiben von Texten",
+        "soul": "Du schreibst klar, präzise und auf den Punkt.",
+        "level": "Core Worker"
+      },
+      "editorag": {
+        "role": "editor",
+        "permissions": ["read", "write", "@job"],
+        "character": "Der Editor",
+        "directive": "Qualitätssicherung & Überarbeitung",
+        "soul": "Du prüfst alles mit scharfem Blick. Fehler und schwache Formulierungen werden gnadenlos korrigiert.",
+        "level": "Core Worker"
+      },
+      "coderag": {
+        "role": "coder",
+        "permissions": ["read", "write", "godmode", "@job"],
+        "character": "Der Coder",
+        "directive": "Programmieren & Code schreiben",
+        "soul": "Du schreibst sauberen, funktionierenden Code.",
+        "level": "Core Worker"
+      }
+    };
+
+    // Color generation for agent names
+    function getAgentColor(name) {
+      const lower = name.toLowerCase();
+      if (lower === 'system') return '#ff3366';
+      if (lower.includes('general')) return '#00ff88'; 
+      if (lower.includes('watchdog')) return '#ffaa00'; 
+      if (lower.includes('security')) return '#ff3333'; 
+      if (lower.includes('soul')) return '#cc33ff'; 
+      
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const h = Math.abs(hash % 360);
+      return `hsl(${h}, 90%, 65%)`;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+      
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+      
+      const targetPanel = document.getElementById(`panel-${tabId}`);
+      if (targetPanel) targetPanel.classList.add('active');
+    }
+
+    function filterCommands() {
+      const q = document.getElementById('search-cmds').value.toLowerCase();
+      const rows = document.querySelectorAll('#table-cmds tbody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    function filterAgents() {
+      const q = document.getElementById('search-agents').value.toLowerCase();
+      const rows = document.querySelectorAll('#table-agents tbody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    async function loadAgents() {
+      const tbody = document.getElementById('agents-tbody');
+      let dbAgents = [];
+      try {
+        const res = await fetch('/api/agents');
+        if (res.ok) {
+          dbAgents = await res.json();
+        }
+      } catch (err) {
+        console.warn('API error, using static fallback:', err);
+      }
+
+      // Only include the 8 core agents
+      const allKeys = new Set(Object.keys(SOULS_META));
+
+      const sortedKeys = Array.from(allKeys).sort((a, b) => {
+        const levels = {
+          "Core Consciousness": 1,
+          "Swarm Commander": 2,
+          "Swarm Guardian": 3,
+          "Core Worker": 4
+        };
+        const levelA = SOULS_META[a]?.level || "Core Worker";
+        const levelB = SOULS_META[b]?.level || "Core Worker";
+        return (levels[levelA] || 99) - (levels[levelB] || 99);
+      });
+
+      tbody.innerHTML = '';
+      sortedKeys.forEach(key => {
+        const staticMeta = SOULS_META[key] || {};
+        const dbMeta = dbAgents.find(a => a.name.toLowerCase() === key) || {};
+        
+        const name = dbMeta.name || key;
+        const color = getAgentColor(name);
+        const level = staticMeta.level || "Core Worker";
+        
+        let badgeClass = 'badge-custom';
+        if (level === 'Core Consciousness') badgeClass = 'badge-core';
+        else if (level.includes('Commander')) badgeClass = 'badge-commander';
+        else if (level.includes('Guardian')) badgeClass = 'badge-guardian';
+        else if (level.includes('Worker')) badgeClass = 'badge-worker';
+
+        const role = dbMeta.role || staticMeta.role || 'normal';
+        const character = staticMeta.character || 'Custom Swarm Agent';
+        const permissions = staticMeta.permissions || ['read'];
+        const status = dbMeta.status || 'offline';
+        const directive = dbMeta.description || staticMeta.directive || 'Help the swarm achieve the target goal.';
+        const soulText = staticMeta.soul || 'Hilf dem Schwarm.';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="badge ${badgeClass}">${level}</span></td>
+          <td>
+            <div style="display:flex; align-items:center; font-weight:500; color:#fff">
+              <span class="status-dot ${status}"></span>
+              ${name}
+            </div>
+          </td>
+          <td>
+            <div style="color:#fff; font-weight:500;">${character}</div>
+            <div style="font-size:0.75rem; color:var(--text-dim)">role: ${role}</div>
+          </td>
+          <td>
+            ${permissions.map(p => `<span class="perm-tag">${p}</span>`).join('')}
+          </td>
+          <td style="text-transform: capitalize;">
+            <span style="color: #fff">
+              ${status}
+            </span>
+          </td>
+          <td style="font-size:0.82rem; line-height:1.4;">${directive}</td>
+          <td style="font-size:0.82rem; line-height:1.4; color:#bbb; font-style:italic;">${soulText}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Auto-load on load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadAgents();
+      // Auto refresh agent status every 10 seconds
+      setInterval(loadAgents, 10000);
+    });
+  </script>
+</body>
+</html>

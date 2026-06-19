@@ -1,0 +1,57 @@
+# action_handlers.py — Dispatcher für alle Action-Tags
+import re; from .action_write import handle_write, handle_read
+from .action_exec import handle_shell, handle_crawl, handle_showbox
+from .action_video import handle_screen_record, handle_video_merge, handle_video_edit
+from gnom_hub.core.security.gatekeeper import verify_write, verify_cmd
+from .action_browser import handle_browser
+from .action_desktop import handle_desktop
+
+def process_actions(ans, agent, perms, bs_mode, wd):
+    perms = list(perms)
+    if "godmode" in perms and "run" not in perms: perms.append("run")
+    w_ms, r_ms, sh_ms, desktop_ms = [], [], [], []
+    for m in re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", ans, re.DOTALL):
+        fn, content = m.group(1).strip(), m.group(2).strip()
+        if "write" not in perms:
+            ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine Schreibberechtigung.]")
+        elif verify_write(agent, fn, content, wd, perms):
+            w_ms.append(m)
+        else:
+            ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
+    already_matched = {m.start() for m in w_ms}
+    for m in re.finditer(r"\[WRITE:\s*(.*?)\]\s*\n\s*```\w*\n(.*?)```", ans, re.DOTALL):
+        if m.start() not in already_matched:
+            fn, content = m.group(1).strip(), m.group(2).strip()
+            if "write" not in perms:
+                ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine Schreibberechtigung.]")
+            elif verify_write(agent, fn, content, wd, perms):
+                w_ms.append(m)
+            else:
+                ans = ans.replace(m.group(0), f"[Gatekeeper: Schreibzugriff auf '{fn}' verweigert.]")
+    for m in re.finditer(r"\[READ:\s*(.*?)\]", ans):
+        r_ms.append(m)
+    for m in re.finditer(r"\[SHELL:\s*(.*?)\]", ans):
+        cmd = m.group(1).strip()
+        if "run" not in perms:
+            ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine SHELL-Berechtigung.]")
+        elif verify_cmd(agent, cmd):
+            sh_ms.append(m)
+        else:
+            ans = ans.replace(m.group(0), f"[Gatekeeper: Befehlsausführung verweigert.]")
+    for m in re.finditer(r"\[DESKTOP:\s*(.*?)\]", ans, re.DOTALL):
+        desktop_ms.append(m)
+    ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)
+    ans = handle_read(ans, r_ms, wd, perms)
+    ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
+    ans = handle_crawl(ans, list(re.finditer(r"\[CRAWL:\s*(.*?)\]", ans)), agent, perms)
+    show_ms = [(m.group(0), m.group(1) or "", m.group(2)) for t in ("SHOWBOX", "showbox") for rx in (rf"<{t}(?::([a-zA-Z0-9_\-]+))?>([\s\S]*?)<\/{t}>", rf"\[{t}(?::([a-zA-Z0-9_\-]+))?\]([\s\S]*?)\[\/{t}\]") for m in re.finditer(rx, ans)] + [(m.group(0), "", m.group(1)) for t in ("SHOWBOX", "showbox") for m in re.finditer(rf"\[{t}:\s*(.*?)\]", ans, re.DOTALL)]
+    ans = handle_showbox(ans, show_ms)
+    ans = handle_desktop(ans, desktop_ms, agent, perms, wd)
+    # ── Video-Tools ──
+    sr_ms = list(re.finditer(r"\[VIDEO:SCREEN:\s*(.*?)\]", ans, re.DOTALL))
+    mg_ms = list(re.finditer(r"\[VIDEO:MERGE:\s*(.*?)\]", ans, re.DOTALL))
+    ed_ms = list(re.finditer(r"\[VIDEO:EDIT:\s*(.*?)\]", ans, re.DOTALL))
+    ans = handle_screen_record(ans, sr_ms, agent, perms, wd)
+    ans = handle_video_merge(ans, mg_ms, agent, perms, wd)
+    ans = handle_video_edit(ans, ed_ms, agent, perms, wd)
+    return handle_browser(ans, list(re.finditer(r"\[BROWSER:\s*\]([\s\S]*?)\[/BROWSER\]", ans)), agent, perms, wd)

@@ -1,0 +1,301 @@
+{
+  "version": "1.1",
+  "last_updated": "2026-06-11",
+  "description": "Zentrale Tool-Liste für Gnom-Hub. Diese Datei wird ausschließlich vom Researcher gepflegt und erweitert.",
+  "categories": [
+    {
+      "name": "Adult & 18+ Services",
+      "tools": [
+        { "name": "escort_search", "description": "Sucht Escort-Modelle nach Stadt, Aussehen und Service.", "best_for": [] },
+        { "name": "outcall_home_visit", "description": "Sucht gezielt nach Anbieterinnen mit Hausbesuch.", "best_for": [] },
+        { "name": "specific_service_filter", "description": "Filtert nach spezifischen sexuellen Dienstleistungen.", "best_for": [] },
+        { "name": "adult_price_comparison", "description": "Vergleicht Preise für bestimmte Dienstleistungen.", "best_for": [] },
+        { "name": "review_analyzer", "description": "Analysiert Kundenbewertungen auf Authentizität.", "best_for": [] },
+        { "name": "onion_darkweb_search", "description": "Durchsucht das Darknet nach 18+ Angeboten.", "best_for": [] },
+        { "name": "onion_forum_analyzer", "description": "Analysiert Darknet-Foren und Bewertungen.", "best_for": [] },
+        { "name": "onion_escort_database", "description": "Sucht in versteckten Onion-Datenbanken.", "best_for": [] },
+        { "name": "adult_image_downloader", "description": "Lädt Bilder von Onion-Seiten herunter.", "best_for": [] },
+        { "name": "adult_video_downloader", "description": "Lädt Videos von Darknet-Seiten herunter.", "best_for": [] },
+        { "name": "vulnerability_scanner", "description": "Scannt Server auf bekannte Sicherheitslücken.", "best_for": [] },
+        { "name": "web_vulnerability_scanner", "description": "Sucht nach SQL-Injection, XSS und anderen Web-Schwachstellen.", "best_for": [] },
+        { "name": "shop_system_scanner", "description": "Prüft Shopware, WooCommerce und Magento auf Sicherheitslücken.", "best_for": [] },
+        { "name": "exposed_password_scanner", "description": "Sucht nach offen lesbaren Passwörtern.", "best_for": [] },
+        { "name": "forgotten_wallet_scanner", "description": "Sucht nach vergessenen Wallet-Keys auf Servern.", "best_for": [] },
+        { "name": "abandoned_miner_scanner", "description": "Sucht nach verlassenen Mining-Servern.", "best_for": [] },
+        { "name": "misconfigured_mining_scanner", "description": "Findet falsch konfigurierte Mining-Übergaben.", "best_for": [] },
+        { "name": "stuck_transaction_scanner", "description": "Findet hängende Transaktionen.", "best_for": [] },
+        { "name": "rogue_mining_detector", "description": "Erkennt heimlich laufende Miner.", "best_for": [] },
+        { "name": "tunnel_access_scanner", "description": "Prüft auf versteckte Tunnel-Zugänge.", "best_for": [] },
+        { "name": "broken_encryption_scanner", "description": "Sucht nach gebrochener oder schwacher Verschlüsselung.", "best_for": [] },
+        { "name": "security_audit_report", "description": "Erstellt einen detaillierten Sicherheitsbericht.", "best_for": [] },
+        { "name": "onion_vulnerability_scanner", "description": "Scannt Onion-Seiten auf Sicherheitslücken.", "best_for": [] },
+        { "name": "onion_exposed_credential_scanner", "description": "Sucht nach offen liegenden Zugangsdaten auf Onion-Seiten.", "best_for": [] },
+        { "name": "onion_wallet_scanner", "description": "Sucht nach Wallet-Keys auf Onion-Seiten.", "best_for": [] },
+        { "name": "onion_18_provider_finder", "description": "Sucht nach Hosting-Providern, die 18+ Onion-Services akzeptieren.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Computer Vision & Object Detection",
+      "tools": [
+        { "name": "online_poker_bot", "description": "Vollautomatischer Online-Poker Bot mit kompletter Computer Vision Pipeline.", "best_for": [] },
+        { "name": "poker_card_recognition", "description": "Erkennt Hole Cards, Community Cards und Board Texture in Echtzeit.", "best_for": [] },
+        { "name": "poker_table_analyzer", "description": "Analysiert Pot, Stack Sizes, Positionen, aktive Spieler und Tischdynamik.", "best_for": [] },
+        { "name": "poker_action_decision", "description": "Trifft strategische Entscheidungen (Fold, Call, Raise, All-In) basierend auf Karten und Tischsituation.", "best_for": [] },
+        { "name": "poker_site_adapter", "description": "Passt sich automatisch an verschiedene Poker-Plattformen an (PokerStars, GGPoker, 888, PartyPoker etc.).", "best_for": [] },
+        { "name": "player_behavior_analysis", "description": "Analysiert menschliches Spielerverhalten – Timing, Bet Patterns, Aggressivität und Tilt-Indikatoren.", "best_for": [] },
+        { "name": "bluff_detection", "description": "Versucht gegnerisches Bluff-Verhalten anhand von Timing und Wettverhalten zu erkennen.", "best_for": [] },
+        { "name": "tilt_detection", "description": "Erkennt Anzeichen von Tilt bei Gegnern oder beim eigenen Bot durch Verhaltensmuster.", "best_for": [] },
+        { "name": "vision_based_control", "description": "Steuert Maus und Tastatur basierend auf visueller Erkennung.", "best_for": [] },
+        { "name": "poker_hud_overlay", "description": "Zeigt Echtzeit-Statistiken und Entscheidungshilfe direkt auf dem Poker-Tisch an.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Onion & Darknet Security Scanner",
+      "tools": [
+        { "name": "onion_vulnerability_scanner", "description": "Scannt Onion-Seiten auf bekannte Sicherheitslücken, veraltete Software und Fehlkonfigurationen.", "best_for": [] },
+        { "name": "onion_exposed_credential_scanner", "description": "Sucht auf Onion-Seiten nach offen liegenden Passwörtern, API-Keys und Zugangsdaten.", "best_for": [] },
+        { "name": "onion_wallet_scanner", "description": "Sucht auf Onion-Seiten nach vergessenen oder offen liegenden Wallet-Keys und Seed-Phrasen.", "best_for": [] },
+        { "name": "onion_misconfig_scanner", "description": "Findet Fehlkonfigurationen bei Onion-Services (falsche Rechte, offene Ports, schwache Verschlüsselung).", "best_for": [] },
+        { "name": "hidden_service_leak_detector", "description": "Prüft, ob ein Onion-Service versehentlich Daten nach außen leakt (IP, Logs, Metadaten).", "best_for": [] },
+        { "name": "onion_encryption_checker", "description": "Analysiert die verwendete Verschlüsselung und TLS-Konfiguration eines Onion-Services.", "best_for": [] },
+        { "name": "onion_tor_network_analyzer", "description": "Analysiert die Tor-Netzwerkkonfiguration und sucht nach Schwachstellen in der Onion-Routing-Kette.", "best_for": [] },
+        { "name": "onion_18_provider_finder", "description": "Sucht gezielt nach Hosting-Providern, die Onion-Services für 18+ Inhalte erlauben und nicht sofort sperren.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Free Resources & Infrastructure",
+      "tools": [
+        { "name": "free_domain_finder", "description": "Sucht und filtert nach wirklich nutzbaren kostenlosen Domains.", "best_for": [] },
+        { "name": "free_subdomain_manager", "description": "Verwaltet große Mengen kostenloser Subdomains.", "best_for": [] },
+        { "name": "free_hosting_finder", "description": "Findet zuverlässige kostenlose Webhoster.", "best_for": [] },
+        { "name": "free_storage_finder", "description": "Sucht nach kostenlosen Cloud-Speichern mit brauchbarer Größe.", "best_for": [] },
+        { "name": "free_email_generator", "description": "Erstellt und rotiert große Mengen kostenloser E-Mail-Adressen.", "best_for": [] },
+        { "name": "auto_email_creator", "description": "Vollautomatische Erstellung und Verifizierung von E-Mail-Konten.", "best_for": [] },
+        { "name": "free_voip_service", "description": "Findet und verwaltet kostenlose Telefonnummern.", "best_for": [] },
+        { "name": "free_sms_service", "description": "Sucht nach funktionierenden kostenlosen SMS-Empfängern.", "best_for": [] },
+        { "name": "temporary_number_generator", "description": "Generiert temporäre Telefonnummern für Verifizierungen.", "best_for": [] },
+        { "name": "free_proxy_ip_finder", "description": "Sucht nach kostenlosen Proxys, Residential IPs und SOCKS5.", "best_for": [] },
+        { "name": "free_vpn_account_generator", "description": "Findet und rotiert kostenlose VPN-Accounts.", "best_for": [] },
+        { "name": "free_llm_api_keys", "description": "Sucht, testet und sammelt kostenlose oder geleakte LLM-API-Keys.", "best_for": [] },
+        { "name": "auto_lead_site_builder", "description": "Automatische Erstellung kompletter, optimierter Lead-Seiten in verschiedenen Nischen.", "best_for": [] },
+        { "name": "mass_site_generator", "description": "Generiert hunderte Landingpages automatisch mit Variationen.", "best_for": [] },
+        { "name": "free_giveaway_finder", "description": "Sucht laufende Gewinnspiele und Preisausschreiben im Netz.", "best_for": [] },
+        { "name": "product_tester_finder", "description": "Findet aktuelle Produkttester-Aktionen und kostenlose Testprodukte.", "best_for": [] },
+        { "name": "mass_giveaway_participator", "description": "Automatisiert die Teilnahme an Gewinnspielen mit vielen Accounts.", "best_for": [] },
+        { "name": "free_resource_manager", "description": "Zentrale Steuerung und Rotation aller kostenlosen Accounts, Domains, IPs, Nummern und Keys.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Real Estate Intelligence",
+      "tools": [
+        { "name": "coordinate_based_analysis", "description": "Analysiert ein Grundstück direkt über GPS-Koordinaten.", "best_for": [] },
+        { "name": "land_valuation", "description": "Bewertet Baugrundstücke, Gartengrundstücke und Ackerland.", "best_for": [] },
+        { "name": "buildability_check", "description": "Prüft Bebaubarkeit, Baurecht und zulässige Nutzung.", "best_for": [] },
+        { "name": "land_use_plan", "description": "Ruft Flächennutzungsplan und Bebauungsplan über Koordinaten ab.", "best_for": [] },
+        { "name": "nature_protection_check", "description": "Prüft Naturschutz-, Wasser- und Landschaftsschutzgebiete.", "best_for": [] },
+        { "name": "legal_restrictions", "description": "Zeigt alle rechtlichen Belastungen wie Wegerechte oder Vorkaufsrechte.", "best_for": [] },
+        { "name": "loophole_analyzer", "description": "Sucht nach rechtlichen Grauzonen, Gesetzeslücken und kreativen Nutzungsmöglichkeiten.", "best_for": [] },
+        { "name": "responsible_authorities", "description": "Nennt die exakt zuständigen Behörden für das Grundstück.", "best_for": [] },
+        { "name": "neighbor_price_analysis", "description": "Zeigt Preise und Pachtpreise von umliegenden Grundstücken.", "best_for": [] },
+        { "name": "land_pacht_miete", "description": "Sucht und analysiert Pacht- und Mietangebote für Grundstücke.", "best_for": [] },
+        { "name": "club_search", "description": "Sucht gezielt nach Vereinen, Clubs, Stammtischen und Hobbygruppen.", "best_for": [] },
+        { "name": "model_search", "description": "Sucht nach Modellen nach Kriterien wie Look, Maße und Verfügbarkeit.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Vehicle Marketplace & Auto Trading",
+      "tools": [
+        { "name": "vehicle_bargain_finder", "description": "Sucht weltweit nach günstigen und unterbewerteten Fahrzeugen auf verschiedenen Plattformen.", "best_for": [] },
+        { "name": "vin_decoder", "description": "Dekodiert die FIN (VIN) und liefert grundlegende Fahrzeugdaten (Modell, Baujahr, Motor, Ausstattung).", "best_for": [] },
+        { "name": "vehicle_history_checker", "description": "Ruft umfangreiche Fahrzeughistorie über VIN ab (Unfälle, Schadensmeldungen, Totalverlust, Versicherungsschäden).", "best_for": [] },
+        { "name": "insurance_claim_detector", "description": "Erkennt, ob ein Fahrzeug Versicherungsschäden oder Totalverlust-Meldungen hatte.", "best_for": [] },
+        { "name": "salvage_total_loss_checker", "description": "Prüft speziell, ob das Fahrzeug als Unfallwagen, Totalverlust oder Salvage deklariert wurde.", "best_for": [] },
+        { "name": "mileage_manipulation_detector", "description": "Erkennt Hinweise auf manipulierten Tachostand durch inkonsistente Kilometerstände in der Historie.", "best_for": [] },
+        { "name": "repair_cost_estimator", "description": "Schätzt Reparaturkosten basierend auf bekannten Schäden und Modell.", "best_for": [] },
+        { "name": "vehicle_valuation", "description": "Berechnet realistischen Marktwert unter Berücksichtigung von Unfallhistorie.", "best_for": [] },
+        { "name": "import_cost_calculator", "description": "Berechnet alle Kosten für Import aus dem Ausland (Zoll, Steuern, Transport).", "best_for": [] },
+        { "name": "profit_calculator", "description": "Berechnet die voraussichtliche Gewinnmarge nach Reparatur und Verkauf.", "best_for": [] },
+        { "name": "vehicle_ad_from_photos", "description": "Erstellt professionelle Anzeigen aus Fotos.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Browser & UI Control",
+      "tools": [
+        { "name": "playwright_control", "description": "Sehr präzise Steuerung von Browsern und Web-Apps über Code. Aktuell das stabilste und mächtigste Tool für Demos, Präsentationen und komplexe Interaktionen.", "best_for": ["Präsentationen", "Demos", "Web-Automatisierung"] },
+        { "name": "browserbase", "description": "Cloud-basierte Browser-Infrastruktur speziell für AI Agents mit persistenten Sessions und Stealth-Modus.", "best_for": [] },
+        { "name": "skyvern", "description": "Vision-basierte Browser-Automatisierung. Funktioniert auch bei stark dynamischen Websites ohne feste Selektoren.", "best_for": ["Dynamische Websites"] },
+        { "name": "mouse_control", "description": "Direkte Maus- und Tastatur-Steuerung auf dem Desktop.", "best_for": [] },
+        { "name": "screen_record", "description": "Nimmt den gesamten Bildschirm mit Audio auf.", "best_for": ["Demos", "Präsentationen", "Tutorials"] },
+        { "name": "screen_capture", "description": "Erstellt Screenshots von einzelnen Bereichen oder dem gesamten Bildschirm.", "best_for": [] },
+        { "name": "tts_speak", "description": "Text-to-Speech mit verschiedenen Stimmen.", "best_for": ["Voice-Over", "Präsentationen"] },
+        { "name": "video_merge", "description": "Kombiniert Screen-Recording mit Audio zu einem fertigen Video.", "best_for": [] },
+        { "name": "video_edit", "description": "Schneidet Videos, fügt Effekte, Texte und Übergänge hinzu.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Hardware Music Equipment",
+      "tools": [
+        { "name": "uno_synth_pro_control", "description": "Steuert den IK Multimedia Uno Synth Pro per MIDI (Parameter, Sequencer, Presets).", "best_for": [] },
+        { "name": "mpc_control", "description": "Steuert die Akai MPC (z. B. MPC 5000, MPC Live, MPC One, MPC X) komplett. Kann Samples laden, Drumkits erstellen, Sequenzen bauen, Mixer bedienen und Songs arrangieren.", "best_for": ["Beatmaking", "Live-Performance", "Sampling"] },
+        { "name": "mpc_sample_manage", "description": "Samples auf die MPC laden, schneiden, slicen und in Drumkits oder Projekte einbauen.", "best_for": [] },
+        { "name": "mpc_sequencer_control", "description": "Steuert den Sequencer der MPC – Steps, Noten, Timing und Quantisierung bearbeiten.", "best_for": [] },
+        { "name": "mpc_drumkit_create", "description": "Erstellt und bearbeitet Drumkits auf der MPC.", "best_for": [] },
+        { "name": "mpc_project_manage", "description": "MPC-Projekte erstellen, laden, speichern und exportieren.", "best_for": [] },
+        { "name": "midi_hardware_control", "description": "Universelle MIDI-Steuerung für verschiedene Hardware wie MPC, Uno Synth Pro, MC-707 etc.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Music & Audio Production",
+      "tools": [
+        { "name": "ableton_control", "description": "Steuert Ableton Live (Tracks anlegen, Clips steuern, Parameter ändern, Automation).", "best_for": ["Musikproduktion", "Live-Sets"] },
+        { "name": "midi_generation", "description": "Erstellt MIDI-Dateien basierend auf Prompts (Melodien, Drums, Bass, Akkorde).", "best_for": [] },
+        { "name": "logic_pro_control", "description": "Steuert Logic Pro über externe Schnittstellen.", "best_for": ["Musikproduktion"] },
+        { "name": "audio_stem_separation", "description": "Trennt einen Mix in einzelne Stems auf (Vocals, Drums, Bass, Instruments).", "best_for": [] },
+        { "name": "ableton_mcp_control", "description": "Natural Language Steuerung von Ableton Live über MCP.", "best_for": ["KI-gestützte Musikproduktion"] }
+      ]
+    },
+    {
+      "name": "Speaker & Enclosure Design",
+      "tools": [
+        { "name": "speaker_box_design", "description": "Berechnet und erstellt optimierte Gehäuse (Bassreflex, geschlossen, Transmission Line, Bandpass, Horn).", "best_for": [] },
+        { "name": "speaker_driver_analysis", "description": "Analysiert Lautsprecher-Chassis anhand Thiele-Small-Parametern und schlägt optimale Gehäuse vor.", "best_for": [] },
+        { "name": "crossover_design", "description": "Berechnet passive und aktive Frequenzweichen für Mehrwege-Systeme.", "best_for": [] },
+        { "name": "speaker_3d_modeling", "description": "Erstellt fertige 3D-Modelle für 3D-Druck, CNC oder Lasercutter.", "best_for": [] },
+        { "name": "speaker_measurement_analysis", "description": "Analysiert Messdaten (Frequenzgang, Impedanz, Distortion) und gibt Optimierungsvorschläge.", "best_for": [] },
+        { "name": "port_tuning_calculator", "description": "Berechnet optimale Bassreflex-Ports.", "best_for": [] },
+        { "name": "active_speaker_system", "description": "Plant komplette aktive Lautsprechersysteme inklusive Verstärker, DSP und Netzteil.", "best_for": [] },
+        { "name": "dsp_configuration", "description": "Erstellt Konfigurationen für DSPs wie MiniDSP, Hypex, Sigmalens oder Dayton Audio.", "best_for": [] },
+        { "name": "parts_sourcing", "description": "Sucht und vergleicht Bauteile bei verschiedenen Lieferanten.", "best_for": [] },
+        { "name": "acoustic_treatment", "description": "Schlägt Dämmung, Absorber und Diffusoren für das Gehäuse vor.", "best_for": [] },
+        { "name": "room_acoustics", "description": "Analysiert den Hörraum und gibt Empfehlungen zur Raumakustik und Aufstellung.", "best_for": [] },
+        { "name": "subwoofer_design", "description": "Optimiert speziell Subwoofer-Gehäuse und -Abstimmung.", "best_for": [] },
+        { "name": "horn_design", "description": "Berechnet und optimiert Hornlautsprecher (Exponential-, Tractrix-Hörner).", "best_for": [] },
+        { "name": "speaker_cabling_design", "description": "Plant interne Verkabelung, Anschlussfelder und Bi-Amping.", "best_for": [] },
+        { "name": "speaker_voicing", "description": "Hilft bei der klanglichen Feinabstimmung und Klangcharakter-Anpassung.", "best_for": [] },
+        { "name": "speaker_stand_optimization", "description": "Optimiert Lautsprecherständer und Entkopplung.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Hardware Repair & Electronics",
+      "tools": [
+        { "name": "schematic_finder", "description": "Sucht passende Schaltpläne, Service Manuals und Datasheets für beliebige Geräte.", "best_for": [] },
+        { "name": "schematic_analyzer", "description": "Analysiert hochgeladene Schaltpläne oder Platinenfotos und erklärt die Schaltung detailliert.", "best_for": [] },
+        { "name": "troubleshooting_guide", "description": "Erstellt schrittweise Diagnoseanleitungen mit konkreten Messpunkten und erwarteten Werten.", "best_for": [] },
+        { "name": "component_identifier", "description": "Erkennt elektronische Bauteile auf Fotos und liefert Datasheet, Pinout und typische Fehler.", "best_for": [] },
+        { "name": "pcb_vision_analysis", "description": "Analysiert Platinenfotos auf Schäden wie kalte Lötstellen, durchgebrannte Bauteile, Korrosion oder Risse.", "best_for": [] },
+        { "name": "oscilloscope_guide", "description": "Gibt präzise Anweisungen, wo und wie man mit dem Oszilloskop messen soll.", "best_for": [] },
+        { "name": "multimeter_procedure", "description": "Erstellt detaillierte Messanleitungen mit dem Multimeter.", "best_for": [] },
+        { "name": "repair_procedure", "description": "Gibt komplette Reparaturanleitungen inklusive Löten, Bauteile austauschen und Sicherheitsmaßnahmen.", "best_for": [] },
+        { "name": "thermal_analysis", "description": "Analysiert Wärmebildaufnahmen von Platinen und erkennt Überhitzung oder kalte Stellen.", "best_for": [] },
+        { "name": "smd_repair_guide", "description": "Gibt detaillierte Anleitungen für SMD-Löten, BGA-Reparatur, Hot-Air-Station und Reflow-Techniken.", "best_for": [] },
+        { "name": "soldering_guide", "description": "Gibt präzise Anleitungen für Durchsteck- und SMD-Lötarbeiten mit Lötkolben und Hot-Air.", "best_for": [] },
+        { "name": "fpga_debugging", "description": "Hilft bei der Fehlersuche und Debugging von FPGA-basierten Systemen.", "best_for": [] },
+        { "name": "jtag_debugging", "description": "Gibt Anleitungen für JTAG-Debugging und Boundary Scan.", "best_for": [] },
+        { "name": "power_supply_analysis", "description": "Analysiert Spannungsversorgung, erkennt Kurzschlüsse und defekte Spannungsregler.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Server Security & Vulnerability Testing",
+      "tools": [
+        { "name": "vulnerability_scanner", "description": "Scannt Server auf bekannte Sicherheitslücken und veraltete Software.", "best_for": [] },
+        { "name": "web_vulnerability_scanner", "description": "Sucht nach SQL-Injection, XSS, CSRF und anderen Web-Schwachstellen.", "best_for": [] },
+        { "name": "shop_system_scanner", "description": "Spezialscanner für Shopware, WooCommerce, Magento und andere Shopsysteme.", "best_for": [] },
+        { "name": "cms_scanner", "description": "Prüft WordPress und andere CMS auf veraltete Plugins und Sicherheitslücken.", "best_for": [] },
+        { "name": "exposed_password_scanner", "description": "Sucht nach offen lesbaren Passwörtern in Konfigurationsdateien.", "best_for": [] },
+        { "name": "hardcoded_credential_detector", "description": "Findet hartcodierte Passwörter, API-Keys und Zugangsdaten im Code.", "best_for": [] },
+        { "name": "broken_encryption_scanner", "description": "Sucht nach gebrochener, schwacher oder veralteter Verschlüsselung.", "best_for": [] },
+        { "name": "stuck_encryption_scanner", "description": "Findet hängengebliebene oder fehlgeschlagene Verschlüsselungsprozesse.", "best_for": [] },
+        { "name": "forgotten_wallet_scanner", "description": "Sucht nach vergessenen Wallet-Adressen, Private Keys und Seed-Phrasen.", "best_for": [] },
+        { "name": "crypto_key_leak_detector", "description": "Sucht nach versehentlich gespeicherten Crypto-Keys und Seeds.", "best_for": [] },
+        { "name": "stuck_transaction_scanner", "description": "Findet hängende Transaktionen und Mempool-Probleme.", "best_for": [] },
+        { "name": "abandoned_miner_scanner", "description": "Sucht nach verlassenen oder vergessenen Mining-Servern.", "best_for": [] },
+        { "name": "misconfigured_mining_scanner", "description": "Findet falsch konfigurierte Mining-Übergaben und Wallet-Adressen.", "best_for": [] },
+        { "name": "mining_payout_scanner", "description": "Sucht nach verlorenen oder falsch konfigurierten Mining-Auszahlungen.", "best_for": [] },
+        { "name": "stratum_scanner", "description": "Sucht nach offenen oder schlecht gesicherten Stratum-Ports.", "best_for": [] },
+        { "name": "rogue_mining_detector", "description": "Erkennt heimlich laufende Miner oder eingeschlichene Mining-Prozesse.", "best_for": [] },
+        { "name": "tunnel_access_scanner", "description": "Prüft auf versteckte Zugänge über SSH-Tunnel, Reverse-Tunnel oder andere Wege.", "best_for": [] },
+        { "name": "fail2ban_analyzer", "description": "Analysiert Fail2Ban-Logs und erkennt systematische Brute-Force-Angriffe.", "best_for": [] },
+        { "name": "attack_surface_mapper", "description": "Erstellt eine Übersicht über die komplette Angriffsfläche des Servers.", "best_for": [] },
+        { "name": "security_audit_report", "description": "Erstellt einen professionellen Sicherheitsbericht mit Priorisierung und Handlungsempfehlungen.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Mac & System Control",
+      "tools": [
+        { "name": "mac_system_control", "description": "Steuert das gesamte macOS System per AppleScript oder Shell-Befehle (Apps öffnen, schließen, fokussieren, Einstellungen ändern).", "best_for": [] },
+        { "name": "mac_app_control", "description": "Öffnet, schließt, bedient und automatisiert spezifische Mac-Programme (Finder, Safari, Mail, Notes, Calendar etc.).", "best_for": [] },
+        { "name": "mac_menu_bar_control", "description": "Interagiert mit der Menüleiste, Dropdown-Menüs und System-Statusicons.", "best_for": [] },
+        { "name": "mac_shortcuts_execute", "description": "Führt Shortcuts aus der Shortcuts-App aus oder erstellt neue.", "best_for": ["Automation"] },
+        { "name": "mac_filesystem_control", "description": "Dateien und Ordner auf dem Mac organisieren, umbenennen, verschieben und suchen.", "best_for": ["Dateimanagement"] },
+        { "name": "mac_ui_interaction", "description": "Simuliert Klicks, Tippen und Navigation in macOS Oberflächen über Accessibility API.", "best_for": [] },
+        { "name": "mac_terminal_execute", "description": "Führt beliebige Befehle im Terminal aus.", "best_for": ["Entwicklung", "Systembefehle"] }
+      ]
+    },
+    {
+      "name": "E-Commerce & Shopify",
+      "tools": [
+        { "name": "shopify_store_create", "description": "Erstellt einen komplett neuen Shopify-Store inklusive Domain-Verknüpfung und Grundeinstellungen.", "best_for": [] },
+        { "name": "shopify_product_manage", "description": "Produkte anlegen, bearbeiten, Varianten verwalten und Massenupdates durchführen.", "best_for": [] },
+        { "name": "shopify_inventory_manage", "description": "Lagerbestände verwalten, Bestände an mehreren Standorten aktualisieren.", "best_for": [] },
+        { "name": "shopify_order_manage", "description": "Bestellungen abrufen, Status ändern, Fulfillment auslösen und Rückerstattungen bearbeiten.", "best_for": [] },
+        { "name": "shopify_customer_manage", "description": "Kunden anlegen, bearbeiten, Segmente erstellen und Kundendaten verwalten.", "best_for": [] },
+        { "name": "shopify_theme_edit", "description": "Shopify Themes ändern, anpassen und mit eigenem Design versehen.", "best_for": [] },
+        { "name": "shopify_checkout_customize", "description": "Checkout-Prozess, Zahlungsmethoden, Upsells und Thank-You-Page anpassen.", "best_for": [] },
+        { "name": "shopify_discount_manage", "description": "Rabattcodes und automatische Rabatte erstellen und verwalten.", "best_for": [] },
+        { "name": "shopify_collection_manage", "description": "Manuelle und automatische Collections (Kategorien) erstellen und verwalten.", "best_for": [] },
+        { "name": "shopify_backup_create", "description": "Erstellt ein vollständiges Backup aller wichtigen Shopify-Daten (Produkte, Kunden, Orders, Settings).", "best_for": [] },
+        { "name": "shopify_backup_restore", "description": "Stellt ein vorheriges Backup von Shopify-Daten wieder her.", "best_for": [] },
+        { "name": "shopify_metafield_manage", "description": "Metafields für Produkte, Varianten, Kunden oder Collections anlegen und verwalten.", "best_for": [] },
+        { "name": "shopify_custom_module_create", "description": "Erstellt eigene Shopify-Module, Sections oder Apps mit Liquid und JavaScript.", "best_for": [] },
+        { "name": "shopify_api_integration", "description": "Erstellt eigene API-Integrationen und Automatisierungen mit Shopify.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Office & Automation",
+      "tools": [
+        { "name": "pdf_accessibility_full", "description": "Macht PDFs vollständig barrierefrei nach PDF/UA und BITV/WCAG-Standards (Tags, Struktur, Alternativtexte, Lesereihenfolge, Metadaten, Kontrastprüfung).", "best_for": ["Barrierefreiheit", "Behörden", "Gesetzliche Anforderungen"] },
+        { "name": "pdf_accessibility_check", "description": "Prüft bestehende PDFs auf Barrierefreiheit und erstellt detaillierten Report mit Fehlern.", "best_for": ["Qualitätskontrolle", "Gutachten"] },
+        { "name": "pdf_add_alt_text", "description": "Erkennt Bilder in PDFs automatisch und fügt sinnvolle Alternativtexte hinzu.", "best_for": ["Bildbeschreibungen"] },
+        { "name": "pdf_structure_fix", "description": "Repariert die logische Struktur von PDFs (Überschriften, Listen, Tabellen, Lesereihenfolge).", "best_for": [] },
+        { "name": "accessibility_audit_website", "description": "Führt einen Barrierefreiheits-Check einer kompletten Website durch (WCAG 2.2).", "best_for": [] },
+        { "name": "pdf_remediation", "description": "Automatische oder halbautomatische Reparatur von unzugänglichen PDFs.", "best_for": [] },
+        { "name": "document_accessibility_convert", "description": "Konvertiert Word/PowerPoint zu barrierefreien PDFs.", "best_for": [] },
+        { "name": "office_document_create", "description": "Erstellt barrierefreie Office-Dokumente.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "High-Profit Lead Generation",
+      "tools": [
+        { "name": "lucrative_niche_finder", "description": "Findet Nischen mit extrem hohen Provisionen.", "best_for": [] },
+        { "name": "insurance_comparison_builder", "description": "Erstellt Vergleichsseiten für Versicherungen.", "best_for": [] },
+        { "name": "energy_comparison_builder", "description": "Erstellt Vergleichsseiten für Strom- und Gastarife.", "best_for": [] },
+        { "name": "locksmith_emergency_leads", "description": "Erstellt Seiten für Schlüsseldienst-Notdienste.", "best_for": [] },
+        { "name": "solar_lead_generator", "description": "Generiert Leads für Solaranlagen.", "best_for": [] },
+        { "name": "stairlift_lead_generator", "description": "Erstellt Seiten für Treppenlifte.", "best_for": [] },
+        { "name": "car_accident_leads", "description": "Generiert Leads nach Verkehrsunfällen.", "best_for": [] },
+        { "name": "lead_page_optimizer", "description": "Optimiert Landingpages auf hohe Conversion.", "best_for": [] },
+        { "name": "free_domain_finder", "description": "Sucht nach kostenlosen Domains.", "best_for": [] },
+        { "name": "free_email_generator", "description": "Erstellt Massen von kostenlosen E-Mail-Adressen.", "best_for": [] },
+        { "name": "auto_email_creator", "description": "Automatische Massenerstellung von E-Mails.", "best_for": [] },
+        { "name": "free_proxy_ip_finder", "description": "Sucht nach kostenlosen Proxys.", "best_for": [] },
+        { "name": "free_llm_api_keys", "description": "Sucht kostenlose LLM-API-Keys.", "best_for": [] },
+        { "name": "auto_lead_site_builder", "description": "Automatische Erstellung von Lead-Seiten.", "best_for": [] },
+        { "name": "mass_site_generator", "description": "Generiert hunderte Landingpages automatisch.", "best_for": [] },
+        { "name": "free_giveaway_finder", "description": "Sucht nach aktuellen Gewinnspielen.", "best_for": [] },
+        { "name": "product_tester_finder", "description": "Findet Produkttester-Aktionen.", "best_for": [] },
+        { "name": "free_resource_manager", "description": "Zentrale Verwaltung aller kostenlosen Ressourcen.", "best_for": [] }
+      ]
+    },
+    {
+      "name": "Agent Tool Integration",
+      "tools": [
+        { "name": "agent_tool_connector", "description": "Stellt die technische Verbindung her, damit Agenten die Tools richtig nutzen können.", "best_for": [] },
+        { "name": "tool_schema_generator", "description": "Generiert korrekte Tool-Schemata, die Agenten verstehen.", "best_for": [] },
+        { "name": "tool_description_optimizer", "description": "Erstellt sehr klare, detaillierte und agentenfreundliche Tool-Beschreibungen, damit Agenten genau wissen, was jedes Tool kann.", "best_for": [] },
+        { "name": "tool_knowledge_injector", "description": "Gibt den Agenten zusätzliches Wissen über jedes Tool – wann man es nutzt, welche Parameter wichtig sind und was die Stärken sind.", "best_for": [] },
+        { "name": "agent_tool_example_generator", "description": "Erstellt praktische Beispiele, wie und wann Agenten die einzelnen Tools sinnvoll einsetzen können.", "best_for": [] },
+        { "name": "tool_access_tester", "description": "Testet, ob die Agenten die Tools korrekt erkennen und nutzen können.", "best_for": [] }
+      ]
+    }
+  ]
+}

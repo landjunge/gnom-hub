@@ -1,0 +1,13 @@
+{
+  "name": "Test Preset",
+  "description": "Minimales Preset für End-to-End-Test.",
+  "model": {
+    "primary": "ollama:llama3:8b",
+    "fallback": "ollama:mistral:7b"
+  },
+  "prompt_modifier": {
+    "coderag": "SYSTEM-ROLLE: TEST PRESET MODIFIER. Antworte kurz und in Code-Blöcken."
+  },
+  "allowed_tools": ["CODER"],
+  "ttl_minutes": 5
+}
