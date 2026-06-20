@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MC-707 WebUI</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=2" />
+  <!-- Alpine.js for lightweight reactivity. No build step required. -->
+  <script defer src="https://unpkg.com/alpinejs@3.13.10/dist/cdn.min.js"></script>
+  <script defer src="/static/js/api.js?v=2"></script>
+  <script defer src="/static/js/ws.js?v=2"></script>
+  <script defer src="/static/js/app.js?v=2"></script>
+</head>
+<body>
+  <div x-data="mc707" x-init="init()" x-cloak>
+
+    <!-- ============================== HEADER ============================== -->
+    <header class="app-header">
+      <div class="brand">
+        <span class="logo">MC-707</span>
+        <span class="tagline">WebUI</span>
+      </div>
+
+      <div class="status-bar">
+        <!-- Mock badge — always visible when in mock mode -->
+        <span
+          class="badge"
+          :class="state.is_mock ? 'badge-mock' : 'badge-real'"
+          x-text="state.is_mock ? 'MOCK MODE' : 'HARDWARE'"
+          :title="state.is_mock
+            ? 'No MC-707 detected — running against an in-memory mock.'
+            : 'Connected to real MC-707 hardware.'"
+        ></span>
+
+        <!-- WebSocket connection indicator -->
+        <span
+          class="conn"
+          :class="ws.connected ? 'conn-ok' : 'conn-down'"
+        >
+          <span class="dot"></span>
+          <span x-text="ws.connected ? 'Live' : 'Offline'"></span>
+        </span>
+
+        <span class="version" x-text="'v' + (state.version || '?')"></span>
+      </div>
+    </header>
+
+    <!-- ============================ TRANSPORT ============================ -->
+    <section class="card transport">
+      <h2>Transport</h2>
+      <div class="transport-controls">
+        <button
+          class="btn btn-play"
+          :class="{ active: state.playing }"
+          @click="transport.play()"
+          title="Start sequencer"
+        >▶ Play</button>
+        <button
+          class="btn btn-stop"
+          @click="transport.stop()"
+          title="Stop sequencer"
+        >■ Stop</button>
+        <button
+          class="btn btn-pause"
+          @click="transport.pause()"
+          title="Pause sequencer"
+        >⏸ Pause</button>
+      </div>
+
+      <div class="tempo-control">
+        <label for="tempo">Tempo</label>
+        <input
+          id="tempo"
+          type="range"
+          min="20" max="300" step="0.1"
+          x-model.number="state.tempo"
+          @change="transport.setTempo(state.tempo)"
+        />
+        <input
+          type="number"
+          class="tempo-number"
+          min="20" max="300" step="0.1"
+          x-model.number="state.tempo"
+          @change="transport.setTempo(state.tempo)"
+        />
+        <span class="unit">BPM</span>
+      </div>
+    </section>
+
+    <!-- ============================== SCENES ============================== -->
+    <section class="card scenes">
+      <h2>Scenes</h2>
+      <div class="scene-grid">
+        <template x-for="i in 16" :key="i">
+          <button
+            class="scene-btn"
+            :class="{ active: state.currentScene === (i - 1) }"
+            @click="scenes.select(i - 1)"
+            x-text="i"
+          ></button>
+        </template>
+      </div>
+      <div class="scene-nav">
+        <button class="btn btn-sm" @click="scenes.previous()">◀ Prev</button>
+        <span class="scene-current">
+          Current: <strong x-text="state.currentScene ?? '?'"></strong>
+        </span>
+        <button class="btn btn-sm" @click="scenes.next()">Next ▶</button>
+      </div>
+    </section>
+
+    <!-- =============================== CLIPS ============================== -->
+    <section class="card clips">
+      <h2>Clips &amp; Mixer</h2>
+      <div class="clip-area">
+        <!-- Clip launcher grid: 8 tracks × 16 clips -->
+        <div class="clip-grid">
+          <template x-for="track in 8" :key="'track-' + track">
+            <div class="clip-row">
+              <div class="clip-track-label" x-text="'T' + track"></div>
+              <template x-for="clip in 16" :key="'clip-' + track + '-' + clip">
+                <button
+                  class="clip-cell"
+                  :class="{
+                    playing: state.activeClips[`${track}-${clip}`]
+                  }"
+                  @click="clips.trigger(track, clip)"
+                  :title="'Trigger Track ' + track + ' Clip ' + clip"
+                >
+                  <span x-text="clip"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- Per-track mixer -->
+        <div class="mixer">
+          <template x-for="track in 8" :key="'mix-' + track">
+            <div class="mixer-track">
+              <div class="mixer-label" x-text="'Track ' + track"></div>
+              <div class="mixer-buttons">
+                <button
+                  class="btn btn-xs"
+                  :class="{ active: state.mixer[track]?.mute }"
+                  @click="clips.toggleMute(track)"
+                  title="Mute"
+                >M</button>
+                <button
+                  class="btn btn-xs"
+                  :class="{ active: state.mixer[track]?.solo }"
+                  @click="clips.toggleSolo(track)"
+                  title="Solo"
+                >S</button>
+              </div>
+              <div class="mixer-slider">
+                <label>Vol</label>
+                <input
+                  type="range" min="0" max="127"
+                  :value="state.mixer[track]?.volume ?? 100"
+                  @change="clips.setVolume(track, $event.target.value)"
+                />
+              </div>
+              <div class="mixer-slider">
+                <label>Pan</label>
+                <input
+                  type="range" min="0" max="127"
+                  :value="state.mixer[track]?.pan ?? 64"
+                  @change="clips.setPan(track, $event.target.value)"
+                />
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="clip-actions">
+          <button class="btn btn-sm" @click="clips.stopAll()">Stop All</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== SOUNDS ============================== -->
+    <section class="card sounds">
+      <h2>Sounds &amp; Parameters</h2>
+
+      <div class="sound-toolbar">
+        <label>Loaded sound:
+          <select x-model="state.currentSound" @change="sounds.loadFromRegistry(state.currentSound)">
+            <option value="">— select —</option>
+            <template x-for="name in state.registryNames" :key="name">
+              <option :value="name" x-text="name"></option>
+            </template>
+          </select>
+        </label>
+
+        <label>From disk:
+          <select @change="sounds.loadFromDisk($event.target.value)">
+            <option value="">— select —</option>
+            <template x-for="name in state.diskSounds" :key="'disk-' + name">
+              <option :value="name" x-text="name"></option>
+            </template>
+          </select>
+        </label>
+
+        <button class="btn btn-sm" @click="sounds.save()" :disabled="!state.currentSound">
+          💾 Save
+        </button>
+        <button class="btn btn-sm" @click="sounds.applyAll()" :disabled="!state.currentSound">
+          ⤴ Apply all
+        </button>
+        <button class="btn btn-sm btn-warn" @click="sounds.remove()" :disabled="!state.currentSound">
+          🗑 Delete
+        </button>
+
+        <!-- Inline "new sound" form — replaces window.prompt() which is
+             blocked by some browsers. -->
+        <form class="new-sound-form" @submit.prevent="sounds.createNew(state.newSoundName); state.newSoundName = ''">
+          <input
+            type="text"
+            placeholder="New sound name"
+            x-model="state.newSoundName"
+            minlength="1"
+            maxlength="32"
+          />
+          <button type="submit" class="btn btn-sm" :disabled="!state.newSoundName || !state.newSoundName.trim()">
+            + New
+          </button>
+        </form>
+      </div>
+
+      <!-- Parameter sliders — grouped by section -->
+      <div class="param-groups" x-show="state.currentSound">
+        <!-- OSC -->
+        <fieldset class="param-group">
+          <legend>OSC</legend>
+          <div class="param-row">
+            <label>Wave</label>
+            <select
+              :value="paramValue('osc_wave')"
+              @change="sounds.setParam('osc_wave', $event.target.value)"
+            >
+              <option value="0">sine</option>
+              <option value="1">triangle</option>
+              <option value="2">saw</option>
+              <option value="3">square</option>
+              <option value="4">pulse</option>
+              <option value="5">noise</option>
+            </select>
+          </div>
+          <div class="param-row">
+            <label>Pitch</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('osc_pitch')"
+              @change="sounds.setParam('osc_pitch', $event.target.value)" />
+            <span class="val" x-text="signedValue(paramValue('osc_pitch'), 64)"></span>
+          </div>
+          <div class="param-row">
+            <label>Level</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('osc_level')"
+              @change="sounds.setParam('osc_level', $event.target.value)" />
+            <span class="val" x-text="paramValue('osc_level')"></span>
+          </div>
+        </fieldset>
+
+        <!-- Filter -->
+        <fieldset class="param-group">
+          <legend>Filter</legend>
+          <div class="param-row">
+            <label>Type</label>
+            <select
+              :value="paramValue('filter_type')"
+              @change="sounds.setParam('filter_type', $event.target.value)"
+            >
+              <option value="0">LPF</option>
+              <option value="1">HPF</option>
+              <option value="2">BPF</option>
+            </select>
+          </div>
+          <div class="param-row">
+            <label>Cutoff</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_cutoff')"
+              @change="sounds.setParam('filter_cutoff', $event.target.value)" />
+            <span class="val" x-text="paramValue('filter_cutoff')"></span>
+          </div>
+          <div class="param-row">
+            <label>Reso</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_resonance')"
+              @change="sounds.setParam('filter_resonance', $event.target.value)" />
+            <span class="val" x-text="paramValue('filter_resonance')"></span>
+          </div>
+          <div class="param-row">
+            <label>Env Amt</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_env_amount')"
+              @change="sounds.setParam('filter_env_amount', $event.target.value)" />
+            <span class="val" x-text="signedValue(paramValue('filter_env_amount'), 64)"></span>
+          </div>
+        </fieldset>
+
+        <!-- Amp Envelope -->
+        <fieldset class="param-group">
+          <legend>Amp Env</legend>
+          <div class="param-row">
+            <label>Attack</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('amp_attack')"
+              @change="sounds.setParam('amp_attack', $event.target.value)" />
+            <span class="val" x-text="paramValue('amp_attack')"></span>
+          </div>
+          <div class="param-row">
+            <label>Decay</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('amp_decay')"
+              @change="sounds.setParam('amp_decay', $event.target.value)" />
+            <span class="val" x-text="paramValue('amp_decay')"></span>
+          </div>
+          <div class="param-row">
+            <label>Sustain</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('amp_sustain')"
+              @change="sounds.setParam('amp_sustain', $event.target.value)" />
+            <span class="val" x-text="paramValue('amp_sustain')"></span>
+          </div>
+          <div class="param-row">
+            <label>Release</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('amp_release')"
+              @change="sounds.setParam('amp_release', $event.target.value)" />
+            <span class="val" x-text="paramValue('amp_release')"></span>
+          </div>
+        </fieldset>
+
+        <!-- Filter Envelope -->
+        <fieldset class="param-group">
+          <legend>Filter Env</legend>
+          <div class="param-row">
+            <label>Attack</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_env_attack')"
+              @change="sounds.setParam('filter_env_attack', $event.target.value)" />
+            <span class="val" x-text="paramValue('filter_env_attack')"></span>
+          </div>
+          <div class="param-row">
+            <label>Decay</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_env_decay')"
+              @change="sounds.setParam('filter_env_decay', $event.target.value)" />
+            <span class="val" x-text="paramValue('filter_env_decay')"></span>
+          </div>
+          <div class="param-row">
+            <label>Sustain</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_env_sustain')"
+              @change="sounds.setParam('filter_env_sustain', $event.target.value)" />
+            <span class="val" x-text="paramValue('filter_env_sustain')"></span>
+          </div>
+          <div class="param-row">
+            <label>Release</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_env_release')"
+              @change="sounds.setParam('filter_env_release', $event.target.value)" />
+            <span class="val" x-text="paramValue('filter_env_release')"></span>
+          </div>
+          <div class="param-row">
+            <label>Amount</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('filter_env_amount_total')"
+              @change="sounds.setParam('filter_env_amount_total', $event.target.value)" />
+            <span class="val" x-text="signedValue(paramValue('filter_env_amount_total'), 64)"></span>
+          </div>
+        </fieldset>
+
+        <!-- LFO -->
+        <fieldset class="param-group">
+          <legend>LFO</legend>
+          <div class="param-row">
+            <label>Rate</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('lfo_rate')"
+              @change="sounds.setParam('lfo_rate', $event.target.value)" />
+            <span class="val" x-text="paramValue('lfo_rate')"></span>
+          </div>
+          <div class="param-row">
+            <label>Depth</label>
+            <input type="range" min="0" max="127"
+              :value="paramValue('lfo_depth')"
+              @change="sounds.setParam('lfo_depth', $event.target.value)" />
+            <span class="val" x-text="paramValue('lfo_depth')"></span>
+          </div>
+          <div class="param-row">
+            <label>Target</label>
+            <select
+              :value="paramValue('lfo_target')"
+              @change="sounds.setParam('lfo_target', $event.target.value)"
+            >
+              <option value="0">pitch</option>
+              <option value="1">cutoff</option>
+              <option value="2">amp</option>
+              <option value="3">pan</option>
+            </select>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="param-groups-empty" x-show="!state.currentSound">
+        <p>Select a sound from the registry or load one from disk to edit parameters.</p>
+      </div>
+    </section>
+
+    <!-- ============================== EFFECTS ============================== -->
+    <section class="card effects">
+      <h2>Effects</h2>
+      <div class="effects-grid">
+        <template x-for="fx in effectsList" :key="fx.key">
+          <div class="fx-row">
+            <label x-text="fx.label"></label>
+            <input
+              type="range" min="0" max="127"
+              :value="state.fx[fx.key] ?? 0"
+              @change="effects.set(fx.key, $event.target.value)"
+            />
+            <span class="val" x-text="state.fx[fx.key] ?? 0"></span>
+          </div>
+        </template>
+        <div class="fx-row">
+          <label>Filter Type</label>
+          <select
+            :value="state.fx['filter_type'] ?? 0"
+            @change="effects.set('filter_type', $event.target.value)"
+          >
+            <option value="0">LPF</option>
+            <option value="1">HPF</option>
+            <option value="2">BPF</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================== ARPEGGIATOR =========================== -->
+    <section class="card arpeggiator">
+      <h2>Arpeggiator</h2>
+      <div class="arp-row">
+        <button
+          class="btn"
+          :class="{ active: state.arp.on }"
+          @click="arp.on()"
+        >ON</button>
+        <button
+          class="btn"
+          :class="{ active: !state.arp.on }"
+          @click="arp.off()"
+        >OFF</button>
+      </div>
+      <div class="arp-param">
+        <label>Rate</label>
+        <input type="range" min="0" max="127"
+          :value="state.arp.rate"
+          @change="arp.set('rate', $event.target.value)" />
+        <span class="val" x-text="state.arp.rate"></span>
+      </div>
+      <div class="arp-param">
+        <label>Gate</label>
+        <input type="range" min="0" max="127"
+          :value="state.arp.gate"
+          @change="arp.set('gate', $event.target.value)" />
+        <span class="val" x-text="state.arp.gate"></span>
+      </div>
+      <div class="arp-param">
+        <label>Style</label>
+        <select
+          :value="state.arp.style"
+          @change="arp.set('style', $event.target.value)"
+        >
+          <template x-for="(name, idx) in arpStyles" :key="idx">
+            <option :value="idx" x-text="name"></option>
+          </template>
+        </select>
+      </div>
+      <div class="arp-param">
+        <label>Octave</label>
+        <select
+          :value="state.arp.octave"
+          @change="arp.set('octave', $event.target.value)"
+        >
+          <option value="0">1</option>
+          <option value="1">2</option>
+          <option value="2">3</option>
+          <option value="3">4</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- =============================== STATUS ============================== -->
+    <section class="card status">
+      <h2>Status</h2>
+      <div class="status-grid">
+        <div class="status-cell">
+          <span class="status-label">Scene</span>
+          <span class="status-value" x-text="state.currentScene ?? '—'"></span>
+        </div>
+        <div class="status-cell">
+          <span class="status-label">Tempo</span>
+          <span class="status-value" x-text="(state.tempo ?? '—') + ' BPM'"></span>
+        </div>
+        <div class="status-cell">
+          <span class="status-label">Playing</span>
+          <span class="status-value" x-text="state.playing ? 'YES' : 'no'"></span>
+        </div>
+        <div class="status-cell">
+          <span class="status-label">Sounds in memory</span>
+          <span class="status-value" x-text="state.registryNames.length"></span>
+        </div>
+        <div class="status-cell">
+          <span class="status-label">Sounds on disk</span>
+          <span class="status-value" x-text="state.diskSounds.length"></span>
+        </div>
+        <div class="status-cell">
+          <span class="status-label">Sound dir</span>
+          <span class="status-value mono" x-text="state.soundDir || '—'"></span>
+        </div>
+      </div>
+
+      <h3>Per-track Tones</h3>
+      <div class="tones-grid">
+        <template x-for="track in 8" :key="'tone-' + track">
+          <div class="tone-cell">
+            <span class="tone-label" x-text="'T' + track"></span>
+            <span class="tone-value" x-text="state.tones[track] ?? '—'"></span>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- ============================== FOOTER ============================== -->
+    <footer class="app-footer">
+      <span x-text="'Backend: ' + (state.is_mock ? 'Mock' : 'Real')"></span>
+      <span>·</span>
+      <span x-text="'Last WS event: ' + (ws.lastEvent || '—')"></span>
+      <span>·</span>
+      <a href="/docs" target="_blank">API docs</a>
+    </footer>
+
+  </div>
+</body>
+</html>
