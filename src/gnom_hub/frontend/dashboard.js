@@ -430,10 +430,12 @@ async function showLLMConfig() {
           </select>
         </td>
         <td style="padding:6px;">
-          <input data-agent="${a}" data-field="model" data-group="${group}" data-llm-svc="agent" placeholder="" value="" style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); color:#eef1f6; border-radius:4px; padding:2px 6px; font-size:0.78rem; width:100%;" />
+          <select data-agent="${a}" data-field="model" data-group="${group}" data-llm-svc="agent" style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.12); color:#eef1f6; border-radius:4px; padding:2px 6px; font-size:0.78rem; width:100%;">
+            <option value="">— Provider wählen —</option>
+          </select>
         </td>
-        <td style="padding:6px; color:var(--text-dim); font-size:0.75rem;">text</td>
-        <td style="padding:6px;"><span class="llm-status-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#6b7a90;"></span></td>
+        <td data-agent-caps-col="${a}" style="padding:6px; color:var(--text-dim); font-size:0.75rem;">—</td>
+        <td data-agent-status-cell="${a}" style="padding:6px;"><span class="llm-status-dot" data-agent-status-dot="${a}" style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#6b7a90;"></span> <span data-agent-status-text="${a}" style="font-size:0.7rem; color:var(--text-dim); margin-left:4px;">—</span></td>
         <td style="padding:6px; color:var(--text-dim); font-size:0.7rem;" data-agent-cap="${a}">—</td>
       </tr>`).join('');
     return `
@@ -532,6 +534,31 @@ async function showLLMConfig() {
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const status = (msg, c) => { const e = $('#llm-status'); if (e) { e.textContent = msg; e.style.color = c || 'var(--text-dim)'; } };
 
+  // ── Known model lists per provider (mirrors llm_agents.py:FREE_MODELS + PAID_MODELS) ──
+  const FREE_MODELS = {
+    'openrouter': [
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'qwen/qwen3-coder:free',
+      'nousresearch/hermes-3-llama-3.1-405b:free',
+      'google/gemma-4-31b-it:free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'liquid/lfm-2.5-1.2b-instruct:free',
+      'openai/gpt-oss-120b:free',
+    ],
+    'deepseek':  ['deepseek-chat', 'deepseek-reasoner'],
+    'gemini':    ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro', 'gemini-2.0-flash-exp:free'],
+    'groq':      ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+    'mistral':   ['mistral-small-latest', 'open-mistral-7b', 'open-mixtral-8x7b'],
+    'kimi':      ['moonshot-v1-8k', 'moonshot-v1-32k'],
+    'github':    ['gpt-4o-mini'],
+    'lokal':     ['llama3.2:3b', 'llama3.2:1b', 'mistral:latest', 'gemma2:2b'],
+  };
+  const PAID_MODELS = {
+    'openai':    ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'o1-mini', 'o1-preview'],
+    'anthropic': ['claude-3-5-haiku-20241022', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'],
+    'minimax':   ['MiniMax-M3'],
+  };
+
   // ── Populate agent provider dropdowns ──
   // Source of truth: providers that have at least one valid key in DB. Falls
   // back to the full registry if no keys are present (so the user can still
@@ -553,13 +580,77 @@ async function showLLMConfig() {
     });
   };
 
-  // ── Populate agent model dropdowns (placeholder = registry default) ──
-  const updateAgentModelPlaceholder = (inp) => {
-    const sel = inp.parentElement.previousElementSibling.querySelector('select');
-    if (!sel) return;
-    const prov = sel.value;
+  // ── Populate model <select> based on selected provider (FIX 1: dropdown statt input) ──
+  // Replaces the old updateAgentModelPlaceholder that expected an <input>.
+  // Uses FREE_MODELS + PAID_MODELS as lists, falls back to registry default_model.
+  // Always prepends an "Other..." option that allows free-text entry.
+  const populateAgentModels = (modelSel, prov) => {
+    if (!modelSel) return;
     const meta = registryProviderById(prov);
-    inp.placeholder = meta?.default_model || 'model-name';
+    const prev = modelSel.value;
+    let html = '<option value="">—</option>';
+    const free = (FREE_MODELS[prov] || []);
+    const paid = (PAID_MODELS[prov] || []);
+    if (free.length) {
+      html += '<optgroup label="Free">' + free.map(m => `<option value="${m}">${m}</option>`).join('') + '</optgroup>';
+    }
+    if (paid.length) {
+      html += '<optgroup label="Paid">' + paid.map(m => `<option value="${m}">${m}</option>`).join('') + '</optgroup>';
+    }
+    if (meta && meta.default_model && !free.includes(meta.default_model) && !paid.includes(meta.default_model)) {
+      html += `<option value="${meta.default_model}">${meta.default_model} (default)</option>`;
+    }
+    // If a model was previously selected and isn't in any list, keep it
+    if (prev && !free.includes(prev) && !paid.includes(prev) && prev !== meta?.default_model) {
+      html += `<option value="${prev}">${prev} (custom)</option>`;
+    }
+    modelSel.innerHTML = html;
+    // Restore selection
+    if (prev && Array.from(modelSel.options).some(o => o.value === prev)) modelSel.value = prev;
+  };
+
+  // ── Update Capabilities-Spalte (FIX 3) — aus provider.caps ──
+  const updateAgentCapsColumn = (agentName, prov) => {
+    const cell = document.querySelector(`[data-agent-caps-col="${agentName}"]`);
+    if (!cell) return;
+    const meta = registryProviderById(prov);
+    const caps = (meta && meta.caps) ? meta.caps : [];
+    if (caps.length === 0) {
+      cell.textContent = '—';
+      cell.style.color = 'var(--text-dim)';
+    } else {
+      cell.textContent = caps.join(', ');
+      cell.style.color = '#eef1f6';
+    }
+  };
+
+  // ── Update Status-Lämpchen (FIX 2) — Quadrat wird grün/gelb/rot/grau ──
+  const refreshAgentStatusDots = (kdb) => {
+    const keys = Object.values(kdb || {}).filter(k => k && k.valid);
+    const keyByProvider = new Map();
+    keys.forEach(k => { if (k.provider) keyByProvider.set(k.provider, k); });
+    const seenProvider = new Set();
+    $$('select[data-llm-svc="agent"][data-field="provider"]').forEach(sel => {
+      const name = sel.dataset.agent;
+      const prov = sel.value;
+      const dot = document.querySelector(`[data-agent-status-dot="${name}"]`);
+      const txt = document.querySelector(`[data-agent-status-text="${name}"]`);
+      if (!dot || !txt) return;
+      seenProvider.add(prov || '');
+      if (!prov) {
+        dot.style.background = '#6b7a90';
+        txt.textContent = '—';
+        txt.style.color = 'var(--text-dim)';
+      } else if (keyByProvider.has(prov)) {
+        dot.style.background = '#39FF14';
+        txt.textContent = 'key ✓';
+        txt.style.color = '#39FF14';
+      } else {
+        dot.style.background = '#FF007F';
+        txt.textContent = 'no key';
+        txt.style.color = '#FF007F';
+      }
+    });
   };
 
   // ── Service card: rebuild model options + update badge when provider changes ──
@@ -681,8 +772,13 @@ async function showLLMConfig() {
   const refreshProviders = () => {
     fetch('/api/llm/keys').then(r => r.ok ? r.json() : {}).then(kdb => {
       populateAgentProviders(kdb);
-      // Suggest first available model for selected provider (only if empty)
-      $$('input[data-llm-svc="agent"][data-field="model"]').forEach(updateAgentModelPlaceholder);
+      // Rebuild model <select> options for the currently-selected provider
+      $$('select[data-llm-svc="agent"][data-field="model"]').forEach(modelSel => {
+        const provSel = modelSel.parentElement.previousElementSibling.querySelector('select');
+        populateAgentModels(modelSel, provSel ? provSel.value : '');
+      });
+      // Status-Lämpchen (FIX 2) aktualisieren
+      refreshAgentStatusDots(kdb);
       refreshServiceCard('web_search', kdb);
       refreshServiceCard('tts', kdb);
     });
@@ -699,12 +795,29 @@ async function showLLMConfig() {
         const name = sel.dataset.agent;
         const cur = byName[name.toUpperCase()] || byName[name.toLowerCase()];
         if (cur && cur.provider) sel.value = cur.provider;
+        // FIX 3: Capabilities-Spalte aus provider.caps befüllen
+        updateAgentCapsColumn(name, sel.value);
       });
-      $$('input[data-llm-svc="agent"][data-field="model"]').forEach(inp => {
-        const name = inp.dataset.agent;
+      // Model <select> + Caps (DB)-Spalte (FIX 4)
+      $$('select[data-llm-svc="agent"][data-field="model"]').forEach(modelSel => {
+        const name = modelSel.dataset.agent;
         const cur = byName[name.toUpperCase()] || byName[name.toLowerCase()];
-        if (cur && cur.model) inp.value = cur.model;
-        updateAgentModelPlaceholder(inp);
+        const provSel = modelSel.parentElement.previousElementSibling.querySelector('select');
+        populateAgentModels(modelSel, provSel ? provSel.value : '');
+        if (cur && cur.model) modelSel.value = cur.model;
+        // FIX 4: Caps (DB) — was tatsächlich gespeichert ist
+        const capCell = document.querySelector(`[data-agent-cap="${name}"]`);
+        if (capCell) {
+          if (cur && cur.provider) {
+            const meta = registryProviderById(cur.provider);
+            const caps = (meta && meta.caps) ? meta.caps.join(',') : '?';
+            capCell.textContent = `${cur.provider} / ${cur.model || '?'} [${caps}]`;
+            capCell.style.color = '#eef1f6';
+          } else {
+            capCell.textContent = '— (nicht gespeichert)';
+            capCell.style.color = 'var(--text-dim)';
+          }
+        }
       });
     });
   };
@@ -782,16 +895,21 @@ async function showLLMConfig() {
   $('#llm-keys-input').addEventListener('paste', (e) => setTimeout(() => processKeyText(e.target.value, 'pasted'), 50));
   $('#llm-keys-input').addEventListener('change', (e) => { if (e.target.value.trim()) processKeyText(e.target.value, 'typed'); });
 
-  // Agent provider change → refresh placeholder + queue
+  // Agent provider change → refresh model <select> + caps + status-dot + queue
   document.addEventListener('change', (e) => {
     const sel = e.target.closest('select[data-llm-svc="agent"][data-field="provider"]');
     if (sel) {
-      updateAgentModelPlaceholder(sel.parentElement.nextElementSibling.querySelector('input'));
-      queueAgentChange(sel.dataset.agent, sel.value,
-        sel.parentElement.nextElementSibling.querySelector('input')?.value || '');
+      const modelSel = sel.parentElement.nextElementSibling.querySelector('select');
+      // FIX 1: model <select> neu befüllen mit FREE_MODELS/PAID_MODELS
+      populateAgentModels(modelSel, sel.value);
+      // FIX 3: Capabilities-Spalte aktualisieren
+      updateAgentCapsColumn(sel.dataset.agent, sel.value);
+      // FIX 2: Status-Lämpchen neu färben
+      fetch('/api/llm/keys').then(r => r.ok ? r.json() : {}).then(kdb => refreshAgentStatusDots(kdb));
+      queueAgentChange(sel.dataset.agent, sel.value, modelSel?.value || '');
     }
-    const mInp = e.target.closest('input[data-llm-svc="agent"][data-field="model"]');
-    if (mInp) queueAgentChange(mInp.dataset.agent, undefined, mInp.value);
+    const mSel = e.target.closest('select[data-llm-svc="agent"][data-field="model"]');
+    if (mSel) queueAgentChange(mSel.dataset.agent, undefined, mSel.value);
     // Service cards
     const svcSel = e.target.closest('select[data-svc-field]');
     if (svcSel) {
@@ -2676,30 +2794,64 @@ window.tuningSaveBehavior = async function(agentId) {
   else { if (msg) { msg.textContent='Fehler'; msg.style.color='#f00'; } }
 };
 
-// ── Tab: Presets ──
+// ── Tab: Presets (umbrella with 2 sub-tabs: Agent-Konfiguration + Snapshots) ──
 window.tuningRender_presets = async function(agentId) {
   const el = document.getElementById('tuning-content'); if (!el) return;
-  el.innerHTML = '<div style="color:rgba(255,255,255,0.3);padding:20px;text-align:center;">Lade Presets...</div>';
+  const sub = window._tuningPresetsSub || 'agent-config';
+  window._tuningPresetsSub = sub;
+  let html = '<div style="display:flex;flex-direction:column;gap:10px;padding:4px;">';
+  html += '<div style="display:flex;gap:4px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:6px;">';
+  html += '<button class="psubtab" id="psubtab-agent-config" onclick="tuningSwitchPresetsSub(\'agent-config\')" style="padding:6px 14px;font-size:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;">🎨 Agent-Konfiguration</button>';
+  html += '<button class="psubtab" id="psubtab-snapshots" onclick="tuningSwitchPresetsSub(\'snapshots\')" style="padding:6px 14px;font-size:0.75rem;background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;">💾 Snapshots</button>';
+  html += '</div>';
+  html += '<div id="presets-sub-content"></div>';
+  html += '</div>';
+  el.innerHTML = html;
+  if (sub === 'snapshots') {
+    await tuningRender_snapshots(agentId);
+  } else {
+    await tuningRender_agentConfig(agentId);
+  }
+};
+
+window.tuningSwitchPresetsSub = async function(subId) {
+  window._tuningPresetsSub = subId;
+  document.querySelectorAll('.psubtab').forEach(b => {
+    b.style.color = 'rgba(255,255,255,0.4)';
+    b.style.borderBottomColor = 'transparent';
+  });
+  const t = document.getElementById('psubtab-' + subId);
+  if (t) { t.style.color = 'var(--accent)'; t.style.borderBottomColor = 'var(--accent)'; }
+  if (subId === 'snapshots') {
+    await tuningRender_snapshots(window._tuningAgentId);
+  } else {
+    await tuningRender_agentConfig(window._tuningAgentId);
+  }
+};
+
+window.tuningRender_snapshots = async function(agentId) {
+  const el = document.getElementById('presets-sub-content'); if (!el) return;
+  el.innerHTML = '<div style="color:rgba(255,255,255,0.3);padding:20px;text-align:center;">Lade Snapshots...</div>';
   let settings = {}, llm = {}, presets = [];
   try { settings = await api('GET', '/agents/' + agentId + '/settings') || {}; } catch(e){}
   try { llm = await api('GET', '/llm/agents') || {}; } catch(e){}
   try { presets = await api('GET', '/presets') || []; } catch(e){}
 
   let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
-  html += '<h3 style="margin:0;font-size:0.95rem;">💾 Presets <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">— Konfiguration speichern & laden</span></h3>';
+  html += '<h3 style="margin:0;font-size:0.95rem;">💾 Snapshots <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">— komplette Konfiguration speichern & laden</span></h3>';
 
   // Save current as preset
   html += '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;">';
-  html += '<div style="flex:1;min-width:150px;"><label style="font-size:0.7rem;display:block;margin-bottom:2px;">Preset-Name</label><input id="tpreset-name" placeholder="z.B. Web Development" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:6px;font-size:0.75rem;"></div>';
+  html += '<div style="flex:1;min-width:150px;"><label style="font-size:0.7rem;display:block;margin-bottom:2px;">Snapshot-Name</label><input id="tpreset-name" placeholder="z.B. Web Development" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:6px;font-size:0.75rem;"></div>';
   html += '<div style="flex:2;min-width:200px;"><label style="font-size:0.7rem;display:block;margin-bottom:2px;">Beschreibung</label><input id="tpreset-desc" placeholder="Kurze Beschreibung..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:6px;font-size:0.75rem;"></div>';
   html += '<div><button onclick="tuningSavePreset()" style="padding:6px 16px;font-size:0.75rem;font-weight:700;background:rgba(0,200,100,0.15);border:1px solid rgba(0,200,100,0.3);color:#0f0;border-radius:6px;cursor:pointer;white-space:nowrap;">💾 Speichern</button></div>';
   html += '</div>';
 
   // Preset list
   html += '<div style="display:flex;flex-direction:column;gap:6px;">';
-  html += '<div style="font-size:0.7rem;color:rgba(255,255,255,0.5);">Gespeicherte Presets (' + presets.length + ')</div>';
+  html += '<div style="font-size:0.7rem;color:rgba(255,255,255,0.5);">Gespeicherte Snapshots (' + presets.length + ')</div>';
   if (!presets.length) {
-    html += '<div style="color:rgba(255,255,255,0.2);padding:20px;text-align:center;">Keine Presets vorhanden</div>';
+    html += '<div style="color:rgba(255,255,255,0.2);padding:20px;text-align:center;">Keine Snapshots vorhanden</div>';
   } else {
     presets.forEach(p => {
       html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;">';
@@ -2718,19 +2870,256 @@ window.tuningSavePreset = async function() {
   if (!name || !desc) { toast('Name und Beschreibung erforderlich', 'warning'); return; }
   const r = await api('POST', '/presets/save', {name, description: desc});
   if (r && r.status === 'success') {
-    toast('Preset "' + name + '" gespeichert', 'success');
-    tuningRender_presets(window._tuningAgentId);
+    toast('Snapshot "' + name + '" gespeichert', 'success');
+    tuningRender_snapshots(window._tuningAgentId);
   } else { toast('Fehler beim Speichern', 'error'); }
 };
 
 window.tuningLoadPreset = async function(file) {
-  if (!confirm('Preset laden? Überschreibt aktuelle Einstellungen aller Agenten.')) return;
+  if (!confirm('Snapshot laden? Überschreibt aktuelle Einstellungen aller Agenten.')) return;
   const r = await api('POST', '/presets/load', {file});
   if (r && r.status === 'ok') {
-    toast('Preset geladen: ' + r.name, 'success');
-    tuningRender_presets(window._tuningAgentId);
+    toast('Snapshot geladen: ' + r.name, 'success');
+    tuningRender_snapshots(window._tuningAgentId);
   }   else { toast('Fehler beim Laden', 'error'); }
 };
+
+// ── Sub-Tab: Agent-Konfiguration (per-Agent preset editor, moved from presets_management.js) ──
+(function() {
+  const AGENT_LABELS = {
+    soulag: 'SoulAG — Identitäts-Anker',
+    watchdogag: 'WatchdogAG — Sicherheits-Wächter',
+    generalag: 'GeneralAG — Allround-Router',
+    securityag: 'SecurityAG — Security-Auditor',
+    coderag: 'CoderAG — Code-Worker',
+    researcherag: 'ResearcherAG — Recherche-Worker',
+    writerag: 'WriterAG — Text-Worker',
+    editorag: 'EditorAG — QA-Worker'
+  };
+
+  const AGENT_FIELDS = [
+    {key: 'prompt', label: 'System-Prompt', type: 'textarea', rows: 6},
+    {key: 'focus', label: 'Fokus', type: 'text'},
+    {key: 'target', label: 'Target (z.B. auto:stage_2 oder openrouter:modell)', type: 'text'},
+    {key: 'creativity', label: 'Creativity (1-5)', type: 'number', min: 1, max: 5},
+    {key: 'obedience', label: 'Obedience (1-5)', type: 'number', min: 1, max: 5},
+    {key: 'model_override', label: 'Model-Override (oder leer)', type: 'text'},
+    {key: 'enabled', label: 'Aktiv', type: 'checkbox'}
+  ];
+
+  let _presetsData = null;
+  let _agentGroups = {system: ['soulag','watchdogag','generalag','securityag'], worker: ['coderag','researcherag','writerag','editorag']};
+
+  async function loadPresetsData() {
+    try {
+      const [presetsRes, groupsRes] = await Promise.all([
+        fetch('/api/presets/layer-a/list').then(r => r.json()),
+        fetch('/api/presets/groups').then(r => r.json()).catch(() => null)
+      ]);
+      if (groupsRes) _agentGroups = groupsRes;
+      _presetsData = {
+        slugs: presetsRes || [],
+        currentPreset: null,
+        activeGroup: _presetsData ? _presetsData.activeGroup : 'system'
+      };
+      if (_presetsData.slugs.length > 0) {
+        try {
+          const r = await fetch('/api/presets/layer-a/' + encodeURIComponent(_presetsData.slugs[0].slug));
+          _presetsData.currentPreset = await r.json();
+        } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      console.error('loadPresetsData failed:', e);
+    }
+  }
+
+  function renderPresetsList() {
+    const sel = document.getElementById('presets-list-select');
+    if (!sel) return;
+    sel.innerHTML = '';
+    if (!_presetsData || !_presetsData.slugs.length) {
+      sel.innerHTML = '<option value="">— keine Presets —</option>';
+      return;
+    }
+    _presetsData.slugs.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.slug;
+      opt.textContent = p.name + ' (' + p.agent_count + ' Agents)';
+      if (_presetsData.currentPreset && _presetsData.currentPreset.slug === p.slug) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderAgentsGrid() {
+    const grid = document.getElementById('presets-agents-grid');
+    if (!grid) return;
+    if (!_presetsData) { grid.innerHTML = '<p style="color: var(--text-dim);">Lade Presets…</p>'; return; }
+    const group = _presetsData.activeGroup || 'system';
+    const agents = _agentGroups[group] || [];
+    const preset = _presetsData.currentPreset;
+    if (!preset) {
+      grid.innerHTML = '<p style="color: var(--text-dim); padding: 20px; text-align: center;">Wähle ein Preset zum Bearbeiten</p>';
+      return;
+    }
+    let html = '';
+    agents.forEach(agentName => {
+      const agentData = (preset.agents && preset.agents[agentName]) || {};
+      const label = AGENT_LABELS[agentName] || agentName;
+      html += '<div class="preset-agent-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 12px;">';
+      html += '<h3 style="margin: 0 0 8px 0; font-size: 0.9rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">';
+      html += '<span>' + label + '</span>';
+      html += '<small style="color: var(--text-dim); font-size: 0.65rem;">' + agentName + '</small></h3>';
+      AGENT_FIELDS.forEach(f => {
+        const val = agentData[f.key];
+        html += '<div data-agent="' + agentName + '" data-field="' + f.key + '" style="margin-bottom: 8px;">';
+        html += '<label style="display: block; font-size: 0.7rem; color: var(--text-dim); margin-bottom: 2px;">' + f.label + ' <span class="save-status" style="margin-left: 6px; font-size: 0.65rem;"></span></label>';
+        if (f.type === 'textarea') {
+          html += '<textarea rows="' + (f.rows || 4) + '" onchange="tuningSaveAgentField(\'' + preset.slug + '\',\'' + agentName + '\',\'' + f.key + '\',this.value)" style="width: 100%; padding: 6px; background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: var(--text); font-size: 0.75rem; font-family: inherit; resize: vertical;">' + (val || '') + '</textarea>';
+        } else if (f.type === 'checkbox') {
+          html += '<input type="checkbox" ' + (val ? 'checked' : '') + ' onchange="tuningSaveAgentField(\'' + preset.slug + '\',\'' + agentName + '\',\'' + f.key + '\',this.checked)" style="width: 18px; height: 18px;">';
+        } else if (f.type === 'number') {
+          html += '<input type="number" min="' + (f.min || 0) + '" max="' + (f.max || 100) + '" value="' + (val !== undefined && val !== null ? val : '') + '" onchange="tuningSaveAgentField(\'' + preset.slug + '\',\'' + agentName + '\',\'' + f.key + '\',this.value)" style="width: 100px; padding: 4px 8px; background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: var(--text);">';
+        } else {
+          html += '<input type="text" value="' + (val || '').toString().replace(/"/g, '&quot;') + '" onchange="tuningSaveAgentField(\'' + preset.slug + '\',\'' + agentName + '\',\'' + f.key + '\',this.value)" style="width: 100%; padding: 4px 8px; background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: var(--text); font-size: 0.75rem;">';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    grid.innerHTML = html;
+  }
+
+  window.tuningRender_agentConfig = async function(agentId) {
+    const el = document.getElementById('presets-sub-content'); if (!el) return;
+    el.innerHTML = '<div style="color:rgba(255,255,255,0.3);padding:20px;text-align:center;">Lade Presets…</div>';
+    await loadPresetsData();
+    let html = '<div class="panel" style="padding:16px;display:flex;flex-direction:column;gap:14px;">';
+    html += '<h3 style="margin:0;font-size:0.95rem;">🎨 Agent-Konfiguration <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">— System + Worker · per-Agent</span></h3>';
+
+    html += '<div id="presets-group-tabs" style="display: flex; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">';
+    html += '<button class="preset-group-tab" id="preset-group-system" data-group="system" onclick="tuningSwitchPresetsGroup(\'system\')" style="padding: 6px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px 4px 0 0; color: var(--text-dim); cursor: pointer; font-weight: 500;">System-Agents</button>';
+    html += '<button class="preset-group-tab" id="preset-group-worker" data-group="worker" onclick="tuningSwitchPresetsGroup(\'worker\')" style="padding: 6px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px 4px 0 0; color: var(--text-dim); cursor: pointer; font-weight: 500;">Worker-Agents</button>';
+    html += '</div>';
+
+    html += '<div style="display: flex; gap: 8px; align-items: center;">';
+    html += '<label style="font-size: 0.75rem; color: var(--text-dim);">Preset:</label>';
+    html += '<select id="presets-list-select" onchange="tuningLoadPresetForEdit(this.value)" style="flex: 1; padding: 6px 10px; background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: var(--text); font-size: 0.8rem;"><option value="">— lädt —</option></select>';
+    html += '<button class="btn-primary" onclick="tuningCreateNewPreset()" style="padding: 4px 10px; font-size: 0.7rem;">+ Neu</button>';
+    html += '<button onclick="tuningCloneCurrentPreset()" style="padding: 4px 10px; font-size: 0.7rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 4px; cursor: pointer;">Clone</button>';
+    html += '<button onclick="tuningDeleteCurrentPreset()" style="padding: 4px 10px; font-size: 0.7rem; background: rgba(255,80,80,0.15); border: 1px solid rgba(255,80,80,0.4); color: #ff8888; border-radius: 4px; cursor: pointer;">Löschen</button>';
+    html += '</div>';
+
+    html += '<div id="presets-agents-grid" style="display: grid; grid-template-columns: 1fr; gap: 10px;">';
+    html += '<p style="color: var(--text-dim); padding: 20px; text-align: center;">Wähle ein Preset zum Bearbeiten</p>';
+    html += '</div>';
+
+    html += '</div>';
+    el.innerHTML = html;
+    renderPresetsList();
+    renderAgentsGrid();
+    _styleActiveGroupTab();
+  };
+
+  function _styleActiveGroupTab() {
+    if (!_presetsData) return;
+    const group = _presetsData.activeGroup || 'system';
+    document.querySelectorAll('.preset-group-tab').forEach(b => {
+      if (b.dataset.group === group) {
+        b.style.background = 'rgba(0, 229, 255, 0.18)';
+        b.style.color = 'var(--primary)';
+        b.style.borderColor = 'var(--primary)';
+      } else {
+        b.style.background = 'rgba(255,255,255,0.04)';
+        b.style.color = 'var(--text-dim)';
+        b.style.borderColor = 'rgba(255,255,255,0.08)';
+      }
+    });
+  }
+
+  window.tuningSwitchPresetsGroup = function(group) {
+    if (!_presetsData) _presetsData = {slugs: [], currentPreset: null, activeGroup: group};
+    else _presetsData.activeGroup = group;
+    _styleActiveGroupTab();
+    renderAgentsGrid();
+  };
+
+  window.tuningLoadPresetForEdit = async function(slug) {
+    if (!slug) {
+      _presetsData.currentPreset = null;
+      renderAgentsGrid();
+      return;
+    }
+    const p = _presetsData.slugs.find(x => x.slug === slug);
+    if (!p) return;
+    try {
+      const r = await fetch('/api/presets/layer-a/' + encodeURIComponent(slug));
+      _presetsData.currentPreset = await r.json();
+      renderAgentsGrid();
+    } catch (e) { alert('Fehler: ' + e.message); }
+  };
+
+  window.tuningCreateNewPreset = async function() {
+    const name = prompt('Name des neuen Presets:');
+    if (!name) return;
+    try {
+      const r = await fetch('/api/presets/layer-a', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name, description: ''})
+      });
+      if (!r.ok) throw new Error(await r.text());
+      await loadPresetsData();
+      renderPresetsList();
+      const j = await r.json();
+      tuningLoadPresetForEdit(j.slug);
+    } catch (e) { alert('Fehler beim Anlegen: ' + e.message); }
+  };
+
+  window.tuningCloneCurrentPreset = async function() {
+    if (!_presetsData.currentPreset) return alert('Bitte erst Preset wählen');
+    const name = prompt('Name für den Klon:', _presetsData.currentPreset.name + ' (Kopie)');
+    if (!name) return;
+    try {
+      const r = await fetch('/api/presets/layer-a/' + encodeURIComponent(_presetsData.currentPreset.slug) + '/clone', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name})
+      });
+      if (!r.ok) throw new Error(await r.text());
+      await loadPresetsData();
+      renderPresetsList();
+    } catch (e) { alert('Fehler beim Klonen: ' + e.message); }
+  };
+
+  window.tuningDeleteCurrentPreset = async function() {
+    if (!_presetsData.currentPreset) return alert('Bitte erst Preset wählen');
+    if (_presetsData.currentPreset.slug === 'default') return alert('"default" Preset kann nicht gelöscht werden');
+    if (!confirm('Preset "' + _presetsData.currentPreset.name + '" wirklich löschen?')) return;
+    try {
+      const r = await fetch('/api/presets/layer-a/' + encodeURIComponent(_presetsData.currentPreset.slug), {method: 'DELETE'});
+      if (!r.ok) throw new Error(await r.text());
+      _presetsData.currentPreset = null;
+      await loadPresetsData();
+      renderPresetsList();
+      renderAgentsGrid();
+    } catch (e) { alert('Fehler beim Löschen: ' + e.message); }
+  };
+
+  window.tuningSaveAgentField = async function(slug, agentName, fieldKey, value) {
+    try {
+      const r = await fetch('/api/presets/layer-a/' + encodeURIComponent(slug) + '/agents/' + encodeURIComponent(agentName), {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({[fieldKey]: value})
+      });
+      if (!r.ok) throw new Error(await r.text());
+      if (_presetsData.currentPreset && _presetsData.currentPreset.agents[agentName]) {
+        _presetsData.currentPreset.agents[agentName][fieldKey] = value;
+      }
+      const el = document.querySelector(`[data-agent="${agentName}"][data-field="${fieldKey}"] .save-status`);
+      if (el) { el.textContent = '✓ gespeichert'; el.style.color = '#4ade80'; setTimeout(() => { el.textContent = ''; }, 2000); }
+    } catch (e) {
+      alert('Fehler beim Speichern: ' + e.message);
+    }
+  };
+})();
 
 // ── Tab: Bake ──
 window.tuningRender_bake = async function(agentId) {

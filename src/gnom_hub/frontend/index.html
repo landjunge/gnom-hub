@@ -2729,7 +2729,6 @@
       <button class="btn-primary" onclick="showDashboard()" data-help="Öffnet das Bento-Grid-Systemdashboard zur Überwachung von Agenten-Status, Token-Budgets und Antwortzeiten." data-help-en="Opens the Bento grid system dashboard for monitoring agent status, token budgets and response times." data-help-title="Dashboard">Dashboard</button>
       <button class="btn-primary" onclick="showWorkflowsView()" data-help="Öffnet das Workflow-Dashboard mit der SVG-basierten Visualisierung des DAGs und Observability-Latenzen." data-help-en="Opens the workflow dashboard with the SVG-based DAG visualisation and observability latencies." data-help-title="Workflows">Workflows</button>
       <button class="btn-primary" onclick="showLLMConfig()" data-help="Öffnet die LLM-Einstellungen, um API-Keys einzutragen, Provider-Presets zu wählen und Agenten-Charaktere anzupassen." data-help-en="Opens LLM settings to paste API keys, pick provider presets and adjust agent characters." data-help-title="LLM-Konfiguration">LLM</button>
-      <button class="btn-primary" onclick="showPresetsManagement()" data-help="Verwaltet Presets mit 2 klar getrennten Gruppen (System + Worker), pro Agent individuell editierbar und speicherbar." data-help-en="Manage presets in 2 separate groups (System + Worker), per agent individually editable and saveable." data-help-title="Preset-Management">Presets</button>
       <button class="btn-primary" onclick="showAgentTuning()" data-help="Öffnet den Agent Inspector mit Persönlichkeits-Reglern, Custom Prompts und Statistiken." data-help-en="Opens the Agent Inspector with personality sliders, custom prompts and statistics." data-help-title="Agent Tuning">Tuning</button>
       <button class="btn-primary" onclick="showHelpPage()" data-help="Öffnet das Help Center mit der vollständigen Bedienungsanleitung und Erklärungen der Agenten." data-help-en="Opens the Help Center with the full user manual and agent explanations." data-help-title="Help Center">Help</button>
       <button class="btn-primary" onclick="window.showHelpSlides && window.showHelpSlides()" data-help="Öffnet die interaktive Hilfe-Slideshow im User-Layer der Showbox. 6 kompakte Folien mit Swarm-Übersicht, Befehlen, MiniMax-Routing und Mouseover-Hilfe." data-help-en="Opens the interactive help slideshow in the user layer of the Showbox. 6 compact slides with swarm overview, commands, MiniMax routing and mouseover help." data-help-title="Hilfe-Slides">📚 Slides</button>
@@ -2849,34 +2848,6 @@
     </div>
   </div>
 
-  <!-- Presets-Management Modal -->
-  <div class="modal-bg" id="modal-presets-management" onclick="if(event.target===this) closePresetsManagement()">
-    <div class="modal" style="width: 1100px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 20px;">
-      <h2 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 15px; flex-shrink: 0; margin-top: 0;">
-        <span>🎨 Preset-Management <small style="color: var(--text-dim); font-weight: 300; font-size: 0.7rem; margin-left: 8px;">System + Worker · per-Agent</small></span>
-        <button onclick="closePresetsManagement()" style="background: none; border: none; color: var(--text-dim); font-size: 1.2rem; cursor: pointer; padding: 4px;">✕</button>
-      </h2>
-      <div id="presets-management-body" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
-        <div id="presets-group-tabs" style="display: flex; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
-          <button class="preset-group-tab active" data-group="system" onclick="switchPresetsGroup('system')" style="padding: 6px 14px; background: rgba(0, 229, 255, 0.18); border: 1px solid var(--primary); border-radius: 4px 4px 0 0; color: var(--primary); cursor: pointer; font-weight: 500;">System-Agents (4)</button>
-          <button class="preset-group-tab" data-group="worker" onclick="switchPresetsGroup('worker')" style="padding: 6px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px 4px 0 0; color: var(--text-dim); cursor: pointer; font-weight: 500;">Worker-Agents (4)</button>
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <label style="font-size: 0.75rem; color: var(--text-dim);">Preset:</label>
-          <select id="presets-list-select" onchange="loadPresetForEdit(this.value)" style="flex: 1; padding: 6px 10px; background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: var(--text); font-size: 0.8rem;">
-            <option value="">— lädt —</option>
-          </select>
-          <button class="btn-primary" onclick="createNewPreset()" style="padding: 4px 10px; font-size: 0.7rem;">+ Neu</button>
-          <button onclick="cloneCurrentPreset()" style="padding: 4px 10px; font-size: 0.7rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 4px; cursor: pointer;">Clone</button>
-          <button onclick="deleteCurrentPreset()" style="padding: 4px 10px; font-size: 0.7rem; background: rgba(255,80,80,0.15); border: 1px solid rgba(255,80,80,0.4); color: #ff8888; border-radius: 4px; cursor: pointer;">Löschen</button>
-        </div>
-        <div id="presets-agents-grid" style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-          <p style="color: var(--text-dim); padding: 20px; text-align: center;">Wähle ein Preset zum Bearbeiten</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Agent Detail Modal -->
   <div class="modal-bg" id="modal-agent-detail" onclick="if(event.target===this) closeModal('modal-agent-detail')">
     <div class="modal" style="width: 850px; max-width: 95vw; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; padding: 20px;">
@@ -2916,8 +2887,7 @@
   <script src="/static/worker_sidebar.js?v=23"></script>
   <script src="/static/chat.js?v=23"></script>
   <script src="/static/workspace.js?v=23"></script>
-  <script src="/static/dashboard.js?v=25"></script>
-  <script src="/static/presets_management.js?v=24"></script>
+  <script src="/static/dashboard.js?v=26"></script>
   <script>
     // ── Init Bootstrap ──
     (async () => {
