@@ -1,5 +1,15 @@
 {
+  "_schema_version": 1,
+  "_schema_generation": 1,
+  "_layer": "custom",
+  "_deprecation_notice": "Custom-Preset (Layer C) — Felder name/description/prompt_modifier/model/allowed_tools/ttl_minutes werden vom Loader gnom_hub.core.utils.preset_service.load_presets() in die Layer-A-Maps prompts/focus/targets der runtime-gemerged. Die _schema_*-Felder sind reine Marker für Migrations-Skripte und werden vom Loader ignoriert.",
+  "_supersedes": {
+    "prompt_modifier": "presets.test_preset.agents.<worker>.prompt (in presets.json, nicht hier)",
+    "model.primary": "presets.test_preset.agents.<agent>.target (in presets.json)",
+    "model.fallback": "Router-interner Fallback (nicht in Schema)"
+  },
   "name": "Test Preset",
+  "slug": "test_preset",
   "description": "Minimales Preset für End-to-End-Test.",
   "model": {
     "primary": "ollama:llama3:8b",
