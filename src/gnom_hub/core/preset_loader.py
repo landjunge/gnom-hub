@@ -299,6 +299,9 @@ def validate_preset_bundle(bundle: PresetBundle) -> list[str]:
                 )
 
     # 3) Permissions matrix keys
+    # NOTE: DORMANT — siehe permissions.json:_status + agent_definitions.py:32-40
+    # Validierung der Key-Set-Zugehörigkeit ist die einzige Runtime-Nutzung von
+    # permissions.matrix; Capability-Tokens werden nirgends konsumiert.
     for agent_id in bundle.permissions.matrix.keys():
         if agent_id not in agent_names:
             errors.append(

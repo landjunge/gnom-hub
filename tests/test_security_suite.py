@@ -443,8 +443,13 @@ class TestProcessActions:
             result = self._call(ans)
         assert "Gatekeeper" in result or "verweigert" in result
 
-    def test_godmode_adds_run_permission(self):
-        """godmode in perms → run wird automatisch hinzugefügt"""
+    def test_godmode_no_longer_auto_infers_run(self):
+        """Refactor R2 (2026-06-21): godmode→run Auto-Inferenz entfernt.
+        Da nur SecurityAG noch godmode hat und dieser explizit 'run' in
+        seinen Permissions hat, war die Auto-Inferenz ein No-Op. Falls
+        ein godmode-Agent jetzt ohne 'run' konfiguriert wird, ist das
+        ein Konfigurationsfehler — nicht mehr silent auto-fixed.
+        """
         ans = "[WRITE: test.txt]hallo[/WRITE]"
         captured_perms = []
         def fake_handle_write(a, ms, ag, perms, bs, wd):
@@ -460,7 +465,8 @@ class TestProcessActions:
              patch("gnom_hub.agents.actions.action_handlers.handle_browser", side_effect=lambda a, *x: a), \
              patch("gnom_hub.agents.actions.action_handlers.handle_desktop", side_effect=lambda a, *x: a):
             self._call(ans, perms=["read", "write", "godmode"])
-        assert "run" in captured_perms
+        # NEU: 'run' wird NICHT mehr auto-hinzugefügt
+        assert "run" not in captured_perms
 
     def test_generalag_read_now_allowed(self):
         """READ ist jetzt immer erlaubt (keine Blockade mehr)"""

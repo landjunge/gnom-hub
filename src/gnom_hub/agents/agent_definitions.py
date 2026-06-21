@@ -15,19 +15,22 @@ die Liste via `get_soul(name)` (siehe `soul/soul_initializer.py:30-81`).
 Konfigurationsdateien mit Bezug zu Agent-Permissions:
 
   • `config/agents/*.json` (8 Dateien — eine pro Agent)
-    **Status: DORMANT / UNGELESEN.** Die Dateien enthalten ausschließlich
-    Slider-Werte (`creativity`, `precision`, `speed`, `critical_thinking`,
-    `obedience`) und Prompt-Blöcke. KEIN `permissions`- oder
-    `capabilities`-Feld. Belegt durch:
-      $ grep -rn "config/agents" src/ \
-          --include="*.py" --include="*.js" --include="*.ts" \
-          --include="*.tsx" --include="*.jsx" --include="*.html" \
-          --include="*.css"
-      (0 Treffer — 2026-06-21)
-    → Capabilities kommen NUR aus dieser Datei. Falls die JSON-Dateien
-    jemals als Single-Source-of-Truth dienen sollen, muss ein Loader
-    geschrieben werden, der sie mit `AGENT_DEFINITIONS` synchronisiert
-    oder ersetzt. Aktuell: User-Tuning-Layer ohne Code-Konsument.
+    **Status: TEILWEISE AKTIV.** Konsumenten (file:line-Belege):
+      - `core/utils/slider_prompt.py:18-24` `load_slider_config()`
+        liest via `os.path.join(CONFIG_DIR, "agents", f"{name}.json")`.
+      - `core/utils/slider_prompt.py:49-50` ruft `load_slider_config()`
+        → `build_slider_block(config)` (`slider_prompt.py:27-35`) und
+        fügt den Block als `[VERHALTEN]`-Sektion in den System-Prompt.
+      - `api/endpoints/agents_status.py:119-120` exponiert die Slider
+        per GET `/api/agents/{a_id}/sliders`; `agents_status.py:128-132`
+        schreibt per PUT via `update_slider()` (`slider_prompt.py:68-94`).
+    → `sliders` + `prompt_blocks` werden also aktiv gelesen UND geschrieben.
+    → JSON-Vokabular enthält KEIN `permissions`/`capabilities`-Feld
+      (verifiziert: `rg "permission|capability" config/agents/*.json`
+      → 0 Treffer, 2026-06-21).
+    → Für Runtime-Permissions bleibt `AGENT_DEFINITIONS` (oben) die
+    einzige Wahrheit. Falls JSON jemals Permissions überschreiben soll,
+    ist ein Permission-Loader nötig (JSON ↔ dieses Dict mergen/ersetzen).
 
   • `data/presets/default/permissions.json`
     **Status: DORMANT / SCHEMA-DATENLEICHE.** Schema `PermissionsConfig`

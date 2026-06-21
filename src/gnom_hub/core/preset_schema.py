@@ -306,7 +306,20 @@ class SkillsConfig(BaseModel):
 
 
 class PermissionsConfig(BaseModel):
-    """``permissions.json`` — Berechtigungs-Matrix Agent → Capabilities."""
+    """``permissions.json`` — Berechtigungs-Matrix Agent → Capabilities.
+
+    Status: **DORMANT** (Validierungs-only, Stand 2026-06-21).
+    Das Schema existiert, die Datei wird via ``preset_loader.py:53,195,302``
+    registriert/validiert/geschrieben — aber **kein** Runtime-Pfad liest
+    ``permissions.matrix`` für tatsächliche Permission-Entscheidungen.
+    Runtime-Permissions kommen ausschließlich aus
+    ``agents/agent_definitions.py`` (siehe ``agent_definitions.py:32-40``
+    und ``inventory.md:529-624``). Token-Vokabular ist inkompatibel
+    (A: ``read,write,run,godmode,desktop,crawl,evolve,web_search,browser,@job``
+    vs. B: ``read,write,exec,network,memory,admin``). Konsolidierung mit
+    Vocabulary A ist ein separater Refactor-Schritt — siehe
+    ``docs/refactor-permissions/dependent-changes.md`` Schritt 3.
+    """
 
     model_config = ConfigDict(extra="allow")
 

@@ -47,15 +47,6 @@ def _audit_security(agent, perms, action_kind: str, target: str, result: str):
 
 def process_actions(ans, agent, perms, bs_mode, wd):
     perms = list(perms)
-    # ── godmode→run Auto-Inferenz (Refactor-Kontext 2026-06-21) ────────────
-    # Vor agent_definitions.py-Refactor: 6 Agents hatten godmode, alle mit run.
-    # Nach Refactor: nur SecurityAG hat godmode+run (SoulAG/Watchdog/Coder/Editor
-    # haben kein godmode mehr). Diese Auto-Inferenz ist daher aktuell ein No-Op
-    # — wird aber beibehalten für Rückwärtskompatibilität (falls jemals wieder
-    # ein godmode-Agent ohne run entsteht) und als Defense-in-Depth gegen
-    # fehlerhaft konfigurierte Custom-Souls. Siehe docs/refactor-permissions/
-    # dependent-changes.md.
-    if "godmode" in perms and "run" not in perms: perms.append("run")
     w_ms, r_ms, sh_ms, desktop_ms = [], [], [], []
     for m in re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", ans, re.DOTALL):
         fn, content = m.group(1).strip(), m.group(2).strip()
