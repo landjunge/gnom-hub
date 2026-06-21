@@ -6,3 +6,13 @@ from gnom_hub.infrastructure.admin.service import AdminService as AS
 # and has been removed.
 
 def get_admin_service(): return AS()
+
+
+def get_agent_commands():
+    """Dependency stub for agent commands."""
+    return None
+
+
+def get_agent_queries():
+    """Dependency stub for agent queries."""
+    return None

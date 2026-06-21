@@ -50,3 +50,8 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None):
                 from gnom_hub.db import set_agent_status
                 set_agent_status(agent_name, old_status)
             except Exception as e: logging.getLogger(__name__).error('Fehler in Agenten-Status-Wiederherstellung: %s', e)
+
+
+class LLMOrchestrator:
+    def process_message(self, agent_id, content):
+        return ask_router(content, sys="Du bist ein hilfreicher Assistent.", agent_name=agent_id)
