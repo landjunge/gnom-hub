@@ -1,0 +1,155 @@
+## LLM-Page Audit Baseline — 2026-06-21
+
+### showLLMConfig()
+- Datei: src/gnom_hub/frontend/dashboard.js
+- Zeilen-Range: 405–901 (Spec sagt 405–883, aber die Funktion reicht bis 901 weil der
+  window.__llmRefreshAfterSave-Hook 884–901 hinzukommt.)
+- Header-Kommentar: 397–403 (zweifach deklariert, beide identisch)
+- End-Marker: `awk 'NR>=405 && /^}/ {print; exit}'` → Zeile 901
+
+### UI-Elemente (von showLLMConfig() gerendert)
+Spec-genannte Elemente vs. tatsächlich vorgefunden — alle bestätigt mit file:line:
+
+1. Keys input + File-Button (Spec 511–516)
+   - `#llm-keys-input` (type=text)   — dashboard.js:512
+   - `#llm-import-file-btn` (📁 File) — dashboard.js:513
+   - `#llm-file-input` (type=file, hidden) — dashboard.js:514
+   - `#llm-status` (Status-Zeile darunter) — dashboard.js:516
+
+2. Agent-Tables (System 4 + Worker 4, Spec 519–520)
+   - `<div data-group="system">` — dashboard.js:440 (renderAgentTable) + 519
+     Zeilen für: SoulAG, WatchdogAG, GeneralAG, SecurityAG — dashboard.js:519
+   - `<div data-group="worker">` — dashboard.js:440 + 520
+     Zeilen für: WriterAG, CoderAG, ResearcherAG, EditorAG — dashboard.js:520
+   - Pro Zeile: <select data-field="provider">, <input data-field="model">,
+     <span class="llm-status-dot">, <td data-agent-cap="…"> — dashboard.js:428–437
+   - Pro Table: 5 Mode-Buttons (Only Free / Local First / Cost Optimized /
+     Balanced / Performance) — dashboard.js:443–444
+
+3. Service-Cards (Web Search + TTS, Spec 522–524)
+   - Card "Web Search" via renderServiceCard(..., 'web_search', ...) — dashboard.js:523
+   - Card "TTS"        via renderServiceCard(..., 'tts',        ...) — dashboard.js:524
+   - Pro Card: <select data-llm-svc data-svc-field="provider">,
+     <select data-llm-svc data-svc-field="model">, <input data-svc-field="key">,
+     <button data-svc-test>, <span data-svc-badge>, <div data-svc-status-line>
+     — dashboard.js:473–492
+
+4. Mode-Buttons (Spec 443–444)
+   - 5 pro Table × 2 Tables = 10 .llm-mode-btn (system + worker) — dashboard.js:443–444
+
+5. Save-Hinweis (Spec 526–528)
+   - Hinweistext "Änderungen werden erst nach Klick auf Save …" — dashboard.js:526–528
+
+Globale Page-Wrapper:
+- <div id="content"> Wurzel — dashboard.js:508
+- outer flex column (height calc, padding, scroll) — dashboard.js:509
+- 2-Spalten-Grid für die zwei Agent-Tables — dashboard.js:518
+- 2-Spalten-Grid für die zwei Service-Cards (data-svc-section) — dashboard.js:522
+
+### Event-Listener (von showLLMConfig() gewired)
+Spec-genannte Listener vs. tatsächlich vorgefunden — alle bestätigt mit file:line:
+
+1. `#llm-import-file-btn` click → triggers `#llm-file-input`.click()
+   — dashboard.js:776
+2. `#llm-file-input` change → processKeyText(file.text(), 'file:'+name)
+   — dashboard.js:777–781
+3. `#llm-keys-input` paste → processKeyText (50ms-Delay) — dashboard.js:782
+4. `#llm-keys-input` change → processKeyText wenn Wert nicht leer — dashboard.js:783
+5. document 'change' Delegation (Agent + Service) — dashboard.js:786–817
+   - select[data-llm-svc="agent"][data-field="provider"] → updateAgentModelPlaceholder + queueAgentChange — 786–792
+   - input[data-llm-svc="agent"][data-field="model"]   → queueAgentChange (model only) — 793–794
+   - select[data-svc-field]                             → refreshServiceCard + queueServiceChange — 796–804
+   - select[data-svc-field="model"]                     → queueServiceChange({model}) — 805–808
+   - input[data-svc-field="key"]                        → queueServiceChange({inline_key}) + refreshServiceCard — 809–816
+6. document 'click' Delegation (Mode + Test) — dashboard.js:820–853
+   - .llm-mode-btn  → active-Toggle + autoRoute(group, mode) — 821–826
+   - [data-svc-test] → fetch POST /api/llm/test + statusLine update — 827–852
+
+Initial-Load-Aufrufe (kein Listener, aber wichtig für Page-Boot):
+- refreshProviders()   — dashboard.js:856
+- loadAgents()         — dashboard.js:857
+- fetch('/api/llm/service') — dashboard.js:859
+
+Save-Orchestration:
+- window.llmPendingChanges (Modul-globales Change-Tracker-Objekt) — dashboard.js:3793
+- window.__llmQueueAgentChange / __llmQueueServiceChange — dashboard.js:738, 748
+- window.__llmRefreshAfterSave = () => … (vom globalSave aufgerufen) — dashboard.js:886–900
+
+### Backend-Endpoints (FE-Nutzung)
+Aufgelistet mit jeder Aufrufstelle im showLLMConfig-Range:
+
+| Methode | Pfad              | FE-Aufruf (file:line)                | Aufgerufen durch                               |
+|---------|-------------------|---------------------------------------|------------------------------------------------|
+| GET     | /api/llm/providers | dashboard.js:3718 (via loadProviderRegistry, aufgerufen 419) | Initial-Registry-Load (Provider-Liste)         |
+| POST    | /api/llm/test       | dashboard.js:665, dashboard.js:837    | testAndSave() + Service-Test-Button            |
+| POST    | /api/llm/keys       | dashboard.js:672                      | testAndSave() — speichert verifizierten Key    |
+| GET     | /api/llm/keys       | dashboard.js:682, 700, 800, 813, 868, 897 | refreshProviders + Service-Card-Refresh       |
+| GET     | /api/llm/agents     | dashboard.js:693                      | loadAgents()                                    |
+| POST    | /api/llm/agents     | dashboard.js:754 (body: {mode, group})| autoRoute(group, mode) — Mode-Button-Klick      |
+| GET     | /api/llm/service    | dashboard.js:859, dashboard.js:890    | Persisted Web-Search+TTS Config lesen          |
+| (FE ruft NICHT auf — implizit via globalSave) |                    |                                       |                                                |
+| POST    | /api/llm/service    | (von globalSave gerufen, nicht in showLLMConfig) | Persisted Service-Config schreiben (Doku-Beleg llm_models.py:247) |
+| POST    | /api/llm/auto_assign | (von /api/llm/keys POST implizit getriggert? Nein — eigener Endpoint, nirgendwo im FE aufgerufen) | Siehe Hinweis unten |
+
+Hinweis /api/llm/auto_assign:
+- llm_keys.py:37 deklariert den Endpoint, ABER das FE ruft ihn nirgendwo auf
+  (kein `fetch('/api/llm/auto_assign')` in dashboard.js).
+- Vermutlich Legacy aus früher Auto-Routing-Phase.
+
+### Backend-Endpoints (Implementation vorhanden?)
+Alle vom FE genutzten Endpoints haben ein Backend-Pendant. Belegt mit grep:
+
+| Methode | Pfad                  | Vorhanden? | Backend-Beleg (file:line)                  |
+|---------|-----------------------|------------|---------------------------------------------|
+| GET     | /api/llm/providers     | JA         | src/gnom_hub/api/endpoints/llm_models.py:110 |
+| POST    | /api/llm/test          | JA         | src/gnom_hub/api/endpoints/llm_keys.py:30    |
+| POST    | /api/llm/keys          | JA         | src/gnom_hub/api/endpoints/llm_keys.py:15    |
+| GET     | /api/llm/keys          | JA         | src/gnom_hub/api/endpoints/llm_keys.py:10    |
+| GET     | /api/llm/agents        | JA         | src/gnom_hub/api/endpoints/llm_agents.py:14  |
+| POST    | /api/llm/agents        | JA         | src/gnom_hub/api/endpoints/llm_agents.py:76  |
+| GET     | /api/llm/service       | JA         | src/gnom_hub/api/endpoints/llm_models.py:233 |
+| POST    | /api/llm/service       | JA         | src/gnom_hub/api/endpoints/llm_models.py:247 |
+| POST    | /api/llm/auto_assign   | JA (FE nutzt nicht) | src/gnom_hub/api/endpoints/llm_keys.py:37 |
+| POST    | /api/llm/test_agent    | JA (FE nutzt nicht) | src/gnom_hub/api/endpoints/llm_agents.py:131 |
+| GET     | /api/llm/routing_insights | JA (FE nutzt nicht) | src/gnom_hub/api/endpoints/llm_agents.py:175 |
+
+Verifikations-Befehl:
+  grep -rn "llm/test\|llm/keys\|llm/agents\|llm/service\|llm/providers\|llm/auto_assign\|llm/test_agent\|llm/routing_insights" \
+       src/gnom_hub/api/ --include="*.py"
+
+Zusätzliche Beobachtung (nicht-spec, evtl. für Audit relevant):
+- /api/llm/keys POST triggert intern check_and_update_models() als Background-Task
+  (llm_keys.py:24–26 → llm_models.py — exakte Zeile für check_and_update_models
+  müsste verifiziert werden).
+- POST /api/llm/agents hat zwei Pfade: explizit (body = {name:{provider,model}})
+  und Auto-Routing (body = {mode, group}). FE nutzt nur den Auto-Routing-Pfad.
+- Agent-Listen (system/worker) sind im Backend hardcoded in llm_agents.py:9–11 —
+  diese müssen mit src/gnom_hub/core/agent_names.py konsistent sein (Frozen Contract).
+
+### Frozen-Contract-Cross-Check (agent_names.py)
+Spec nennt 8 Gnome als Frozen Contract. Verifikation:
+- System (4): SoulAG, WatchdogAG, GeneralAG, SecurityAG — dashboard.js:519 ✓
+                llm_agents.py:9 ✓
+- Worker (4): WriterAG, CoderAG, ResearcherAG, EditorAG — dashboard.js:520 ✓
+                llm_agents.py:10 ✓
+
+### Globale Side-Effects von showLLMConfig()
+- Setzt window.llmPendingChanges.agents__ephemeral auf undefined (löscht per-row leftovers) — dashboard.js:411
+- Definiert window.__llmQueueAgentChange — dashboard.js:738
+- Definiert window.__llmQueueServiceChange — dashboard.js:748
+- Definiert window.__llmRefreshAfterSave — dashboard.js:886
+- Ruft trackView('llm') auf — dashboard.js:406
+- Setzt selectedId = null — dashboard.js:407
+- Ruft updateSaveBadge() (falls definiert) — dashboard.js:736, 746, 881
+
+### Method-Hinweise
+Diese Baseline ist eine reine Bestandsaufnahme. Keine Code-Änderungen.
+Verifiziert via:
+- read src/gnom_hub/frontend/dashboard.js:405–901 + 3713–3730 + 3786–3810
+- read src/gnom_hub/api/endpoints/llm_keys.py:1–73
+- read src/gnom_hub/api/endpoints/llm_agents.py:1–181
+- read src/gnom_hub/api/endpoints/llm_models.py:100–129, 220–268
+- grep -rn "llm/test\|llm/keys\|llm/agents\|llm/service\|llm/providers" \
+       src/gnom_hub/api/ --include="*.py"
+- grep -n "fetch('" src/gnom_hub/frontend/dashboard.js (gefiltert 405–901)
+- grep -n "addEventListener" src/gnom_hub/frontend/dashboard.js (gefiltert 405–901)
