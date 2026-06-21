@@ -92,6 +92,12 @@ Backend-Endpoints via `/api/llm/*` (alle lt. Baseline vorhanden und implementier
   - (b) Save-Button zusätzlich inline am Seitenende
   - Empfehlung: (a) — Hinweistext präziser formulieren
 
+**6. Mode-Buttons kaputt** (Severity: Critical)
+- **Datei:Zeile:** `dashboard.js:865-886` autoRoute()
+- **Symptom:** Klick auf Free Models / Local First / Cost Optimized / Balanced / Performance macht visuell nichts
+- **Root-Cause:** autoRoute() verweist noch auf `<input data-agent="..." data-field="model">` und ruft `updateAgentModelPlaceholder(inp)` auf — beides existiert nach dem 3cc92a8-Refactor nicht mehr. Model-Feld ist jetzt `<select>`, updateAgentModelPlaceholder wurde durch populateAgentModels ersetzt.
+- **Fix:** 5 Zeilen ändern in autoRoute() — siehe Status-Tabelle oben.
+
 ---
 
 ## Beobachtungen aus Backend-Endpoints
@@ -149,6 +155,7 @@ Jeder Fix: ~30 Zeilen JS. Test: pytest darf nicht regressieren (LLM-Page hat akt
 | 3. Capabilities-Spalte | ✅ DONE | `dashboard.js:435` (data-agent-caps-col), `:602` (updateAgentCapsColumn), `:802` (loadAgents) | node --check OK; aus provider.caps befüllt |
 | 4. Caps (DB)-Spalte | ✅ DONE | `dashboard.js:437` (data-agent-cap, schon vorhanden), `:817-826` (loadAgents) | node --check OK; zeigt `provider/model [caps]` |
 | 5. Save-Hinweis | ⏸ Optional | nicht implementiert (out of scope für 1. Iteration) | — |
+| 6. **Mode-Buttons (Free Models / Local First / Cost Optimized / Balanced / Performance)** | **❌ BROKEN** | `dashboard.js:865-886` autoRoute() — User-Feedback 2026-06-21 22:29 | verweist noch auf `<input>` statt `<select>` (Merge-Konflikt im 3cc92a8-Commit) |
 
 **Geänderte Dateien:**
 - `src/gnom_hub/frontend/dashboard.js` (showLLMConfig + helpers) — Cache-Buster v=25 → v=26

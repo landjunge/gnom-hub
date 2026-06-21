@@ -872,12 +872,16 @@ async function showLLMConfig() {
       if (r.ok && d.agents) {
         d.agents.forEach(a => {
           const sel = document.querySelector(`select[data-agent="${a.name}"][data-field="provider"]`);
-          const inp = document.querySelector(`input[data-agent="${a.name}"][data-field="model"]`);
+          const modelSel = document.querySelector(`select[data-agent="${a.name}"][data-field="model"]`);
           if (sel) sel.value = a.provider || '';
-          if (inp) inp.value = a.model || '';
+          if (modelSel) {
+            populateAgentModels(modelSel, a.provider || '');
+            modelSel.value = a.model || '';
+          }
           queueAgentChange(a.name, a.provider, a.model);
-          updateAgentModelPlaceholder(inp);
+          updateAgentCapsColumn(a.name, a.provider || '');
         });
+        fetch('/api/llm/keys').then(r => r.ok ? r.json() : {}).then(kdb => refreshAgentStatusDots(kdb));
         status(`Auto-routing (${mode}) queued for ${group}: ${d.agents[0].provider}/${d.agents[0].model}. Click Save.`, '#00e5ff');
       } else {
         status(`Auto-routing failed: ${d.info || d.status || 'unknown'}`, '#FF007F');
