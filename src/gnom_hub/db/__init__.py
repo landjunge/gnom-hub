@@ -5,6 +5,7 @@ from gnom_hub.db.system_repo import (  # noqa: F401
     get_state_value, set_state_value,
     get_active_project, get_language,
     log_audit_event, cleanup_old_data,
+    log_security_audit, SECURITY_AUDIT_MAX_ROWS, SECURITY_AUDIT_KEEP_ROWS,
     log_blockade, get_blockades_for_agent,
     delete_blockade, clear_agent_blockades,
     clear_all_blockades, get_blockade_count,

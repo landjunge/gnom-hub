@@ -153,7 +153,7 @@ def clean_all():
     # Alle nicht-essentiellen Tabellen leeren.
     # soul_memory wird BEHALTEN — ist das Lern-Gedächtnis von Gnom.
     # Soll explizit via eigenem Endpoint oder manuell gelöscht werden.
-    for tbl in ['chat','audit_log','prompt_versions','capabilities','showbox_presentations',
+    for tbl in ['chat','audit_log','security_audit_log','prompt_versions','capabilities','showbox_presentations',
                 'explainable_outputs','agent_messages','swarm_callbacks','agent_capabilities',
                 'workflows','workflow_tasks','token_budget_logs','token_budget_alerts']:
         try: conn.execute(f'DELETE FROM {tbl}')

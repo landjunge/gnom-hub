@@ -1,4 +1,5 @@
 # system_repo.py — System state, audit, and maintenance operations
+import hashlib
 import json
 import sys
 import os
@@ -115,6 +116,87 @@ def _enforce_audit_cap(conn):
             """, (n - AUDIT_LOG_KEEP_ROWS,))
     except sqlite3.Error as e:
         logger.error(f"[DB] audit_log cap failed: {e}")
+
+
+# ── SecurityAG Audit (Refactor-Schritt 4, Owner-Decision B 2026-06-21) ────────
+# Dedizierte Audit-Tabelle für SecurityAG-Aktionen. Eigener Cap (2000/1600) verhindert
+# Verlust älterer Security-Events bei hohem allgemeinen Audit-Aufkommen. content_hash
+# bildet eine schwache Hash-Chain (sha256[:16] von target + result + prev_hash_prefix) —
+# Manipulation an einer Zeile ist über die Kette detektierbar (siehe Option C für
+# stärkere Garantien). Siehe docs/refactor-permissions/owner-decision.md.
+SECURITY_AUDIT_MAX_ROWS = 2000
+SECURITY_AUDIT_KEEP_ROWS = 1600
+
+
+def _compute_security_audit_hash(conn, target: str, result: str) -> str:
+    """sha256(target | result | prev_hash_prefix)[:16] — schwache Hash-Chain."""
+    try:
+        prev_row = conn.execute(
+            "SELECT content_hash FROM security_audit_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        prev_prefix = (prev_row["content_hash"] if prev_row and prev_row["content_hash"] else "")[:8]
+        payload = f"{target}|{result}|{prev_prefix}"
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+    except sqlite3.Error:
+        # Fallback: hash ohne prev_prefix (Kette unterbrochen, aber Eintrag bleibt eindeutig)
+        return hashlib.sha256(f"{target}|{result}".encode("utf-8")).hexdigest()[:16]
+
+
+def log_security_audit(agent: str, action_type: str, target: str,
+                       result: str, severity: str = "medium",
+                       perms_snapshot: list = None,
+                       content_hash: str = None,
+                       trace_id: str = None):
+    """Schreibt einen SecurityAG-Audit-Eintrag. idempotent gegen DB-Errors.
+
+    Felder:
+      - timestamp (ISO-8601 UTC), agent (z.B. "SecurityAG"),
+        action_type (z.B. "security_write" | "security_run" | "security_browser" |
+        "security_crawl"), target (Dateiname/CMD/URL), result ("allowed" | "denied" |
+        "error"), severity ("low" | "medium" | "high"), perms_snapshot (JSON-Liste der
+        aktiven Permissions), content_hash (sha256[:16], schwache Hash-Chain),
+        trace_id (optional, für Korrelation mit normalem audit_log).
+    """
+    if result not in ("allowed", "denied", "error"):
+        logger.error(f"[DB] log_security_audit: invalid result={result!r}, defaulting to 'error'")
+        result = "error"
+    if severity not in ("low", "medium", "high"):
+        severity = "medium"
+    perms_json = json.dumps(list(perms_snapshot) if perms_snapshot else [])
+    try:
+        with get_db_conn() as conn:
+            with conn:
+                if content_hash is None:
+                    content_hash = _compute_security_audit_hash(conn, target, result)
+                conn.execute("""
+                    INSERT INTO security_audit_log
+                        (timestamp, agent, action_type, target, result,
+                         severity, perms_snapshot, content_hash, trace_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    agent, action_type, target[:500], result, severity,
+                    perms_json, content_hash, trace_id,
+                ))
+                _enforce_security_audit_cap(conn)
+    except sqlite3.Error as e:
+        logger.error(f"[DB] Failed to save security_audit_log entry: {e}")
+
+
+def _enforce_security_audit_cap(conn):
+    try:
+        n = conn.execute("SELECT COUNT(*) FROM security_audit_log").fetchone()[0]
+        if n > SECURITY_AUDIT_MAX_ROWS:
+            conn.execute("""
+                DELETE FROM security_audit_log
+                WHERE id IN (
+                    SELECT id FROM security_audit_log
+                    ORDER BY timestamp ASC, id ASC
+                    LIMIT ?
+                )
+            """, (n - SECURITY_AUDIT_KEEP_ROWS,))
+    except sqlite3.Error as e:
+        logger.error(f"[DB] security_audit_log cap failed: {e}")
 
 
 def cleanup_old_data(days_chat: int = 7, days_soul: int = 30):

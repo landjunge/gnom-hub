@@ -300,6 +300,15 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
     name = (agent or {}).get("name", "Unknown")
 
     # SoulAG darf Dateien schreiben (User erlaubt)
+    # ── Refactor-Kontext 2026-06-21 ────────────────────────────────────────
+    # Vor agent_definitions.py-Refactor: SoulAG hatte godmode → verify_write
+    # wurde via diesen Bypass erreicht und die Pfad-Validierung lief normal.
+    # Nach Refactor: SoulAG hat ['read', 'evolve', 'crawl'] — kein write mehr.
+    # SoulAG wird in action_handlers.py:15-30 KONTROLLIERT geblockt (Message:
+    # "[System: SoulAG hat keine Schreibberechtigung.]") BEVOR verify_write
+    # aufgerufen wird. Dieser Bypass ist damit toter Code, wird aber für
+    # Defense-in-Depth und mögliche zukünftige Rückkehr von write zu SoulAG
+    # beibehalten. Siehe docs/refactor-permissions/dependent-changes.md.
     if name.lower() == "soulag":
         pass
 
@@ -446,6 +455,16 @@ def verify_cmd(agent, cmd):
     role = (agent or {}).get("role", "")
 
     # SoulAG darf Shell-Befehle ausführen (User erlaubt)
+    # ── Refactor-Kontext 2026-06-21 ────────────────────────────────────────
+    # Vor agent_definitions.py-Refactor: SoulAG hatte godmode → verify_cmd
+    # wurde via diesen Bypass erreicht und das Whitelist- und Path-System
+    # lief normal. Nach Refactor: SoulAG hat ['read', 'evolve', 'crawl'] —
+    # kein run mehr. SoulAG wird in action_handlers.py:33-40 KONTROLLIERT
+    # geblockt (Message: "[System: SoulAG hat keine SHELL-Berechtigung.]")
+    # BEVOR verify_cmd aufgerufen wird. Dieser Bypass ist damit toter Code,
+    # wird aber für Defense-in-Depth und mögliche zukünftige Rückkehr von
+    # run zu SoulAG beibehalten. Siehe docs/refactor-permissions/
+    # dependent-changes.md.
     if name.lower() == "soulag":
         pass
 

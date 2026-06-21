@@ -34,6 +34,39 @@ def get_audit_log(agent: str = None, event: str = None, limit: int = 50):
     except sqlite3.Error: return []
 
 
+@router.get("/api/security-audit-log")
+def get_security_audit_log(
+    agent: str = None,
+    action_type: str = None,
+    result: str = None,
+    severity: str = None,
+    since: str = None,
+    limit: int = 100,
+):
+    """SecurityAG-spezifischer Audit-Endpoint (Refactor-Schritt 4, Owner-Decision B).
+
+    Filter: agent (z.B. "SecurityAG"), action_type (z.B. "security_write"), result
+    ("allowed"|"denied"|"error"), severity ("low"|"medium"|"high"), since (ISO-8601).
+    Default limit=100 (höher als /api/audit-log, weil SecurityAG-Audit dediziert ist
+    und selten geladen werden muss).
+    """
+    try:
+        with get_db_conn() as conn:
+            q = "SELECT * FROM security_audit_log"
+            conds, args = [], []
+            if agent: conds.append("agent = ?"); args.append(agent)
+            if action_type: conds.append("action_type = ?"); args.append(action_type)
+            if result: conds.append("result = ?"); args.append(result)
+            if severity: conds.append("severity = ?"); args.append(severity)
+            if since: conds.append("timestamp >= ?"); args.append(since)
+            if conds: q += " WHERE " + " AND ".join(conds)
+            q += " ORDER BY timestamp DESC LIMIT ?"
+            args.append(min(max(int(limit), 1), 1000))
+            return [dict(r) for r in conn.execute(q, args).fetchall()]
+    except sqlite3.Error as e:
+        return {"error": str(e)}
+
+
 @router.get("/metrics")
 def prometheus_metrics():
     from fastapi.responses import PlainTextResponse

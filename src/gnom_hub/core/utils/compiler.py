@@ -199,7 +199,7 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
     # Clean temporary and session-bound tables in target DB copy
     try:
         conn = sqlite3.connect(str(db_dest))
-        for tbl in ["audit_log", "explainable_outputs", "graceful_degradation_failures", 
+        for tbl in ["audit_log", "security_audit_log", "explainable_outputs", "graceful_degradation_failures",
                     "token_budget_logs", "token_budget_alerts", "showbox_presentations"]:
             try:
                 conn.execute(f"DELETE FROM {tbl}")

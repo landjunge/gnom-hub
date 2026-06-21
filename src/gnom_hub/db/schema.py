@@ -70,6 +70,29 @@ CREATE TABLE IF NOT EXISTS blockade_log (
     status TEXT DEFAULT 'blocked'
 );
 
+-- ── SecurityAG-Audit (Refactor-Schritt 4, Owner-Decision B 2026-06-21) ────────
+-- Dedizierte Tabelle für SecurityAG-Aktionen (write/run/browser/crawl). Strukturierte
+-- Spalten + content_hash für Tamper-Evidence (sha256 mit prev_hash-Prefix für schwache
+-- Hash-Chain). Idempotente Migration: läuft bei jedem Hub-Start ohne Datenverlust.
+-- Siehe docs/refactor-permissions/owner-decision.md + audit-impl.md.
+CREATE TABLE IF NOT EXISTS security_audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    agent TEXT NOT NULL,
+    action_type TEXT NOT NULL,    -- 'security_write' | 'security_run' | 'security_browser' | 'security_crawl'
+    target TEXT NOT NULL,          -- Dateiname, Befehl, URL etc.
+    result TEXT NOT NULL,          -- 'allowed' | 'denied' | 'error'
+    severity TEXT NOT NULL,        -- 'low' | 'medium' | 'high'
+    perms_snapshot TEXT NOT NULL,  -- JSON-Liste der zum Zeitpunkt aktiven Permissions
+    content_hash TEXT,             -- sha256(target + result + prev_hash_prefix)[:16], nullable
+    trace_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_sec_audit_agent_ts
+    ON security_audit_log(agent, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_sec_audit_action_type
+    ON security_audit_log(action_type);
+
 CREATE TABLE IF NOT EXISTS prompt_versions (
     id TEXT PRIMARY KEY,
     agent TEXT NOT NULL,

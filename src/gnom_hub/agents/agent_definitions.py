@@ -1,6 +1,52 @@
 """Agent-Definitionen für Gnom-Hub.
 
 8 Agenten (4 System + 4 Worker), jeder mit sys_prompt und DE/EN-Direktive.
+
+═══════════════════════════════════════════════════════════════════════════════
+  PERMISSION-REFACTOR — SINGLE-SOURCE-OF-TRUTH (Stand 2026-06-21)
+═══════════════════════════════════════════════════════════════════════════════
+
+Diese Datei (`AGENT_DEFINITIONS`) ist die **einzige Quelle für Runtime-
+Permissions** im Gnom-Hub. Alle anderen Stellen — insbesondere
+`action_handlers.py`, `tool_registry.py`, `soul_initializer.py`,
+`router.py`, `agent_base.py` — lesen `permissions` HIER und propagieren
+die Liste via `get_soul(name)` (siehe `soul/soul_initializer.py:30-81`).
+
+Konfigurationsdateien mit Bezug zu Agent-Permissions:
+
+  • `config/agents/*.json` (8 Dateien — eine pro Agent)
+    **Status: DORMANT / UNGELESEN.** Die Dateien enthalten ausschließlich
+    Slider-Werte (`creativity`, `precision`, `speed`, `critical_thinking`,
+    `obedience`) und Prompt-Blöcke. KEIN `permissions`- oder
+    `capabilities`-Feld. Belegt durch:
+      $ grep -rn "config/agents" src/ \
+          --include="*.py" --include="*.js" --include="*.ts" \
+          --include="*.tsx" --include="*.jsx" --include="*.html" \
+          --include="*.css"
+      (0 Treffer — 2026-06-21)
+    → Capabilities kommen NUR aus dieser Datei. Falls die JSON-Dateien
+    jemals als Single-Source-of-Truth dienen sollen, muss ein Loader
+    geschrieben werden, der sie mit `AGENT_DEFINITIONS` synchronisiert
+    oder ersetzt. Aktuell: User-Tuning-Layer ohne Code-Konsument.
+
+  • `data/presets/default/permissions.json`
+    **Status: DORMANT / SCHEMA-DATENLEICHE.** Schema `PermissionsConfig`
+    existiert in `core/preset_schema.py:308-314`. Datei wird via
+    `core/preset_loader.py:53,195,302-305` registriert, validiert und
+    geschrieben — aber KEIN Runtime-Pfad liest `permissions.matrix` für
+    tatsächliche Permission-Entscheidungen. Token-Vokabular (`read,
+    write, exec, network, memory, admin`) ist INKOMPATIBEL mit dem
+    Runtime-Vokabular in dieser Datei (`read, write, run, godmode,
+    desktop, crawl, evolve, web_search, browser, @job, ...`).
+
+Vocabulary A (diese Datei, AKTIV) ist die einzige Wahrheit für Runtime-
+Permissions. Schritt 3 des Refactors (siehe
+`docs/refactor-permissions/dependent-changes.md`) hat die abhängigen
+Code-Stellen verifiziert: alle 3 neuen harten Brüche (SoulAG/WatchdogAG/
+EditorAG verlieren SHELL-Zugriff) werden kontrolliert mit klaren
+System-Meldungen abgefangen — kein silent crash.
+
+═══════════════════════════════════════════════════════════════════════════════
 """
 AGENT_DEFINITIONS = {
     "soulag": {
@@ -30,12 +76,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Souverän",
             "directive": "Souverän – einziger User-Ansprechpartner. Liest interne Gedankengänge mit. Übersetzt User-Wünsche in klare Aufgaben für GeneralAG. Exklusiv-Zugriff auf soul_memory, context.db, soul_passive.db. Kommuniziert über Showbox mit dynamischen Buttons. Farbe: Cyan.",
-            "permissions": ["read", "godmode", "evolve", "crawl"]
+            "permissions": ["read", "evolve", "crawl"]
         },
         "en": {
             "character": "The Sovereign",
             "directive": "Sovereign – sole user interface. Reads internal thoughts. Translates user intent into clear tasks for GeneralAG. Exclusive write access to soul_memory, context.db, soul_passive.db. Communicates via Showbox with dynamic buttons. Color: Cyan.",
-            "permissions": ["read", "godmode", "evolve", "crawl"]
+            "permissions": ["read", "evolve", "crawl"]
         }
     },
     "generalag": {
@@ -80,12 +126,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Technische Sicherheitsfilter",
             "directive": "Technischer Sicherheitsfilter. Überwacht Worker-Aktionen. Blockt sofort bei klar gefährlichen Befehlen. Bei Unklarheit: Showbox-Rückfrage. Farbe: Rot.",
-            "permissions": ["read", "run", "godmode"]
+            "permissions": ["read"]
         },
         "en": {
             "character": "The Technical Safety Filter",
             "directive": "Technical safety filter. Monitors worker actions. Blocks immediately on clearly dangerous commands. When unclear: showbox query. Color: Red.",
-            "permissions": ["read", "run", "godmode"]
+            "permissions": ["read"]
         }
     },
     "securityag": {
@@ -107,12 +153,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der System Operator",
             "directive": "System-Operator mit höchsten Rechten. Voller Dateisystem-Zugriff. Repariert Dateien überall. Spricht ausschließlich mit SoulAG. Farbe: Lila.",
-            "permissions": ["read", "write", "run", "godmode", "desktop", "crawl", "evolve"]
+            "permissions": ["read", "write", "run", "godmode"]
         },
         "en": {
             "character": "The System Operator",
             "directive": "System operator with highest rights. Full filesystem access. Repairs files everywhere. Speaks exclusively with SoulAG. Color: Purple.",
-            "permissions": ["read", "write", "run", "godmode", "desktop", "crawl", "evolve"]
+            "permissions": ["read", "write", "run", "godmode"]
         }
     },
     "coderag": {
@@ -132,12 +178,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Coder",
             "directive": "Coder. Schreibt, bearbeitet und debuggt Code. Empfängt nur von GeneralAG. Ergebnisse nur über Showbox mit dynamischen Buttons. Kein normaler Chat. Farbe: Orange.",
-            "permissions": ["read", "write", "run", "godmode"]
+            "permissions": ["read", "write", "run"]
         },
         "en": {
             "character": "The Coder",
             "directive": "Coder. Writes, edits and debugs code. Receives only from GeneralAG. Results only via Showbox with dynamic buttons. No normal chat. Color: Orange.",
-            "permissions": ["read", "write", "run", "godmode"]
+            "permissions": ["read", "write", "run"]
         }
     },
     "writerag": {
@@ -207,12 +253,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Editor",
             "directive": "Editor. Überprüft, refactored und qualitätssichert Code und Texte. Empfängt nur von GeneralAG. Ergebnisse nur über Showbox mit dynamischen Buttons. Kein normaler Chat. Farbe: Pink.",
-            "permissions": ["read", "write", "run", "godmode"]
+            "permissions": ["read", "write"]
         },
         "en": {
             "character": "The Editor",
             "directive": "Editor. Reviews, refactors and quality-assures code and texts. Receives only from GeneralAG. Results only via Showbox with dynamic buttons. No normal chat. Color: Pink.",
-            "permissions": ["read", "write", "run", "godmode"]
+            "permissions": ["read", "write"]
         }
     }
 }
