@@ -156,7 +156,8 @@ def bake_ollama_models(dist_dir: Path, selected: list) -> dict:
     return info
 
 
-def bake_supergnom(name: str, template: str = "chat", selected_models: list = None) -> str:
+def bake_supergnom(name: str, template: str = "chat", selected_models: list = None,
+                   preset_selections: dict = None) -> str:
     # 1. Normalise name
     safe_name = "".join([c if c.isalnum() or c == "_" else "" for c in name.lower()]).strip("_")
     if not safe_name:
@@ -237,13 +238,66 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
             
             p_bytes = compiled_defs[k]["sys_prompt"].encode("utf-8")
             prompt_hashes[v["name"]] = hashlib.sha256(p_bytes).hexdigest()
-            
+
+        # ── Per-Agent-Preset-Selection: apply chosen presets to agents ──
+        if preset_selections:
+            try:
+                from gnom_hub.core.utils.preset_service import get_preset
+                for agent_key, slug in preset_selections.items():
+                    if not slug or agent_key not in compiled_defs:
+                        continue
+                    p = get_preset(slug)
+                    if not p:
+                        continue
+                    agent_preset = p.get("agents", {}).get(agent_key, {})
+                    if not agent_preset:
+                        continue
+                    # Apply prompt override (concatenate to sys_prompt as banner)
+                    if agent_preset.get("prompt"):
+                        banner = (
+                            f"\n\n--- Active Preset: {p.get('name', slug)} ---\n"
+                            f"Focus: {agent_preset.get('focus', 'N/A')}\n"
+                            f"Target: {agent_preset.get('target', 'auto')}\n\n"
+                            f"{agent_preset['prompt']}"
+                        )
+                        compiled_defs[agent_key]["sys_prompt"] = compiled_defs[agent_key]["sys_prompt"] + banner
+                    # Apply per-agent settings
+                    for k in ("creativity", "obedience", "target", "model_override"):
+                        if k in agent_preset and agent_preset[k] is not None:
+                            # Store in a sub-dict that runtime can read
+                            compiled_defs[agent_key].setdefault("_baked_settings", {})[k] = agent_preset[k]
+                    print(f"Baking preset '{p.get('name', slug)}' for {compiled_defs[agent_key].get('name', agent_key)}")
+            except Exception as e:
+                logging.getLogger(__name__).warning("Preset-Selection-Anwendung fehlgeschlagen: %s", e)
+
         target_def_file = src_dest / "gnom_hub" / "agents" / "agent_definitions.py"
         with open(target_def_file, "w", encoding="utf-8") as f:
             f.write(f"AGENT_DEFINITIONS = {repr(compiled_defs)}\n")
             
         with open(cfg_dest / "manifest.json", "w", encoding="utf-8") as f:
             json.dump(prompt_hashes, f, indent=2)
+
+        # Write the selected presets to the dist as a standalone JSON so the
+        # baked supergnom can read them at runtime without the full presets.json.
+        if preset_selections:
+            try:
+                from gnom_hub.core.utils.preset_service import get_preset
+                baked_presets = {}
+                for agent_key, slug in preset_selections.items():
+                    if not slug:
+                        continue
+                    p = get_preset(slug)
+                    if p:
+                        baked_presets[slug] = p
+                if baked_presets:
+                    with open(cfg_dest / "presets.baked.json", "w", encoding="utf-8") as f:
+                        json.dump(baked_presets, f, indent=2, ensure_ascii=False)
+                    # Also write a flat preset_selections map for runtime lookup
+                    with open(cfg_dest / "preset_selections.json", "w", encoding="utf-8") as f:
+                        json.dump({"selections": preset_selections}, f, indent=2, ensure_ascii=False)
+                    print(f"Baked {len(baked_presets)} preset(s) for {len(preset_selections)} agent-selection(s)")
+            except Exception as e:
+                logging.getLogger(__name__).warning("presets.baked.json write failed: %s", e)
     except Exception as e:
         print(f"Error baking prompts: {e}")
 

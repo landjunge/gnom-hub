@@ -12,6 +12,7 @@ class BakeRequest(BaseModel):
     embed_api_key: bool = True
     preset_file: str = ""
     selected_models: list = []
+    preset_selections: dict = {}  # {agent_name: preset_slug} per-agent selection
 
 # Async Bake — Background Jobs
 import threading, uuid, time as _time
@@ -31,7 +32,7 @@ def _do_bake(job_id: str, req: 'BakeRequest'):
                     set_state_value("agent_settings", data["agent_settings"])
         from gnom_hub.core.utils.compiler import bake_supergnom
         from pathlib import Path
-        path = bake_supergnom(req.name, req.template, req.selected_models)
+        path = bake_supergnom(req.name, req.template, req.selected_models, req.preset_selections)
         dist_path = Path(path)
         if req.embed_api_key:
             key = os.getenv("DEEPSEEK_API_KEY", "") or os.getenv("OPENROUTER_KEY_FREE_1","")
