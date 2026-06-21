@@ -69,6 +69,55 @@ All notable changes to this project will be documented in this file.
   `TestVerifyCmd.test_protected_path_instant_blocked`), 2 skipped — unrelated
   to this change set; verified by re-running them on a clean `git stash`.
 
+## [Unreleased — Permission-Refactor] - 2026-06-21
+### Added
+- **SecurityAG-Audit-Log (Option B "Strukturiert")**: Dedizierte
+  `security_audit_log`-Tabelle (11 Spalten + 2 Indices) in
+  `db/schema.py`, Helper `log_security_audit()` mit SHA-256-`content_hash` +
+  Cap-Mechanik (2000/1600) in `db/system_repo.py`, Hook in
+  `action_handlers.py` für 4 Action-Branches (WRITE×2 / SHELL / CRAWL /
+  BROWSER). Trigger: `name=='securityag' AND ('godmode' OR 'run' OR
+  'write') in perms`. Severity `high` wenn godmode, sonst `medium`.
+  API-Endpoint `GET /api/security-audit-log` mit 6 Filtern
+  (agent/action_type/result/severity/since/limit).
+- **`docs/refactor-permissions/`** (10 Files): vollständige Audit-Trail
+  für den Permission-Refactor (inventory, design-question, owner-decision,
+  diff-definitions, dependent-changes, audit-impl, test-report, FINAL_TABLE).
+
+### Changed
+- **Agent-Permissions Least-Privilege-Refactor**: Alle 8 Agenten auf
+  minimal-nötige Permissions reduziert. Vorher hatten 5/8 Agenten
+  `godmode`; jetzt nur noch SecurityAG. Permission-Matrix (de == en
+  pro Agent):
+  - SoulAG:       [read,write,run,godmode,evolve] → [read, evolve, crawl]
+  - GeneralAG:    [read, @job]                    → [read, @job] (unverändert)
+  - WatchdogAG:   [read,write,run,godmode,…]      → [read]
+  - SecurityAG:   [read,write,run,godmode,…]      → [read, write, run, godmode]
+  - CoderAG:      [read,write,run,@job,godmode]   → [read, write, run]
+  - WriterAG:     [read, write, crawl]            → [read, write, crawl] (unverändert)
+  - ResearcherAG: [read,crawl,web_search,browser] → [read,crawl,web_search,browser] (unverändert)
+  - EditorAG:     [read,write,run,@job,godmode]   → [read, write]
+- **`action_handlers.py`**: Defense-in-Depth-Doku der Permission-Checks
+  (alle entfernten Capabilities werden durch kontrollierte
+  "keine-X-Berechtigung"-Fehlermeldungen abgefangen — keine silent
+  crashes).
+- **`gatekeeper.py`**: Hinweis auf jetzt-tote SoulAG-Bypasses (SoulAG
+  verliert godmode, erreicht die Bypasses nicht mehr).
+
+### Test Coverage
+- **`tests/test_permission_refactor.py`** (new, 16 tests, 15 PASS + 1 SKIP):
+  Negativ-Tests für alle entfernten Capabilities (WatchdogAG [SHELL]+[WRITE],
+  EditorAG [SHELL], CoderAG ohne browser-Tool, GeneralAG unverändert) plus
+  parametrisierte Matrix-Konsistenz (alle 8 Agents matchen Zielmatrix) plus
+  Only-SecurityAG-has-godmode-Assertion.
+- SecurityAG-Audit-Hook: 22/22 Runtime-Tests PASS (im
+  `docs/refactor-permissions/audit-impl.md` dokumentiert; Migration
+  idempotent, 3 Szenarien, Negativ-Test, Cap 2001→1600, API-Endpoint,
+  Multi-Action, Sonderfälle Brainstorm-Override/Auto-Approve).
+- Full suite: **565 passed** (550 baseline + 15 new), 4 pre-existing fails
+  (`test_protected_path_instant_blocked`, 3× `test_workspace_config`
+  path-validierung) byte-identisch zur Baseline — keine Regressionen.
+
 ## [v1.2.0] - 2026-06-10
 ### Added
 - **Permissions erweitert**: Alle Worker haben godmode. GeneralAG hat write/run/godmode.

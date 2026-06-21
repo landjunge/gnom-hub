@@ -4,7 +4,7 @@
 > *8 Agenten. 180 Module. Null Cloud-Abhängigkeiten. Keine unkontrollierte Ausbreitung.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-510_passed,_5_pre--existing_env__failures-green.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-565_passed,_4_pre--existing_env__failures-green.svg)](#)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#)
 [![Module](https://img.shields.io/badge/Module-180-blue.svg)](#)
