@@ -239,4 +239,123 @@ def delete_preset_endpoint(preset_id: str = PathParam(..., min_length=1, max_len
     return {"status": "ok", "deleted": preset_id}
 
 
+# ───────────────────────────────────────────────────────────────────── #
+# Per-Agent CRUD (Layer A: presets.json mit agent_groups + presets.<slug>
+# .agents.<name>) — verwendet gnom_hub.core.utils.preset_service
+# ───────────────────────────────────────────────────────────────────── #
+
+@router.get("/groups")
+def get_agent_groups_endpoint():
+    """Liefert die System + Worker Agent-Gruppen aus presets.json."""
+    try:
+        from gnom_hub.core.utils.preset_service import get_agent_groups
+        return get_agent_groups()
+    except Exception as e:
+        logger.warning("get_agent_groups_endpoint failed: %s", e)
+        return {"system": ["soulag", "watchdogag", "generalag", "securityag"],
+                "worker": ["coderag", "researcherag", "writerag", "editorag"]}
+
+
+@router.get("/layer-a/list")
+def list_layer_a_presets_endpoint():
+    """Listet Presets aus Layer A (presets.json) — Summary."""
+    try:
+        from gnom_hub.core.utils.preset_service import list_presets
+        return list_presets()
+    except Exception as e:
+        logger.warning("list_layer_a_presets_endpoint failed: %s", e)
+        return []
+
+
+@router.get("/layer-a/{slug}")
+def get_layer_a_preset_endpoint(slug: str = PathParam(..., min_length=1, max_length=120)):
+    """Volles Preset aus Layer A."""
+    try:
+        from gnom_hub.core.utils.preset_service import get_preset
+        p = get_preset(slug)
+        if not p:
+            raise HTTPException(status_code=404, detail=f"Preset '{slug}' nicht gefunden.")
+        return p
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("get_layer_a_preset_endpoint failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/layer-a/{slug}/agents/{agent_name}")
+def update_layer_a_preset_agent_endpoint(
+    slug: str = PathParam(..., min_length=1, max_length=120),
+    agent_name: str = PathParam(..., min_length=1, max_length=64),
+    body: dict = None,
+):
+    """Updated ein einzelnes Agent-Feld in einem Layer-A-Preset."""
+    try:
+        from gnom_hub.core.utils.preset_service import update_preset_agent
+        if not body or not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="Body muss ein Dict mit Agent-Feldern sein")
+        ok = update_preset_agent(slug, agent_name, body)
+        if not ok:
+            raise HTTPException(status_code=404, detail=f"Preset '{slug}' oder Agent '{agent_name}' nicht gefunden.")
+        return {"status": "ok", "slug": slug, "agent": agent_name, "updated": list(body.keys())}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("update_layer_a_preset_agent_endpoint failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/layer-a")
+def create_layer_a_preset_endpoint(body: dict = None):
+    """Legt ein neues Preset in Layer A an."""
+    try:
+        from gnom_hub.core.utils.preset_service import create_preset
+        if not body or "name" not in body:
+            raise HTTPException(status_code=400, detail="Body braucht 'name'")
+        slug = create_preset(name=body["name"], description=body.get("description", ""))
+        return {"status": "ok", "slug": slug}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("create_layer_a_preset_endpoint failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/layer-a/{slug}/clone")
+def clone_layer_a_preset_endpoint(
+    slug: str = PathParam(..., min_length=1, max_length=120),
+    body: dict = None,
+):
+    """Klont ein Layer-A-Preset."""
+    try:
+        from gnom_hub.core.utils.preset_service import clone_preset
+        if not body or "name" not in body:
+            raise HTTPException(status_code=400, detail="Body braucht 'name'")
+        new_slug = clone_preset(slug, body["name"])
+        if not new_slug:
+            raise HTTPException(status_code=404, detail=f"Preset '{slug}' nicht gefunden.")
+        return {"status": "ok", "slug": new_slug}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("clone_layer_a_preset_endpoint failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/layer-a/{slug}")
+def delete_layer_a_preset_endpoint(slug: str = PathParam(..., min_length=1, max_length=120)):
+    """Löscht ein Layer-A-Preset (nicht 'default')."""
+    try:
+        from gnom_hub.core.utils.preset_service import delete_preset
+        ok = delete_preset(slug)
+        if not ok:
+            raise HTTPException(status_code=404, detail=f"Preset '{slug}' nicht löschbar (existiert nicht oder ist 'default').")
+        return {"status": "ok", "deleted": slug}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("delete_layer_a_preset_endpoint failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 __all__ = ["router"]
