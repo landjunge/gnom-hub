@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- **Presets-Management: Schema v2 + Per-Agent-UI + Layer-A CRUD API**
+  (Commits `659a663` + `256296a`). Layer-A-Schema (`presets.json`) erweitert
+  von 4 Worker-Agents auf alle 8 (4 System + 4 Worker) mit per-Agent-Feldern
+  (`prompt`/`focus`/`target`/`creativity`/`obedience`/`model_override`/
+  `enabled`). Schema-Marker (`_schema_version=1`, `_schema_generation=1`,
+  `_deprecation_notice`) detektieren Migrationen; alte Top-Level-Keys
+  (`prompts`/`focus`/`targets`) bleiben als Layer-A-Fallback erhalten.
+  Service-Layer (`preset_service.py`) hat neue Methoden `get_agent_groups`,
+  `list_presets`, `get_preset`, `get_preset_agent`, `update_preset_agent`,
+  `create_preset`, `clone_preset`, `delete_preset`. API: 7 neue
+  Layer-A-Endpoints (`/api/presets/groups`, `/layer-a/list`,
+  `/layer-a/{slug}`, `/layer-a/{slug}/agents/{name}` PUT, `/layer-a` POST,
+  `/layer-a/{slug}/clone`, `/layer-a/{slug}` DELETE). Frontend: neuer
+  "Presets"-Button in Top-Bar, Modal mit System/Worker-Sub-Tabs,
+  Per-Agent-Cards mit Save-on-change. Neue Datei
+  `src/gnom_hub/frontend/presets_management.js` (329 Zeilen).
+  Doku: `docs/presets-management/schema-migration.md`.
 - **MiniMax als multimodaler Single-Key**: MiniMax-Caps in
   `infrastructure/llm/providers.py` und `core/provider_registry.py` (beide
   Einträge) auf `["text", "vision", "image", "audio", "video", "music",
