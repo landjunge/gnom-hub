@@ -43,6 +43,17 @@ All notable changes to this project will be documented in this file.
   (`tests/test_frontend_llm_providers.py`).
 
 ### Changed
+- **Agent sys_prompts an User-Spec angepasst** (`src/gnom_hub/agents/agent_definitions.py`):
+  SoulAG koordiniert jetzt explizit das Security-Tribunal (Analyse, Empfehlung an
+  User via Showbox, Entscheidung bleibt beim User). GeneralAG trägt jetzt
+  Git-Management + Worker-Performance-Tracking als dokumentierte Rollen (delegiert
+  Commits an CoderAG, nutzt `coordination.db`/`find_best_agent_for_task()` für
+  Worker-Auswahl). WatchdogAG ist strikter gefasst: prüft Workspace-Pfade,
+  kompromisslose Blockade von System-Pfaden (`src/gnom_hub/`, `config/`, `.env`,
+  …), `darf nichts freigeben` (Approve bleibt User/SecurityAG-override). SecurityAG
+  ist jetzt Ressourcen-/Rechte-Manager mit Whitelist- und LLM-Routing-Verantwortung
+  als Hauptrollen; die System-Operator/godmode-Fähigkeiten bleiben als sekundäres
+  Sicherheitsnetz. **Keine Code-Logik geändert** — nur Prompt-Verhalten.
 - **SmartRouter.get_best_model**: Replaced hardcoded lists containing dead
   model names (`claude-3-5-sonnet-20241022`, `poolside/laguna-xs.2:free`,
   `nemotron-3-nano-omni-30b-a3b-reasoning`, `deepseek-v4-flash`) with a
