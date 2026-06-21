@@ -2748,10 +2748,37 @@ window.tuningRender_bake = async function(agentId) {
   html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:3px;">SuperGNOM-Name</label><input id="tbake-name" placeholder="z.B. meine_agenten" style="width:100%;max-width:400px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:4px;padding:8px;font-size:0.8rem;"></div>';
 
   // Preset-Auswahl
-  html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:3px;">Preset (optional)</label><select id="tbake-preset" style="width:100%;max-width:400px;background:rgba(0,0,0,0.3);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:8px;font-size:0.8rem;">';
+  html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:3px;">Preset (optional, alle Agents)</label><select id="tbake-preset" style="width:100%;max-width:400px;background:rgba(0,0,0,0.3);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:8px;font-size:0.8rem;">';
   html += '<option value="">— Kein Preset (aktuellen Zustand backen) —</option>';
   presets.forEach(p => { html += '<option value="' + p.file + '">' + escapeHtml(p.name) + '</option>'; });
   html += '</select></div>';
+
+  // Per-Agent Preset-Auswahl (v2 schema, sets preset per agent)
+  const agents8 = [
+    {key: 'soulag',      label: '🧠 SoulAG',      group: 'system'},
+    {key: 'watchdogag',  label: '🐕 WatchdogAG',  group: 'system'},
+    {key: 'generalag',   label: '🎩 GeneralAG',   group: 'system'},
+    {key: 'securityag',  label: '🛡️ SecurityAG', group: 'system'},
+    {key: 'writerag',    label: '✍️ WriterAG',    group: 'worker'},
+    {key: 'coderag',     label: '💻 CoderAG',     group: 'worker'},
+    {key: 'researcherag',label: '🔬 ResearcherAG',group: 'worker'},
+    {key: 'editorag',    label: '📝 EditorAG',    group: 'worker'},
+  ];
+  html += '<div style="border:1px solid rgba(0,229,255,0.25);border-radius:6px;padding:10px;background:rgba(0,229,255,0.04);">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+  html += '<label style="font-size:0.75rem;font-weight:700;color:#0ef;">🎯 Preset pro Agent (v2-Schema)</label>';
+  html += '<span style="font-size:0.6rem;color:rgba(255,255,255,0.4);">überschreibt das globale Preset für den jeweiligen Agenten</span>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px;">';
+  agents8.forEach(a => {
+    html += '<div style="display:flex;align-items:center;gap:6px;">';
+    html += '<label style="font-size:0.7rem;min-width:120px;">' + a.label + '</label>';
+    html += '<select class="tbake-agent-preset" data-agent="' + a.key + '" style="flex:1;background:rgba(0,0,0,0.3);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:5px;font-size:0.7rem;">';
+    html += '<option value="">— Default —</option>';
+    presets.forEach(p => { html += '<option value="' + p.file + '">' + escapeHtml(p.name) + '</option>'; });
+    html += '</select></div>';
+  });
+  html += '</div></div>';
 
   // Template
   html += '<div><label style="font-size:0.7rem;display:block;margin-bottom:3px;">Template</label><select id="tbake-tpl" style="width:100%;max-width:400px;background:rgba(0,0,0,0.3);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:8px;font-size:0.8rem;">';
@@ -2855,11 +2882,16 @@ window.tuningDoBake = async function() {
   const withKey = document.getElementById('tbake-api')?.checked;
   const selectedModels = Array.from(document.querySelectorAll('.tbake-model-cb:checked'))
     .map(cb => cb.getAttribute('data-name'));
+  const presetSelections = {};
+  document.querySelectorAll('.tbake-agent-preset').forEach(sel => {
+    const v = sel.value;
+    if (v) presetSelections[sel.getAttribute('data-agent')] = v;
+  });
   const resultEl = document.getElementById('tbake-result');
   if (!name) { toast('Bitte Namen eingeben', 'warning'); return; }
   resultEl.innerHTML = '<span style="color:#fa0;">⏳ Starte Bake-Job...</span>';
   try {
-    const body = {name, template: tpl, embed_api_key: withKey, selected_models: selectedModels};
+    const body = {name, template: tpl, embed_api_key: withKey, selected_models: selectedModels, preset_selections: presetSelections};
     if (preset) body.preset_file = preset;
     const start = await api('POST', '/admin/bake/start', body);
     if (!start || !start.job_id) { resultEl.innerHTML = '<span style="color:#f44;">❌ Fehler beim Starten</span>'; return; }
