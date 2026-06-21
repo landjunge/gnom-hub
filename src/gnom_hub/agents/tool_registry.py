@@ -27,8 +27,12 @@ def get_tools_for_agent(soul: dict):
     if "write" in p: a += ["write_file", "generate_image"]
     if "godmode" in p or "run" in p: a += ["run_command", "sys_cmd", "screen_record", "video_merge", "video_edit"]
     if "godmode" in p: a += ["browser"]
+    # Standalone 'browser'-Token gewährt Playwright-Browser ohne godmode/desktop.
+    # Vorher gab es diesen Token als Permission-Eintrag, aber tool_registry hat
+    # ihn nie anerkannt → Inkonsistenz. ResearcherAG profitiert davon.
+    if "browser" in p: a += ["browser"]
     if "desktop" in p: a += ["screenshot", "desktop_action", "browser", "screen_record"]
-    if "evolve" in p: a += ["evolve"]
+    if "evolve" in p: a += ["evolve"]  
     return {t: tm.get(t, t) for t in dict.fromkeys(a)}
 
 def format_tools_prompt(soul: dict, name: str):

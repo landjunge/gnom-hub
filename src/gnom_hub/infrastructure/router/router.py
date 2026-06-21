@@ -100,7 +100,10 @@ def _build_sys(n, sys, agent_name):
         # Tools-Block bauen
         soul_data = _gs(agent_name) or {}
         perms = soul_data.get("permissions", [])
-        perms_str = ", ".join(perms) if perms else "read, write, run"
+        # Defense-in-Depth: Default 'read' (most-restrictive). Früher "read, write, run" → LLM wurde
+        # falsche Permissions suggeriert. Echtes Permission-Enforcement passiert separat in
+        # permissions.py; diese Variable landet NUR im System-Prompt-Block für das LLM.
+        perms_str = ", ".join(perms) if perms else "read"
 
         # Security-Block
         sec = "Systemdateien+Gefährliche Patterns geblockt. Shell via Whitelist."

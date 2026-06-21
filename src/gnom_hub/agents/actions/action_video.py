@@ -56,7 +56,7 @@ def handle_screen_record(ans, ms, agent, perms, wd):
     for m in ms:
         raw = m.group(1).strip()
         opts = _parse_video_opts(raw)
-        if "run" not in perms and "video" not in perms:
+        if "run" not in perms:
             ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine VIDEO-Berechtigung.]")
             continue
 
@@ -210,7 +210,7 @@ def handle_video_merge(ans, ms, agent, perms, wd):
     for m in ms:
         raw = m.group(1).strip()
         opts = _parse_video_opts(raw)
-        if "run" not in perms and "video" not in perms:
+        if "run" not in perms:
             ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine VIDEO-Berechtigung.]")
             continue
 
@@ -271,7 +271,7 @@ def handle_video_edit(ans, ms, agent, perms, wd):
     for m in ms:
         raw = m.group(1).strip()
         opts = _parse_video_opts(raw)
-        if "run" not in perms and "video" not in perms:
+        if "run" not in perms:
             ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine VIDEO-Berechtigung.]")
             continue
 
