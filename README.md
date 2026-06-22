@@ -1,10 +1,13 @@
+> ℹ️ Diese README ist nur Quickstart + Marketing.
+> Verifizierte Architektur-Doku: docs/ARCHITECTURE.md
+
 # 🧠 GNOM-HUB
 
 > **The local-first multi-agent forge that compiles AI swarms into immutable products.**
 > *8 Agents. 180 Modules. Zero cloud dependency. Zero uncontrolled sprawl.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-565_passed,_4_pre--existing_env__failures-green.svg)](#-running-tests)
+[![Tests](https://img.shields.io/badge/Tests-584_passed,_5_pre--existing_env__failures-green.svg)](#-running-tests)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#-agent-roster--frozen-names)
 [![Providers](https://img.shields.io/badge/Providers-44_LLM__Web_Search__TTS-blueviolet.svg)](#-provider-registry)

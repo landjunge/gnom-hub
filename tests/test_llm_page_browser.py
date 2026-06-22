@@ -46,14 +46,18 @@ def test_llm_page_full_workflow():
         page.screenshot(path=f"{SCREENSHOT_DIR}/02_llm_page.png", full_page=True)
 
         # 3. Validiere dass die LLM-Seite geladen wurde
-        print(f"3. Validiere LLM-Seite...")
+        print("3. Validiere LLM-Seite...")
         has_system = page.locator("text=System Agents").count() > 0
         has_worker = page.locator("text=Worker Agents").count() > 0
-        has_special = page.locator("text=Special Services").count() > 0
-        print(f"   System Agents: {has_system}, Worker Agents: {has_worker}, Special Services: {has_special}")
+        # "Special Services" wurde refactored in "Web Search" + "TTS" Service-Cards.
+        has_websearch = page.locator("text=Web Search").count() > 0
+        has_tts = page.locator("text=TTS").count() > 0
+        print(f"   System Agents: {has_system}, Worker Agents: {has_worker}, "
+              f"Web Search: {has_websearch}, TTS: {has_tts}")
         assert has_system, "System Agents nicht gefunden"
         assert has_worker, "Worker Agents nicht gefunden"
-        assert has_special, "Special Services nicht gefunden"
+        assert has_websearch, "Web Search Service-Card nicht gefunden"
+        assert has_tts, "TTS Service-Card nicht gefunden"
 
         # 4. Auto-Route-Modi prüfen
         print(f"4. Prüfe Auto-Route-Modi...")
