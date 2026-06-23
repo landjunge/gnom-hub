@@ -17,14 +17,39 @@ def _safe(wd, f, perms):
     if not perms:
         p = os.path.realpath(os.path.join(wd, f)) if not os.path.isabs(f) else os.path.realpath(f)
         ws_real = os.path.realpath(str(WORKSPACE_DIR))
-        return p if p.startswith(ws_real) else None
+        # off-by-one Schutz: Sibling-Dirs wie "<workspace>-evil/" müssen
+        # geblockt werden. startswith ohne Trenner würde das durchlassen.
+        return p if p == ws_real or p.startswith(ws_real + os.sep) else None
     p = os.path.realpath(f) if os.path.isabs(f) else os.path.realpath(os.path.join(wd, f))
     return p
 
 
+def _workspace_system_paths() -> list[str]:
+    """Workspace-interne Pfade die wie System-Pfade behandelt werden.
+
+    Per WatchdogAG-Vertrag (siehe `agents/agent_definitions.py` sys_prompt
+    Zeile 154) dürfen `src/gnom_hub/`, `config/`, `scripts/`, `run.sh`,
+    `index.html`, `.env` niemals von Workern beschrieben werden. Sie sind
+    in `SYSTEM_PATHS` aber bisher NICHT enthalten — diese Funktion liefert
+    sie relativ zum aktuellen WORKSPACE_DIR, damit `is_system_path` sie
+    automatisch mitprüft.
+    """
+    from pathlib import Path
+    ws = Path(WORKSPACE_DIR)
+    return [
+        str(ws / "src" / "gnom_hub"),
+        str(ws / "config"),
+        str(ws / "scripts"),
+        str(ws / "run.sh"),
+        str(ws / "index.html"),
+        str(ws / ".env"),
+    ]
+
+
 # System-Pfade, die niemals von Workern beschrieben werden dürfen.
 # Vorbelegung mit absoluten Pfaden, die niemals Schreibzugriff haben sollten.
-# Erweitert wird zur Laufzeit über die Konfiguration.
+# Plus workspace-interne Pfade aus dem WatchdogAG-Vertrag (siehe
+# `_workspace_system_paths()` oben).
 SYSTEM_PATHS = [
     "/etc",
     "/usr",
@@ -44,6 +69,11 @@ def is_system_path(path_str: str) -> bool:
     """True, wenn der Pfad (oder ein Vorfahre) in SYSTEM_PATHS liegt.
 
     Realpath-basiert, um Symlink-Tricks abzufangen.
+
+    Die workspace-internen Pfade aus `_workspace_system_paths()` werden
+    bei jedem Aufruf frisch berechnet (statt sie zum Modul-Import-Time
+    fest in SYSTEM_PATHS einzubacken), damit Tests mit tmp-Workspaces
+    funktionieren.
     """
     if not path_str:
         return False
@@ -51,7 +81,8 @@ def is_system_path(path_str: str) -> bool:
         real = os.path.realpath(path_str)
     except (OSError, ValueError):
         return False
-    for sp in SYSTEM_PATHS:
+    all_paths = list(SYSTEM_PATHS) + _workspace_system_paths()
+    for sp in all_paths:
         try:
             sp_real = os.path.realpath(sp)
         except (OSError, ValueError):
