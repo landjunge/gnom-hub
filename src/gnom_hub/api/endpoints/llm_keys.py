@@ -27,6 +27,21 @@ async def save_keys(req: Request, _=Depends(verify_admin)):
     
     return {"status": "ok"}
 
+@router.post("/api/llm/keys/reverify")
+async def reverify_keys():
+    """Manueller Trigger für Key-Re-Verify.
+
+    Hintergrund: Keys die in api_keys.txt als `# UNGÜLTIG:` markiert sind,
+    werden beim normalen Sync ignoriert. Dieser Endpoint zwingt einen
+    Re-Check aller ungültigen Keys — z.B. wenn der User weiß dass ein
+    Billing-Limit abgelaufen ist und der Key wieder gehen sollte.
+
+    Returns: {checked, recovered, still_invalid}
+    """
+    from gnom_hub.infrastructure.llm.desktop_syncer import reverify_invalid_keys
+    return await reverify_invalid_keys(force=True)
+
+
 @router.post("/api/llm/test")
 async def test_key(req: Request):
     j = await req.json()
