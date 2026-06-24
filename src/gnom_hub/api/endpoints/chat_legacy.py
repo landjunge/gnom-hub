@@ -92,14 +92,14 @@ def post_chat(msg: ChatMsg):
 
     if msg.sender == "user" and "@merken" in msg.content.lower():
         import re, uuid
-        from gnom_hub.db import save_soul_fact
-        
+        from gnom_hub.db.soul_repo import save_soul_fact_smart
+
         add_chat_message(get_active_project(), "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
-        
+
         cleaned_content = re.sub(r'(?i)\s*@merken\s*', ' ', msg.content).strip()
         if cleaned_content:
             fact_key = f"user_fact_{uuid.uuid4().hex[:8]}"
-            save_soul_fact(fact_key, f"[source:user] {cleaned_content}", agent="SoulAG", priority="high")
+            save_soul_fact_smart(fact_key, f"[source:user] {cleaned_content}", agent="SoulAG", priority="high")
             add_chat_message(get_active_project(), "System", "soulag", "chat", f"💾 **Fakt gemerkt (hohe Priorität):** \"{cleaned_content}\"", {"type": "chat", "sender": "System"})
             return {"status": "saved", "message": cleaned_content}
         else:

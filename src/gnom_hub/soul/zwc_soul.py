@@ -142,7 +142,7 @@ def extract_facts_from_text(text: str, agent_name: str) -> list:
     saved_keys = []
 
     try:
-        from gnom_hub.db import save_soul_fact
+        from gnom_hub.db.soul_repo import save_soul_fact_smart
     except Exception:
         return []
 
@@ -154,7 +154,7 @@ def extract_facts_from_text(text: str, agent_name: str) -> list:
             # Keine Duplikate pro Agent+Kind
             key = f"thought_{kind}_{_uuid.uuid4().hex[:8]}"
             try:
-                save_soul_fact(
+                save_soul_fact_smart(
                     key,
                     f"[{kind} from {agent_name}] {fact[:250]}",
                     agent="SoulAG",
@@ -169,7 +169,7 @@ def extract_facts_from_text(text: str, agent_name: str) -> list:
     # Zusätzlich: bei jedem Denkprozess einen Meta-Fakt über die Denkaktivität
     if len(text) > 200 and saved_keys:
         try:
-            save_soul_fact(
+            save_soul_fact_smart(
                 f"thought_meta_{_uuid.uuid4().hex[:6]}",
                 f"{agent_name} dachte intensiv nach ({len(text)} Zeichen Denkprozess, ",
                 f"{len(saved_keys)} Erkenntnisse extrahiert) am {_dt.utcnow().strftime('%Y-%m-%d %H:%M')}",

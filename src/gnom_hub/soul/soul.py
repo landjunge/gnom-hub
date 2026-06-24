@@ -1,7 +1,8 @@
 # soul.py — SoulAG Gedächtnis & Automatische Lerneinheit (v3)
 import json, threading, os, re, uuid, logging, time
 from datetime import datetime
-from gnom_hub.db import save_soul_fact, add_chat_message, get_active_project
+from gnom_hub.db import add_chat_message, get_active_project
+from gnom_hub.db.soul_repo import save_soul_fact_smart
 from gnom_hub.infrastructure.router.router import ask_router
 from gnom_hub.core.config import WORKSPACE_DIR
 from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
@@ -42,7 +43,7 @@ def _compute_score(priority: str, age_days: float, injection_count: int = 0) -> 
 
 # ── Periodische Hausputz-Funktion ─────────────────────────────────────────
 _last_cleanup_time = 0
-CLEANUP_INTERVAL = 3600  # 1 Stunde zwischen Hausputz
+CLEANUP_INTERVAL = 1800  # 30 Minuten zwischen Hausputz
 
 def _periodic_cleanup():
     global _last_cleanup_time
@@ -316,7 +317,7 @@ def _save_rules(res: str, prefix=""):
                 if f.get("agent") and f.get("rule"):
                     agent_name = f["agent"]
                     rule_text = prefix + f["rule"]
-                    save_soul_fact(f"evolution_{agent_name}_{uuid.uuid4().hex[:6]}", rule_text, agent="SoulAG")
+                    save_soul_fact_smart(f"evolution_{agent_name}_{uuid.uuid4().hex[:6]}", rule_text, agent="SoulAG")
                     add_chat_message(get_active_project(), "GeneralAG", "generalag", "chat",
                                      f"@user @SoulAG: Regel für {agent_name} gelernt: '{f['rule']}'")
                     try:
@@ -343,7 +344,7 @@ def run_evolution(task: str, hist: str):
 
 def handle_user_feedback(vote: str, comment: str):
     from gnom_hub.core.config import Config
-    save_soul_fact(f"feedback_{uuid.uuid4().hex[:6]}", f"Vote: {vote} | {comment}", agent="SoulAG")
+    save_soul_fact_smart(f"feedback_{uuid.uuid4().hex[:6]}", f"Vote: {vote} | {comment}", agent="SoulAG")
     add_chat_message(get_active_project(), "System", "system", "chat", f"@user Feedback: {vote} | {comment}")
     if Config.SUPERGNOM_MODE:
         return

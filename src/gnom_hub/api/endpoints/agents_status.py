@@ -390,7 +390,8 @@ def export_agent(a_id: str):
 
 @router.post("/api/agents/{a_id}/import")
 def import_agent(a_id: str, data: ImportData):
-    from gnom_hub.db import get_state_value, set_state_value, save_soul_fact
+    from gnom_hub.db import get_state_value, set_state_value
+    from gnom_hub.db.soul_repo import save_soul_fact_smart
     from gnom_hub.db.connection import get_db_conn
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
@@ -399,13 +400,13 @@ def import_agent(a_id: str, data: ImportData):
         all_settings = get_state_value("agent_settings", {})
         merged = {k: data.settings.get(k, DEFAULT_SETTINGS[k]) for k in DEFAULT_SETTINGS}
         all_settings[agent.name.lower()] = merged
-        set_state_value("agent_settings", all_settings)
+        set_state_value("agent_settings", merged)
     if data.soul_facts is not None:
         with get_db_conn() as conn:
             conn.execute("DELETE FROM soul_memory WHERE agent = ?", (agent.name,))
             conn.commit()
         for f in data.soul_facts:
-            save_soul_fact(f.get("key"), f"[source:{agent.name}] {f.get('value','')}", agent="SoulAG", priority=f.get("priority", "medium"))
+            save_soul_fact_smart(f.get("key"), f"[source:{agent.name}] {f.get('value','')}", agent="SoulAG", priority=f.get("priority", "medium"))
     if data.prompt_versions is not None:
         with get_db_conn() as conn:
             conn.execute("DELETE FROM prompt_versions WHERE agent = ?", (agent.name,))

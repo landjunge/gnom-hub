@@ -575,26 +575,42 @@ def query_memory(msg: str, agent_name: str, top_k: int = 6) -> list[str]:
 def save_fact_all_layers(key: str, value: str, priority: str, agent: str):
     """
     Fakt in allen relevanten Layern speichern.
-    Layer 1 (Cache) immer.
-    Layer 2 (Normal DB) immer — via bestehenden save_soul_fact.
+    Layer 2 (Normal DB) immer — via Smart-Dedup-Engine.
+    Layer 1 (Cache) immer — mit der effektiven Key (nach Merge).
     Layer 3 (Passive) nur für high-priority Fakten als Backup.
     """
-    # Layer 1
-    get_cache().put(key, value, priority, agent)
-
-    # Layer 2 — bestehend
     # SoulAG ist der einzige Schreiber in soul_memory.
     # Der Quell-Agent wird im Wert kodiert: "[source:CoderAG] {value}"
+    tagged_value = f"[source:{agent}] {value}" if agent and agent.lower() != "soulag" else value
+
+    # Layer 2 — Smart-Dedup first, damit wir die effektive Key für den Cache kennen.
+    # Engine returnt den canonical key (string) auf success, oder None auf reject.
+    effective_key = key
     try:
-        from gnom_hub.db import save_soul_fact
-        tagged_value = f"[source:{agent}] {value}" if agent and agent.lower() != "soulag" else value
-        save_soul_fact(key, tagged_value, agent="SoulAG", priority=priority)
+        from gnom_hub.db.soul_repo import save_soul_fact_smart
+        result = save_soul_fact_smart(key, tagged_value, agent="SoulAG", priority=priority)
+        if isinstance(result, str):
+            # Aktuelle Engine-API: returnt canonical key oder None
+            effective_key = result or key
+            _log.debug("[Memory] Layer 2 smart-dedup: %s -> %s", key, effective_key)
+        elif isinstance(result, dict):
+            # Forward-compat: dict-Rückgabe (action/key/merged_into)
+            effective_key = result.get("merged_into") or result.get("key") or key
+            _log.debug("[Memory] Layer 2 smart-dedup: %s -> %s (action=%s)",
+                       key, effective_key, result.get("action", "inserted"))
     except Exception as e:
         _log.warning("[Memory] Layer 2 save fehlgeschlagen: %s", e)
 
+    if not effective_key:
+        # Engine hat verworfen — kein Cache-Update, kein Archiv
+        return
+
+    # Layer 1 — Cache mit der effektiven Key (kann nach Merge anders sein)
+    get_cache().put(effective_key, tagged_value, priority, agent)
+
     # Layer 3 — nur high priority als Backup
     if priority == "high":
-        get_passive_db().archive(key, value, priority, "SoulAG")
+        get_passive_db().archive(effective_key, tagged_value, priority, "SoulAG")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

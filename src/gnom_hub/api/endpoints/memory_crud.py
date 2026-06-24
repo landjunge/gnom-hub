@@ -47,18 +47,31 @@ class SoulSaveRequest(BaseModel):
 
 @router.post("/api/soul/save")
 def save_soul_fact(req: SoulSaveRequest, _=Depends(verify_admin)):
-    from gnom_hub.db.connection import get_db_conn
-    now = datetime.now(timezone.utc).isoformat()
-    with get_db_conn() as conn:
-        with conn:
-            existing = conn.execute("SELECT key FROM soul_memory WHERE key = ?", (req.key,)).fetchone()
-            if existing:
-                conn.execute("UPDATE soul_memory SET value = ?, priority = ?, timestamp = ? WHERE key = ?",
-                             (req.value, req.priority, now, req.key))
-            else:
-                conn.execute("INSERT INTO soul_memory (key, value, priority, timestamp, agent) VALUES (?, ?, ?, ?, ?)",
-                             (req.key, req.value, req.priority, now, "SoulAG"))
-    return {"status": "ok"}
+    """
+    Save a SoulAG fact via the Smart-Dedup engine.
+
+    MIN_VALUE_LENGTH check + Jaccard/prefix dedup are delegated to
+    ``save_soul_fact_smart`` (see gnom_hub.db.soul_repo).
+
+    The engine returns:
+      - the canonical (normalized) key on success (inserted/merged/updated);
+      - ``None`` when the fact was rejected (too short or empty).
+
+    HTTP response shape:
+        success:  {"status": "ok",      "action": "saved", "key": "<canonical key>"}
+        reject:   {"status": "rejected", "action": "rejected", "key": "<original key>"}
+    """
+    from gnom_hub.db.soul_repo import save_soul_fact_smart
+
+    effective_key = save_soul_fact_smart(
+        req.key, req.value, agent="SoulAG", priority=req.priority,
+    )
+
+    if effective_key is None:
+        # Engine rejected: too short (< MIN_VALUE_LENGTH) or empty after normalize
+        return {"status": "rejected", "action": "rejected", "key": req.key}
+
+    return {"status": "ok", "action": "saved", "key": effective_key}
 
 
 @router.get("/api/soul/all/{agent_name}")

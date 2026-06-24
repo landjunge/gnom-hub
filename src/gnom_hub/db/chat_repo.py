@@ -48,7 +48,16 @@ class SQLiteChatRepository(ChatRepository):
     def save_flexsoul(self, fs: FlexSoul) -> Await:
         with get_db_connection() as conn:
             v = json.dumps({"short_term": [{"id": str(m.id), "agent_id": str(m.agent_id), "role": m.role, "content": m.content, "timestamp": m.timestamp.isoformat()} for m in fs.short_term], "long_term": fs.long_term_summary})
-            conn.execute("INSERT OR REPLACE INTO soul_memory (key, value, timestamp) VALUES (?, ?, ?)", (f"flexsoul:{fs.agent_id}", v, fs.last_updated.isoformat())); conn.commit()
+            # Per-Agent Working-Memory via Smart-Dedup.
+            # Key `flexsoul:<agent_id>` normalisiert sich zu `flexsoul_<agent_id>`
+            # (deterministisch + einzigartig pro Agent → kein Prefix-Match).
+            # Jaccard-Collisionen zwischen Agenten sind unwahrscheinlich, da jeder
+            # Eintrag eine andere `agent_id`-UUID in der JSON trägt → unterschiedliche Tokens.
+            from gnom_hub.db.soul_repo import save_soul_fact_smart
+            save_soul_fact_smart(
+                f"flexsoul:{fs.agent_id}", v, agent="System", priority="high",
+            )
+            conn.commit()
         return Await(fs)
     def clear_history(self, agent_id: UUID) -> Await:
         with get_db_connection() as conn: conn.execute("DELETE FROM chat WHERE agent_id = ?", (str(agent_id),)); conn.commit(); return Await(True)
