@@ -51,9 +51,12 @@ ignore = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "httpx>=0.24", "pytest-asyncio", "playwright>=1.40"]   
+dev = ["pytest>=7.0", "httpx>=0.24", "pytest-asyncio", "playwright>=1.40"]
+audio = [
+    "mc707 @ git+ssh://git@github.com/landjunge/mc707.git",
+]
 
-[tool.pytest.ini_options]
+[tool.pytest.ini_options] 
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
