@@ -11,12 +11,12 @@
 #   src/gnom_hub/infrastructure/llm/providers.py.
 # =====================================================================
 
-# --- Alle auf OpenRouter Free (Llama 3.3 70B Instruct) ---
-coderag = openrouter | meta-llama/llama-3.3-70b-instruct:free
-securityag = openrouter | meta-llama/llama-3.3-70b-instruct:free
-researcherag = openrouter | meta-llama/llama-3.3-70b-instruct:free
-generalag = openrouter | meta-llama/llama-3.3-70b-instruct:free
-soulag = openrouter | meta-llama/llama-3.3-70b-instruct:free
-writerag = openrouter | meta-llama/llama-3.3-70b-instruct:free
-editorag = openrouter | meta-llama/llama-3.3-70b-instruct:free
-watchdogag = openrouter | meta-llama/llama-3.3-70b-instruct:free
+# --- Alle auf MiniMax M3 (multimodal primary) ---
+coderag = minimax | MiniMax-M3
+securityag = minimax | MiniMax-M3
+researcherag = minimax | MiniMax-M3
+generalag = minimax | MiniMax-M3
+soulag = minimax | MiniMax-M3
+writerag = minimax | MiniMax-M3
+editorag = minimax | MiniMax-M3
+watchdogag = minimax | MiniMax-M3

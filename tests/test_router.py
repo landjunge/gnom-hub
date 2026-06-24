@@ -6,103 +6,103 @@ from unittest.mock import patch, MagicMock
 
 class TestGetObedienceInstructions:
     def test_level_1_blindly_follows(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(1)
         assert "BLINDLY" in result
         assert "hinterfrage nichts" in result.lower()
 
     def test_level_3_balanced(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(3)
         assert "BALANCED" in result
         assert "ausgewogenes" in result.lower()
 
     def test_level_5_highly_autonomous(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(5)
         assert "HIGHLY AUTONOMOUS" in result
         assert "eigenständig" in result.lower()
 
     def test_level_2_strongly_follows(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(2)
         assert "STRONGLY" in result
 
     def test_level_4_cautious(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(4)
         assert "CAUTIOUS" in result
 
     def test_invalid_level_falls_back_to_balanced(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(99)
         assert "BALANCED" in result
 
     def test_zero_level_falls_back_to_balanced(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(0)
         assert "BALANCED" in result
 
     def test_negative_level_falls_back_to_balanced(self):
-        from gnom_hub.infrastructure.router.router import _get_obedience_instructions
+        from gnom_hub.core.prompt.builder import _get_obedience_instructions
         result = _get_obedience_instructions(-1)
         assert "BALANCED" in result
 
 
 class TestGetBehavioralInstructions:
     def test_default_settings_returns_empty(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({})
         assert result == ""
 
     def test_formal_personality_included(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"personality": 1})
         assert "formal" in result.lower()
 
     def test_casual_personality_included(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"personality": 5})
         assert "casual" in result.lower()
 
     def test_detailed_response_style(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"response_style": 5})
         assert "detailed" in result.lower() or "exhaustive" in result.lower()
 
     def test_concise_response_style(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"response_style": 1})
         assert "concise" in result.lower()
 
     def test_safety_risk_tolerance(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"risk_tolerance": 1})
         assert "safety" in result.lower()
         assert "robustness" in result.lower()
 
     def test_bold_risk_tolerance(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"risk_tolerance": 5})
         assert "bold" in result.lower()
 
     def test_professional_personality(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"personality": 2})
         assert "professional" in result.lower()
 
     def test_warm_personality(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"personality": 4})
         assert "warm" in result.lower()
 
     def test_unknown_personality_value_ignored(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"personality": 99})
         assert result == ""
 
     def test_combined_settings_all_applied(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({
             "personality": 1, "response_style": 5, "risk_tolerance": 4
         })
@@ -112,7 +112,7 @@ class TestGetBehavioralInstructions:
         assert "innovative" in result.lower()
 
     def test_irrelevant_settings_ignored(self):
-        from gnom_hub.infrastructure.router.router import _get_behavioral_instructions
+        from gnom_hub.core.prompt.builder import _get_behavioral_instructions
         result = _get_behavioral_instructions({"foo": "bar", "baz": 42})
         assert result == ""
 
@@ -200,12 +200,15 @@ class TestResolve:
 
 
 class TestBuildSys:
-    def test_no_agent_name_returns_sys_unchanged(self):
+    def test_no_agent_name_returns_error_marker(self):
+        """Phase-2: ohne agent_name baut der Builder mit Default 'Agent'.
+        config/agents/Agent.json existiert nicht → Error-Marker statt Crash.
+        """
         from gnom_hub.infrastructure.router.router import _build_sys
         with patch("gnom_hub.infrastructure.router.router.get_state_value", return_value={}):
             result = _build_sys("coderag", "original sys", None)
         assert isinstance(result, str)
-        assert "original sys" in result
+        assert "⚠️ FEHLER" in result
 
     def test_obedience_injected(self):
         from gnom_hub.infrastructure.router.router import _build_sys
@@ -214,6 +217,9 @@ class TestBuildSys:
         assert "=== OBEDIENCE" in result
 
     def test_custom_prompt_appended(self):
+        """Phase-2: custom_prompt und preset_prompt werden via
+        _apply_post_processing in builder.py an den Prompt angehängt.
+        Patches zielen auf die Source-Module (builder macht lazy imports)."""
         from gnom_hub.infrastructure.router.router import _build_sys
         with patch("gnom_hub.infrastructure.router.router.get_state_value") as mock_gsv:
             def side_effect(key, default=None):
@@ -223,24 +229,33 @@ class TestBuildSys:
                     return "Web Development"
                 return default
             mock_gsv.side_effect = side_effect
-            with patch("gnom_hub.infrastructure.router.router.get_preset_prompt", return_value="PRESET"):
-                with patch("gnom_hub.infrastructure.router.router.get_active_version", return_value=None):
+            with patch("gnom_hub.core.utils.preset_service.get_preset_prompt", return_value="PRESET"):
+                with patch("gnom_hub.core.utils.evolution_v2.get_active_version", return_value=None):
                     result = _build_sys("coderag", "sys", "CoderAG")
         assert "CUSTOM SUFFIX" in result
         assert "PRESET" in result
 
-    def test_sys_prompt_override(self):
+    def test_sys_prompt_override_removed(self):
+        """Phase-2: REGRESSION-TEST — der versteckte sys_prompt-Override ist
+        ENTFERNT. Settings mit sys_prompt-Key dürfen NICHT den System-Prompt
+        ersetzen. Stattdessen kommt der JSON-Identity-Text aus config/agents.
+        """
         from gnom_hub.infrastructure.router.router import _build_sys
         with patch("gnom_hub.infrastructure.router.router.get_state_value") as mock_gsv:
             def side_effect(key, default=None):
                 if key == "agent_settings":
                     return {"coderag": {"sys_prompt": "OVERRIDDEN SYS"}}
+                if key == "active_preset":
+                    return ""  # kein preset prefix
                 return default
             mock_gsv.side_effect = side_effect
-            with patch("gnom_hub.infrastructure.router.router.get_active_version", return_value=None):
+            with patch("gnom_hub.core.utils.evolution_v2.get_active_version", return_value=None):
                 result = _build_sys("coderag", "original sys", "CoderAG")
-        assert "OVERRIDDEN SYS" in result
-        assert "original sys" not in result
+        assert "OVERRIDDEN SYS" not in result, (
+            "REGRESSION: sys_prompt-Override-Pfad ist zurück! Sollte in Phase 2 entfernt sein."
+        )
+        # Stattdessen kommt der JSON-Identity-Text
+        assert "CoderAG" in result
 
     def test_slider_error_does_not_crash(self):
         from gnom_hub.infrastructure.router.router import _build_sys
@@ -252,13 +267,14 @@ class TestBuildSys:
         assert "OBEDIENCE" in result
 
     def test_evolution_rules_injected(self):
+        """Phase-3: evolution rules sind Context-Fetcher in context.py.
+        Mockt den Fetcher direkt (statt get_active_version) weil sonst
+        allowed_contexts-Filterung den Aufruf verhindert."""
         from gnom_hub.infrastructure.router.router import _build_sys
-        mock_version = MagicMock()
-        mock_version.modifications = ["Regel 1", "Regel 2"]
         with patch("gnom_hub.infrastructure.router.router.get_state_value", return_value={}):
-            with patch("gnom_hub.infrastructure.router.router.get_active_version",
-                       return_value=mock_version):
-                result = _build_sys("coderag", "sys", "CoderAG")
+            with patch("gnom_hub.core.prompt.context._get_evolution_rules",
+                       return_value="[KONTEXT:evolution_rules]\n=== SELBSTVERBESSERTE REGELN ===\n- Regel 1\n- Regel 2"):
+                result = _build_sys("generalag", "sys", "GeneralAG")
         assert "Regel 1" in result
         assert "Regel 2" in result
         assert "SELBSTVERBESSERTE REGELN" in result

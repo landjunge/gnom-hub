@@ -104,52 +104,8 @@ class BaseAgent:
                     pass
 
                 from gnom_hub.soul import soul_instance
-                sys_prompt = soul_instance.inject_context(self.sys, text, agent_name=self.n) if soul_instance is not None else self.sys
 
-                # GeneralAG bekommt Worker-Statistiken + offene Contexts
-                if self.n.lower() == "generalag":
-                    try:
-                        from gnom_hub.soul.memory_layers import get_coordination_db, get_context_db
-                        summary = get_coordination_db().get_worker_summary()
-                        if summary:
-                            sys_prompt += f"\n\n=== WORKER STATISTIKEN ===\n{summary}"
-                        ctx_summary = get_context_db().get_summary_for_generalag()
-                        if ctx_summary:
-                            sys_prompt += f"\n\n{ctx_summary}"
-                    except Exception:
-                        pass
-
-                # WatchdogAG + SecurityAG bekommen aktuelle Regeln aus RulesDB
-                if self.n.lower() in ("watchdogag", "securityag"):
-                    try:
-                        from gnom_hub.soul.memory_layers import get_rules_db
-                        rules = get_rules_db().get_rules_for_agent(self.n)
-                        if rules:
-                            rule_lines = [f"  [{r['rule_type']}] {r['pattern']} — {r['reason']}" for r in rules[:15]]
-                            sys_prompt += f"\n\n=== AKTUELLE REGELN ===\n" + "\n".join(rule_lines)
-                    except Exception:
-                        pass
-
-                from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
-                wd = get_workspace_dir()
-                fs = ", ".join(os.listdir(wd)) if os.path.exists(wd) else ""
-                sys_prompt += f"\n\n[WORKSPACE: {wd} | Dateien: {fs}]"
-
-                # Chat-Verlauf injizieren (letzte 20 Nachrichten)
-                try:
-                    from gnom_hub.db import get_chat_history
-                    _history = get_chat_history(limit=20)
-                    if _history:
-                        _ctx = "\n\n=== CHAT-VERLAUF (letzte 20) ===\n"
-                        for _h in reversed(_history):
-                            _s = _h.get('sender', '?')
-                            _c = _h.get('content', '')[:200]
-                            _ctx += f"[{_s}]: {_c}\n"
-                        sys_prompt += _ctx
-                except Exception:
-                    pass
-
-                r = await _to_thread(ask_router, text, sys_prompt, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
+                r = await _to_thread(ask_router, text, None, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
 
                 # Timeout-Check (600s = 10 Min, war 300s)
                 if time.time() - _processing_start > 600:
@@ -158,8 +114,10 @@ class BaseAgent:
                 processed = ""
                 if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
                     from gnom_hub.agents.actions.action_handlers import process_actions
+                    from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
                     soul = get_soul(self.n) or {"permissions": ["read"]}
                     perms = soul.get("permissions", [])
+                    wd = get_workspace_dir()  # Phase-2-Bugfix: wd war im alten Injections-Block definiert
                     processed = await _to_thread(process_actions, r.content, {"name": self.n}, perms, False, wd)
 
                     import re as _re

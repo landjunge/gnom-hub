@@ -98,3 +98,11 @@ tmp_*.py
 !scripts/setup_macos_shortcut.sh
 !scripts/install.sh
 !scripts/uninstall.sh
+
+# Test artifacts (Golden-Prompt-Snapshots) — regenerated each pytest run
+tests/golden/
+
+# Ad-hoc session artifacts (videos, recordings) — never commit
+*.mov
+*.mp4
+30
