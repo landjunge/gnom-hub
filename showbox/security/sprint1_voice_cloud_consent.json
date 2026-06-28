@@ -1,0 +1,31 @@
+{
+  "capability_id": "voice_speech_recognition_cloud_fallback",
+  "sprint": 1,
+  "owner": "SecurityAG",
+  "created": "2026-07-08",
+  "status": "pre_staged",
+  "trigger": "Browser ohne native SpeechRecognition (Firefox, Opera-Gecko)",
+  "dsgvo_basis": "Art. 6 Abs. 1 lit. a — explizite Einwilligung",
+  "data_flow": {
+    "source": "Browser-Microphone (lokal)",
+    "transit": "TLS-encrypted zu Cloud-Provider",
+    "provider_options": ["Google Cloud Speech", "Azure Cognitive Services", "Whisper-API self-hosted"],
+    "persistence": "NONE — Stream-only, kein Audio-Log, kein Transkript-Log auf Provider-Seite ohne expliziten Opt-In"
+  },
+  "consent_flow": {
+    "step_1_detect": "Capability-Check: typeof SpeechRecognition === 'undefined'",
+    "step_2_prompt": "Modal-Dialog VOR Cloud-Call: 'Diese Funktion nutzt Cloud-Spracherkennung. Deine Audio-Daten werden an {provider} gesendet. Einverstanden?'",
+    "step_3_persist_consent": "localStorage.setItem('voice_cloud_consent', {granted: true, timestamp, provider, session_id})",
+    "step_4_revoke": "Funktion: revokeVoiceCloudConsent() — löscht localStorage-Eintrag, stoppt aktiven Stream"
+  },
+  "ui_components": {
+    "dialog_id": "voice_cloud_consent_modal",
+    "required_elements": ["provider_name", "data_policy_link", "revoke_button", "audio_indicator_while_active"]
+  },
+  "blockade_rules": {
+    "default_state": "BLOCKED",
+    "unlock_condition": "consent.granted === true AND provider.privacy_policy_accepted === true",
+    "audit_log": "soul_audit.db (READ-ONLY by SecurityAG)"
+  },
+  "token_budget_estimate": "~80 Tokens für Consent-Dialog-Logik"
+}

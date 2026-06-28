@@ -1,0 +1,9 @@
+{
+  "id": "dynamic_open_all_pages",
+  "label": "📂 Alle Seiten öffnen",
+  "action": "open_all_html",
+  "scope": "workspace",
+  "created_by": "SecurityAG",
+  "created_at": "2026-07-01",
+  "context": "User wollte alle Seiten sehen — Batch-Open Trigger"
+}

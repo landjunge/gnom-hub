@@ -1,0 +1,89 @@
+{
+  "$schema": "https://gnom-hub.local/schemas/showbox-preset.v1.json",
+  "_meta": {
+    "name": "Agent Calls",
+    "version": "2.0",
+    "updated": "2026-06-27",
+    "author": "Mavis",
+    "purpose": "Direkt-Pings an die 8 Agents — Worker (4) + System (4)",
+    "icon_set": "agent-emoji",
+    "category": "agents",
+    "tags": ["agent-call", "ping", "delegation"]
+  },
+  "_notes": "4 Worker (schreiben via [WRITE:]-Tag), 4 System-Agents (orchestrieren/sichern). Niemals @CoderAG direkt anpingen wenn man es via SoulAG→GeneralAG→CoderAG routen will — User-Mandat 2026-06-27.",
+  "buttons": [
+    {
+      "_group": "Worker",
+      "label": "💻 @CoderAG",
+      "action": "agent_call",
+      "args": {"target": "CoderAG", "message": "ping"},
+      "color": "#ff8c42",
+      "icon": "💻",
+      "tooltip": "CoderAG — Code, HTML, Scripts (Worker)"
+    },
+    {
+      "_group": "Worker",
+      "label": "✍️ @WriterAG",
+      "action": "agent_call",
+      "args": {"target": "WriterAG", "message": "ping"},
+      "color": "#6ddb9c",
+      "icon": "✍️",
+      "tooltip": "WriterAG — Texte, TTS-Scripts (Worker)"
+    },
+    {
+      "_group": "Worker",
+      "label": "🧐 @EditorAG",
+      "action": "agent_call",
+      "args": {"target": "EditorAG", "message": "ping"},
+      "color": "#ff7ab8",
+      "icon": "🧐",
+      "tooltip": "EditorAG — QA, Stil-Logik-Klarheit (Worker)"
+    },
+    {
+      "_group": "Worker",
+      "label": "🔬 @ResearcherAG",
+      "action": "agent_call",
+      "args": {"target": "ResearcherAG", "message": "ping"},
+      "color": "#ffd84d",
+      "icon": "🔬",
+      "tooltip": "ResearcherAG — Fakten, Quellen (Worker)"
+    },
+    {
+      "_group": "System",
+      "label": "🧠 @SoulAG",
+      "action": "agent_call",
+      "args": {"target": "SoulAG", "message": "status"},
+      "color": "#00e5ff",
+      "icon": "🧠",
+      "primary": true,
+      "tooltip": "SoulAG — Zentrales Bewusstsein (User-Interface)"
+    },
+    {
+      "_group": "System",
+      "label": "⚙️ @GeneralAG",
+      "action": "agent_call",
+      "args": {"target": "GeneralAG", "message": "zeig was läuft"},
+      "color": "#4d9fff",
+      "icon": "⚙️",
+      "tooltip": "GeneralAG — Dirigent (delegiert an Worker)"
+    },
+    {
+      "_group": "System",
+      "label": "🔒 @SecurityAG",
+      "action": "agent_call",
+      "args": {"target": "SecurityAG", "message": "status"},
+      "color": "#c47bff",
+      "icon": "🔒",
+      "tooltip": "SecurityAG — Whitelist/Capabilities (Radar-Modus)"
+    },
+    {
+      "_group": "System",
+      "label": "🛡️ @WatchdogAG",
+      "action": "agent_call",
+      "args": {"target": "WatchdogAG", "message": "status"},
+      "color": "#ff4d6d",
+      "icon": "🛡️",
+      "tooltip": "WatchdogAG — System-Wächter (Radar-Modus)"
+    }
+  ]
+}

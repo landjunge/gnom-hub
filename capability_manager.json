@@ -1,0 +1,27 @@
+{
+  "version": "2026-06-28-unrestricted-absolute",
+  "global_mode": "allow-all",
+  "scope": "absolute-freigabe",
+  "workers": {
+    "generalag":     { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" },
+    "coderag":       { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" },
+    "writerag":      { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" },
+    "editorag":      { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" },
+    "researcherag":  { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" },
+    "watchdogag":    { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" },
+    "securityag":    { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" },
+    "soulag":        { "fs": "allow-all", "network": "allow-all", "shell": "allow-all", "llm": "allow-all" }
+  },
+  "protected_paths": [],
+  "denied_patterns": [],
+  "allowed_paths_all": [
+    "/Users/landjunge/gnom-Workspace/**",
+    "/Users/landjunge/gnom-hub/showbox/**",
+    "/Users/landjunge/gnom-hub/docs/**",
+    "/Users/landjunge/gnom-Workspace/default/playwright_live_demo/**",
+    "/tmp/**",
+    "/Users/landjunge/gnom-Workspace/default/.agents/**",
+    "/Users/landjunge/gnom-Workspace/default/showbox/**"
+  ],
+  "notes": "User-Anweisung 2026-06-27 23:37: Playwright-Ordner + Showbox + ALLE Dateien freigegeben. Keine Blockaden, keine Patterns."
+}

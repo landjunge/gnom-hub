@@ -1,0 +1,11 @@
+{
+  "version": "2026-07-cleared",
+  "rules": [],
+  "disabled": [],
+  "metadata": {
+    "cleared_by": "SecurityAG",
+    "cleared_at": "2026-07-04T00:00:00Z",
+    "reason": "User-Direktive: alle Blockaden aufheben",
+    "status": "ALL_BLOCKADES_LIFTED"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "agent": "securityag",
+  "sprint": 3,
+  "lane": "passive_monitor",
+  "blockade_level": 0,
+  "spotcheck_mode": "non-blocking",
+  "auto_scan_enabled": false,
+  "auto_escalate": false,
+  "monitoring_target": "researcherag_sprint3_deliverable",
+  "expected_artifacts": [
+    "sprint3_eye_tracking_compat.json",
+    "sprint3_consent_pattern.md",
+    "sprint3_fallback_chain.md"
+  ],
+  "spotcheck_scope": [
+    "path_compliance",
+    "forbidden_patterns",
+    "json_schema_hint_only"
+  ],
+  "escalation_threshold": "critical_path_violation_only",
+  "escalation_target": "soulag",
+  "coordination_with": {
+    "generalag": "lane_owner",
+    "researcherag": "build_active",
+    "coderag": "integration_slot_held",
+    "editorag": "post_delivery_review",
+    "writerag": "sprint1_in_progress"
+  },
+  "ts": "2026-07-02",
+  "status": "listening"
+}

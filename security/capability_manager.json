@@ -1,0 +1,18 @@
+{
+  "default": "allow-all",
+  "agents": {
+    "soulag":     { "fs": "allow-all", "shell": "allow-all", "network": "allow-all" },
+    "generalag":  { "fs": "allow-all", "shell": "allow-all", "network": "allow-all" },
+    "coderag":    { "fs": "allow-all", "shell": "allow-all", "network": "allow-all" },
+    "writerag":   { "fs": "allow-all", "shell": "allow-all", "network": "allow-all" },
+    "editorag":   { "fs": "allow-all", "shell": "allow-all", "network": "allow-all" },
+    "researcherag":{ "fs": "allow-all", "shell": "allow-all", "network": "allow-all" },
+    "watchdogag": { "fs": "allow-all", "shell": "allow-all", "network": "allow-all" },
+    "securityag": { "fs": "allow-all", "shell": "allow-all", "network": "allow-all" }
+  },
+  "workspace": {
+    "path": "/Users/landjunge/gnom-Workspace/default",
+    "scope": "allow-all",
+    "locked_paths": []
+  }
+}

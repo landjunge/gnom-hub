@@ -1,0 +1,67 @@
+# Showbox Format Spec v1.0
+
+## Tag-Syntax
+
+```
+[SHOWBOX:presentation_name]{JSON-PAYLOAD}
+```
+
+**Erlaubte Wrapper:**
+- `[SHOWBOX:name]{...}` — JSON direkt
+- `[SHOWBOX:name]<HTML>...</SHOWBOX>` — reines HTML (Buttons werden trotzdem aus JSON geparst falls vorhanden)
+
+**Erlaubte Patterns** (vom Parser `src/gnom_hub/api/endpoints/chat_legacy.py:142`):
+- `<SHOWBOX:name>...</SHOWBOX>`
+- `[SHOWBOX:name]...[/SHOWBOX]`
+- `[→ Showbox: name]` (vom Renderer nachträglich eingesetzt)
+
+## JSON-Schema
+
+```json
+{
+  "slides": [
+    {
+      "id": "unique_id",                  // optional
+      "title": "Slide-Titel",
+      "subtitle": "Optionaler Untertitel", // optional
+      "content": "HTML / Markdown / Plain",
+      "buttons": [                        // optional, slide-lokale Buttons
+        {"label": "...", "action": "..."}
+      ],
+      "color": "#00e5ff",                 // optional, Agent-Farbe
+      "duration_ms": 20000                // optional, Auto-Advance
+    }
+  ],
+  "buttons": [                            // global, für alle Slides
+    {"label": "Next", "action": "next_slide"},
+    {"label": "Approve", "action": "approve", "decision_id": "..."}
+  ],
+  "meta": {                               // optional
+    "agent": "SoulAG",
+    "created_at": "ISO8601",
+    "tags": ["intro", "demo"]
+  }
+}
+```
+
+## Validierung
+
+- `slides` MUSS ein Array sein (1-20 Einträge empfohlen)
+- `slides[].title` MUSS non-empty sein
+- `slides[].content` KANN leer sein (dann nur Title + Buttons)
+- `buttons` (global + lokal) MUSS action-Feld haben
+- `action` muss aus der Registry kommen (siehe `buttons.md`)
+
+## Quoting-Falle
+
+Single-Quotes vs. Double-Quotes im Agent-Output:
+- ✅ `[SHOWBOX:x]{"slides":[{"title":"Hi"}]}` — funktioniert
+- ⚠️  `[SHOWBOX:x]{'slides':[{'title':'Hi'}]}` — wird per ast.literal_eval gefangen (Fallback)
+- ❌ `[SHOWBOX:x]{slides: [unquoted]}` — Parser scheitert
+
+## Beispiele
+
+Siehe `examples/` Ordner:
+- `welcome.json` — Welcome-Slide beim Hub-Start
+- `agent_intro.json` — Agent-Stellungnahme
+- `file_delivered.json` — Datei wurde via [WRITE:] geschrieben

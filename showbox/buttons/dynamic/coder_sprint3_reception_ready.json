@@ -1,0 +1,17 @@
+{
+  "preset_id": "coder_sprint3_reception_ready",
+  "created_at": "2026-07-02",
+  "context": "coderag_sprint3_reception_slot",
+  "buttons": [
+    {"label": "📥 ResearcherAG-Deliverable empfangen", "action": "coder.receive_sprint3", "style": "primary"},
+    {"label": "🔍 JSON-Kompatibilität prüfen", "action": "coder.check_json_compat", "style": "primary"},
+    {"label": "🔗 Sprint-1-Voice-Spec abgleichen", "action": "coder.crossref_voice_spec", "style": "primary"},
+    {"label": "📋 Integrations-Reihenfolge melden", "action": "coder.report_integration_order", "style": "primary"},
+    {"label": "⏳ Auf ResearcherAG warten", "action": "coder.passive_wait", "style": "ghost"},
+    {"label": "🟢 Lane-Status: Sauber", "action": "coder.lane_clean", "style": "ghost"},
+    {"label": "@GeneralAG · Bereit", "action": "@call:general", "style": "agent"},
+    {"label": "@ResearcherAG · Status?", "action": "@call:researcher", "style": "agent"},
+    {"label": "@EditorAG · Pre-Integration-Preview", "action": "@call:editor", "style": "agent"},
+    {"label": "🔙 Zurück zu Sprint-3-Kickoff", "action": "@call:general_sprint3", "style": "ghost"}
+  ]
+}
