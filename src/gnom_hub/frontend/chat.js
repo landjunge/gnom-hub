@@ -157,10 +157,9 @@ function buildWarRoomHTML() {
     </div>
     
     <div class="chat-bar">
-      <div class="chat-input-wrap" data-help-title="✍️ Chat-Eingabefeld — nur an @GeneralAG" data-help="Deine Nachrichten gehen IMMER an @GeneralAG (der Dirigent). Von dort werden Worker (CoderAG, WriterAG, EditorAG, ResearcherAG) angesteuert. User-Mandat 2026-06-28 04:42.">
-        <span class="chat-target-prefix" style="display:inline-block; padding:6px 8px; margin-right:4px; background:rgba(77,159,255,0.15); border:1px solid rgba(77,159,255,0.4); border-radius:6px; color:#4d9fff; font-weight:600; font-size:0.85rem; white-space:nowrap;" title="Fixer Empfänger — User-Mandat 2026-06-28 04:42">@GeneralAG</span>
+      <div class="chat-input-wrap" data-help-title="✍️ Chat-Eingabefeld" data-help="Tippe hier deine Fragen, Befehle oder Nachrichten ein. Nutze '@' für Agenten (z.B. @bs, @researcherag) und '@@' für Systemkommandos (z.B. @@status).">
         <div class="ac-dropdown" id="ac-dropdown"></div>
-        <textarea id="chat-input" placeholder="schreibe an @GeneralAG — deine Nachricht …" oninput="onChatInput(this)" onkeydown="onChatKey(event)"></textarea>
+        <textarea id="chat-input" placeholder="@bs @research @idea …" oninput="onChatInput(this)" onkeydown="onChatKey(event)"></textarea>
       </div>
       <button class="btn-primary" onclick="sendChat()" style="padding:0 20px;" data-help-title="✉️ Chat absenden" data-help="Sende deine eingetippte Anweisung an den Schwarm ab, um die Bearbeitung zu starten.">Send</button>
       <input type="checkbox" id="tts-enabled" style="display:none;" ${ttsChecked ? 'checked' : ''}>
@@ -203,13 +202,11 @@ function onChatInput(ta) {
   const val = ta.value, m = val.match(/@(\w*)$/);
   if (!m) { dd.classList.remove('show'); return; }
   const q = m[1].toLowerCase();
-  // User-Mandat 2026-06-28 04:42: User schreibt NUR an @GeneralAG.
-  // Autocomplete zeigt nur GeneralAG (BUILTIN_CMDS rausgenommen für User-Flow).
-  const targetAgents = ['generalag'];
-  const all = targetAgents.filter(n => n.startsWith(q));
-  if (!all.length || (all.length === 1 && all[0] === q)) { dd.classList.remove('show'); return; }
+  const agentNames = agents.map(a => a.name);
+  const all = [...BUILTIN_CMDS, ...agentNames].filter(n => n.toLowerCase().startsWith(q));
+  if (!all.length || (all.length === 1 && all[0].toLowerCase() === q)) { dd.classList.remove('show'); return; }
   acIdx = -1;
-  dd.innerHTML = all.map(n => `<div class="ac-item" onmousedown="pickAc('${escapeHtml(n)}')">@ ${escapeHtml(n)}</div>`).join('');
+  dd.innerHTML = all.map(n => `<div class="ac-item" onmousedown="pickAc('${escapeHtml(n)}')">${BUILTIN_CMDS.includes(n) ? '@' + escapeHtml(n) : '@ ' + escapeHtml(n)}</div>`).join('');
   dd.classList.add('show');
 }
 
@@ -398,14 +395,8 @@ function addToChatHistory(msg) {
 async function sendChat() {
   const ta = document.getElementById('chat-input');
   if (!ta) return;
-  let msg = ta.value.trim();
+  const msg = ta.value.trim();
   if (!msg) return;
-  // User-Mandat 2026-06-28 04:42: Strippe alle @-Mentions außer @generalag.
-  // Egal was der User tippt — Nachricht geht an @GeneralAG.
-  msg = msg.replace(/@(\w+)/g, (m, name) => name.toLowerCase() === 'generalag' ? '@GeneralAG' : '');
-  if (!/@GeneralAG/i.test(msg)) {
-    msg = '@GeneralAG ' + msg;
-  }
   addToChatHistory(msg);
   if (handleChatCommands(msg, ta)) return;
   ta.value = '';
