@@ -38,3 +38,7 @@ from gnom_hub.db.agent_repo import (  # noqa: F401
 from gnom_hub.db.soul_repo import (  # noqa: F401
     save_soul_fact, add_to_soul_memory, get_relevant_facts,
 )
+from gnom_hub.db.permissions_repo import (  # noqa: F401
+    grant_permission, revoke_permission, check_permission,
+    list_permissions_for_agent, VALID_RESOURCE_TYPES,
+)

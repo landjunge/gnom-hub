@@ -119,6 +119,17 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     ans = handle_read(ans, r_ms, wd, perms)
     ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
     ans = handle_crawl(ans, crawl_matches_pre, agent, perms)
+    # ── Permission-Tag-Extraktion (SecurityAG Kernrolle 1+2) ──────────────
+    # Tag-Formate: [GRANT_PERM: agent=X path=Y ...], [REVOKE_PERM: ...], [LIST_PERMS: agent=X]
+    # Handler in action_exec.py — Permission-Check passiert dort (db_write erforderlich).
+    from .action_exec import handle_grant_perm, handle_revoke_perm, handle_list_perms
+    grant_ms = list(re.finditer(r"\[GRANT_PERM:\s*([^\]]+)\]", ans))
+    revoke_ms = list(re.finditer(r"\[REVOKE_PERM:\s*([^\]]+)\]", ans))
+    list_ms = list(re.finditer(r"\[LIST_PERMS:\s*([^\]]+)\]", ans))
+    ans = handle_grant_perm(ans, grant_ms, agent, perms)
+    ans = handle_revoke_perm(ans, revoke_ms, agent, perms)
+    ans = handle_list_perms(ans, list_ms, agent, perms)
+
     # ── Showbox-Tag-Extraktion ─────────────────────────────────────────────
     # Akzeptierte Tag-Formate (alle in EINER Liste, damit handle_showbox
     # die Reihenfolge der Agent-Ausgabe beibehält):

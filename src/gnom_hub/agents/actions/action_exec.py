@@ -44,6 +44,125 @@ def handle_crawl(ans, ms, ag, perms):
             ans = ans.replace(o, f"[Crawl-Ergebnis ({u[:60]}):\n{t[:3000]}]")
         except Exception as e: ans = ans.replace(o, f"[Crawl-Fehler: {str(e)[:80]}]")
     return ans
+# ── Permission-Grant/Revoke/List (SecurityAG Kernrolle 1+2) ─────────────
+# Tag-Formate (alle key=value, kommasepariert):
+#   [GRANT_PERM: type=directory agent=CoderAG path=/abs/path reason=refactor expires=24h]
+#   [REVOKE_PERM: agent=CoderAG path=/abs/path]
+#   [LIST_PERMS: agent=CoderAG]
+# Nur Agents mit db_write-Permission dürfen diese Tags ausführen (SecurityAG).
+# Andere Agents bekommen eine klare System-Meldung statt stillem Drop.
+
+_PERM_TAG_KV = _re.compile(r'(\w+)\s*=\s*("[^"]*"|\S+)')
+
+
+def _parse_perm_kv(text: str) -> dict:
+    """Parst key=value Paare aus einem Tag-Body. Quoted values werden entquotet."""
+    out = {}
+    for k, v in _PERM_TAG_KV.findall(text or ""):
+        out[k.lower()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def _perm_denied(ag, tag: str) -> str:
+    return f"[System: {ag['name']} hat keine DB_WRITE-Berechtigung für Permission-Änderungen.]"
+
+
+def handle_grant_perm(ans, ms, ag, perms):
+    for m in ms:
+        body, original = m.group(1), m.group(0)
+        if "db_write" not in perms and "godmode" not in perms:
+            ans = ans.replace(original, _perm_denied(ag, original))
+            continue
+        kv = _parse_perm_kv(body)
+        path = kv.get("path", "").strip()
+        agent = kv.get("agent", "").strip()
+        rtype = kv.get("type", "directory").strip()
+        reason = kv.get("reason", "").strip()
+        expires = kv.get("expires", "").strip() or None
+        if not path or not agent:
+            ans = ans.replace(
+                original,
+                f"[System: GRANT_PERM fehlt 'agent=' oder 'path=' — Tag ignoriert.]",
+            )
+            continue
+        try:
+            from gnom_hub.db import grant_permission
+            rowid = grant_permission(
+                resource_type=rtype,
+                resource_path=path,
+                granted_to=agent,
+                granted_by=ag.get("name", "SecurityAG"),
+                reason=reason,
+                expires_at=expires,
+            )
+            ans = ans.replace(
+                original,
+                f"[Permission granted: {agent} may {rtype} '{path}'"
+                f"{f' (reason: {reason})' if reason else ''}]",
+            )
+        except ValueError as e:
+            ans = ans.replace(original, f"[Permission-Fehler: {e}]")
+        except Exception as e:
+            ans = ans.replace(original, f"[Permission-DB-Fehler: {str(e)[:80]}]")
+    return ans
+
+
+def handle_revoke_perm(ans, ms, ag, perms):
+    for m in ms:
+        body, original = m.group(1), m.group(0)
+        if "db_write" not in perms and "godmode" not in perms:
+            ans = ans.replace(original, _perm_denied(ag, original))
+            continue
+        kv = _parse_perm_kv(body)
+        path = kv.get("path", "").strip()
+        agent = kv.get("agent", "").strip()
+        if not path or not agent:
+            ans = ans.replace(
+                original, "[System: REVOKE_PERM fehlt 'agent=' oder 'path=' — Tag ignoriert.]"
+            )
+            continue
+        try:
+            from gnom_hub.db import revoke_permission
+            n = revoke_permission(resource_path=path, granted_to=agent)
+            ans = ans.replace(
+                original,
+                f"[Permission revoked: {n} Eintrag für {agent}/{path} deaktiviert.]",
+            )
+        except Exception as e:
+            ans = ans.replace(original, f"[Permission-DB-Fehler: {str(e)[:80]}]")
+    return ans
+
+
+def handle_list_perms(ans, ms, ag, perms):
+    for m in ms:
+        body, original = m.group(1), m.group(0)
+        kv = _parse_perm_kv(body)
+        agent = kv.get("agent", "").strip()
+        # list darf jeder Agent (auch Worker für Eigen-Check), read-only op
+        if not agent:
+            ans = ans.replace(original, "[System: LIST_PERMS fehlt 'agent=' — Tag ignoriert.]")
+            continue
+        try:
+            from gnom_hub.db import list_permissions_for_agent
+            perms_list = list_permissions_for_agent(agent)
+            if not perms_list:
+                ans = ans.replace(original, f"[Permissions for {agent}: (keine aktiven)]")
+            else:
+                lines = []
+                for p in perms_list:
+                    line = f"  - {p['resource_type']:9} {p['resource_path']}"
+                    if p['expires_at']:
+                        line += f"  (until {p['expires_at']})"
+                    lines.append(line)
+                ans = ans.replace(
+                    original,
+                    f"[Permissions for {agent}:\n" + "\n".join(lines) + "]",
+                )
+        except Exception as e:
+            ans = ans.replace(original, f"[Permission-DB-Fehler: {str(e)[:80]}]")
+    return ans
+
+
 def handle_showbox(ans, ms, agent=None, perms=None):
     """Verarbeitet Showbox-Tag-Matches und speichert Präsentationen.
 
