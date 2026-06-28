@@ -3,9 +3,8 @@
 
 <head>
   <script src="/api/showbox/themes"></script>
-  <link rel="stylesheet" href="/static/showbox.css?v=23">
-  <script src="/static/showbox-buttons.js?v=23"></script>
-  <script src="/static/showbox.js?v=23"></script>
+  <link rel="stylesheet" href="/static/showbox.css?v=24">
+  <script src="/static/showbox-module.js?v=24"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gnom-Hub</title>
@@ -1539,11 +1538,14 @@
     }
 
     .ac-item {
-      padding: 8px 14px;
+      padding: 7px 12px;
       cursor: pointer;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       color: var(--text-dim);
-      transition: var(--transition);
+      transition: background 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .ac-item:hover,
@@ -1551,6 +1553,20 @@
       background: rgba(61, 220, 132, 0.1);
       color: var(--text);
     }
+
+    .ac-cmd { font-weight: 600; color: var(--cyan); min-width: 120px; }
+    .ac-desc { color: var(--text-muted); font-size: 0.7rem; }
+
+    .ac-section {
+      padding: 6px 12px 3px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .ac-section:first-child { border-top: none; }
 
     /* ── Chat Hints ── */
     .chat-hints {

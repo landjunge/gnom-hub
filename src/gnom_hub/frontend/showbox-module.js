@@ -1,4 +1,24 @@
-/* showbox.js — Modular Showbox Script */
+/* showbox-module.js — Konsolidiertes Showbox-Modul (Render + State + Button-Grid)
+
+   Vereinigt die ehemaligen Dateien:
+     • showbox.js          (Render-Engine, State, Layers, Overlay, Help-Slides)
+     • showbox-buttons.js  (8 dynamische Buttons im 2x4-Grid)
+
+   Single source of truth. Kein window.ShowboxButtons mehr — die Render-Pipeline
+   ruft die Button-Grid-Logik intern synchron auf, KEIN Race-Condition mehr
+   durch Script-Load-Order. Public API: window.ShowboxModule (alte Aufrufer
+   bekommen einen Backward-Compat-Shim auf window.ShowboxButtons).
+
+   PARSE-LOGIK IDENTISCH ZU gnom_hub.frontend.showbox_button_parser (Python).
+   Wenn du hier etwas änderst, MUSST du es im Python-Pendant nachziehen.
+
+   Inline-Button-Extraktion unterstützt jetzt BEIDE Formate:
+     Format A (Worker-HTML):
+       <button action="approve_docs" label="Ja, Doku parallel">OK</button>
+       <button action="run_python" label="Python-Playwright">  (ohne </button>!)
+     Format B (DOM-Hooks für gerendertes HTML):
+       <button data-sb-action="close" data-sb-label="Schließen" data-sb-color="red">
+*/
 
 (function () {
   // 3 Layers configuration
@@ -7,6 +27,13 @@
     WORKER: 2, // Worker (CoderAG, WriterAG, ResearcherAG, EditorAG)
     USER: 3    // User / Entscheidungen
   };
+
+  // ── Button-Grid-Konstanten (2x4 = max 8 Slots) ────────────────────────
+  const MAX_BUTTONS = 8;
+  const DEFAULT_BUTTON_ICON = "▶";
+
+  // Button-State (Ersatz für showbox-buttons.js:24)
+  const buttons = new Array(MAX_BUTTONS).fill(null);
 
   // State management per layer
   const state = {
@@ -209,7 +236,7 @@
 
     let size = 40;
     body.style.fontSize = size + 'px';
-    
+
     // Iteratively decrease font size until height & width fit container bounds
     while ((body.scrollHeight > layerEl.clientHeight - 36 || body.scrollWidth > layerEl.clientWidth - 16) && size > 11) {
       size -= 2;
@@ -219,6 +246,180 @@
 
   function updateDecisionButtons(decisionId) {
     activeDecisionId = decisionId;
+  }
+
+  // ── Inline-Button-Extraktion (BEIDE Formate) ─────────────────────────────
+  // PARSE-LOGIK IDENTISCH ZU gnom_hub.frontend.showbox_button_parser.py.
+  //
+  // Format A: <button action="X" label="Y">...</button>  (Worker-HTML, häufig ohne </button>)
+  // Format B: <button data-sb-action="X" data-sb-label="Y" data-sb-icon="..." data-sb-color="...">
+  //
+  // Robust gegen:
+  //   • fehlende </button> close-tags (häufig in LLM-Outputs!)
+  //   • Single ODER Double Quotes
+  //   • beliebige Reihenfolge der Attribute
+  //   • optionale label/data-sb-label Attribute
+  function extractInlineButtons(domBody, rawSlide) {
+    const out = [];
+    const seen = new Set();
+    const sources = [];
+
+    // 1. Raw-Slide-String (Format A) — vor sanitizeHTML, weil sanitizeHTML
+    //    zwar action/label behält, aber `body.innerHTML = sanitizeHTML(slide)`
+    //    kann theoretisch Tags normalisieren. Raw ist die Original-Quelle.
+    if (typeof rawSlide === 'string' && rawSlide.length) {
+      sources.push(rawSlide);
+    }
+
+    // 2. DOM-Body (Format A als gerendertes HTML + Format B als data-sb-action)
+    if (domBody) {
+      // DOM outerHTML ist sicherer als innerHTML für Regex (kein </body>-Tag-Konflikt)
+      sources.push(domBody.outerHTML || domBody.innerHTML || '');
+    }
+
+    // Regex: action ODER data-sb-action, label ODER data-sb-label,
+    // close-tag OPTIONAL (typisch für Worker-Output).
+    const btnRe = /<button\b[^>]*?(?:action|data-sb-action)\s*=\s*["']([^"']+)["'][^>]*?(?:label|data-sb-label)\s*=\s*["']([^"']*)["'][^>]*?>(?:[^<]*<\/button>|[^<]*)/gi;
+    // Fallback-Pattern FÜR Buttons OHNE label/data-sb-label-Attribut (nur action)
+    const btnReNoLabel = /<button\b[^>]*?\baction\s*=\s*["']([^"']+)["'][^>]*?>(?:[^<]*<\/button>|[^<]*)/gi;
+
+    for (const html of sources) {
+      // Pattern 1: action + label
+      let m;
+      btnRe.lastIndex = 0;
+      while ((m = btnRe.exec(html)) !== null) {
+        if (out.length >= MAX_BUTTONS) break;
+        const action = (m[1] || '').trim();
+        if (!action || seen.has(action)) continue;
+        // javascript:/data: rausfiltern (Sicherheit)
+        if (/^(javascript|data|vbscript):/i.test(action)) continue;
+        seen.add(action);
+        const label = (m[2] || '').trim() || (action.includes(':') ? action.split(':')[1].slice(0, 50) : action.slice(0, 50)) || 'OK';
+        // data-sb-icon/data-sb-color aus dem Original-Tag extrahieren
+        const tagText = m[0];
+        const iconM = tagText.match(/data-sb-icon\s*=\s*["']([^"']+)["']/i);
+        const colorM = tagText.match(/data-sb-color\s*=\s*["']([^"']+)["']/i);
+        out.push({
+          id: `inline-${out.length + 1}`,
+          icon: iconM ? iconM[1].trim() : DEFAULT_BUTTON_ICON,
+          label: label.slice(0, 50),
+          color: colorM ? colorM[1].trim() : '',
+          onClick: action
+        });
+      }
+      // Pattern 2: nur action (kein label) — Worker lassen label oft weg
+      btnReNoLabel.lastIndex = 0;
+      while ((m = btnReNoLabel.exec(html)) !== null) {
+        if (out.length >= MAX_BUTTONS) break;
+        const action = (m[1] || '').trim();
+        if (!action || seen.has(action)) continue;
+        if (/^(javascript|data|vbscript):/i.test(action)) continue;
+        seen.add(action);
+        const label = action.includes(':') ? action.split(':')[1].slice(0, 50) : action.slice(0, 50) || 'OK';
+        out.push({
+          id: `inline-${out.length + 1}`,
+          icon: DEFAULT_BUTTON_ICON,
+          label: label,
+          color: '',
+          onClick: action
+        });
+      }
+      if (out.length >= MAX_BUTTONS) break;
+    }
+
+    return out;
+  }
+
+  // ── Button-Action-Handler ────────────────────────────────────────────────
+  function handleButtonAction(btn) {
+    if (typeof btn.onClick === 'function') {
+      try { btn.onClick({ target: null }, btn); } catch (e) { console.error('Button onClick error:', e); }
+      return;
+    }
+    if (typeof btn.onClick !== 'string') return;
+    const action = btn.onClick;
+    const send = (text) => {
+      if (typeof window.api === 'function') {
+        window.api('POST', '/chat', { content: text })
+          .then(() => { if (typeof window.loadChat === 'function') window.loadChat(); });
+      }
+    };
+    if (action.startsWith('approve_decision:')) {
+      const id = action.slice('approve_decision:'.length).trim();
+      send(`@@approve_decision ${id}`);
+    } else if (action.startsWith('reject_decision:')) {
+      const id = action.slice('reject_decision:'.length).trim();
+      send(`@@reject_decision ${id}`);
+    } else if (action === 'close') {
+      if (typeof window.closeShowbox === 'function') window.closeShowbox();
+    } else if (action === 'next-slide') {
+      if (typeof window.showboxNextSlide === 'function') window.showboxNextSlide();
+      else if (typeof window.nextOverlaySlide === 'function') window.nextOverlaySlide();
+    } else if (action === 'prev-slide') {
+      if (typeof window.showboxPrevSlide === 'function') window.showboxPrevSlide();
+      else if (typeof window.prevOverlaySlide === 'function') window.prevOverlaySlide();
+    } else if (action === 'toggle-lang') {
+      if (typeof window.toggleAppLang === 'function') window.toggleAppLang();
+    } else if (action === 'open-overlay') {
+      if (typeof window.openShowboxOverlay === 'function') window.openShowboxOverlay();
+    } else if (action.startsWith('send:')) {
+      send(action.slice('send:'.length));
+    } else {
+      send(`[Button ${btn.id}] ${action}`);
+    }
+  }
+
+  // ── Button-Grid-Rendering (2x4) ─────────────────────────────────────────
+  function renderButtonGrid() {
+    const el = document.getElementById('showbox-control-buttons');
+    if (!el) return;
+    el.innerHTML = '';
+    for (let i = 0; i < MAX_BUTTONS; i++) {
+      const btn = buttons[i];
+      const slot = document.createElement('button');
+      slot.className = 'sb-btn';
+      slot.id = `control-btn-${i}`;
+      slot.setAttribute('data-help', btn ? `Button: ${btn.label || btn.id}` : 'Leerer Slot');
+      if (btn) {
+        slot.disabled = !!btn.disabled;
+        slot.style.opacity = btn.disabled ? '0.4' : '1';
+        slot.style.pointerEvents = btn.disabled ? 'none' : 'auto';
+        if (btn.color) slot.classList.add(`sb-btn-${btn.color}`);
+        let html = '';
+        if (btn.icon) html += btn.icon;
+        if (btn.label) {
+          if (html) html += ' ';
+          html += `<span>${btn.label}</span>`;
+        }
+        slot.innerHTML = html || '&nbsp;';
+        if (!btn.disabled) {
+          slot.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleButtonAction(btn);
+          });
+        }
+      } else {
+        slot.style.visibility = 'hidden';
+        slot.innerHTML = '&nbsp;';
+        slot.disabled = true;
+      }
+      el.appendChild(slot);
+    }
+  }
+
+  // ── Button-Setter (intern + Public-API) ─────────────────────────────────
+  function setButtons(list) {
+    buttons.fill(null);
+    const arr = Array.isArray(list) ? list.slice(0, MAX_BUTTONS) : [];
+    for (let i = 0; i < arr.length; i++) {
+      buttons[i] = arr[i];
+    }
+    renderButtonGrid();
+  }
+
+  function clearButtons() {
+    buttons.fill(null);
+    renderButtonGrid();
   }
 
   // Render the current slide of the current history item in the given layer
@@ -231,7 +432,7 @@
       body.innerHTML = 'STANDBY';
       body.style.fontSize = '0.82rem';
       if (layerIdx === LAYERS.USER) updateDecisionButtons(null);
-      if (window.ShowboxButtons) window.ShowboxButtons.clearButtons();
+      clearButtons();
       return;
     }
 
@@ -244,19 +445,15 @@
       updateDecisionButtons(match ? match[1] : null);
     }
 
-    // Dynamic buttons for this slide
-    if (window.ShowboxButtons) {
-      const btns = pres.buttons || [];
-      const btnsArr = Array.isArray(btns) ? btns.slice() : [];
-      // Inline-Elemente mit data-sb-action oder .sb-promo automatisch in
-      // den Button-Grid heben — sie werden zu klickbaren Buttons UND im
-      // Slide-Body als dezenter Hinweis gerendert.
-      const promoted = window.ShowboxButtons.extractInlineButtons
-        ? window.ShowboxButtons.extractInlineButtons(body)
-        : [];
-      const merged = btnsArr.concat(promoted).slice(0, window.ShowboxButtons.MAX_BUTTONS);
-      window.ShowboxButtons.setButtons(merged);
-    }
+    // Dynamic buttons for this slide — konsolidiertes Grid (Format A + Format B).
+    // Reihenfolge: (1) pres.buttons aus DB/JSON, (2) Inline-Extraktion aus
+    // RAW-Slide (Format A — vor sanitizeHTML, weil close-tags oft fehlen),
+    // (3) DOM-basierte Extraktion (Format B + Format A als gerendertes HTML).
+    // Deduplizierung passiert in extractInlineButtons.
+    const presBtns = Array.isArray(pres.buttons) ? pres.buttons.slice() : [];
+    const inlineBtns = extractInlineButtons(body, slide);
+    const merged = presBtns.concat(inlineBtns).slice(0, MAX_BUTTONS);
+    setButtons(merged);
 
     autoFitText(layerIdx);
   }
@@ -323,6 +520,24 @@
     // Switch view to the target layer and render
     switchLayer(targetLayer);
     renderLayerContent(targetLayer);
+
+    // ── Agent-Color Flash auf Showbox-Container ──
+    // User-Mandat 2026-06-28 07:53: Showbox blinkt kurz in der Farbe des Agenten.
+    const _AGENT_COLORS = {
+      soulag:'soulag', watchdogag:'watchdogag', generalag:'generalag', securityag:'securityag',
+      writerag:'writerag', coderag:'coderag', researcherag:'researcherag', editorag:'editorag',
+      user:'soulag', system:'system'
+    };
+    const _glowClass = 'sb-glow-' + (_AGENT_COLORS[senderName.toLowerCase()] || 'system');
+    const _container = document.getElementById('sb-layers-container');
+    if (_container) {
+      _container.classList.remove('sb-glow','sb-glow-soulag','sb-glow-watchdogag','sb-glow-generalag',
+        'sb-glow-securityag','sb-glow-writerag','sb-glow-coderag','sb-glow-researcherag',
+        'sb-glow-editorag','sb-glow-system');
+      void _container.offsetWidth;
+      _container.classList.add('sb-glow', _glowClass);
+      setTimeout(() => _container.classList.remove(_glowClass), 1200);
+    }
 
     // SuperGNOM Mode overrides
     if (document.body.classList.contains('supergnom-mode')) {
@@ -931,4 +1146,48 @@
   } else {
     init();
   }
+
+  // ── Public API: window.ShowboxModule ───────────────────────────────────────
+  // Single source of truth für alles was vorher über getrennte Globals lief.
+  // Backward-Compat: alte window.ShowboxButtons-Aufrufer (User-Mandat: nichts
+  // hart abreißen) bekommen einen Shim der auf die neuen Methoden delegiert.
+  const ShowboxModule = {
+    // Render-Pipeline
+    render: renderLayerContent,
+    init,
+    switchLayer: (idx, skipFlash) => switchLayer(idx, skipFlash),
+
+    // Showbox-Trigger
+    trigger: window.triggerShowbox,
+    close: window.closeShowbox,
+    toast: window.showboxToast,
+    loadList: window.loadShowboxList,
+
+    // Help & Art
+    buildHelpSlides: window.buildHelpSlides,
+    showHelp: window.showHelpSlides,
+    buildAgentArtShow: window.buildAgentArtShow,
+    triggerAgentArtShow: window.triggerAgentArtShow,
+
+    // Button-Grid (intern)
+    setButtons,
+    clearButtons,
+    extractInlineButtons,
+    MAX_BUTTONS,
+
+    // Meta
+    LAYERS,
+    VERSION: '2.0.0-consolidated'
+  };
+  window.ShowboxModule = ShowboxModule;
+
+  // Backward-Compat-Shim für window.ShowboxButtons (alte showbox-buttons.js API).
+  // Wer noch window.ShowboxButtons.setButtons(...) ruft → landet hier.
+  window.ShowboxButtons = {
+    setButtons,
+    clearButtons,
+    render: renderButtonGrid,
+    extractInlineButtons: (domBody) => extractInlineButtons(domBody, null),
+    MAX_BUTTONS
+  };
 })();

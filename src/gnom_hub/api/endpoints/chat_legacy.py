@@ -141,32 +141,46 @@ def post_chat(msg: ChatMsg):
     import re as _re
     _SHOWBOX_RE = _re.compile(r'<SHOWBOX(?::([a-zA-Z0-9_\-]+))?>([\s\S]*?)<\/SHOWBOX>', _re.I)
     _SHOWBOX_TOOL_RE = _re.compile(r'\[SHOWBOX(?::([a-zA-Z0-9_\-]+))?\]([\s\S]*?)\[\/SHOWBOX\]', _re.I)
+    # → Showbox / -> Showbox Format (User-Mandat 2026-06-28 — Worker-Pflicht)
+    # Body = {...} JSON-Block. Wird vor <SHOWBOX>/[SHOWBOX] geprüft, weil dieser
+    # Stil von allen 8 Agent-Prompts explizit verlangt wird.
+    _ARROW_SHOWBOX_RE = _re.compile(
+        r'\[\s*(?:→|->)\s*[Ss]howbox:\s*([^\]\n]{1,40})\]\s*\{([\s\S]*?)\}\s*$',
+        _re.MULTILINE,
+    )
     if msg.sender != "user":
-        sbox_match = _SHOWBOX_RE.search(msg.content) or _SHOWBOX_TOOL_RE.search(msg.content)
+        # Suche in dieser Reihenfolge: <SHOWBOX>, [SHOWBOX], [→ Showbox]
+        sbox_match = (
+            _SHOWBOX_RE.search(msg.content)
+            or _SHOWBOX_TOOL_RE.search(msg.content)
+            or _ARROW_SHOWBOX_RE.search(msg.content)
+        )
         if sbox_match:
             try:
                 import json as _json
                 from gnom_hub.db import save_showbox_presentation, set_active_showbox
-                raw = sbox_match.group(2).strip()
+                # Bei ARROW-Format ist group(2) das JSON OHNE äußere {}-Klammern
+                if sbox_match.re is _ARROW_SHOWBOX_RE.pattern and sbox_match.re == _ARROW_SHOWBOX_RE.pattern:
+                    raw_payload = "{" + sbox_match.group(2) + "}"
+                else:
+                    raw_payload = sbox_match.group(2).strip()
+                raw = raw_payload
                 try:
                     d = _json.loads(raw)
                 except Exception:
                     d = {"slides": [raw]}
                 slides = d.get("slides", [raw]) if isinstance(d, dict) else [raw]
-                pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
+                # Bei ARROW-Format: Name aus group(1) statt group(1) des XML/Tool-Regex
+                if sbox_match.re.pattern == _ARROW_SHOWBOX_RE.pattern:
+                    pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
+                else:
+                    pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
 
-                # Button-Extraktion aus <button action="...">...</button> HTML-Tags
-                _BTN_RE = _re.compile(r'<button\s+action=["\']([^"\']+)["\'][^>]*>([^<]*)</button>', _re.I)
-                extracted_btns = []
-                for bm in _BTN_RE.finditer(raw):
-                    action = bm.group(1).strip()
-                    label = bm.group(2).strip() or (action.split(':')[0] if ':' in action else 'OK')
-                    extracted_btns.append({
-                        'id': f'btn-{len(extracted_btns)+1}',
-                        'onClick': action,
-                        'label': label[:30],
-                        'icon': '▶'
-                    })
+                # Button-Extraktion aus <button action="..." label="...">...</button> HTML-Tags.
+                # Nutzt den geteilten Parser — gleiche Logik wie action_exec.py +
+                # showbox-module.js, damit nichts driftet.
+                from gnom_hub.frontend.showbox_button_parser import parse_inline_buttons
+                extracted_btns = parse_inline_buttons(raw)
                 json_btns = d.get("buttons") if isinstance(d, dict) else None
                 if json_btns:
                     final_btns = json_btns[:8]
@@ -177,9 +191,10 @@ def post_chat(msg: ChatMsg):
 
                 save_showbox_presentation(pres_name, slides, sender=msg.sender, buttons=final_btns)
                 set_active_showbox(pres_name)
-                # Chat-Inhalt ohne SHOWBOX-Tag speichern
+                # Chat-Inhalt ohne SHOWBOX-Tag speichern — alle 3 Formate ersetzen
                 msg.content = _SHOWBOX_RE.sub(f'[→ Showbox: {pres_name}]', msg.content).strip()
                 msg.content = _SHOWBOX_TOOL_RE.sub(f'[→ Showbox: {pres_name}]', msg.content).strip()
+                msg.content = _ARROW_SHOWBOX_RE.sub(f'[→ Showbox: {pres_name}]', msg.content).strip()
             except Exception:
                 pass
     add_chat_message(get_active_project(), msg.sender, "war-room", cmd or "chat", msg.content, {"type": cmd or "chat", "sender": msg.sender})
@@ -190,11 +205,12 @@ def post_chat(msg: ChatMsg):
         asked = [n for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS] if dispatch(q, target=n, sender=msg.sender)]
         return {"status": "dispatched", "asked": asked, "target": None, "mode": "research"}
     if not cmd and not tgt:
-        # User-Chat ohne @target: geht an GeneralAG (Dirigent).
-        # GeneralAG delegiert an Worker. SoulAG ist stiller Beobachter + DB.
-        # User-Mandat 2026-06-28 04:33.
-        dispatch(msg.content, target="GeneralAG", sender=msg.sender)
-        return {"status": "dispatched", "asked": ["GeneralAG"], "target": "GeneralAG", "mode": "chat"}
+        # User-Chat ohne @target: BROADCAST an alle online/busy Agents.
+        # User bestimmt selbst wer antwortet — keine Default-Einschränkung mehr.
+        # User-Mandat 2026-06-28 12:03: "ich möchte selber bestimmen an wen die nachrichten gehen".
+        # Status-Filter: online+busy (laufende Jobs), nicht offline/quarantined.
+        asked = [n for n in [x["name"] for x in ags if x.get("status") in ("online", "busy")] if dispatch(msg.content, target=n, sender=msg.sender)]
+        return {"status": "broadcast", "asked": asked, "target": None, "mode": "chat"}
     return {"status": "dispatched", "asked": dispatch(q, target=tgt, sender=msg.sender), "target": tgt, "mode": "brainstorm" if cmd == "bs" else "chat"}
 @router.get("/api/chat")
 def get_chat(limit: int = 50):

@@ -44,10 +44,21 @@ def handle_crawl(ans, ms, ag, perms):
             ans = ans.replace(o, f"[Crawl-Ergebnis ({u[:60]}):\n{t[:3000]}]")
         except Exception as e: ans = ans.replace(o, f"[Crawl-Fehler: {str(e)[:80]}]")
     return ans
-def handle_showbox(ans, ms):
+def handle_showbox(ans, ms, agent=None):
+    """Verarbeitet Showbox-Tag-Matches und speichert Präsentationen.
+
+    Args:
+        ans: Agent-Antworttext
+        ms: Liste von (full_match, name_or_idx, raw_payload) Tupeln
+        agent: Optional Dict {"name": "CoderAG", ...} — wenn übergeben, wird der
+               tatsächliche Agent-Name als sender in showbox_presentations
+               gespeichert (statt hartkodiertem "Agent"). Ohne agent fällt
+               der Sender auf "Agent" zurück (Legacy-Verhalten).
+    """
     from gnom_hub.core.json_sanitizer import _sanitize_json
     from gnom_hub.core.security.hmac_signer import generate_signature
     from gnom_hub.db import save_showbox_presentation, set_active_showbox
+    sender = (agent or {}).get("name") or "Agent"
     for full, idx, raw in ms:
         try:
             d = _sanitize_json(raw.strip())
@@ -68,7 +79,7 @@ def handle_showbox(ans, ms):
                 cleaned_slides.append(sld)
             slides = cleaned_slides
             d["slides"] = slides
-            
+
             d["sig"] = generate_signature("Gnom", json.dumps(d, separators=(',', ':'), sort_keys=True))
 
             # Map index/name
@@ -82,10 +93,28 @@ def handle_showbox(ans, ms):
             # Damit Konsistenz über alle 8 Agenten
             presentation_name = normalize_showbox_name(presentation_name)
 
-            # Save to SQLite database
-            save_showbox_presentation(presentation_name, slides, sender="Agent")
+            # ── Button-Extraktion: 3 Quellen, Reihenfolge = Priorität ────────
+            # 1. JSON-Key "buttons" im Payload (höchste Priorität)
+            # 2. Inline <button action="..." label="..."> im Roh-Payload (Format A)
+            # 3. Inline <button data-sb-action="..."> in den Slides (Format B — DOM-Hooks)
+            # Geteilte Logik via parse_inline_buttons — gleiche Regex wie
+            # showbox-module.js (Client). Drift-Schutz.
+            final_btns = None
+            json_btns = d.get("buttons") if isinstance(d, dict) else None
+            if json_btns:
+                final_btns = json_btns[:8]
+            else:
+                from gnom_hub.frontend.showbox_button_parser import parse_inline_buttons
+                inline_btns = parse_inline_buttons(raw)
+                if inline_btns:
+                    final_btns = inline_btns[:8]
+
+            # Save to SQLite database — sender ist jetzt der echte Agent-Name
+            # (sonst landen alle Worker-Outputs im "worker"-Layer und überschreiben
+            # einander, weil MAX_PRESENTATIONS_PER_LAYER[worker]=3).
+            save_showbox_presentation(presentation_name, slides, sender=sender, buttons=final_btns)
             set_active_showbox(presentation_name)
-            
+
             ans = ans.replace(full, f"<SHOWBOX{':'+idx if idx else ''}>{json.dumps(d)}</SHOWBOX>")
         except Exception as e: ans = ans.replace(full, f"[Showbox-Fehler: {e}]")
     return ans
