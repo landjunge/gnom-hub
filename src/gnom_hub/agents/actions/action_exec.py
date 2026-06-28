@@ -44,7 +44,7 @@ def handle_crawl(ans, ms, ag, perms):
             ans = ans.replace(o, f"[Crawl-Ergebnis ({u[:60]}):\n{t[:3000]}]")
         except Exception as e: ans = ans.replace(o, f"[Crawl-Fehler: {str(e)[:80]}]")
     return ans
-def handle_showbox(ans, ms, agent=None):
+def handle_showbox(ans, ms, agent=None, perms=None):
     """Verarbeitet Showbox-Tag-Matches und speichert Präsentationen.
 
     Args:
@@ -54,12 +54,23 @@ def handle_showbox(ans, ms, agent=None):
                tatsächliche Agent-Name als sender in showbox_presentations
                gespeichert (statt hartkodiertem "Agent"). Ohne agent fällt
                der Sender auf "Agent" zurück (Legacy-Verhalten).
+        perms: Optional Liste der Agent-Permissions. Wenn "showbox_write"
+               fehlt, wird der Showbox-Tag mit klarer System-Meldung geblockt
+               (analog zu write/crawl Permission-Checks in handle_write/
+               handle_crawl). "godmode" umgeht den Check (SecurityAG-Notfall).
     """
     from gnom_hub.core.json_sanitizer import _sanitize_json
     from gnom_hub.core.security.hmac_signer import generate_signature
     from gnom_hub.db import save_showbox_presentation, set_active_showbox
     sender = (agent or {}).get("name") or "Agent"
+    showbox_allowed = perms is None or "showbox_write" in perms or "godmode" in perms
     for full, idx, raw in ms:
+        if not showbox_allowed:
+            ans = ans.replace(
+                full,
+                f"[System: {sender} hat keine SHOWBOX_WRITE-Berechtigung.]",
+            )
+            continue
         try:
             d = _sanitize_json(raw.strip())
             if isinstance(d, list):

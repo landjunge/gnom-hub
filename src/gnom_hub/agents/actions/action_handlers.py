@@ -119,8 +119,59 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     ans = handle_read(ans, r_ms, wd, perms)
     ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
     ans = handle_crawl(ans, crawl_matches_pre, agent, perms)
-    show_ms = [(m.group(0), m.group(1) or "", m.group(2)) for t in ("SHOWBOX", "showbox") for rx in (rf"<{t}(?::([a-zA-Z0-9_\-]+))?>([\s\S]*?)<\/{t}>", rf"\[{t}(?::([a-zA-Z0-9_\-]+))?\]([\s\S]*?)\[\/{t}\]") for m in re.finditer(rx, ans)] + [(m.group(0), "", m.group(1)) for t in ("SHOWBOX", "showbox") for m in re.finditer(rf"\[{t}:\s*(.*?)\]", ans, re.DOTALL)]
-    ans = handle_showbox(ans, show_ms)
+    # ── Showbox-Tag-Extraktion ─────────────────────────────────────────────
+    # Akzeptierte Tag-Formate (alle in EINER Liste, damit handle_showbox
+    # die Reihenfolge der Agent-Ausgabe beibehält):
+    #   1. <SHOWBOX[:name]>...</SHOWBOX>            — explizit
+    #   2. [SHOWBOX[:name]]...[/SHOWBOX]            — explizit
+    #   3. [SHOWBOX: ...]                           — nur Open-Tag (Referenz)
+    #   4. [→ Showbox: name]{...}                   — Worker-Pflicht-Format
+    #   5. [-> Showbox: name]{...}                  — ASCII-Variante
+    # Format 4 + 5 ist der von allen Agent-Prompts (CoderAG, WriterAG, …
+    # User-Mandat 2026-06-28) VERLANGTE Output-Stil. Ohne diese Regex
+    # bleibt die Showbox-Payload als Rohtext im Chat stehen und die
+    # Präsentation wird nie in showbox_presentations gespeichert.
+    show_ms = []
+    for t in ("SHOWBOX", "showbox"):
+        for rx in (
+            rf"<{t}(?::([a-zA-Z0-9_\-]+))?>([\s\S]*?)<\/{t}>",
+            rf"\[{t}(?::([a-zA-Z0-9_\-]+))?\]([\s\S]*?)\[\/{t}\]",
+        ):
+            for m in re.finditer(rx, ans):
+                show_ms.append((m.group(0), m.group(1) or "", m.group(2)))
+        for m in re.finditer(rf"\[{t}:\s*(.*?)\]", ans, re.DOTALL):
+            show_ms.append((m.group(0), "", m.group(1)))
+    # → Showbox / -> Showbox Format mit {json}-Body (PFLICHTFORMAT für Worker)
+    # Body ist ein {...} JSON-Block; wir erlauben beliebige whitespace + newlines
+    # zwischen Tag und Body. Group 1 = name, Group 2 = JSON-Payload.
+    for arrow in ("→", "->", "→", "->"):
+        for m in re.finditer(
+            rf"\[\s*{re.escape(arrow)}\s*[Ss]howbox:\s*([^\]\n]{{1,40}})\]\s*\{{([\s\S]*?)\}}\s*$",
+            ans,
+            re.MULTILINE,
+        ):
+            name = m.group(1).strip()
+            payload = "{" + m.group(2) + "}"
+            show_ms.append((m.group(0), name, payload))
+    # Entferne Duplikate (gleicher Match kann über mehrere Regex-Pfade matchen)
+    seen = set()
+    deduped_show_ms = []
+    for entry in show_ms:
+        if entry[0] not in seen:
+            seen.add(entry[0])
+            deduped_show_ms.append(entry)
+    show_ms = deduped_show_ms
+    # ── SecurityAG-Audit: [SHOWBOX:] pre-dispatch (Refactor-Schritt 4) ──────
+    # Permission-Check für SHOWBOX liegt in handle_showbox() selbst (analog
+    # zu handle_crawl). Hier nur der SecurityAG-Audit-Hook. Bei
+    # "showbox_write" oder "godmode" in perms audit, sonst "denied".
+    for full, idx, payload in show_ms:
+        pres_name = (idx or "<anonymous>").strip()
+        if "showbox_write" in perms or "godmode" in perms:
+            _audit_security(agent, perms, "showbox", pres_name, "allowed")
+        else:
+            _audit_security(agent, perms, "showbox", pres_name, "denied")
+    ans = handle_showbox(ans, show_ms, agent=agent, perms=perms)
     ans = handle_desktop(ans, desktop_ms, agent, perms, wd)
     # ── Video-Tools ──
     sr_ms = list(re.finditer(r"\[VIDEO:SCREEN:\s*(.*?)\]", ans, re.DOTALL))

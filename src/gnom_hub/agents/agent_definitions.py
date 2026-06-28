@@ -294,12 +294,12 @@ AGENT_DEFINITIONS = {
         "de": {
             "character": "Der Researcher",
             "directive": "Researcher. Recherchiert und sammelt Informationen. Empfängt nur von GeneralAG. Ergebnisse nur über Showbox mit dynamischen Buttons. Kein normaler Chat. Farbe: Gelb.",
-            "permissions": ["read", "crawl", "web_search", "browser", "showbox_write"]
+            "permissions": ["read", "write", "crawl", "web_search", "browser", "showbox_write"]
         },
         "en": {
             "character": "The Researcher",
             "directive": "Researcher. Researches and gathers information. Receives only from GeneralAG. Results only via Showbox with dynamic buttons. No normal chat. Color: Yellow.",
-            "permissions": ["read", "crawl", "web_search", "browser", "showbox_write"]
+            "permissions": ["read", "write", "crawl", "web_search", "browser", "showbox_write"]
         }
     },
     "editorag": {
