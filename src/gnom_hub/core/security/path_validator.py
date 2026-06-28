@@ -144,6 +144,12 @@ def is_worker_blocked(agent, f, wd, perms):
     - der Inhalt ein Hochrisiko-Pattern enthält (unabhängig vom Level).
     """
     if f and is_system_path(f):
+        try:
+            from gnom_hub.core.audit_helpers import record_block
+            agent_name = agent.get("name") if isinstance(agent, dict) else str(agent)
+            record_block(agent_name, path=str(f), reason="system_path")
+        except Exception:
+            pass
         return True
     # Risk-Check: nur wenn der Aufrufer den Inhalt mitgegeben hat —
     # das ist hier nicht der Fall (gatekeeper.py:315 ruft nur mit fn/wd/perms),
@@ -164,7 +170,21 @@ def is_security_block(agent, f, content, wd, perms):
     if level <= 1 or not content:
         return None
     if _HIGH_RISK_RE.search(content):
+        try:
+            from gnom_hub.core.audit_helpers import record_block
+            agent_name = agent.get("name") if isinstance(agent, dict) else str(agent)
+            record_block(agent_name, path=str(f or ""), reason="high_risk_pattern",
+                         level=level, severity="high")
+        except Exception:
+            pass
         return "high"
     if level >= 4 and _MEDIUM_RISK_RE.search(content):
+        try:
+            from gnom_hub.core.audit_helpers import record_block
+            agent_name = agent.get("name") if isinstance(agent, dict) else str(agent)
+            record_block(agent_name, path=str(f or ""), reason="medium_risk_pattern",
+                         level=level, severity="medium")
+        except Exception:
+            pass
         return "medium"
     return None

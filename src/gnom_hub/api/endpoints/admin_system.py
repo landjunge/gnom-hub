@@ -74,9 +74,19 @@ def get_blockade_level():
 
 @router.put("/blockade-level")
 def set_blockade_level(level: int):
-    from gnom_hub.db import set_state_value
+    from gnom_hub.db import get_state_value, set_state_value
+    old_level = int(get_state_value("security_blockade_level", 0) or 0)
     level = max(0, min(4, level))
+    # Schreibt BEIDE Keys — vorher nur blockade_level, was path_validator
+    # NICHT liest → Silent-No-Op (gefixt 2026-06-27).
+    set_state_value("security_blockade_level", level)
     set_state_value("blockade_level", level)
+    try:
+        from gnom_hub.core.audit_helpers import record_blockade_change
+        record_blockade_change("admin", old_level=old_level, new_level=level,
+                               source="PUT /api/admin/blockade-level")
+    except Exception:
+        pass
     return {"level": level}
 
 @router.post("/nuke")
