@@ -110,6 +110,12 @@ Wiederherstellung mit `./scripts/restore_backup.sh <backup-name>`.
 
 ---
 
+## ✨ Neue Features (Letzte Updates)
+
+- 🧩 **Showbox-Modul konsolidiert**: `showbox.js` + `showbox-buttons.js` → `showbox-module.js` (Render + State + 2x4-Button-Grid in einem Modul). Format A (`<button action="..." label="...">`) **und** Format B (`data-sb-action`) werden jetzt zuverlässig in Buttons umgewandelt — Bug „Showbox verliert dynamische Buttons" behoben. Geteilter Python-Parser (`src/gnom_hub/frontend/showbox_button_parser.py`) ist die Single Source of Truth für Server (`chat_legacy.py`, `action_exec.py`) **und** Client (`showbox-module.js`).
+
+---
+
 ## Was ist Gnom-Hub?
 
 Gnom-Hub ist ein **lokaler Multi-Agenten-Orchestrator** mit einer festen Topologie von 4+4 Agenten, einem integrierten glassmorphen **War Room Dashboard** und einer einzigartigen Kompilierungs-Pipeline, die evolvierte Agentenschwärme in eingefrorene, portable KI-Produkte namens **SuperGNOMs** "backt" (`@bake`).
@@ -430,7 +436,7 @@ Um Performance-Flaschenhälse in schnellen Agenten-Interaktionsschleifen zu verm
 |:-------|:-----|
 | Aktive Agenten | 8 (fest: 4 System + 4 Worker) |
 | Python-Module | 180 |
-| Frontend-Module | 9 (entkoppelte JS-Dateien) |
+| Frontend-Module | 8 (entkoppelte JS, Showbox konsolidiert 2026-06-28) |
 | Datenbank | SQLite3 (WAL-Modus) + passives Archiv |
 | Vektorsuche | FAISS (IndexFlatL2) + sentence-transformers |
 
@@ -554,6 +560,32 @@ Architekt der Härtungs- und Konsolidierungsphase. Zentrale Beiträge:
 - Ersatz der 8 duplizierten Agenten-Startskripte durch einen universellen, argumentgesteuerten Runner (`agents/run_agent.py`) und abwärtskompatible Einzeiler-Wrapper.
 - Konzeption und Aufbau einer vollständigen isolierten Test-Suite (32 Unit- und Integrationstests) mit In-Memory-SQLite-Datenbanken.
 
+
+---
+
+## 📋 Aktuelle Fakten / Current Facts (DE/EN)
+
+> Quick-Reference für Diskussionen, Bug-Reports, Onboarding. Stand: 2026-06-28.
+> Quick-reference for discussions, bug reports, onboarding. As of: 2026-06-28.
+
+| Fakt (DE) | Fact (EN) | Wert / Value | Quelle / Source |
+|:----------|:----------|:-------------|:----------------|
+| Hub-Standardport | Hub default port | `3002` | `start_gnom_hub.sh` |
+| Aktiver LLM-Provider | Active LLM provider | `minimax` (8/8 Agenten / agents) | `state.llm_agents` in `gnomhub.db` |
+| Standardmodell | Default model | `MiniMax-M3` | `provider_registry.py:296` |
+| Agenten-Topologie | Agent topology | 4 System + 4 Worker, frozen | `core/agent_names.py` |
+| Provider in Registry | Providers in registry | 27 LLM · 9 Web-Search · 9 TTS | `GET /api/llm/providers` |
+| Inline-Button-Limit | Inline button limit | `MAX_BUTTONS = 8` | `showbox_button_parser.py` |
+| Button-Formate | Button formats | A: `<button action=…>` + B: `data-sb-action` | `showbox-module.js` |
+| Frontend-Module | Frontend modules | 8 (konsolidiert 2026-06-28) | `src/gnom_hub/frontend/*.js` |
+| Tests (Badge) | Tests (Badge) | 681 | README-Badge |
+| Tests (Text) | Tests (Text) | 535 (2 pre-existing fails, 2 skipped) | `pytest tests/ --collect-only` |
+| DB-Schema-Migrationen | DB schema migrations | 6 (001–006) | `src/gnom_hub/db/migrations/` |
+| Backup-Lokation | Backup location | `~/Desktop/gnom_dev/backups_datenbanken/` | `scripts/backup_all_dbs.sh` |
+| Sprache | Language | DE/EN bilingual via Header-Switch | `window.appLang` |
+
+> Bei Widersprüchen zwischen README und Code/DB gewinnt der Code (Disk-Truth).
+> If README contradicts code/DB, code wins (disk-truth).
 
 ---
 
