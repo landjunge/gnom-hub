@@ -14,6 +14,8 @@ from gnom_hub.core.config import Config
 
 def _try(pvd, mdl, key, msgs, n):
     try:
+        if not key:
+            return _try_keys(pvd, mdl, None, msgs, n)
         return _call(pvd, mdl, key, msgs, n)
     except Exception:
         return None

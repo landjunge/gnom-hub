@@ -154,7 +154,28 @@ def post_chat(msg: ChatMsg):
                     d = {"slides": [raw]}
                 slides = d.get("slides", [raw]) if isinstance(d, dict) else [raw]
                 pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
-                save_showbox_presentation(pres_name, slides, sender=msg.sender, buttons=d.get("buttons") if isinstance(d, dict) else None)
+
+                # Button-Extraktion aus <button action="...">...</button> HTML-Tags
+                _BTN_RE = _re.compile(r'<button\s+action=["\']([^"\']+)["\'][^>]*>([^<]*)</button>', _re.I)
+                extracted_btns = []
+                for bm in _BTN_RE.finditer(raw):
+                    action = bm.group(1).strip()
+                    label = bm.group(2).strip() or (action.split(':')[0] if ':' in action else 'OK')
+                    extracted_btns.append({
+                        'id': f'btn-{len(extracted_btns)+1}',
+                        'onClick': action,
+                        'label': label[:30],
+                        'icon': '▶'
+                    })
+                json_btns = d.get("buttons") if isinstance(d, dict) else None
+                if json_btns:
+                    final_btns = json_btns[:8]
+                elif extracted_btns:
+                    final_btns = extracted_btns[:8]
+                else:
+                    final_btns = None
+
+                save_showbox_presentation(pres_name, slides, sender=msg.sender, buttons=final_btns)
                 set_active_showbox(pres_name)
                 # Chat-Inhalt ohne SHOWBOX-Tag speichern
                 msg.content = _SHOWBOX_RE.sub(f'[→ Showbox: {pres_name}]', msg.content).strip()

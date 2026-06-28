@@ -72,11 +72,23 @@ def _agent_message_filter(sender: str, content: str, msg_type: str) -> tuple[boo
         has_write_read = "[WRITE:" in content or "[READ:" in content
         has_code_block = "```" in content
         showbox_tag_only = bool(_SHOWBOX_TAG_ONLY_RE.match(content))
-        text_without_showbox = _SHOWBOX_TAG_STRIP_RE.sub("", content).strip()
+        stripped = _SHOWBOX_TAG_STRIP_RE.sub("", content).strip()
+        # JSON-Slides im Showbox-Payload erkennen (slides sind im JSON verschachtelt,
+        # nicht Top-Level-Text → der alte Filter erkennt sie nicht)
+        has_json_slides = False
+        if stripped.startswith('[') or stripped.startswith('{'):
+            try:
+                parsed = json.loads(stripped)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    has_json_slides = bool(parsed[0])
+                elif isinstance(parsed, dict) and (parsed.get('slides') or parsed.get('content')):
+                    has_json_slides = True
+            except Exception:
+                pass
         has_meaningful_showbox = (
             bool(_SHOWBOX_TAG_STRIP_RE.search(content))
+            and (has_json_slides or bool(stripped))
             and not showbox_tag_only
-            and bool(text_without_showbox)
         )
         if not (has_meaningful_showbox or has_write_read or has_code_block):
             return True, "worker_sprech_verbot"
