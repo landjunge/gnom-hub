@@ -169,10 +169,11 @@ def post_chat(msg: ChatMsg):
         asked = [n for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS] if dispatch(q, target=n, sender=msg.sender)]
         return {"status": "dispatched", "asked": asked, "target": None, "mode": "research"}
     if not cmd and not tgt:
-        # User-Chat ohne @target: geht IMMER an SoulAG.
-        # SoulAG wertet aus und entscheidet, ob delegiert wird.
-        dispatch(msg.content, target="SoulAG", sender=msg.sender)
-        return {"status": "dispatched", "asked": ["SoulAG"], "target": "SoulAG", "mode": "chat"}
+        # User-Chat ohne @target: geht an GeneralAG (Dirigent).
+        # GeneralAG delegiert an Worker. SoulAG ist stiller Beobachter + DB.
+        # User-Mandat 2026-06-28 04:33.
+        dispatch(msg.content, target="GeneralAG", sender=msg.sender)
+        return {"status": "dispatched", "asked": ["GeneralAG"], "target": "GeneralAG", "mode": "chat"}
     return {"status": "dispatched", "asked": dispatch(q, target=tgt, sender=msg.sender), "target": tgt, "mode": "brainstorm" if cmd == "bs" else "chat"}
 @router.get("/api/chat")
 def get_chat(limit: int = 50):
