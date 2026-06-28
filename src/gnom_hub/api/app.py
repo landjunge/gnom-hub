@@ -267,13 +267,14 @@ async def lifespan(app: FastAPI):
 
     import asyncio
     from gnom_hub.core.config import DB_PATH
-    updater_task = asyncio.create_task(start_openrouter_updater())
+    # User-Mandat 2026-06-28 06:34 — OpenRouter-Updater RAUS.
+    # (Vorher: updater_task = asyncio.create_task(start_openrouter_updater()))
+    # Wir nutzen NUR MiniMax, kein 401-Spam alle 60min.
     recovery_task = asyncio.create_task(start_recovery_and_watchdog_loop(DB_PATH))
     reverify_task = asyncio.create_task(start_invalid_keys_reverifier())
 
     yield
 
-    updater_task.cancel()
     recovery_task.cancel()
     reverify_task.cancel()
     kill_background_agents()

@@ -55,47 +55,17 @@ async def check_opencode_zen_models():
 
 
 async def check_and_update_models():
-    """Fetches, tests all free models (OpenRouter + OpenCode-Zen), caches working ones."""
+    """Fetches, tests all free models (OpenRouter + OpenCode-Zen), caches working ones.
+
+    User-Mandat 2026-06-28 06:34: OpenRouter-Pfad DEAKTIVIERT.
+    Wir nutzen NUR MiniMax. Nur OpenCode-Zen wird noch gepingt (falls vorhanden).
+    """
     repo = SQLiteStateRepository()
 
-    # ── 1. OpenRouter free models ──
-    or_models = []
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get("https://openrouter.ai/api/v1/models")
-            if r.status_code == 200:
-                or_models = [m["id"] for m in r.json().get("data", []) if m.get("id", "").endswith(":free")]
-    except Exception as e:
-        logging.getLogger(__name__).error('Fehler in Abruf der OpenRouter-Modelle: %s', e)
-
-    if not or_models:
-        or_models = list(Config.OPENROUTER_FREE_MODELS)
-
-    # Get OpenRouter key
-    keys = repo.get_value("llm_keys", {}).values()
-    or_key = next((k["key"] for k in keys if k.get("provider") == "openrouter" and k.get("valid")), Config.OPENROUTER_API_KEY)
-    if or_key:
-        Config.OPENROUTER_API_KEY = or_key
-
-    # Verify OpenRouter models
+    # ── 1. OpenRouter free models — DEAKTIVIERT (User-Mandat 2026-06-28 06:34) ──
+    or_models = []   # leer — keine OpenRouter-Calls mehr
     or_working = []
-    if or_key:
-        headers = {"Authorization": f"Bearer {or_key}", "Content-Type": "application/json", "HTTP-Referer": "http://localhost:8000", "X-Title": "Gnom-Hub"}
-        url = "https://openrouter.ai/api/v1/chat/completions"
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            for model in or_models:
-                try:
-                    r = await client.post(url, json={"model": model, "messages": [{"role": "user", "content": "Ping"}]}, headers=headers)
-                    if r.status_code == 200:
-                        or_working.append(model)
-                except (httpx.HTTPError, httpx.TimeoutException, OSError):
-                    pass
-                if "pytest" not in sys.modules:
-                    await asyncio.sleep(1.0)
-    try:
-        repo.set_value("openrouter_working_models", or_working)
-    except Exception as e:
-        logging.getLogger(__name__).error("Error saving OpenRouter models: %s", e)
+    or_key = None
 
     # ── 2. OpenCode-Zen models ──
     zen_working = await check_opencode_zen_models()
