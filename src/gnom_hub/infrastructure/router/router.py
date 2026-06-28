@@ -76,9 +76,21 @@ def _resolve(pvd, mdl, kdb, n):
             else:
                 candidates.append((pvd, mdl))
     elif pvd == "minimax":
-        # User-Mandat 2026-06-28 06:31 — NUR MiniMax, kein Fallback.
-        # OpenRouter (401 ohne Key) und Ollama (nicht laufend) rausgenommen.
+        # Provider-Kette (User-Mandat 2026-06-28 06:40):
+        #   1. MiniMax  2. OpenRouter  3. Ollama (lokal)
         candidates.append(("minimax", mdl))
+        # 2. OpenRouter Fallback
+        try:
+            working = SQLiteStateRepository().get_value("openrouter_working_models") or []
+        except Exception:
+            working = []
+        if not working:
+            working = list(Config.OPENROUTER_FREE_MODELS)
+        ordered_working = SmartRouter._order_working_models(working)
+        for wm in ordered_working:
+            candidates.append(("openrouter", wm))
+        # 3. Ollama als letzter Notnagel
+        candidates.append(("lokal", "llama3"))
     elif pvd in ("deepseek", "openai", "anthropic", "gemini", "mistral"):
         candidates.append((pvd, mdl))
         try:
@@ -93,8 +105,8 @@ def _resolve(pvd, mdl, kdb, n):
     else:
         candidates.append((pvd, mdl))
 
-    # User-Mandat 2026-06-28 06:31 — Ollama-Fallback RAUS. Nur MiniMax.
-    # (Vorher: candidates.append(("lokal", "llama3")))
+    # Ollama als finaler Catch-All (lokal, nie offline)
+    candidates.append(("lokal", "llama3"))
     return candidates
 
 def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent_msg_id=None):
