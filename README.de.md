@@ -196,12 +196,14 @@ graph TD
     subgraph Forge ["🔧 GNOM-HUB Schmiede"]
         P["⚙️ Presets & Regler"] -->|Konfigurieren| GH["🤖 8-Agenten-Schwarm"]
         GH -->|"Lernen & Evolution"| DB[("💾 gnomhub.db")]
-        FB["👍👎 User-Feedback"] -->|"Trigger: evolution_* Regeln"| GH
+        FB["👍👎 User-Feedback"] -->|"Trigger: evolution_* Regeln"| So["🧠 SoulAG"]
+        So -->|"Wende Regeln an"| GH
+        Chat["💬 User-Chat"] -.->|"Silent Observer"| So
     end
     
     subgraph Compiler ["🏭 @bake Compiler"]
         GH -->|"Befehl: @bake"| C["⚡ Compiler Kern"]
-        DB -->|"Reduziere auf 1000 Chats"| C
+        DB -->|"Reduziere auf letzte 1000 Chats"| C
         C -->|"Friere aktive Prompts ein"| AD["📄 agent_definitions.py"]
         C -->|"SHA-256 Integrität"| M["🔐 manifest.json"]
     end
@@ -224,11 +226,12 @@ graph TD
 ```mermaid
 graph TD
     U["👤 Benutzer"] -->|Chat-Eingabe| G["👑 GeneralAG<br/>Orchestrator"]
+    U -.->|"Silent Observer"| So["🧠 SoulAG<br/>(Gedächtnis + Evolution)"]
     
     subgraph Admin ["🛡️ System-Schicht (4 Agenten)"]
         G -->|"Regelprüfung"| W["🐕 WatchdogAG"]
         G -->|"Sicherheits-Scan"| S["🔒 SecurityAG"]
-        G -->|"Gedächtnis-Abfrage"| So["🧠 SoulAG"]
+        G -->|"Gedächtnis-Abfrage"| So
     end
 
     subgraph Workers ["⚙️ Worker-Schicht (4 Agenten)"]
@@ -238,16 +241,12 @@ graph TD
         G -->|"@edit"| E["📝 EditorAG"]
     end
 
-    subgraph Memory ["💾 Isolierte Speicher-Scopes"]
-        So -->|"Globale Fakten"| GS[("🌍 Globaler Index")]
-        C -.->|"Isolierter Query"| MC[("Coder FAISS")]
-        Wr -.->|"Isolierter Query"| MWr[("Writer FAISS")]
-        R -.->|"Isolierter Query"| MR[("Researcher FAISS")]
-        E -.->|"Isolierter Query"| ME[("Editor FAISS")]
-        GS -.->|"Vererbt an"| MC
-        GS -.->|"Vererbt an"| MWr
-        GS -.->|"Vererbt an"| MR
-        GS -.->|"Vererbt an"| ME
+    subgraph Memory ["💾 Isolierte FAISS-Scopes (pro Agent)"]
+        C -.->|"scoped_query"| MC[("Coder FAISS")]
+        Wr -.->|"scoped_query"| MWr[("Writer FAISS")]
+        R -.->|"scoped_query"| MR[("Researcher FAISS")]
+        E -.->|"scoped_query"| ME[("Editor FAISS")]
+        So -.->|"default_index"| MDef[("System FAISS")]
     end
 ```
 
