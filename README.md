@@ -219,14 +219,12 @@ graph TD
     subgraph Forge ["🔧 GNOM-HUB Factory"]
         P["⚙️ Presets & Sliders"] -->|Configure| GH["🤖 8-Agent Swarm"]
         GH -->|"Learn & Evolve"| DB[("💾 gnomhub.db")]
-        FB["👍👎 User Feedback"] -->|"Trigger evolution_* Rules"| So["🧠 SoulAG"]
-        So -->|"Apply rules"| GH
-        Chat["💬 User Chat"] -.->|"Silent Observer"| So
+        FB["👍👎 User Feedback"] -->|"Trigger evolution_* Rules"| GH
     end
     
     subgraph Compiler ["🏭 @bake Compiler"]
         GH -->|"Command: @bake"| C["⚡ Compiler Core"]
-        DB -->|"Prune to last 1000 Chats"| C
+        DB -->|"Prune to 1000 Chats"| C
         C -->|"Freeze Active Prompts"| AD["📄 agent_definitions.py"]
         C -->|"SHA-256 Integrity"| M["🔐 manifest.json"]
     end
@@ -249,12 +247,11 @@ graph TD
 ```mermaid
 graph TD
     U["👤 User"] -->|Chat Input| G["👑 GeneralAG<br/>Orchestrator"]
-    U -.->|"Silent Observer"| So["🧠 SoulAG<br/>(Memory + Evolution)"]
     
     subgraph Admin ["🛡️ System Layer (4 Agents)"]
         G -->|"Rules Check"| W["🐕 WatchdogAG"]
         G -->|"Security Scan"| S["🔒 SecurityAG"]
-        G -->|"Memory Query"| So
+        G -->|"Memory Query"| So["🧠 SoulAG"]
     end
 
     subgraph Workers ["⚙️ Worker Layer (4 Agents)"]
@@ -264,12 +261,16 @@ graph TD
         G -->|"@edit"| E["📝 EditorAG"]
     end
 
-    subgraph Memory ["💾 Isolated FAISS Scopes (per Agent)"]
-        C -.->|"scoped_query"| MC[("Coder FAISS")]
-        Wr -.->|"scoped_query"| MWr[("Writer FAISS")]
-        R -.->|"scoped_query"| MR[("Researcher FAISS")]
-        E -.->|"scoped_query"| ME[("Editor FAISS")]
-        So -.->|"default_index"| MDef[("System FAISS")]
+    subgraph Memory ["💾 Isolated Memory Scopes"]
+        So -->|"Global Facts"| GS[("🌍 Global Index")]
+        C -.->|"Scoped Query"| MC[("Coder FAISS")]
+        Wr -.->|"Scoped Query"| MWr[("Writer FAISS")]
+        R -.->|"Scoped Query"| MR[("Researcher FAISS")]
+        E -.->|"Scoped Query"| ME[("Editor FAISS")]
+        GS -.->|"Inherited"| MC
+        GS -.->|"Inherited"| MWr
+        GS -.->|"Inherited"| MR
+        GS -.->|"Inherited"| ME
     end
 ```
 
