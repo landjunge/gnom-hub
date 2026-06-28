@@ -18,30 +18,14 @@
 🇬🇧 **[English (README.md)](README.md)** • 🇩🇪 **Deutsch (README.de.md)**
 
 ---
-### 📸 Visuelle Galerie / Screenshots & Demo
+### 📐 Architektur-Diagramme (live in dieser README)
 
-#### 🎥 Demo-Video
-[![▶️ Gnom-Hub Demo-Video abspielen (Hier klicken)](docs/screenshot_warroom.png)](docs/demo_video/gnom_hub_demo.webm)
+Die Mermaid-Diagramme weiter unten (Forge-Compiler, Schwarm-Topologie)
+rendern direkt in jedem Markdown-Viewer — **keine Screenshots nötig**.
+Sie sind synchron mit dem Code (siehe Commit `ff0ed80`).
 
-<details open>
-<summary><b>Gnom-Hub Benutzeroberfläche</b></summary>
-
-| **1. War Room (Dashboard)** | **2. Workspace** |
-|:---:|:---:|
-| <img src="docs/screenshot_warroom.png" alt="War Room" width="100%"> | <img src="docs/screenshot_workspace.png" alt="Workspace" width="100%"> |
-| Der zentrale Kontrollraum deiner Multi-Agenten-Schmiede mit Live-Logs, Aktivitäts-Status und Freigaben. | Die Datei-Ansicht für deine lokalen Arbeitsverzeichnisse mit Code-Editoren und Sandboxes. |
-
-| **3. Bento Dashboard (Metriken)** | **4. LLM-Konfig (Global & Keys)** |
-|:---:|:---:|
-| <img src="docs/screenshot_dashboard.png" alt="Metrik-Dashboard" width="100%"> | <img src="docs/screenshot_llm_global.png" alt="LLM-Konfiguration" width="100%"> |
-| Hochauflösendes Bento-Grid-Monitoring für Token-Verbrauch, Antwortzeiten und Systemressourcen (CPU/RAM). | Schlüssel-Manager, um einzelne Agenten an Modelle (OpenAI, OpenRouter, Ollama etc.) zu binden. |
-
-| **5. LLM-Konfig (5-Achsen-Regler)** | **6. Help Center** |
-|:---:|:---:|
-| <img src="docs/screenshot_llm_behavior.png" alt="5-Achsen-Live-Regler" width="100%"> | <img src="docs/screenshot_help.png" alt="Help Center" width="100%"> |
-| Live-Regler zur Kalibrierung von Persönlichkeit, Detailgrad, Temperatur, Risikobereitschaft und Prompts. | Integriertes Dokumentationszentrum mit vollständigen Anleitungen und Befehlserklärungen. |
-
-</details>
+> Für Live-UI-Screenshots: Gnom-Hub lokal installieren via `python3 install.py`
+> und `./start_gnom_hub.sh` starten. Der Browser öffnet sich automatisch auf Port 3002.
 
 ---
 
@@ -528,7 +512,7 @@ gnom-hub/
 ├── config/                # Presets, .env, Routing-Overrides
 ├── scripts/               # Setup- & Hilfs-Skripte
 ├── tests/                 # Unit-Testsuite (218 Tests: connection, state, agents, chat, admin, security, stability, queue-load)
-├── docs/                  # Systemberichte & Screenshots
+├── docs/                  # Architektur-Doku (Mermaid-Diagramme rendern direkt)
 └── pyproject.toml         # Ruff-Konfiguration & Abhängigkeiten
 ```
 

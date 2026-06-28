@@ -19,30 +19,15 @@
 🇬🇧 **English (README.md)** • 🇩🇪 **[Deutsch (README.de.md)](README.de.md)**
 
 ---
-### 📸 Visual Showcase / Screenshots & Demo
+### 📐 Architecture Diagrams (Live in this README)
 
-#### 🎥 Demo Video
-[![▶️ Play Gnom-Hub Demo Video (Click here)](docs/screenshot_warroom.png)](docs/demo_video/gnom_hub_demo.webm)
+The Mermaid diagrams below (Forge-Compiler, Swarm Topology) render
+directly in any Markdown viewer — **no screenshots needed**. They
+are kept in lock-step with the code (see commit `ff0ed80`).
 
-<details open>
-<summary><b>Gnom-Hub Interface Showcase</b></summary>
+> For live UI screenshots: install Gnom-Hub locally via `python3 install.py`
+> and run `./start_gnom_hub.sh`. The browser opens automatically on port 3002.
 
-| **1. War Room (Dashboard)** | **2. Workspace** |
-|:---:|:---:|
-| <img src="docs/screenshot_warroom.png" alt="War Room" width="100%"> | <img src="docs/screenshot_workspace.png" alt="Workspace" width="100%"> |
-| The central hub of your multi-agent forge, displaying agent activity, real-time logs, and decision overlays. | The file explorer for your local workspaces where code files, previews, and sandboxes are managed. |
-
-| **3. Bento Dashboard (Metrics)** | **4. LLM Config (Global & Keys)** |
-|:---:|:---:|
-| <img src="docs/screenshot_dashboard.png" alt="Metrics Dashboard" width="100%"> | <img src="docs/screenshot_llm_global.png" alt="LLM Configuration" width="100%"> |
-| A high-fidelity Bento-grid monitoring system for tokens, response times, and CPU/RAM resource usage. | Key manager to bind individual agents to model configurations (OpenAI, OpenRouter, Ollama, etc.). |
-
-| **5. LLM Config (Agent Sliders)** | **6. Help Center** |
-|:---:|:---:|
-| <img src="docs/screenshot_llm_behavior.png" alt="5-Axis Tuning Sliders" width="100%"> | <img src="docs/screenshot_help.png" alt="Help Center" width="100%"> |
-| Live 5-axis sliders to calibrate worker personality, detail level, temperature, risk tolerance, and prompts. | Built-in interactive documentation and walkthrough manuals for agents and commands. |
-
-</details>
 ---
 
 ## 🚀 Quick Start (Cross-Platform Installation)
@@ -556,7 +541,7 @@ gnom-hub/
 ├── config/                # Presets, .env, routing overrides
 ├── scripts/               # Installer & shortcuts
 ├── tests/                 # Unit test suite (218 tests: connection, state, agents, chat, admin_auth)
-├── docs/                  # Architecture docs & screenshots
+├── docs/                  # Architecture docs (Mermaid diagrams render directly)
 └── pyproject.toml         # Ruff config & dependencies
 ```
 
