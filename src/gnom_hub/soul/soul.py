@@ -13,6 +13,24 @@ from gnom_hub.soul.memory_layers import (
 
 _log = logging.getLogger("soul")
 
+# JSON-Parser-Helper: toleriert Trailing-Content (Kommentare, Erklärungen
+# hinter dem eigentlichen JSON-Array). Vor diesem Fix lieferte json.loads()
+# "Extra data: line N column M (char X)" sobald das LLM nach dem JSON noch
+# prose mitschickte — das wirkte wie "SoulAG antwortet nicht". raw_decode()
+# liest EINEN JSON-Wert ab start_pos und ignoriert den Rest.
+_JSON_DECODER = json.JSONDecoder()
+
+
+def _parse_json_value(text: str, start_pos: int = 0):
+    """Parst einen JSON-Wert ab start_pos. Gibt (obj, end_pos) oder (None, -1)."""
+    if not text:
+        return None, -1
+    try:
+        obj, end = _JSON_DECODER.raw_decode(text, start_pos)
+        return obj, end
+    except json.JSONDecodeError:
+        return None, -1
+
 # ── Konfiguration ──────────────────────────────────────────────────────────
 MAX_SOUL_FACTS       = 100     # Hartes Limit (war 50)
 MIN_VALUE_LENGTH     = 15      # Minimale Fakt-Länge (Zeichen)
@@ -112,6 +130,19 @@ class SoulAG:
         threading.Thread(target=get_cache().warm_up, daemon=True).start()
         self._injections = {}
         self._recent_facts_cache = {}
+        # v7.0: Stale-Task-Nudge-Loop — prüft alle 60s
+        self._nudge_running = True
+        threading.Thread(target=self._nudge_loop_runner, daemon=True).start()
+
+    def _nudge_loop_runner(self):
+        """Background-Loop: ruft _nudge_loop alle 60s auf."""
+        while self._nudge_running:
+            time.sleep(60)
+            if self._nudge_running:
+                try:
+                    self._nudge_loop()
+                except Exception as ex:
+                    _log.error("[Soul] _nudge_loop_runner: %s", ex)
 
     def on_message(self, m: str, s: str):
         from gnom_hub.core.config import Config
@@ -122,6 +153,15 @@ class SoulAG:
         now = time.time()
         if not hasattr(self, '_last_seen_hash'):
             self._last_seen_hash = {}
+
+        # User-Messages: IMMER verarbeiten (kein 15s-Dedup)
+        is_user = s.lower() == "user"
+        if is_user:
+            self._pulse_status()
+            threading.Thread(target=self._ex, args=(m, True), daemon=True).start()
+            return
+
+        # Agent-Messages: 80% Sampling (war 65%)
         last = self._last_seen_hash.get(msg_hash, 0)
         if now - last < 15:
             return
@@ -129,10 +169,9 @@ class SoulAG:
         if len(self._last_seen_hash) > 500:
             oldest = min(self._last_seen_hash, key=self._last_seen_hash.get)
             del self._last_seen_hash[oldest]
-        # User: immer, Agent: 65% Sampling (war 80%)
-        if s.lower() == "user" or hash(msg_hash) % 100 < 65:
+        if hash(msg_hash) % 100 < 80:
             self._pulse_status()
-            threading.Thread(target=self._ex, args=(m,), daemon=True).start()
+            threading.Thread(target=self._ex, args=(m, False), daemon=True).start()
 
     def _pulse_status(self):
         try:
@@ -167,35 +206,85 @@ class SoulAG:
         except Exception:
             return False
 
-    def _ex(self, m: str):
+    def _ex(self, m: str, is_user: bool = False):
+        """
+        SoulAG v7.0 — PRIMARY: Task-Formulierung aus User-Input.
+        SECONDARY: Fakten-Extraktion (bleibt für Kontext-Building).
+        """
+        import hashlib
         try:
             _periodic_cleanup()
+            msg_hash = hashlib.md5(m.encode()).hexdigest()[:8]
 
+            # ── TASK-FORMULIERUNG (PRIMARY, nur User-Messages) ──
+            if is_user:
+                task_prompt = (
+                    f"User-Nachricht:\n\"\"\"\n{m}\n\"\"\"\n\n"
+                    "Du bist SoulAG — der Orchestrator.\n"
+                    "Analysiere: Was will der User WIRKLICH?\n"
+                    "Formuliere daraus 1-3 konkrete Tasks.\n"
+                    "Für jeden Task: Beschreibung + Ziel-Agent (CoderAG/WriterAG/ResearcherAG/EditorAG).\n"
+                    "Antworte ALS REINES JSON-ARRAY:\n"
+                    '[\n  {"task": "Konkrete Task-Beschreibung", "agent": "CoderAG"}\n]\n'
+                    "Leeres Array [] wenn nichts zu tun ist."
+                )
+                try:
+                    task_res = ask_router(
+                        task_prompt,
+                        sys=(
+                            "SoulAG Task-Orchestrator v7.0. "
+                            "Analysiere die wahre User-Absicht. "
+                            "Formuliere präzise, ausführbare Tasks. "
+                            "NUR JSON-Array ausgeben."
+                        ),
+                        agent_name="SoulAG"
+                    ).content
+
+                    task_s = task_res.find("[")
+                    if task_s != -1:
+                        tasks, _ = _parse_json_value(task_res, task_s)
+                        if tasks is None:
+                            tasks = []
+                        for t in tasks:
+                            task_desc = t.get("task", "").strip()
+                            target = t.get("agent", "").strip()
+                            if task_desc and target:
+                                task_id = self._create_task(task_desc, m, target)
+                                if task_id:
+                                    self._dispatch_task(task_id, target, task_desc)
+                                    _log.info("[Soul] Task erstellt + dispatcht: %s → %s", task_desc[:60], target)
+                except Exception as ex:
+                    _log.warning("[Soul] Task-Formulierung fehlgeschlagen: %s", ex)
+
+            # ── FAKTEN-EXTRAKTION (SECONDARY) ──
             prompt = (
                 f"Nachricht:\n\"\"\"\n{m}\n\"\"\"\n\n"
                 "Extrahiere NUR relevante, langfristig nützliche Fakten.\n"
                 "Keine Begrüßungen, keine flüchtigen Fehler, keine Wiederholungen.\n"
                 "Antworte als JSON-Array:\n"
-                '[\n  {"key": "prafix_schluessel", "value": "Präziser Fakt.", "priority": "high|medium|low", "target_agent": "CoderAG|WriterAG|ResearcherAG|EditorAG|all"}\n]\n'
+                '[\n  {"key": "praefix_schluessel", "value": "Praeziser Fakt.", "priority": "high|medium|low", "target_agent": "CoderAG|WriterAG|ResearcherAG|EditorAG|all"}\n]\n'
                 "Leeres Array [] wenn nichts relevant."
             )
             res = ask_router(
                 prompt,
                 sys=(
-                    "SoulAG Fakt-Extraktor. Extrahiere präzise, eigenständige Fakten. "
-                    "Priority: high=Projekt-entscheidend, medium=nützlich, low=kontextuell. "
+                    "SoulAG Fakt-Extraktor. Extrahiere praezise, eigenstaendige Fakten. "
+                    "Priority: high=Projekt-entscheidend, medium=nuetzlich, low=kontextuell. "
                     "target_agent: 'all' oder spezifischer Worker. "
                     "NUR JSON-Array ausgeben."
                 ),
                 agent_name="SoulAG"
             ).content
 
-            s, e = res.find("["), res.rfind("]")
-            if s == -1 or e == -1:
+            s = res.find("[")
+            if s == -1:
                 _log.debug("[Soul] No JSON array in LLM response")
                 return
 
-            facts = json.loads(res[s:e+1])
+            facts, _ = _parse_json_value(res, s)
+            if facts is None:
+                _log.debug("[Soul] JSON array parse failed, skipping")
+                return
             saved = 0
             for f in facts:
                 k, v = f.get("key", ""), f.get("value", "")
@@ -226,27 +315,130 @@ class SoulAG:
 
             if saved:
                 _log.info("[Soul] %d facts saved", saved)
-                self._silent_rounds = 0
-                try:
-                    add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
-                                     f"🧠 {saved} Fakten gelernt", {"type": "soul"})
-                except:
-                    pass
-            else:
-                self._silent_rounds = getattr(self, '_silent_rounds', 0) + 1
-                if self._silent_rounds >= 5:
-                    self._silent_rounds = 0
-                    try:
-                        add_chat_message(get_active_project(), "SoulAG", "soulag", "chat",
-                                         f"👀 Nichts Neues gelernt — {len(getattr(self,'_recent_facts_cache',{}))} aktive Fakten im Cache",
-                                         {"type": "soul"})
-                    except:
-                        pass
 
         except json.JSONDecodeError as e:
             _log.warning("[Soul] JSON error: %s", e)
         except Exception as e:
             _log.error("[Soul] Extraction failed: %s", e, exc_info=True)
+
+    def _create_task(self, description: str, source_message: str, assigned_to: str) -> str:
+        """Erstellt einen Task in soul_tasks DB. Gibt Task-ID zurück."""
+        try:
+            import uuid
+            from gnom_hub.db.connection import get_db_conn
+            task_id = f"soul_{uuid.uuid4().hex[:10]}"
+            now = time.time()
+            with get_db_conn() as conn:
+                conn.execute("""
+                    INSERT INTO soul_tasks
+                        (id, description, source_message, source_user, status,
+                         assigned_to, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 'open', ?, ?, ?)
+                """, (task_id, description, source_message, "user", assigned_to, now, now))
+                conn.commit()
+            return task_id
+        except Exception as ex:
+            _log.error("[Soul] Task-Erstellung fehlgeschlagen: %s", ex)
+            return None
+
+    def _dispatch_task(self, task_id: str, target: str, description: str):
+        """Dispatcht einen Task via swarm_comms dispatch_mention()."""
+        try:
+            from gnom_hub.agents.swarm.swarm_comms import dispatch_mention
+            from gnom_hub.core.config import DB_PATH
+            from gnom_hub.db import get_active_project
+            proj = get_active_project() or "default"
+            text = f"@{target} Task: {description} (ID: {task_id})"
+            dispatch_mention(
+                sender="SoulAG",
+                text=text,
+                context_id=proj,
+                db_path=str(DB_PATH),
+                current_depth=1,
+            )
+            _log.info("[Soul] Dispatcht: %s → %s", task_id, target)
+        except Exception as ex:
+            _log.error("[Soul] Task-Dispatch fehlgeschlagen: %s", ex)
+
+    def _nudge_loop(self):
+        """
+        Prüft alle 60s ob Tasks stale sind (>5min open).
+        Nudged Agenten bis 3x, dann status='blocked' → SecurityAG.
+        """
+        try:
+            from gnom_hub.db.connection import get_db_conn
+            now = time.time()
+            stale_cutoff = now - 300  # 5 Minuten
+
+            with get_db_conn() as conn:
+                stale = conn.execute("""
+                    SELECT id, description, assigned_to, nudge_count
+                    FROM soul_tasks
+                    WHERE status = 'open'
+                      AND nudge_count < 3
+                      AND (last_nudge_at IS NULL OR last_nudge_at < ?)
+                    ORDER BY created_at ASC
+                """, (stale_cutoff,)).fetchall()
+
+                for row in stale:
+                    task_id = row["id"]
+                    agent = row["assigned_to"]
+                    nudge_count = row["nudge_count"] + 1
+                    conn.execute(
+                        "UPDATE soul_tasks SET nudge_count=?, last_nudge_at=? WHERE id=?",
+                        (nudge_count, now, task_id)
+                    )
+                    _log.info("[Soul] Nudge #%d für Task %s → %s", nudge_count, task_id[:12], agent)
+                    # dispatch_mention als Nudge
+                    try:
+                        from gnom_hub.agents.swarm.swarm_comms import dispatch_mention
+                        from gnom_hub.core.config import DB_PATH
+                        from gnom_hub.db import get_active_project
+                        proj = get_active_project() or "default"
+                        dispatch_mention(
+                            sender="SoulAG",
+                            text=f"@{agent} NUDGE: Task noch offen — {row['description'][:100]} (ID: {task_id})",
+                            context_id=proj,
+                            db_path=str(DB_PATH),
+                            current_depth=1,
+                            priority="high",
+                        )
+                    except Exception as ex:
+                        _log.warning("[Soul] Nudge-Dispatch fehlgeschlagen: %s", ex)
+
+                # Nach 3 Nudges → blocked + SecurityAG benachrichtigen
+                blocked = conn.execute("""
+                    SELECT id, description, assigned_to
+                    FROM soul_tasks
+                    WHERE status = 'open' AND nudge_count >= 3
+                """).fetchall()
+
+                for row in blocked:
+                    conn.execute(
+                        "UPDATE soul_tasks SET status='blocked', updated_at=? WHERE id=?",
+                        (now, row["id"])
+                    )
+                    _log.warning("[Soul] Task %s nach 3 Nudges → BLOCKED", row["id"])
+                    try:
+                        from gnom_hub.agents.swarm.swarm_comms import dispatch_mention
+                        from gnom_hub.core.config import DB_PATH
+                        from gnom_hub.db import get_active_project
+                        proj = get_active_project() or "default"
+                        dispatch_mention(
+                            sender="SoulAG",
+                            text=f"@SecurityAG BLOCKADE: Task {row['id']} ({row['description'][:80]}) nach 3 Nudges noch offen — Agent: {row['assigned_to']}",
+                            context_id=proj,
+                            db_path=str(DB_PATH),
+                            current_depth=1,
+                            priority="critical",
+                        )
+                    except Exception as ex:
+                        _log.warning("[Soul] SecurityAG-Benachrichtigung fehlgeschlagen: %s", ex)
+
+                if stale or blocked:
+                    conn.commit()
+        except Exception as ex:
+            _log.error("[Soul] _nudge_loop fehlgeschlagen: %s", ex)
 
     def inject_context(self, sys: str, msg: str, agent_name: str = None) -> str:
         top_k = 6
@@ -292,11 +484,7 @@ class SoulAG:
 
     def emit_directive(self, target_agent: str, directive: str, ttl: int = 3600):
         from gnom_hub.soul.zwc_soul import add_directive as _add_dir
-        from gnom_hub.db import add_chat_message, get_active_project
         zwc = _add_dir(target_agent, directive, ttl)
-        add_chat_message(get_active_project(), "SoulAG", "soulag", "directive",
-                         f"🧠 Direktive fuer {target_agent}: {directive[:80]}{zwc}",
-                         {"type": "directive", "target": target_agent})
         _log.info("[Soul] Directive emitted: %s -> %s: %s", target_agent, directive[:60], ttl)
 
     def get_definitions(self) -> dict:
@@ -309,10 +497,12 @@ soul_instance = SoulAG()
 
 # ── Evolution & Feedback (unverändert) ─────────────────────────────────────
 def _save_rules(res: str, prefix=""):
-    s, e = res.find("["), res.rfind("]")
-    if s != -1 and e != -1:
+    s = res.find("[")
+    if s != -1:
         try:
-            rules = json.loads(res[s:e+1])
+            rules, _ = _parse_json_value(res, s)
+            if rules is None:
+                rules = []
             for f in rules:
                 if f.get("agent") and f.get("rule"):
                     agent_name = f["agent"]
