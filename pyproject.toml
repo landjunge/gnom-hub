@@ -16,9 +16,6 @@ dependencies = [
     "psutil>=5.9.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.24.0",
-    "sentence-transformers>=3.0.0",
-    "faiss-cpu>=1.7.0",
-    "numpy<2",
     "python-multipart",
 ]
 
@@ -51,6 +48,7 @@ ignore = [
 ]
 
 [project.optional-dependencies]
+memory = ["sentence-transformers>=3.0.0", "faiss-cpu>=1.7.0", "numpy<2"]
 dev = ["pytest>=7.0", "httpx>=0.24", "pytest-asyncio", "playwright>=1.40"]   
 
 [tool.pytest.ini_options]
