@@ -107,6 +107,23 @@ _PHRASE_PATTERNS: dict[str, str] = {
     "do research": "web_research",
     "fact check": "fact_checking",
     "faktencheck": "fact_checking",
+    # Coordination (mehrwortige Trigger-Phrasen)
+    "dispatch task": "coordination",
+    "dispatch the task": "coordination",
+    "verteile aufgabe": "coordination",
+    "delegiere aufgabe": "coordination",
+    # Profile-Management
+    "manage my profile": "profile_management",
+    "user settings": "profile_management",
+    "user-einstellungen": "profile_management",
+    # Summarization (DE)
+    "fasse zusammen": "summarization",
+    "fass zusammen": "summarization",
+    # Vulnerability-Scan
+    "audit security": "vulnerability_scan",
+    "security scan": "vulnerability_scan",
+    "sicherheitsscan": "vulnerability_scan",
+    "check cve": "vulnerability_scan",
 }
 
 
@@ -240,7 +257,7 @@ _CANONICAL_CAPABILITIES: dict[str, list[str]] = {
         "fetch", "lade", "downloade", "download",
         "herunterlade", "abholen",
     ],
-    "    write_file": [
+    "write_file": [
         "write_file", "writefile", "schreibdatei",
         "datei_schreiben", "savedatei", "savefile",
         "erstelledatei", "creatdatei", "createfile",
@@ -268,6 +285,38 @@ _CANONICAL_CAPABILITIES: dict[str, list[str]] = {
     "monitoring": [
         "monitoring", "monitor", "ueberwach", "überwach",
         "watchdog", "healthcheck", "liveness",
+    ],
+    # 10. Coordination / Dispatch (GeneralAG routing surface)
+    "coordination": [
+        "coordination", "koordiniere", "coordinate",
+        "delegiere", "delegate", "verteile",
+        "dispatch", "dispatchtask", "dispatch_task",
+        "orchestrate", "orchestrier", "koordination",
+        "taskverteilung", "koordinator",
+    ],
+    # 11. Profile / User-Settings (SoulAG routing surface)
+    "profile_management": [
+        "profile_management", "profilemanagement",
+        "profil", "profile", "user-einstellungen",
+        "user_settings", "usersettings", "persona",
+        "soul_memory", "soulmemory",
+        "kontoeinstellung", "account_settings",
+    ],
+    # 12. Summarization (deterministic Zusammenfassungs-Routing)
+    "summarization": [
+        "summarization", "zusammenfassung",
+        "summary", "summarize", "summariz",
+        "recap", "ueberblick", "überblick",
+        "zusammenfassen", "fassezusammen",
+        "tl", "tldr", "kurzfassung",
+    ],
+    # 13. Vulnerability-Scan (SecurityAG routing surface)
+    "vulnerability_scan": [
+        "vulnerability_scan", "vulnerabilityscan",
+        "schwachstelle", "schwachstellen",
+        "vulnerability", "vulnerabilities",
+        "cve", "exploit", "exploits",
+        "schwachstellenscan", "vuln_scan",
     ],
 }
 

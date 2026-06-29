@@ -279,3 +279,166 @@ def test_resolve_capability_handles_german_keywords():
     assert r3.capability == "edit"
     assert r3.confidence == 0.7
     assert r3.source == "synonym"
+
+
+# ── CAVEAT 1 + 2 — Coverage Gap Fixes (2026-06-29) ────────────────────────
+
+
+def test_resolve_capability_coordination():
+    """``koordiniere den workflow`` → ``coordination`` (synonym, ≥0.7)."""
+    from gnom_hub.agents.routing import resolve_capability
+
+    r = resolve_capability("koordiniere den workflow")
+    assert r.capability == "coordination"
+    assert r.confidence >= 0.7
+
+
+def test_resolve_capability_profile_management():
+    """``manage my profile`` → ``profile_management`` (exact, ≥0.7)."""
+    from gnom_hub.agents.routing import resolve_capability
+
+    r = resolve_capability("manage my profile")
+    assert r.capability == "profile_management"
+    assert r.confidence >= 0.7
+
+
+def test_resolve_capability_summarization():
+    """``fasse zusammen`` → ``summarization`` (exact via phrase, ≥0.7)."""
+    from gnom_hub.agents.routing import resolve_capability
+
+    r = resolve_capability("fasse zusammen")
+    assert r.capability == "summarization"
+    assert r.confidence >= 0.7
+
+
+def test_resolve_capability_vulnerability_scan():
+    """``audit security`` → ``vulnerability_scan`` (exact via phrase, ≥0.7)."""
+    from gnom_hub.agents.routing import resolve_capability
+
+    r = resolve_capability("audit security")
+    assert r.capability == "vulnerability_scan"
+    assert r.confidence >= 0.7
+
+
+def test_canonical_capability_keys_have_no_leading_whitespace():
+    """Regression: kein Key in ``_CANONICAL_CAPABILITIES`` beginnt mit Whitespace.
+
+    Hintergrund: vor dem Fix gab es einen Key ``"    write_file"`` mit
+    4 führenden Spaces, der per Tokenizer-Zufall nie traf (weil
+    ``"write_file"`` beim Tokenisieren in ``["write", "file"]`` zerfällt
+    und ``write`` zuerst gegen ``"write"`` matcht). Das war ein
+    latenter Bug, weil er die Index-Positionen verschob und jeden
+    späteren Maintenance-Versuch verwirrt hätte.
+    """
+    import re as _re
+    from gnom_hub.agents.routing import _CANONICAL_CAPABILITIES
+
+    canonical_pat = _re.compile(r"^[a-z_][a-z0-9_]*$")
+    bad = []
+    for k in _CANONICAL_CAPABILITIES.keys():
+        if not canonical_pat.match(k):
+            bad.append(k)
+    assert not bad, f"Canonical capability keys with leading/trailing whitespace or invalid chars: {bad!r}"
+
+
+# ── CAVEAT 3 — Wrapper Wiring in workflow_engine ──────────────────────────
+
+
+def test_workflow_engine_uses_wrapper_when_mode_on(monkeypatch, isolated_db):
+    """Wenn ``Config.ROUTING_DETERMINISTIC_MODE`` an ist, geht der
+    Workflow-Task-Dispatch durch ``dispatch_by_capability_with_resolution``,
+    NICHT durch ``dispatch_by_capability``.
+    """
+    from gnom_hub.agents.swarm import workflow_engine as wf
+    from gnom_hub.core.config import Config
+
+    calls = {"direct": 0, "wrapper": 0}
+
+    def fake_direct(*args, **kwargs):
+        calls["direct"] += 1
+        return ("DirectAgent", 100)
+
+    def fake_wrapper(*args, **kwargs):
+        calls["wrapper"] += 1
+        return ("WrapperAgent", 200)
+
+    # Auf Modul-Ebene patchen — der Helper resolved die Namen zur Aufrufzeit.
+    monkeypatch.setattr(wf, "dispatch_by_capability", fake_direct)
+    monkeypatch.setattr(wf, "dispatch_by_capability_with_resolution", fake_wrapper)
+    monkeypatch.setattr(Config, "ROUTING_DETERMINISTIC_MODE", True)
+
+    target, msg_id = wf._dispatch_task(
+        workflow_id="wf-test",
+        task_id="t-1",
+        capability="code_generation",
+        text="please write a file with the daily log",
+    )
+
+    assert calls["wrapper"] == 1, (
+        f"expected wrapper to be called once, got {calls['wrapper']}"
+    )
+    assert calls["direct"] == 0, (
+        f"direct must NOT be called when deterministic mode is on (got {calls['direct']})"
+    )
+    assert target == "WrapperAgent"
+    assert msg_id == 200
+
+
+def test_workflow_engine_skips_wrapper_when_mode_off(monkeypatch, isolated_db):
+    """Wenn ``Config.ROUTING_DETERMINISTIC_MODE`` aus ist (Default),
+    wird der Wrapper NICHT aufgerufen — Direkt-Dispatch bleibt
+    unverändert (Production-Verhalten garantiert identisch)."""
+    from gnom_hub.agents.swarm import workflow_engine as wf
+    from gnom_hub.core.config import Config
+
+    calls = {"direct": 0, "wrapper": 0}
+
+    def fake_direct(*args, **kwargs):
+        calls["direct"] += 1
+        return ("DirectAgent", 300)
+
+    def fake_wrapper(*args, **kwargs):
+        calls["wrapper"] += 1
+        return ("WrapperAgent", 400)
+
+    monkeypatch.setattr(wf, "dispatch_by_capability", fake_direct)
+    monkeypatch.setattr(wf, "dispatch_by_capability_with_resolution", fake_wrapper)
+    # Default OFF — explizit setzen, falls ein vorheriger Test den Flag umgelegt hat.
+    monkeypatch.setattr(Config, "ROUTING_DETERMINISTIC_MODE", False)
+
+    target, msg_id = wf._dispatch_task(
+        workflow_id="wf-test",
+        task_id="t-2",
+        capability="shell",
+        text="run pytest",
+    )
+
+    assert calls["direct"] == 1, (
+        f"expected direct to be called once when mode off, got {calls['direct']}"
+    )
+    assert calls["wrapper"] == 0, (
+        f"wrapper must NOT be called when deterministic mode is off (got {calls['wrapper']})"
+    )
+    assert target == "DirectAgent"
+    assert msg_id == 300
+
+
+# ── OPTIONAL — zusätzliche Coverage-Tests ──────────────────────────────────
+
+
+def test_coordination_capability_keyword_de():
+    """``dispatch task`` → ``coordination`` via Phrase-Exact (1.0)."""
+    from gnom_hub.agents.routing import resolve_capability
+
+    r = resolve_capability("please dispatch task to coder agent now")
+    assert r.capability == "coordination"
+    assert r.confidence >= 0.7
+
+
+def test_vulnerability_scan_capability_keyword_cve():
+    """``check CVE-2024-1234`` → ``vulnerability_scan`` (synonym, ≥0.7)."""
+    from gnom_hub.agents.routing import resolve_capability
+
+    r = resolve_capability("please check CVE-2024-1234 against the registry")
+    assert r.capability == "vulnerability_scan"
+    assert r.confidence >= 0.7

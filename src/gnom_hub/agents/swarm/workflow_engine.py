@@ -5,8 +5,11 @@ import time
 import logging
 from typing import List, Dict, Optional, Tuple
 from gnom_hub.db.connection import get_db_connection
-from gnom_hub.agents.swarm.swarm_comms import dispatch_by_capability
-from gnom_hub.core.config import DB_PATH
+from gnom_hub.agents.swarm.swarm_comms import (
+    dispatch_by_capability,
+    dispatch_by_capability_with_resolution,
+)
+from gnom_hub.core.config import DB_PATH, Config
 from gnom_hub.core.constants import (
     WORKFLOW_MAX_RETRIES, WORKFLOW_RETRY_DELAY, WORKFLOW_STUCK_TIMEOUT,
 )
@@ -85,6 +88,58 @@ def interpolate_template(template: str, variables: Dict[str, str]) -> str:
             result = result.replace(full, str(val))
 
     return result
+
+
+def _dispatch_task(
+    workflow_id: str,
+    task_id: str,
+    capability: str,
+    text: str,
+) -> Tuple[Optional[str], Optional[int]]:
+    """Dispatch a workflow task to the appropriate agent.
+
+    Wenn ``Config.ROUTING_DETERMINISTIC_MODE`` aktiviert ist, wird der
+    deterministische Resolver-Wrapper
+    (:func:`gnom_hub.agents.swarm.swarm_comms.dispatch_by_capability_with_resolution`)
+    benutzt — der Intent (``text``) wird zuerst aufgelöst und dann mit der
+    aufgelösten Capability an den regulären Dispatcher weitergegeben.
+
+    Ist die Flag aus (Default), bleibt das Verhalten identisch zum
+    vorherigen Direkt-Dispatch via ``dispatch_by_capability`` — gleicher
+    Funktionsaufruf, gleiche Rückgabe.
+
+    Parameters
+    ----------
+    workflow_id, task_id
+        Reine Tracing-Kontexte (im Log + als ``context_id``).
+    capability
+        Die nominelle Capability aus dem Workflow-Task — wird im
+        Deterministik-Modus IGNORIERT (Resolver entscheidet neu auf Basis
+        von ``text``). Im Default-Modus ist sie die task_type-Anforderung
+        an den Dispatcher.
+    text
+        Interpolierter Task-Text (User-zugewandt). Dient im
+        Deterministik-Modus als ``intent_text`` für den Resolver.
+
+    Returns
+    -------
+    ``(target_agent, msg_id)`` — identisch zur Dispatcher-Signatur.
+    """
+    if Config.ROUTING_DETERMINISTIC_MODE:
+        return dispatch_by_capability_with_resolution(
+            sender="GeneralAG",
+            intent_text=text,
+            text=text,
+            context_id=workflow_id,
+            db_path=str(DB_PATH),
+        )
+    return dispatch_by_capability(
+        sender="GeneralAG",
+        task_type=capability,
+        text=text,
+        context_id=workflow_id,
+        db_path=str(DB_PATH),
+    )
 
 
 def _get_workflow_name(workflow_id: str) -> str:
@@ -336,12 +391,11 @@ def evaluate_workflow(workflow_id: str) -> None:
         _log_wf(workflow_id, f"Dispatching task {rt['task_id']} via capability={rt['capability']}",
                 task_id=rt["task_id"])
 
-        target_agent, msg_id = dispatch_by_capability(
-            sender="GeneralAG",
-            task_type=rt["capability"],
+        target_agent, msg_id = _dispatch_task(
+            workflow_id=workflow_id,
+            task_id=rt["task_id"],
+            capability=rt["capability"],
             text=interpolated,
-            context_id=workflow_id,
-            db_path=str(DB_PATH)
         )
 
         conn2 = get_db_connection()
