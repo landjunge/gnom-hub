@@ -7,6 +7,95 @@ from .action_browser import handle_browser
 from .action_desktop import handle_desktop
 
 
+# ── Context-Offload Helpers (recovert aus experimental/tencentdb-agent-memory) ──
+# Symbolischer Kurzzeitspeicher + node_id Drill-Down — siehe docs/tencentdb-comparison.md
+def _maybe_offload_diff(before: str, after: str, tool_name: str, agent_name: str) -> None:
+    """Context-Offload: schreibe das neu hinzugefügte Tool-Output-Stück auf Disk.
+
+    Best-effort: wenn Offload deaktiviert ist oder was crasht, brechen wir
+    den Agent-Loop nicht ab.
+    """
+    if not before or after == before or len(after) <= len(before):
+        return
+    try:
+        from gnom_hub.core.config import Config as _Cfg
+        if not getattr(_Cfg, "OFFLOAD_ENABLED", False):
+            return
+    except Exception:
+        return
+    try:
+        from gnom_hub.memory.offload import (
+            get_offloader as _get_offloader,
+            OffloadConfig as _OffCfg,
+        )
+        _ocfg = _OffCfg(
+            enabled=True,
+            mild_offload_ratio=_Cfg.OFFLOAD_MILD_RATIO,
+            aggressive_compress_ratio=_Cfg.OFFLOAD_AGGRESSIVE_RATIO,
+            data_dir=_Cfg.OFFLOAD_DATA_DIR,
+            max_tokens=_Cfg.OFFLOAD_MAX_TOKENS,
+        )
+        _off = _get_offloader(agent_name or "default", _ocfg)
+        _new_tail = after[len(before):]
+        if _new_tail.strip():
+            _off.maybe_offload(tool_name=tool_name, content=_new_tail, summary=tool_name)
+    except Exception:
+        pass
+
+
+def _handle_offload_recall(ans: str) -> str:
+    """Behandle ``[OFFLOAD_RECALL:node_id]`` Action-Tags — erlaubt Agenten,
+    einen ausgelagerten Tool-Output per node_id zurück in den Kontext zu holen.
+    """
+    pattern = re.compile(r"\[OFFLOAD_RECALL:\s*([a-fA-F0-9]+)\s*\]")
+    if not pattern.search(ans):
+        return ans
+
+    def _resolve_node_text(node_id: str) -> str:
+        from gnom_hub.memory.node_resolver import resolve_node
+        for _sid in _candidate_session_ids():
+            _content = resolve_node(node_id, _sid)
+            if _content is not None:
+                return _content
+        return ""
+
+    def _candidate_session_ids() -> list:
+        from gnom_hub.core.config import Config as _Cfg
+        from pathlib import Path as _P
+        candidates: list[str] = ["default"]
+        try:
+            _data_root = _P(_Cfg.OFFLOAD_DATA_DIR)
+            if _data_root.is_dir():
+                for _child in _data_root.iterdir():
+                    if _child.is_dir():
+                        candidates.append(_child.name)
+        except Exception:
+            pass
+        return candidates
+
+    def _replace(match: re.Match) -> str:
+        _node_id = match.group(1).lower()
+        _content = _resolve_node_text(_node_id)
+        if not _content:
+            return (
+                f"[System: Offload-Node '{_node_id}' nicht gefunden. "
+                "Verwende [OFFLOAD_RECALL:<8-hex-chars>] mit der "
+                "node_id aus der OFFLOAD-CANVAS.]"
+            )
+        _max_inline = 4096
+        if len(_content) > _max_inline:
+            _truncated = (
+                _content[:_max_inline]
+                + f"\n\n[truncated at {_max_inline} chars; "
+                f"full content on disk for node {_node_id}]"
+            )
+        else:
+            _truncated = _content
+        return f"[Offload Recall node={_node_id}]\n{_truncated}\n[/Offload Recall]"
+
+    return pattern.sub(_replace, ans)
+
+
 # ── SecurityAG-Audit-Hook (Refactor-Schritt 4, Owner-Decision B 2026-06-21) ─────
 # Trigger-Bedingung (Owner-Spec): name=='securityag' AND ('godmode'|'run'|'write') in perms.
 # Feuert in jede Richtung (allowed/denied/error) für write/run/browser/crawl.
@@ -199,4 +288,7 @@ def process_actions(ans, agent, perms, bs_mode, wd):
             _audit_security(agent, perms, "browser", url or "<browser-block>", "allowed")
         else:
             _audit_security(agent, perms, "browser", url or "<browser-block>", "denied")
+    # ── Context-Offload: [OFFLOAD_RECALL:node_id] Action-Tag ─────────────
+    # Agenten können ausgelagerte Tool-Outputs per node_id zurückholen.
+    ans = _handle_offload_recall(ans)
     return handle_browser(ans, browser_matches, agent, perms, wd)

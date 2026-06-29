@@ -105,6 +105,46 @@ class BaseAgent:
 
                 from gnom_hub.soul import soul_instance
 
+                # ── Context-Offload: Mermaid-Canvas injizieren ────────────
+                # Wenn offload aktiv ist, wird die Mermaid-Task-Canvas aus
+                # den bisherigen Offload-Einträgen dieser Session ans
+                # System-Prompt angehängt. So behält der Agent eine
+                # kompakte Sicht auf vergangene Tool-Outputs, ohne dass
+                # der volle Text im Context sitzt. Drill-down erfolgt über
+                # das Agent-Tool ``[OFFLOAD_RECALL:node_id]``.
+                # Recovert aus experimental/tencentdb-agent-memory (d0f8e95).
+                try:
+                    from gnom_hub.core.config import Config as _Cfg
+                    if getattr(_Cfg, "OFFLOAD_ENABLED", False):
+                        from gnom_hub.memory.offload import (
+                            get_offloader as _get_offloader,
+                            OffloadConfig as _OffCfg,
+                        )
+                        from gnom_hub.memory.mermaid_canvas import build_canvas as _build_canvas
+                        _session_id = str(msg.get("context_id") or self.n)
+                        _ocfg = _OffCfg(
+                            enabled=True,
+                            mild_offload_ratio=_Cfg.OFFLOAD_MILD_RATIO,
+                            aggressive_compress_ratio=_Cfg.OFFLOAD_AGGRESSIVE_RATIO,
+                            data_dir=_Cfg.OFFLOAD_DATA_DIR,
+                            max_tokens=_Cfg.OFFLOAD_MAX_TOKENS,
+                        )
+                        _off = _get_offloader(_session_id, _ocfg)
+                        _threshold = _off.get_threshold_state()
+                        _canvas_mode = "aggressive" if _threshold["aggressive"] else "normal"
+                        _canvas = _build_canvas(_off.entries, mode=_canvas_mode)
+                        if _canvas:
+                            sys_prompt = locals().get("sys_prompt", "") + (
+                                "\n\n=== OFFLOAD-CANVAS (vergangene Tool-Outputs) ===\n"
+                                "Tool-Outputs sind nach Disk ausgelagert. Mit "
+                                "[OFFLOAD_RECALL:<node_id>] kannst du den vollen "
+                                "Text zurückholen.\n"
+                                + _canvas
+                            )
+                except Exception:
+                    # Offload-Canvas ist best-effort; ignorieren bei Fehler
+                    pass
+
                 r = await _to_thread(ask_router, text, None, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
 
                 # Timeout-Check (600s = 10 Min, war 300s)

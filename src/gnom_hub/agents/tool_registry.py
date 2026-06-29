@@ -16,13 +16,19 @@ def get_tools_for_agent(soul: dict):
         "screen_record": "Record the screen with optional TTS audio (macOS screencapture + say). [VIDEO:SCREEN:filename=out.mov|duration=20|tts=Spoken text via say]",
         "video_merge": "Merge/concatenate multiple video files. [VIDEO:MERGE:input1.mov,input2.mp4|output=final.mp4]",
         "video_edit": "Cut, trim, or scale a video. [VIDEO:EDIT:input.mov|output=cut.mp4|start=00:00:05|end=00:00:15]",
+        # ── Context-Offload-Tool (TencentDB-Port) ─────────────────────
+        # Erlaubt Agenten einen ausgelagerten Tool-Output per node_id
+        # zurück in den Kontext zu holen. Verfügbar für ALLE Agenten —
+        # ein Agent soll jederzeit nachschlagen können, was ein
+        # vergangenes Tool-Output war.
+        "offload_recall": "Recall an offloaded tool output by node_id. [OFFLOAD_RECALL:<8-hex-chars>]. Use this when the OFFLOAD-CANVAS in the system prompt shows a node you want to expand.",
         # ── TTS (plattformunabhängig) ──
         "speak":        "Speak text using the agent's assigned TTS voice (macOS say / Linux espeak / Windows SAPI). [SPEAK: text here]. SoulAG nutzt das für direkte Sprachausgabe an User.",
         "set_voice":    "Change the agent's default TTS voice. [SET_VOICE: Anna|rate=180]. Available voices depend on platform.",
         "list_voices":  "List all available TTS voices on this system. [LIST_VOICES]",
     }
     # ── DAUERHAFT FREIGESCHALTET für ALLE Agenten ──
-    a = ["read_file", "web_search", "crawl_url"]
+    a = ["read_file", "web_search", "crawl_url", "offload_recall"]
     if "@job" in p: a += ["war_room_chat", "create_agent"]
     if "write" in p: a += ["write_file", "generate_image"]
     if "godmode" in p or "run" in p: a += ["run_command", "sys_cmd", "screen_record", "video_merge", "video_edit"]
@@ -64,6 +70,7 @@ def format_tools_prompt(soul: dict, name: str):
     if "screen_record" in t: syn += "\n  [VIDEO:SCREEN:filename=out.mov|duration=20|audio=on] — Record screen (macOS screencapture, ffmpeg fallback)"
     if "video_merge" in t: syn += "\n  [VIDEO:MERGE:input1.mov,input2.mp4|output=final.mp4] — Concatenate videos (ffmpeg)"
     if "video_edit" in t: syn += "\n  [VIDEO:EDIT:input.mov|output=cut.mp4|start=00:00:05|end=00:00:15|scale=1280x720] — Cut/trim/scale (ffmpeg)"
+    if "offload_recall" in t: syn += "\n  [OFFLOAD_RECALL:<8-hex-chars>] — Volltext eines ausgelagerten Tool-Outputs zurückholen (node_id aus OFFLOAD-CANVAS)."
     syn += '\n  <SHOWBOX:lamp_index>["Slide 1 HTML", "Slide 2 HTML"]</SHOWBOX> — Showbox update.'
     syn += '\n  3-LAYER-SYSTEM (hart durchgesetzt):'
     syn += '\n    <SHOWBOX:worker> (orange) → Worker (CoderAG, WriterAG, ResearcherAG, EditorAG)'
