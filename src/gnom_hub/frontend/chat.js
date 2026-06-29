@@ -995,7 +995,6 @@ async function refreshChat() {
       thoughtEl.scrollTop = thoughtSt;
     }
   }
-}
 
 function copyMsg(id) {
   const el = document.getElementById('msg-' + id);
