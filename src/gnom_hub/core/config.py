@@ -7,17 +7,20 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 load_dotenv(CONFIG_DIR / ".env")
 
-# Support running multiple instances simultaneously by isolating paths based on the port
+# Support running multiple instances simultaneously by isolating paths based on the port.
+# Workspace ist IMMER port-unabhängig: ~/gnom-Workspace (oder env-override) — damit
+# Agenten ihre Files nicht verlieren wenn man auf einem anderen Port startet. Nur das
+# data_dir (DB) und run_dir (PIDs) sind port-spezifisch für echte Instanz-Isolation.
 port = os.getenv("GNOM_HUB_PORT", "3002")
 
 if port == "3002":
     default_home = Path.home() / ".gnom-hub"
-    # Default workspace: ~/gnom-Workspace (ausgelagert aus dem Gnom-Hub-Repo)
-    default_workspace = Path.home() / "gnom-Workspace"
 else:
     default_home = Path.home() / f".gnom-hub-{port}"
-    # Mehrere Instanzen: separater Workspace-Pfad pro Port, parallel zu HOME
-    default_workspace = Path.home() / f"gnom-Workspace-{port}"
+
+# Workspace ist port-unabhängig (default ~/gnom-Workspace) — Files überleben
+# Instanz-Wechsel, Auto-Route-Wechsel, Port-Sprünge.
+default_workspace = Path.home() / "gnom-Workspace"
 
 HOME = Path(os.getenv("GNOM_HUB_HOME", default_home))
 GNOM_HUB_HOME = HOME
@@ -80,6 +83,48 @@ class Config:
         if str(WORKSPACE_DIR) == "." or str(WORKSPACE_DIR) == "":
             return Path.home() / "gnom-Workspace"
         return WORKSPACE_DIR
+
+    # ── Context Offload (TencentDB-Agent-Memory port) ─────────────────────
+    # Defaults mirror the upstream TencentDB plugin
+    # (``openclaw.plugin.json::offload``) where they overlap. Offload is
+    # additive and OFF by default — set OFFLOAD_ENABLED=true (or edit
+    # the field) to activate.
+    OFFLOAD_ENABLED = os.getenv("OFFLOAD_ENABLED", "False").lower() == "true"
+    OFFLOAD_MILD_RATIO = float(os.getenv("OFFLOAD_MILD_RATIO", "0.5"))
+    OFFLOAD_AGGRESSIVE_RATIO = float(os.getenv("OFFLOAD_AGGRESSIVE_RATIO", "0.85"))
+    OFFLOAD_DATA_DIR = os.getenv("OFFLOAD_DATA_DIR", "data/offload")
+    # Token budget used as the denominator for the two ratios above.
+    # Matches the LLM context-window setting in ``router.py``; can be
+    # overridden per-agent via the LLM provider's ``max_tokens`` later.
+    OFFLOAD_MAX_TOKENS = int(os.getenv("OFFLOAD_MAX_TOKENS", "8000"))
+
+    # ── Routing-Determinism (opt-in Feature Flag) ─────────────────────────
+    # Wenn aktiviert, läuft zusätzlich zum LLM-basierten ask_router ein
+    # deterministischer Capability-Resolver
+    # (:func:`gnom_hub.agents.routing.resolve_capability`) auf jedem
+    # User-Prompt. Das Ergebnis wird geloggt + im State-Store unter
+    # ``routing_resolution_<agent>_<ts>`` abgelegt — die existierende
+    # ask_router-Pfadführung wird NICHT ersetzt, nur ergänzt.
+    # Default: AUS, damit bestehende Verhalten garantiert unverändert
+    # bleiben. Setzen via ``ROUTING_DETERMINISTIC_MODE=true`` oder
+    # mutation von ``Config.ROUTING_DETERMINISTIC_MODE`` in Tests.
+    ROUTING_DETERMINISTIC_MODE = os.getenv("ROUTING_DETERMINISTIC_MODE", "False").lower() == "true"
+    # Logging-Level für Routing-Decisions (Info für Production-Beobachtung,
+    # Debug für Entwicklung).
+    ROUTING_LOG_LEVEL = os.getenv("ROUTING_LOG_LEVEL", "info").lower()
+    # Welche Capabilities als "Fallback-Chain-Whitelist" gelten, wenn die
+    # primäre Auflösung leer liefert. JSON-artige Komma-Liste.
+    ROUTING_FALLBACK_CAPS = [
+        c.strip().lower() for c in
+        os.getenv("ROUTING_FALLBACK_CAPS", "general").split(",")
+        if c.strip()
+    ]
+    # Maximale Anzahl Log-Einträge pro Agent im State-Store (Rotation).
+    ROUTING_RESOLUTION_LOG_MAX = int(os.getenv("ROUTING_RESOLUTION_LOG_MAX", "50"))
+    # Schwellwert (0.0–1.0) — Resolutionen unterhalb dieses Confidence-
+    # Werts werden nur als INFO geloggt, nicht in den State-Store
+    # geschrieben. Vermeidet Lärm bei No-Match-Fällen.
+    ROUTING_RESOLUTION_LOG_MIN_CONF = float(os.getenv("ROUTING_RESOLUTION_LOG_MIN_CONF", "0.3"))
 
     @classmethod
     def get_supergnom_template(cls) -> str:
