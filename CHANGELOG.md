@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.0-stable] - 2026-06-29
+
+First stable release. Konsolidiert aus `origin/main` (Provider-Chain,
+security_permissions, showbox-consolidation, migrations) + alle
+Session-Fixes dieser Vorbereitungs-Phase.
+
+### Fixed (P0)
+- **chat.js:998 SyntaxError** — extra `}` entfernt, `node --check` grün
+- **Cache-Buster v=23 → v=28** — alle 9 Scripts in `index.html`
+- **Showbox-Buttons drop** — `action_exec.handle_showbox:86` reicht jetzt `buttons=d.get("buttons")` durch
+- **critical-tts-btn dead-code** — Button + `toggleCriticalTTS()` entfernt (Lügen-UI: Title behauptete was Code nicht tat)
+- **State-Schutz** — `_MERGE_REQUIRED` Whitelist + auto-merge in `state_repo.set_value()` (kein destruktives Overwrite mehr)
+- **llm_keys.save_keys Merge** — existierende Keys bleiben erhalten statt Overwrite
+- **llm_agents dry_run** — Auto-Route queued via UI, nur expliziter Save persistiert
+- **Provider-Detection** — längster-Prefix-Match (`minimax` schlägt `minimax-coder`)
+- **Process-Manager** — `start_new_session=True` verhindert PPID=1 Waisen
+- **Hub Pre-Start Total-Kill** — `_total_kill_pre_start()` vor `uvicorn.run`
+- **Routing-Zeitbombe entschärft** — alle 8 Agents auf `minimax | MiniMax-M3` (vorher `lokal | llama3`)
+- **start_gnom_hub.sh SIGHUP-Fix** — `nohup ... & disown` damit Hub Parent-Shell-Exit überlebt
+- **Cold-start-hang on [WRITE:]** (cherry-pick `43a64ca`) — transitive SoulAG/torch Import eliminiert
+
+### Added (P1)
+- **key_reconciler.py** Auto-Reconcile MiniMax-Key beim Hub-Start
+- **Workspace port-unabhängig** (`config.py: default_workspace = Path.home() / "gnom-Workspace"`)
+- **OFFLOAD_ENABLED flag** + TencentDB nativ integriert (kein Wrapper mehr)
+- **Showbox-Buttons DB-Layer** — 3-Quellen-Extraktion (JSON / Inline-Format-A / Inline-Format-B) via `parse_inline_buttons`
+- **stress_50 als Live-Hub-Test** — `requires_hub` marker + `collect_ignore_glob` in conftest
+
+### Changed (Architektur)
+- **main → master Merge** — Provider-Kette (MiniMax → OpenRouter → Ollama, dann OpenRouter raus), `security_permissions`, `showbox.js` + `showbox-buttons.js` → `showbox-module.js`, `migrations` mit `ALTER TABLE` tolerance
+- **FAISS als optional `memory` extra** — nicht mehr required, verhindert Install-Crash
+- **Repo `landjunge/gnom-hub` jetzt public**
+- **5 alte Branches gelöscht** (main-de, main-en, simple-base, dev, feature/supergnom)
+- **2 outdated experimental Branches gelöscht** (tencentdb-agent-memory, action-handler-fix)
+
+### Known-Issues (nicht in v1.0-stable, Post-Release)
+- Auth-Layer: 1/38 Endpoints hat `verify_admin` (Single-User okay, exposed deployment nicht)
+- RCE-Vektor: `/api/workspace/{filename}/run` mit nur `.py`-Check
+- State-Mutation-Endpoints ohne row-level lock (Race-Conditions)
+- `_llmRoutingTimer` silent 30s auto-refresh ohne UI-Toggle
+- 26 pre-existing test fails (Browser-Tests ohne Playwright-Binaries, Preset-Files-Disk-Issues)
+
+### Migration von v0.9.0 / v1.1.1
+- `pip install -e ".[memory]"` für FAISS/sentence-transformers (optional)
+- `python3 install.py` + `./scripts/start_gnom_hub.sh` (kein manueller nohup mehr nötig)
+- Repo sichtbar unter https://github.com/landjunge/gnom-hub (jetzt public)
+
 ## [Unreleased]
 ### Added
 - **Presets-Management: Schema v2 + Per-Agent-UI + Layer-A CRUD API**
