@@ -47,7 +47,16 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                         except (FileNotFoundError, OSError):
                             pass
 
-                    from gnom_hub.soul.zwc_soul import add_agent_metadata
+                    # Bug fix (2026-06-29, branch experimental/action-handler-fix):
+                    # use gnom_hub.core.zwc_codec instead of gnom_hub.soul.zwc_soul.
+                    # The latter transitively imports SoulAG → sentence_transformers
+                    # → torch (~5-30s cold start) via gnom_hub/soul/__init__.py,
+                    # which ran on every successful [WRITE:] and caused LLM-side
+                    # race conditions (the file *was* written at line 38-39, but
+                    # the response was delayed so user-side heuristics reported
+                    # "nothing happened"). zwc_codec is pure-stdlib and safe
+                    # to import from any handler.
+                    from gnom_hub.core.zwc_codec import add_agent_metadata
                     r = f"[System: Datei '{fname}' gespeichert unter {os.path.abspath(fpath)}.{auto_open}]" + add_agent_metadata(agent["name"], "")
 
                 except Exception as e:
