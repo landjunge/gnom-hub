@@ -64,7 +64,11 @@ export OPENBLAS_NUM_THREADS=1
 export KMP_DUPLICATE_LIB_OK=TRUE
 
 # Hub starten
-python3 -u -m gnom_hub > logs/logs_hub.txt 2>&1 &
+# nohup + disown: schützt vor SIGHUP beim Parent-Shell-Exit
+# (Terminal zu, ssh-disconnect, IDE-Restart). Ohne disown stirbt der Hub.
+nohup python3 -u -m gnom_hub > logs/logs_hub.txt 2>&1 &
+HUB_PID=$!
+disown
 sleep 4
 
 # Browser öffnen
