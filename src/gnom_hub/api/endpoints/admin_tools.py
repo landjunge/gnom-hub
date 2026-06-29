@@ -184,16 +184,14 @@ def clean_all():
     except Exception as e:
         _log.warning("Passive DB nicht verfügbar: %s", e)
 
-    # Workspace leeren
-    wd = os.path.join(str(WORKSPACE_DIR), 'default')
-    if os.path.exists(wd):
-        for item in os.listdir(wd):
-            item_path = os.path.join(wd, item)
-            try:
-                if os.path.isdir(item_path): shutil.rmtree(item_path)
-                else: os.remove(item_path)
-            except OSError as e:
-                _log.warning("Workspace: %s nicht löschbar: %s", item, e)
+    # Workspace leeren — wurde aus cleanAll entfernt weil es außerhalb vom
+    # Gnom-Hub-Repo liegt (~/gnom-Workspace/) und der User dort eigene Files hat.
+    # Wer Workspace leeren will: explizit via /api/admin/clean-workspace mit
+    # eigenem Confirm-Endpoint.
+    # wd = os.path.join(str(WORKSPACE_DIR), 'default')  # ← auskommentiert
+    # if os.path.exists(wd):
+    #     for item in os.listdir(wd):
+    #         ...
 
     # Neustart in 3s (nachdem die Antwort zurück ist)
     import threading
@@ -276,3 +274,47 @@ def remove_tool(name: str):
     tools = [t for t in repo.get_value("tools", []) if t["name"] != name]
     repo.set_value("tools", tools)
     return {"removed": name}
+
+
+@router.post("/clean-workspace")
+def clean_workspace(payload: dict = None):
+    """Workspace-Inhalt leeren — EXPLIZIT, mit Type-Confirm "DELETE" im Body.
+
+    Im Gegensatz zu /clean-all (das nur DBs löscht) löscht dieser Endpoint
+    NUR den User-Workspace unter ~/gnom-Workspace/default. Erfordert
+    explizit confirm="DELETE" im Body damit niemand versehentlich klickt.
+
+    Body: {"confirm": "DELETE"}
+    """
+    import os, shutil
+    from gnom_hub.core.config import WORKSPACE_DIR
+
+    payload = payload or {}
+    if payload.get("confirm") != "DELETE":
+        return {
+            "status": "error",
+            "info": "Bestätigung erforderlich: sende {\"confirm\": \"DELETE\"} im Body"
+        }
+
+    wd = os.path.join(str(WORKSPACE_DIR), 'default')
+    if not os.path.exists(wd):
+        return {"status": "ok", "info": "Workspace war bereits leer", "deleted": 0}
+
+    deleted = 0
+    for item in os.listdir(wd):
+        item_path = os.path.join(wd, item)
+        try:
+            if os.path.isdir(item_path):
+                shutil.rmtree(item_path)
+            else:
+                os.remove(item_path)
+            deleted += 1
+        except OSError as e:
+            logging.getLogger(__name__).warning("Workspace: %s nicht löschbar: %s", item, e)
+
+    return {
+        "status": "ok",
+        "info": f"Workspace geleert: {deleted} Items entfernt",
+        "deleted": deleted,
+        "workspace": wd,
+    }

@@ -252,7 +252,19 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent
                 lat = (time.time() - t0) * 1000
                 record_agent_request(n or "unknown", lat, True)
                 logger.log_event("llm_call", provider=cp, model=cm, latency_ms=lat, status="success")
-                if cfg.get("provider") != cp or cfg.get("model") != cm:
+                # CRITICAL FIX: persistiere NICHT den Fallback-Provider. Wenn z.B.
+                # minimax fehlschlägt und der Fallback `lokal:llama3` antwortet,
+                # würde db["soulag"] dauerhaft auf lokal gesetzt — der nächste
+                # Call würde dann nie mehr minimax versuchen. Statt dessen: behalte
+                # die ursprüngliche explizite Zuweisung. Drift-Schutz.
+                if idx > 0 and cfg.get("_source") != "routing.txt" and cfg.get("_source") != "default":
+                    # Fallback-Candidate hat geantwortet — nicht persistieren.
+                    logger.log_event("fallback_used", primary=cfg.get("provider"),
+                                     primary_model=cfg.get("model"),
+                                     fallback_provider=cp, fallback_model=cm)
+                # Wenn explizit als auto geroutet (kein _source) UND der Primary hat
+                # geantwortet: dann darfst du persistieren, das ist die Auto-Learn-Logik.
+                elif idx == 0 and cfg.get("provider") != cp:
                     adb[n] = {"provider": cp, "model": cm}
                     set_state_value("llm_agents", adb)
                 if n:

@@ -142,6 +142,9 @@ function buildWarRoomHTML() {
         <button id="thought-tts-btn" onclick="toggleThoughtTTS()" style="font-size:0.65rem; background:${window.thoughtTtsEnabled ? 'rgba(57,255,20,0.15)' : 'rgba(0,229,255,0.1)'}; border:1px solid ${window.thoughtTtsEnabled ? 'rgba(57,255,20,0.4)' : 'rgba(0,229,255,0.3)'}; color:${window.thoughtTtsEnabled ? 'var(--green)' : 'var(--cyan)'}; border-radius:4px; padding:2px 8px; cursor:pointer; font-weight:bold;">
           ${window.thoughtTtsEnabled ? '🔊 TTS An' : '🔇 TTS Aus'}
         </button>
+        <button id="critical-tts-btn" onclick="toggleCriticalTTS()" style="font-size:0.65rem; background:${(localStorage.getItem('criticalTtsEnabled') === 'true') ? 'rgba(255,180,0,0.15)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${(localStorage.getItem('criticalTtsEnabled') === 'true') ? 'rgba(255,180,0,0.5)' : 'rgba(255,255,255,0.2)'}; color:${(localStorage.getItem('criticalTtsEnabled') === 'true') ? 'orange' : 'var(--text-dim)'}; border-radius:4px; padding:2px 8px; cursor:pointer; font-weight:bold; margin-left:4px;" title="Spricht 'CRITICAL System-Blockade' bei Warnungen. Default AUS — visuelles Popup im Chat erscheint trotzdem.">
+          ${(localStorage.getItem('criticalTtsEnabled') === 'true') ? '🚨 Critical-TTS An' : '🔕 Critical-TTS Aus'}
+        </button>
       </div>
       <div id="thought-display" data-help-title="🧠 Denkprozesse & Logik" data-help="Dieses Fenster zeigt dir live die interne Logik und Lösungsfindung der Agenten. Schalte oben auf 'Kompakt' oder 'Minimal', um die Anzeige anzupassen oder auszublenden."></div>
       
@@ -633,6 +636,28 @@ function toggleThoughtTTS() {
   }
 }
 
+function toggleCriticalTTS() {
+  const enabled = localStorage.getItem('criticalTtsEnabled') === 'true';
+  const newVal = !enabled;
+  localStorage.setItem('criticalTtsEnabled', newVal ? 'true' : 'false');
+  const btn = document.getElementById('critical-tts-btn');
+  if (btn) {
+    if (newVal) {
+      btn.innerHTML = '🚨 Critical-TTS An';
+      btn.style.background = 'rgba(255,180,0,0.15)';
+      btn.style.borderColor = 'rgba(255,180,0,0.5)';
+      btn.style.color = 'orange';
+      toast('🚨 Critical-TTS aktiv — du wirst "CRITICAL System-Blockade" hören', 'warning');
+    } else {
+      btn.innerHTML = '🔕 Critical-TTS Aus';
+      btn.style.background = 'rgba(255,255,255,0.05)';
+      btn.style.borderColor = 'rgba(255,255,255,0.2)';
+      btn.style.color = 'var(--text-dim)';
+      toast('🔕 Critical-TTS aus — visuelles Popup im Chat erscheint weiterhin', 'info');
+    }
+  }
+}
+
 function renderThoughtMessageHTML(sender, content, timestamp) {
   const c = agentColor(sender);
   const time = timestamp ? new Date(timestamp).toLocaleTimeString() : '';
@@ -889,6 +914,10 @@ async function refreshChat() {
                                 .replace(/<SHOWBOX[\s\S]*?<\/SHOWBOX>/gi, '')
                                 .trim();
         let isWarningOrBlock = false;
+        // CRITICAL-TTS: separater Toggle, default AUS. Sonst spricht das System
+        // bei jeder Warnung/Blockade-Message "🛑 CRITICAL: System-Blockade" und
+        // nervt den User. User kann es im UI einschalten wenn gewünscht.
+        const criticalTtsEnabled = localStorage.getItem('criticalTtsEnabled') === 'true';
         if (cleaned.includes('Warnung!') || cleaned.includes('WARNUNG')) {
           isWarningOrBlock = true;
           const agentMatch = cleaned.match(/Worker ([^ ]+)/i) || cleaned.match(/durch ([^ ]+)/i);
@@ -897,6 +926,20 @@ async function refreshChat() {
             speechText = `Warnung! ${agentName || 'Worker'} versucht auf Systemdatei zuzugreifen.`;
           } else if (cleaned.includes('unsicher')) {
             speechText = `Warnung! Unsichere Dateiänderung durch ${agentName || 'Worker'}.`;
+          }
+        }
+        if (!speechText) {
+          const hasBlock = cleaned.includes('🚨') || cleaned.includes('Blockier') ||
+                           cleaned.includes('Gatekeeper') || cleaned.includes('System-Blockade');
+          if (hasBlock) {
+            isWarningOrBlock = true;
+            if (criticalTtsEnabled) {
+              speechText = "🛑 CRITICAL: System-Blockade";
+            }
+            // Wenn criticalTtsEnabled AUS: kein CRITICAL-Spruch, nur visuell im Chat
+          }
+        }
+        if (speechText && (isAllowedSender || (isWarningOrBlock && criticalTtsEnabled))) {
           } else {
             speechText = `Warnung für ${agentName || 'System'}.`;
           }

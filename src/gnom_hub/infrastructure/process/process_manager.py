@@ -107,6 +107,11 @@ def start_background_agents() -> None:
             stdout=open(log_file, "w"), stderr=subprocess.STDOUT,
             cwd=str(PROJECT_ROOT),
             env={**__import__("os").environ, "PYTHONPATH": str(PROJECT_ROOT / "src")},
+            # CRITICAL: start_new_session=True setzt eine eigene Process-Group
+            # für jedes Subprocess. Sonst werden die Agents beim Hub-Tod zu
+            # Waisen (PPID=1) und laufen ewig weiter. Mit eigener PG kann man
+            # via os.killpg(os.getpgid(pid), SIGTERM) ALLE auf einmal killen.
+            start_new_session=True,
         )
         (RUN_DIR / f"{a}.pid").write_text(str(p.pid))
 

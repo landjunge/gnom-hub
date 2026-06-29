@@ -223,6 +223,7 @@
 
   // Render the current slide of the current history item in the given layer
   function renderLayerContent(layerIdx) {
+    if (typeof window !== 'undefined') window.renderLayerContent = renderLayerContent;
     const layer = state.layers[layerIdx];
     const body = document.getElementById(`sb-layer-body-${layerIdx}`);
     if (!body) return;
@@ -931,4 +932,31 @@
   } else {
     init();
   }
+
+  // ── Auto-Refresh: Push LLM-Routing-Showbox alle 30s ──
+  // So bleibt die Showbox "live" — neuer Provider, neuer Key, neue Zuweisung
+  // wird ohne manuellen Refresh im UI sichtbar.
+  let _llmRoutingTimer = null;
+  const startLlmRoutingAutoRefresh = () => {
+    if (_llmRoutingTimer) return;
+    const tick = async () => {
+      try {
+        const r = await fetch('/api/showbox/llm_routing', { method: 'POST' });
+        if (!r.ok) return;
+        // Falls die Showbox gerade aktiv ist, neu rendern
+        const a = await fetch('/api/showbox/active');
+        const ad = a.ok ? await a.json() : {};
+        if (ad && ad.active === 'LLM-Routing' && typeof window.renderLayerContent === 'function') {
+          // Re-render alle Layer damit neue Slides sichtbar werden
+          try { window.renderLayerContent(0); } catch (_) {}
+          try { window.renderLayerContent(1); } catch (_) {}
+          try { window.renderLayerContent(2); } catch (_) {}
+        }
+      } catch (_) { /* silent */ }
+    };
+    _llmRoutingTimer = setInterval(tick, 30000);
+    // Initial tick nach 2s
+    setTimeout(tick, 2000);
+  };
+  startLlmRoutingAutoRefresh();
 })();

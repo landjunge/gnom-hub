@@ -860,13 +860,14 @@ async function showLLMConfig() {
   };
   window.__llmQueueServiceChange = queueServiceChange;
 
-  // Auto-route a group — still works as before, but the result becomes a
-  // pending change instead of an immediate DB write.
+  // Auto-route a group — preview-only (dry_run), no DB write.
+  // Global Save button (header) is the single source of truth for persisting
+  // these queued changes.
   const autoRoute = async (group, mode) => {
     try {
       const r = await fetch('/api/llm/agents', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, group })
+        body: JSON.stringify({ mode, group, dry_run: true })
       });
       const d = await r.json();
       if (r.ok && d.agents) {
@@ -882,11 +883,11 @@ async function showLLMConfig() {
           updateAgentCapsColumn(a.name, a.provider || '');
         });
         fetch('/api/llm/keys').then(r => r.ok ? r.json() : {}).then(kdb => refreshAgentStatusDots(kdb));
-        status(`Auto-routing (${mode}) queued for ${group}: ${d.agents[0].provider}/${d.agents[0].model}. Click Save.`, '#00e5ff');
+        status(`Auto-routing (${mode}) VORSCHAU für ${group}: ${d.agents[0].provider}/${d.agents[0].model}. Klick „Save" (Header) zum Übernehmen.`, '#00e5ff');
       } else {
-        status(`Auto-routing failed: ${d.info || d.status || 'unknown'}`, '#FF007F');
+        status(`Auto-routing fehlgeschlagen: ${d.info || d.status || 'unknown'}`, '#FF007F');
       }
-    } catch (e) { status(`Auto-routing error: ${e.message}`, '#FF007F'); }
+    } catch (e) { status(`Auto-routing-Fehler: ${e.message}`, '#FF007F'); }
   };
 
   // ── Wire up controls ──

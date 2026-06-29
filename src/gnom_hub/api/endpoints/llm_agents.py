@@ -83,6 +83,7 @@ async def save_agent_llm(req: Request):
     if "mode" in data and "group" in data:
         mode = data["mode"]
         group = data["group"]
+        dry_run = bool(data.get("dry_run", False))
         agents = SYSTEM_AGENTS if group == "system" else (WORKER_AGENTS if group == "worker" else ALL_AGENTS)
         # Available providers = alle valid-Keys in DB
         kdb = db.get_value("llm_keys", {}) or {}
@@ -102,23 +103,24 @@ async def save_agent_llm(req: Request):
             return {"status": "error", "info": f"No working providers for mode '{mode}'", "agents": []}
 
         new_assignments = {a.lower(): {"provider": provider, "model": model} for a in agents}
-        # Merge with existing
-        existing = db.get_value("llm_agents", {}) or {}
-        if not isinstance(existing, dict):
-            existing = {}
-        for k, v in new_assignments.items():
-            existing[k] = v
-        db.set_value("llm_agents", existing)
-        # Save to preset too
-        preset = db.get_value("active_preset", "Web Development")
-        if isinstance(preset, str):
-            preset = preset.strip('"\'')
-        db.set_value(f"llm_preset_{preset}", existing)
+        # Only persist when not in dry_run mode — dry_run is for preview/queueing
+        # so the global Save button remains the single source of truth for writes.
+        if not dry_run:
+            existing = db.get_value("llm_agents", {}) or {}
+            if not isinstance(existing, dict):
+                existing = {}
+            for k, v in new_assignments.items():
+                existing[k] = v
+            db.set_value("llm_agents", existing)
+            preset = db.get_value("active_preset", "Web Development")
+            if isinstance(preset, str):
+                preset = preset.strip('"\'')
+            db.set_value(f"llm_preset_{preset}", existing)
 
         # Return full list of assignments for the group
         agents_list = [{"name": a, "provider": new_assignments[a.lower()]["provider"],
                         "model": new_assignments[a.lower()]["model"]} for a in agents]
-        return {"status": "ok", "mode": mode, "group": group, "agents": agents_list}
+        return {"status": "ok", "mode": mode, "group": group, "dry_run": dry_run, "agents": agents_list}
 
     # Explicit assignment path
     db.set_value("llm_agents", data)

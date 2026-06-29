@@ -490,12 +490,24 @@ def build_test_request(provider_id: str, key: str) -> dict:
 
 
 def detect_provider_from_key(key: str) -> str | None:
-    """Auto-detect provider based on key prefix."""
+    """Auto-detect provider based on key prefix.
+
+    WICHTIG: Wenn mehrere Provider mit dem Key prefix-matches haben, gewinnt
+    der SPEZIFISCHSTE Prefix (längster Match), nicht der erste im dict. Das
+    verhindert dass `sk-` (openai/deepseek/mistral/kimi) jeden `sk-cp-*` (MiniMax),
+    `sk-or-*` (OpenRouter) oder `sk-ant-*` (Anthropic) Key fälschlich als openai
+    klassifiziert — was zu 401-Fehlern und nicht persistierten Keys führte.
+    """
+    if not key:
+        return None
+    best_pid, best_len = None, 0
     for pid, p in PROVIDERS.items():
         for prefix in p["key_prefixes"]:
-            if key.startswith(prefix):
-                return pid
-    return None
+            if not prefix:
+                continue
+            if key.startswith(prefix) and len(prefix) > best_len:
+                best_pid, best_len = pid, len(prefix)
+    return best_pid
 
 
 def detect_provider_from_label(label: str) -> str | None:

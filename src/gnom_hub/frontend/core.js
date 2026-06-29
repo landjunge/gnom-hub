@@ -47,7 +47,7 @@ function toast(msg, type = 'info') {
 }
 
 async function cleanAll() {
-  if (!confirm('⚠️ ALLES löschen?\n\nEs wird ZUERST ein Backup aller Datenbanken erstellt.\n\nChat, Workspace, Tokens, Soul-Memory — alles weg!\nHub startet danach neu.')) return;
+  if (!confirm('⚠️ Datenbanken zurücksetzen?\n\nEs wird ZUERST ein Backup aller Datenbanken erstellt.\n\nDB-Inhalt: Chat, Tokens, Soul-Memory, Workflows — alles weg!\n\nWICHTIG: Dein Workspace (~gnom-Workspace/) bleibt UNVERÄNDERT.\nHub startet danach neu.')) return;
   toast('💾 Erstelle Backup vor dem Cleanup…', 'info');
   const r = await api('POST', '/admin/clean-all');
   if (r && r.status === 'cleaned') {
@@ -970,9 +970,18 @@ async function flushLlmPageChanges() {
           continue;
         }
         const kid = `${cfg.provider}_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+        // MERGE with existing keys — vorher wurde nur der eine Key gepostet,
+        // was via save_keys() die komplette llm_keys-DB überschrieb und alle
+        // anderen Provider-Keys (z.B. MiniMax) gelöscht hat.
+        let existing = {};
+        try {
+          const g = await fetch('/api/llm/keys');
+          if (g.ok) existing = await g.json();
+        } catch (_) {}
+        existing[kid] = { provider: cfg.provider, key: cfg.inline_key, label: svc.toUpperCase() + '_API_KEY', valid: true };
         await fetch('/api/llm/keys', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ [kid]: { provider: cfg.provider, key: cfg.inline_key, label: svc.toUpperCase() + '_API_KEY', valid: true } })
+          body: JSON.stringify(existing)
         });
         summary.keys++;
       }

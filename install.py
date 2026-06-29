@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.10
 """Gnom-Hub — Cross-Platform Installer (macOS, Linux, Windows).
 
 Usage:
@@ -15,7 +15,10 @@ Environment:
     GNOM_HUB_SKIP_PORT_CHECK=1       # skip port availability check
     GNOM_HUB_SKIP_SMOKE_TEST=1       # skip post-install import smoke test
 """
+from __future__ import annotations
+
 import os
+
 import sys
 import subprocess
 import shutil
@@ -478,4 +481,15 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if sys.version_info < (3, 9):
+        _newer = shutil.which("python3.12") or shutil.which("python3.11") or shutil.which("python3.10")
+        if _newer:
+            print(f"[installer] Detected Python {sys.version_info.major}.{sys.version_info.minor} (too old). Re-execing with {_newer}...")
+            os.execv(_newer, [_newer, __file__, *sys.argv[1:]])
+        print(
+            f"[installer] Python {sys.version_info.major}.{sys.version_info.minor} is too old "
+            "(need 3.9+). Install python3.10 or newer and retry.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     sys.exit(main())

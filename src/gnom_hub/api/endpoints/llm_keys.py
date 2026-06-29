@@ -17,7 +17,18 @@ async def save_keys(req: Request, _=Depends(verify_admin)):
     j = await req.json()
     # Speichere alle konfigurierten Keys, damit sie nicht verschwinden
     keys_to_save = {kid: v for kid, v in j.items() if isinstance(v, dict) and v.get("key")}
-    SQLiteStateRepository().set_value("llm_keys", keys_to_save)
+    # MERGE mit existierenden Keys — vorher wurde alles überschrieben, was dazu
+    # führte dass Inline-Keys (von Service-Cards / flushLlmPageChanges) ALLE
+    # anderen Provider-Keys aus der DB gelöscht haben. Jetzt: neue/aktualisierte
+    # Keys überschreiben existierende; Keys die nicht im Request sind bleiben.
+    db = SQLiteStateRepository()
+    existing = db.get_value("llm_keys", {}) or {}
+    if not isinstance(existing, dict):
+        existing = {}
+    for kid, v in keys_to_save.items():
+        if isinstance(v, dict) and v.get("key"):
+            existing[kid] = v
+    db.set_value("llm_keys", existing)
     write_keys_to_desktop(j)
     
     # Trigger model verification in background
