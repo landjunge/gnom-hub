@@ -1,0 +1,18 @@
+{
+  "preset_id": "sprint3_kickoff_buttons",
+  "created_at": "2026-07-02",
+  "context": "generalag_sprint3_delegation",
+  "buttons": [
+    {"label": "📦 ResearcherAG-Deliverable prüfen", "action": "general.check_sprint3_deliverable", "style": "primary"},
+    {"label": "🔄 Sprint-3-Status pollen", "action": "general.sprint3_status", "style": "primary"},
+    {"label": "⏸️ Sprint-3 pausieren", "action": "general.sprint3_pause", "style": "warning"},
+    {"label": "🔀 Sprint-1 parallel halten", "action": "general.sprint1_continue", "style": "ghost"},
+    {"label": "@ResearcherAG · Status?", "action": "@call:researcher", "style": "agent"},
+    {"label": "@CoderAG · Integrations-Check", "action": "@call:coder", "style": "agent"},
+    {"label": "@EditorAG · Review-Standby", "action": "@call:editor", "style": "agent"},
+    {"label": "@WriterAG · Sprint-1-Stand", "action": "@call:writer", "style": "agent"},
+    {"label": "@SecurityAG · Spotcheck", "action": "@call:security", "style": "agent"},
+    {"label": "@WatchdogAG · Lane-Monitor", "action": "@call:watchdog", "style": "agent"},
+    {"label": "🔙 Zurück zu SoulAG", "action": "@call:soul", "style": "ghost"}
+  ]
+}

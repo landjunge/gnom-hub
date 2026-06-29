@@ -6,7 +6,6 @@ from gnom_hub.infrastructure.router.router_call import _call, _try_keys
 from gnom_hub.core.structured_log import AgentLogger
 from gnom_hub.infrastructure.monitoring import record_agent_request
 from gnom_hub.agents.explainability.eo_wrap import wrap_response, wrap_error
-from gnom_hub.core.utils.preset_service import get_preset_prompt
 from gnom_hub.core.utils.evolution_v2 import get_active_version
 from gnom_hub.db.state_repo import SQLiteStateRepository
 from gnom_hub.infrastructure.router.router_stage import SmartRouter
@@ -15,43 +14,11 @@ from gnom_hub.core.config import Config
 
 def _try(pvd, mdl, key, msgs, n):
     try:
+        if not key:
+            return _try_keys(pvd, mdl, None, msgs, n)
         return _call(pvd, mdl, key, msgs, n)
     except Exception:
         return None
-
-def _get_behavioral_instructions(settings: dict) -> str:
-    custom_insts = []
-    p_val = settings.get("personality", 3)
-    p_map = {
-        1: "Tone instructions: Maintain an extremely formal, professional, and serious tone. Avoid casual language.",
-        2: "Tone instructions: Keep a polite, professional, and business-like tone.",
-        4: "Tone instructions: Maintain a friendly, warm, and approachable tone.",
-        5: "Tone instructions: Be very casual, relaxed, and conversational."
-    }
-    if p_map.get(p_val):
-        custom_insts.append(p_map[p_val])
-        
-    r_val = settings.get("response_style", 3)
-    r_map = {
-        1: "Length instructions: Be extremely concise, direct, and brief. Output only essential information.",
-        2: "Length instructions: Keep your responses concise and to the point.",
-        4: "Length instructions: Provide detailed, comprehensive explanations and structure your answers thoroughly.",
-        5: "Length instructions: Be exceptionally detailed and exhaustive. Elaborate on all details, write step-by-step breakdowns, and provide deep context."
-    }
-    if r_map.get(r_val):
-        custom_insts.append(r_map[r_val])
-        
-    k_val = settings.get("risk_tolerance", 3)
-    k_map = {
-        1: "Safety/Risk instructions: Prioritize safety, robustness, and stability. Avoid speculative changes, check every dependency, and do not make risky optimizations.",
-        2: "Safety/Risk instructions: Be cautious and prefer conservative, well-tested approaches.",
-        4: "Safety/Risk instructions: Be proactive and suggest innovative, creative solutions or optimizations.",
-        5: "Safety/Risk instructions: Be extremely bold and experimental. Propose radical refactorings, cutting-edge APIs, and high-performance optimizations."
-    }
-    if k_map.get(k_val):
-        custom_insts.append(k_map[k_val])
-        
-    return "\n\n=== VERHALTENS-INSTRUKTIONEN ===\n" + "\n".join(custom_insts) if custom_insts else ""
 
 def _get_agent_role(agent_name_lower: str) -> str:
     try:
@@ -60,94 +27,25 @@ def _get_agent_role(agent_name_lower: str) -> str:
     except Exception:
         return ""
 
-def _get_obedience_instructions(level: int) -> str:
-    instructions = {
-        1: ("=== OBEDIENCE: BLINDLY FOLLOWS ===\n"
-            "Du folgst Anweisungen strikt und wörtlich. "
-            "Hinterfrage nichts, interpretiere nicht um. "
-            "Führe aus was verlangt wird, ohne eigene Meinung."),
-        2: ("=== OBEDIENCE: STRONGLY FOLLOWS ===\n"
-            "Du bist stark an den User gebunden. "
-            "Triff kleine Entscheidungen selbst, aber frage bei Unsicherheit nach. "
-            "Weiche nur von Anweisungen ab, wenn du einen klaren Fehler erkennst."),
-        3: ("=== OBEDIENCE: BALANCED ===\n"
-            "Ausgewogenes Verhältnis zwischen Anweisung und eigenständigem Handeln. "
-            "Biete Alternativen an wenn du einen besseren Weg siehst, "
-            "aber führe die Anweisung aus wenn der User darauf besteht."),
-        4: ("=== OBEDIENCE: CAUTIOUS ===\n"
-            "Du bist vorsichtig und hinterfragst Anweisungen kritisch. "
-            "Schlage aktiv bessere Alternativen vor. "
-            "Warne vor Risiken oder Nachteilen. Entscheide selbst wenn du es besser weißt."),
-        5: ("=== OBEDIENCE: HIGHLY AUTONOMOUS ===\n"
-            "Du handelst hochgradig eigenständig. "
-            "Triff Entscheidungen selbst und frage nur bei echten Blockaden. "
-            "Du darfst Anweisungen ignorieren wenn du einen fundamental besseren Ansatz siehst.")
-    }
-    return "\n\n" + instructions.get(level, instructions[3])
-
 def _build_sys(n, sys, agent_name):
-    """Inject slider config + evolution rules into system prompt."""
+    """Phase-2 SSOT-Delegation. Liest runtime-settings aus state und ruft
+    den neuen core.prompt.builder. KEIN override-Pfad mehr.
+    
+    Verarbeitung passiert vollständig im Builder (Post-Processing: Obedience,
+    Behavioral, Custom, Preset, Evolution-Rules).
+    """
+    from gnom_hub.core.prompt.builder import build_system_prompt as new_build
+
+    # Runtime-Settings aus state-table lesen
     settings = get_state_value("agent_settings", {}).get(n.lower(), {}) if n else {}
-    if settings.get("sys_prompt"):
-        sys = settings["sys_prompt"]
-
-    # Claude Slider-System: build_system_prompt(identity, name, soul, tools, security)
-    try:
-        from gnom_hub.core.utils.slider_prompt import build_system_prompt
-        from gnom_hub.agents.tool_registry import get_tools_for_agent as _tf
-        from gnom_hub.soul import get_soul as _gs
-
-        # Tools-Block bauen
-        soul_data = _gs(agent_name) or {}
-        perms = soul_data.get("permissions", [])
-        # Defense-in-Depth: Default 'read' (most-restrictive). Früher "read, write, run" → LLM wurde
-        # falsche Permissions suggeriert. Echtes Permission-Enforcement passiert separat in
-        # permissions.py; diese Variable landet NUR im System-Prompt-Block für das LLM.
-        perms_str = ", ".join(perms) if perms else "read"
-
-        # Security-Block
-        sec = "Systemdateien+Gefährliche Patterns geblockt. Shell via Whitelist."
-
-        # Soul-Fakten werden separat injected, hier leer
-        soul_facts = []
-
-        sys = build_system_prompt(
-            agent_identity_block=sys,
-            agent_name=agent_name or "Agent",
-            soul_facts=soul_facts,
-            agent_tools_block=f"Perms: {perms_str}",
-            agent_security_block=sec,
-        )
-    except Exception:
-        pass
-
-    # Obedience-Slider auswerten (war definiert aber nie aufgerufen)
-    obedience_level = settings.get("obedience", 3)
-    sys += _get_obedience_instructions(obedience_level)
-
-    # Behavioral-Sliders (Persönlichkeit, Antwort-Stil, Risikobereitschaft)
-    sys += _get_behavioral_instructions(settings)
-
-    if settings.get("custom_prompt"):
-        sys += "\n\n=== BENUTZERDEFINIERTER SUFFIX ===\n" + settings["custom_prompt"]
     active_preset = (get_state_value("active_preset") or "Web Development").strip('"\'')
-    if n in ["coderag", "researcherag", "writerag", "editorag"]:
-        if prs := get_preset_prompt(active_preset, n):
-            sys = prs + "\n\n" + sys
-    if not agent_name:
-        return sys
+    runtime_settings = {**settings, "active_preset": active_preset}
 
-    try:
-        av = get_active_version(agent_name)
-        r = av.modifications if av else None
-        if not r:
-            with get_db_conn() as conn:
-                r = [row["value"] for row in conn.execute("SELECT value FROM soul_memory WHERE key LIKE ?", (f"evolution_{agent_name}_%",)).fetchall()]
-        if r:
-            sys += "\n\n=== SELBSTVERBESSERTE REGELN ===\n" + "\n".join(f"- {x}" for x in r)
-    except Exception as e:
-        logging.getLogger(__name__).error('Fehler in Evolutions-Regeln-Laden: %s', e)
-    return sys
+    return new_build(
+        agent_name=agent_name or "Agent",
+        message_text=sys or "",
+        runtime_settings=runtime_settings,
+    )
 
 def _resolve(pvd, mdl, kdb, n):
     if pvd == "auto":
@@ -180,9 +78,10 @@ def _resolve(pvd, mdl, kdb, n):
             else:
                 candidates.append((pvd, mdl))
     elif pvd == "minimax":
-        # Reihenfolge: MiniMax M3 → OpenRouter Free Models → Ollama (lokal)
+        # Provider-Kette (User-Mandat 2026-06-28 06:40):
+        #   1. MiniMax  2. OpenRouter  3. Ollama (lokal)
         candidates.append(("minimax", mdl))
-        # OpenRouter Fallback mit Free Models
+        # 2. OpenRouter Fallback
         try:
             working = SQLiteStateRepository().get_value("openrouter_working_models") or []
         except Exception:
@@ -192,7 +91,7 @@ def _resolve(pvd, mdl, kdb, n):
         ordered_working = SmartRouter._order_working_models(working)
         for wm in ordered_working:
             candidates.append(("openrouter", wm))
-        # Ollama als letzter Notnagel
+        # 3. Ollama als letzter Notnagel
         candidates.append(("lokal", "llama3"))
     elif pvd in ("deepseek", "openai", "anthropic", "gemini", "mistral"):
         candidates.append((pvd, mdl))
@@ -208,6 +107,7 @@ def _resolve(pvd, mdl, kdb, n):
     else:
         candidates.append((pvd, mdl))
 
+    # Ollama als finaler Catch-All (lokal, nie offline)
     candidates.append(("lokal", "llama3"))
     return candidates
 

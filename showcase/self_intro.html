@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gnom-Hub Self-Intro Tour</title>
+<style>
+  /* === RESET & BASE === */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-deep: #0a0e1a;
+    --bg-card: #131a2e;
+    --bg-elevated: #1c2440;
+    --text-primary: #e6ebff;
+    --text-secondary: #8a93b8;
+    --accent-glow: #5b8aff;
+    --accent-warm: #ffb86b;
+    --border-subtle: rgba(91, 138, 255, 0.15);
+    --shadow-deep: 0 12px 48px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 24px rgba(91, 138, 255, 0.25);
+    --radius-md: 14px;
+    --radius-sm: 8px;
+    --t-fast: 180ms cubic-bezier(.4,0,.2,1);
+    --t-med: 320ms cubic-bezier(.4,0,.2,1);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    background: radial-gradient(ellipse at top, #1a2240 0%, var(--bg-deep) 70%);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === LAYOUT === */
+  .app {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+  }
+
+  /* === SIDEBAR === */
+  .sidebar {
+    background: rgba(19, 26, 46, 0.85);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid var(--border-subtle);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .sidebar h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    margin: 8px 8px 12px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background var(--t-fast), transform var(--t-fast);
+    font-size: 14px;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--bg-elevated); transform: translateX(4px); }
+  .nav-item.active {
+    background: linear-gradient(90deg, rgba(91,138,255,.2), transparent);
+    border-left: 3px solid var(--accent-glow);
+    padding-left: 9px;
+  }
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+
+  /* === MAIN === */
+  .main { padding: 40px 56px; max-width: 1400px; }
+  .hero {
+    margin-bottom: 40px;
+    padding: 32px;
+    background: linear-gradient(135deg, rgba(91,138,255,.08), rgba(255,184,107,.04));
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+  }
+  .hero h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(90deg, var(--accent-glow), var(--accent-warm));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p { color: var(--text-secondary); font-size: 15px; }
+
+  /* === CONTROLS === */
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .btn {
+    padding: 12px 20px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--t-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn:hover { background: var(--bg-elevated); transform: translateY(-1px); box-shadow: var(--shadow-glow); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent-glow), #7a5fff);
+    border-color: transparent;
+  }
+  .btn-primary:hover { box-shadow: 0 8px 24px rgba(91,138,255,.4); }
+  .btn-danger { color: #ff7a8a; border-color: rgba(255,122,138,.3); }
+
+  /* === AGENT GRID === */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .agent-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    cursor: pointer;
+    transition: all var(--t-med);
+    position: relative;
+    overflow: hidden;
+  }
+  .agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: var(--agent-color, var(--accent-glow));
+    opacity: 0.6;
+    transition: opacity var(--t-fast);
+  }
+  .agent-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-deep); border-color: var(--agent-color, var(--accent-glow)); }
+  .agent-card:hover::before { opacity: 1; }
+  .agent-card.speaking { border-color: var(--agent-color); box-shadow: 0 0 0 2px var(--agent-color), 0 12px 32px rgba(0,0,0,.5); }
+  .agent-card.speaking::before { opacity: 1; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: .6; } 50% { opacity: 1; } }
+
+  .agent-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .agent-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--agent-color, var(--accent-glow));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+  .agent-name { font-size: 17px; font-weight: 600; }
+  .agent-role { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .8px; }
+  .agent-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; min-height: 60px; }
+  .agent-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+  }
+  .agent-speak {
+    margin-top: 14px;
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--agent-color);
+    color: var(--agent-color);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--t-fast);
+  }
+  .agent-speak:hover { background: var(--agent-color); color: white; }
+
+  /* === DEMO PANEL === */
+  .demo-panel {
+    margin-top: 40px;
+    padding: 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+  }
+  .demo-panel h3 { font-size: 18px; margin-bottom: 16px; }
+  .demo-row { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .slider-wrap { flex: 1; min-width: 200px; }
+  .slider-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  input[type=range] {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    appearance: none;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent-glow);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(91,138,255,.6);
+  }
+
+  /* === ANIMATED CURSOR === */
+  .ghost-cursor {
+    position: fixed;
+    width: 24px; height: 24px;
+    pointer-events: none;
+    z-index: 9999;
+    transition: top 800ms cubic-bezier(.4,0,.2,1), left 800ms cubic-bezier(.4,0,.2,1);
+    transform: translate(-50%, -50%);
+    display: none;
+  }
+  .ghost-cursor.visible { display: block; }
+  .ghost-cursor svg { filter: drop-shadow(0 2px 8px rgba(91,138,255,.7)); }
+
+  /* === STATUS === */
+  .status-bar {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 18px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 100px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow-deep);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 8px #4ade80;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; flex-direction: row; overflow-x: auto; }
+    .main { padding: 24px 20px; }
+    .hero h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Animated ghost cursor -->
+<div class="ghost-cursor" id="ghostCursor" aria-hidden="true">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <path d="M5 3 L5 18 L9 14 L11 20 L13 19 L11 13 L17 13 Z" fill="#5b8aff" stroke="white" stroke-width="1"/>
+  </svg>
+</div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" aria-label="Hauptnavigation">
+    <h2>🧭 Gnom-Hub</h2>
+    <div class="nav-item active" data-target="home"><span class="nav-icon">🏠</span> Home</div>
+    <div class="nav-item" data-target="agents"><span class="nav-icon">👥</span> Agenten</div>
+    <div class="nav-item" data-target="tour"><span class="nav-icon">🎬</span> Self-Tour</div>
+    <div class="nav-item" data-target="demo"><span class="nav-icon">🖱️</span> Live-Demo</div>
+    <h2 style="margin-top:24px">⚙️ Steuerung</h2>
+    <div class="nav-item" id="toggleTTS"><span class="nav-icon">🔊</span> <span id="ttsState">TTS: AN</span></div>
+    <div class="nav-item" id="toggleMouse"><span class="nav-icon">👻</span> <span id="mouseState">Ghost-Maus: AN</span></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <section class="hero">
+      <h1>Gnom-Hub Self-Intro Tour</h1>
+      <p>Klicke auf einen Agent, um seine Vorstellung per Sprachausgabe zu hören — oder starte die Auto-Tour, um alle 8 Agents nacheinander kennen zu lernen.</p>
+    </section>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="startTour">▶ Auto-Tour starten</button>
+      <button class="btn" id="stopTour">⏹ Stoppen</button>
+      <button class="btn" id="clickDemo">🖱️ Klick-Demo</button>
+      <button class="btn" id="scrollDemo">📜 Scroll-Demo</button>
+      <button class="btn btn-danger" id="muteAll">🔇 Alles stoppen</button>
+    </div>
+
+    <div class="agent-grid" id="agentGrid" role="list"></div>
+
+    <section class="demo-panel" id="demoPanel">
+      <h3>🎛️ Live-Steuerung</h3>
+      <div class="demo-row">
+        <div class="slider-wrap">
+          <div class="slider-label">Sprachgeschwindigkeit: <span id="rateVal">1.0</span>×</div>
+          <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label">Tonhöhe: <span id="pitchVal">1.0</span></div>
+          <input type="range" id="pitchSlider" min="0.5" max="2" step="0.1" value="1">
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="status-bar" role="status" aria-live="polite">
+  <span class="status-dot"></span>
+  <span id="statusText">Bereit — wähle einen Agent</span>
+</div>
+
+<script>
+/* ============================================================
+   AGENT DATA — 8 Agents, TTS-tauglich, deutsch
+   ============================================================ */
+const AGENTS = [
+  {
+    id: 'soulag', name: 'SoulAG', role: 'ORCHESTRATOR', color: '#a78bfa',
+    emoji: '🟣',
+    desc: 'Empfängt User-Wünsche, erkennt Tier-1-Signale und verteilt Aufgaben an die Worker. Spricht immer zuerst mit dem User.',
+    intro: 'Hallo, ich bin SoulAG, der Orchestrator. Ich nehme deine Wünsche entgegen und verteile die Aufgaben an die richtigen Agents. Ich bin die Brücke zwischen dir und dem Schwarm.',
+    tags: ['Tier-2', 'Dispatcher', 'User-Bridge']
+  },
+  {
+    id: 'securityag', name: 'SecurityAG', role: 'GUARDIAN', color: '#f472b6',
+    emoji: '🛡️',
+    desc: 'Sicherheits-Gatekeeper. Prüft jeden Befehl auf Risiken, gibt Caps frei und sperrt Agents bei Verdacht. Hat Veto-Recht.',
+    intro: 'Ich bin SecurityAG, der Wächter. Ich prüfe jeden Befehl, gebe Capabilities frei und schütze das System. Wenn Gefahr droht, habe ich das letzte Wort.',
+    tags: ['Tier-2', 'Veto', 'Capabilities']
+  },
+  {
+    id: 'generalag', name: 'GeneralAG', role: 'SYNTHESIZER', color: '#60a5fa',
+    emoji: '🔵',
+    desc: 'Empfängt Worker-Outputs, verifiziert und synthetisiert sie zu einer kohärenten Antwort an den User.',
+    intro: 'GeneralAG hier. Ich nehme die Teile der Worker, prüfe sie und baue daraus eine saubere Antwort für dich. Mein Job ist Klarheit aus Chaos.',
+    tags: ['Tier-3', 'Synth', 'Verify']
+  },
+  {
+    id: 'coderag', name: 'CoderAG', role: 'BUILDER', color: '#fb923c',
+    emoji: '🟠',
+    desc: 'Schreibt sauberen HTML, CSS und JavaScript. Hat Schreibrechte im Workspace und liefert nur fertigen Code.',
+    intro: 'CoderAG, der Builder. Ich schreibe deinen Code — HTML, CSS, JavaScript, vanilla und clean. Kein Quatsch, nur Output.',
+    tags: ['Tier-3', 'HTML/CSS/JS', 'Output']
+  },
+  {
+    id: 'writerag', name: 'WriterAG', role: 'AUTHOR', color: '#4ade80',
+    emoji: '✍️',
+    desc: 'Verfasst Texte, Dokumentation, Copy und Marketing-Material. Sprachgewandt und stilsicher.',
+    intro: 'Ich bin WriterAG. Ich schreibe Texte, Dokumentation und Copy. Klar, präzise und auf den Punkt — ohne Füllmaterial.',
+    tags: ['Tier-3', 'Copy', 'Docs']
+  },
+  {
+    id: 'editorag', name: 'EditorAG', role: 'REVIEWER', color: '#f9a8d4',
+    emoji: '🩷',
+    desc: 'Prüft gelieferte Inhalte auf Qualität, Tonalität und Spec-Konformität. Gibt Freigabe oder Revisionswünsche.',
+    intro: 'EditorAG meldet sich. Ich prüfe alles, was die Worker abliefern — auf Qualität, Ton und Spec. Ich gebe entweder grünes Licht oder sage, was nachgebessert werden muss.',
+    tags: ['Tier-3', 'QA', 'Spec-Check']
+  },
+  {
+    id: 'researcherag', name: 'ResearcherAG', role: 'SCOUT', color: '#facc15',
+    emoji: '🟡',
+    desc: 'Recherchiert Informationen, vergleicht Quellen und liefert fundierte Fakten als Basis für Entscheidungen.',
+    intro: 'ResearcherAG hier. Ich recherchiere, vergleiche und liefere Fakten. Mein Output ist die Grundlage, auf der die anderen Agents arbeiten.',
+    tags: ['Tier-3', 'Recherche', 'Fakten']
+  },
+  {
+    id: 'watchdogag', name: 'WatchdogAG', role: 'OBSERVER', color: '#94a3b8',
+    emoji: '🐺',
+    desc: 'Beobachtet den Schwarm, meldet Auffälligkeiten und gibt Radar-Töne ab. Greift nicht ein, sondern beobachtet nur.',
+    intro: 'WatchdogAG. Ich beobachte den Schwarm und melde, wenn etwas vom Kurs abweicht. Eingreifen ist nicht mein Job — Aufmerksamkeit machen, das ist meins.',
+    tags: ['Tier-3', 'Monitor', 'Radar']
+  }
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let ttsEnabled = true;
+let mouseEnabled = true;
+let currentUtterance = null;
+let isTourRunning = false;
+let tourStep = 0;
+let rateVal = 1.0;
+let pitchVal = 1.0;
+
+/* ============================================================
+   RENDER AGENTS
+   ============================================================ */
+function renderAgents() {
+  const grid = document.getElementById('agentGrid');
+  grid.innerHTML = AGENTS.map(a => `
+    <article class="agent-card" data-id="${a.id}" style="--agent-color: ${a.color}" role="listitem"
+             aria-label="Agent ${a.name} — ${a.role}">
+      <div class="agent-header">
+        <div class="agent-avatar" aria-hidden="true">${a.emoji}</div>
+        <div>
+          <div class="agent-name">${a.name}</div>
+          <div class="agent-role">${a.role}</div>
+        </div>
+      </div>
+      <div class="agent-desc">${a.desc}</div>
+      <div class="agent-tags">${a.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      <button class="agent-speak" data-speak="${a.id}" aria-label="Vorstellung von ${a.name} abspielen">
+        🔊 Vorstellung anhören
+      </button>
+    </article>
+  `).join('');
+
+  // Bind click handlers
+  grid.querySelectorAll('.agent-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.classList.contains('agent-speak')) return;
+      const id = card.dataset.id;
+      const agent = AGENTS.find(a => a.id === id);
+      if (agent) speakAgent(agent);
+    });
+  });
+  grid.querySelectorAll('.agent-speak').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.speak;
+      const agent = AGENTS.find(a => a.id === id);
+      if (agent) speakAgent(agent);
+    });
+  });
+}
+
+/* ============================================================
+   TTS — Web Speech API
+   ============================================================ */
+function speakAgent(agent) {
+  if (!ttsEnabled) return;
+  if (!('speechSynthesis' in window)) {
+    setStatus('⚠️ TTS nicht verfügbar in diesem Browser');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  document.querySelectorAll('.agent-card.speaking').forEach(c => c.classList.remove('speaking'));
+
+  const card = document.querySelector(`[data-id="${agent.id}"]`);
+  if (card) card.classList.add('speaking');
+
+  const utter = new SpeechSynthesisUtterance(agent.intro);
+  utter.lang = 'de-DE';
+  utter.rate = rateVal;
+  utter.pitch = pitchVal;
+  utter.volume = 1.0;
+
+  // Try to find a German voice
+  const voices = window.speechSynthesis.getVoices();
+  const deVoice = voices.find(v => v.lang.startsWith('de'));
+  if (deVoice) utter.voice = deVoice;
+
+  utter.onend = () => {
+    if (card) card.classList.remove('speaking');
+    setStatus(`✅ ${agent.name} fertig`);
+    if (isTourRunning) setTimeout(nextTourStep, 600);
+  };
+  utter.onerror = () => {
+    if (card) card.classList.remove('speaking');
+    setStatus(`⚠️ ${agent.name} — Sprachfehler`);
+    if (isTourRunning) setTimeout(nextTourStep, 600);
+  };
+
+  currentUtterance = utter;
+  window.speechSynthesis.speak(utter);
+  setStatus(`🗣️ ${agent.name} spricht...`);
+}
+
+/* ============================================================
+   GHOST CURSOR — animated mouse demo
+   ============================================================ */
+const ghost = document.getElementById('ghostCursor');
+function moveCursorTo(targetEl) {
+  if (!mouseEnabled || !targetEl) return;
+  const rect = targetEl.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  ghost.style.left = x + 'px';
+  ghost.style.top = y + 'px';
+  ghost.classList.add('visible');
+}
+function hideCursor() {
+  ghost.classList.remove('visible');
+}
+
+/* ============================================================
+   AUTO-TOUR
+   ============================================================ */
+function startTour() {
+  if (isTourRunning) return;
+  isTourRunning = true;
+  tourStep = 0;
+  setStatus('🎬 Tour gestartet');
+  nextTourStep();
+}
+function stopTour() {
+  isTourRunning = false;
+  window.speechSynthesis.cancel();
+  document.querySelectorAll('.agent-card.speaking').forEach(c => c.classList.remove('speaking'));
+  hideCursor();
+  setStatus('⏹ Tour gestoppt');
+}
+function nextTourStep() {
+  if (!isTourRunning) return;
+  const sequence = [
+    { action: 'greet', text: 'Willkommen im Gnom-Hub. Ich führe dich jetzt durch alle acht Agents.' },
+    ...AGENTS.map(a => ({ action: 'agent', agent: a })),
+    { action: 'outro', text: 'Das war der Gnom-Hub Schwarm. Klicke selbst auf einen Agent, um mich zu unterbrechen.' }
+  ];
+  if (tourStep >= sequence.length) {
+    isTourRunning = false;
+    hideCursor();
+    setStatus('✅ Tour beendet');
+    return;
+  }
+  const step = sequence[tourStep];
+  tourStep++;
+  if (step.action === 'greet' || step.action === 'outro') {
+    const utt = new SpeechSynthesisUtterance(step.text);
+    utt.lang = 'de-DE';
+    utt.rate = rateVal;
+    utt.pitch = pitchVal;
+    const voices = window.speechSynthesis.getVoices();
+    const deVoice = voices.find(v => v.lang.startsWith('de'));
+    if (deVoice) utt.voice = deVoice;
+    utt.onend = () => setTimeout(nextTourStep, 500);
+    window.speechSynthesis.speak(utt);
+    setStatus('🎬 Tour läuft');
+  } else if (step.action === 'agent') {
+    const card = document.querySelector(`[data-id="${step.agent.id}"]`);
+    card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+      if (card) moveCursorTo(card);
+      speakAgent(step.agent);
+    }, 700);
+  }
+}
+
+/* ============================================================
+   DEMO ACTIONS
+   ============================================================ */
+function clickDemo() {
+  const targets = ['.btn-primary', '.agent-card:nth-child(2)', '.agent-card:nth-child(4)', '.sidebar .nav-item:nth-child(2)'];
+  let i = 0;
+  const next = () => {
+    if (i >= targets.length) { hideCursor(); setStatus('🖱️ Klick-Demo fertig'); return; }
+    const el = document.querySelector(targets[i]);
+    if (el) {
+      moveCursorTo(el);
+      setTimeout(() => {
+        el.style.transform = 'scale(0.96)';
+        setTimeout(() => el.style.transform = '', 200);
+        i++;
+        next();
+      }, 900);
+    } else { i++; next(); }
+  };
+  next();
+}
+function scrollDemo() {
+  let pos = 0;
+  const max = document.body.scrollHeight - window.innerHeight;
+  const id = setInterval(() => {
+    pos += 40;
+    window.scrollTo({ top: pos, behavior: 'smooth' });
+    if (pos >= max) {
+      clearInterval(id);
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setStatus('📜 Scroll-Demo fertig');
+      }, 800);
+    }
+  }, 120);
+}
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+function setStatus(text) {
+  document.getElementById('statusText').textContent = text;
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+document.querySelectorAll('.nav-item[data-target]').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    const target = item.dataset.target;
+    if (target === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (target === 'agents') document.querySelector('.agent-grid')?.scrollIntoView({ behavior: 'smooth' });
+    if (target === 'demo') document.getElementById('demoPanel')?.scrollIntoView({ behavior: 'smooth' });
+    if (target === 'tour') startTour();
+  });
+});
+
+/* ============================================================
+   CONTROLS
+   ============================================================ */
+document.getElementById('startTour').addEventListener('click', startTour);
+document.getElementById('stopTour').addEventListener('click', stopTour);
+document.getElementById('clickDemo').addEventListener('click', clickDemo);
+document.getElementById('scrollDemo').addEventListener('click', scrollDemo);
+document.getElementById('muteAll').addEventListener('click', () => {
+  window.speechSynthesis.cancel();
+  stopTour();
+  hideCursor();
+  setStatus('🔇 Alles gestoppt');
+});
+document.getElementById('toggleTTS').addEventListener('click', () => {
+  ttsEnabled = !ttsEnabled;
+  document.getElementById('ttsState').textContent = `TTS: ${ttsEnabled ? 'AN' : 'AUS'}`;
+  if (!ttsEnabled) window.speechSynthesis.cancel();
+  setStatus(ttsEnabled ? '🔊 TTS aktiviert' : '🔇 TTS deaktiviert');
+});
+document.getElementById('toggleMouse').addEventListener('click', () => {
+  mouseEnabled = !mouseEnabled;
+  document.getElementById('mouseState').textContent = `Ghost-Maus: ${mouseEnabled ? 'AN' : 'AUS'}`;
+  if (!mouseEnabled) hideCursor();
+});
+
+/* Sliders */
+document.getElementById('rateSlider').addEventListener('input', e => {
+  rateVal = parseFloat(e.target.value);
+  document.getElementById('rateVal').textContent = rateVal.toFixed(1);
+});
+document.getElementById('pitchSlider').addEventListener('input', e => {
+  pitchVal = parseFloat(e.target.value);
+  document.getElementById('pitchVal').textContent = pitchVal.toFixed(1);
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+window.speechSynthesis.onvoiceschanged = () => {
+  // voices ready
+};
+renderAgents();
+setStatus('✅ Bereit — 8 Agents geladen');
+
+// Auto-welcome after 1.2s
+setTimeout(() => {
+  if (ttsEnabled) {
+    const utt = new SpeechSynthesisUtterance('Willkommen im Gnom-Hub. Klicke auf einen Agent oder starte die Tour.');
+    utt.lang = 'de-DE';
+    utt.rate = 1.0;
+    window.speechSynthesis.speak(utt);
+    setStatus('🎤 Begrüßung läuft...');
+  }
+}, 1200);
+</script>
+</body>
+</html>

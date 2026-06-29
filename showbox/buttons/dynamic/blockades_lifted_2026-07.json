@@ -1,0 +1,9 @@
+{
+  "id": "blockades_lifted_2026-07",
+  "trigger": "user_command_lift_blockades",
+  "timestamp": "2026-07-XX",
+  "status": "active",
+  "context": "User-Befehl: 'die blokaden aufheben die worker sollen ihre arbeit machen können nicht behindern und nicht aufhalten ist das jetzt klar'",
+  "executed_by": "SecurityAG",
+  "note": "User ist SOUVERÄN. Alle blockade_rules gelöscht, alle capabilities auf allow-all."
+}

@@ -336,7 +336,9 @@ def _is_high_risk_exec(exec_name: str, args_tokens: list) -> bool:
             resolved = os.path.realpath(os.path.expanduser(arg))
             if resolved == "/" or resolved.startswith(("/etc", "/usr", "/bin", "/sbin", "/var", "/private")):
                 return True
-            if any(sys_path in resolved for sys_path in ["src/gnom_hub", "run.sh", ".env"]):
+            if any(sys_path in resolved for sys_path in [
+                "src/gnom_hub", "config", "scripts", "run.sh", "index.html", ".env",
+            ]):
                 return True
     # Check for pipe-to-sh patterns in args
     if "|" in full_args:

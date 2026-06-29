@@ -1,0 +1,24 @@
+{
+  "capability_grants": {
+    "CoderAG": {
+      "tts_speak": "allow",
+      "mouse_control": "allow",
+      "route_showcase": "allow",
+      "duration": "session"
+    },
+    "EditorAG": {
+      "showcase_review": "allow",
+      "tts_preview": "allow"
+    }
+  },
+  "blockade_overrides": [
+    {
+      "rule": "showcase_*",
+      "action": "allow",
+      "scope": "/Users/landjunge/gnom-hub/showcase/"
+    }
+  ],
+  "issued_by": "SecurityAG",
+  "issued_at": "2026-07-28T17:00:00Z",
+  "user_authorized": true
+}

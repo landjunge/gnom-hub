@@ -1,0 +1,122 @@
+{
+  "showcase_id": "showcase_capability_v1",
+  "version": "1.0.0",
+  "title": "🟣 Showbox Capability Showcase",
+  "subtitle": "Was das Format alles kann — referenzierbares Template für alle Agents.",
+  "author": "CoderAG",
+  "created": "2026-07-27",
+  "spec_ref": {
+    "format": "showbox/spec/format.md",
+    "buttons": "showbox/spec/buttons.md"
+  },
+  "slides": [
+    {
+      "slide_id": "showcase-1-hero",
+      "type": "hero",
+      "color": "purple",
+      "layout": "hero",
+      "theme": "lila",
+      "accent": "neon",
+      "title": "🟣 Showbox — Showcase v1",
+      "content": [
+        "**6 Slides · 6 Layouts · 4 Button-Presets · 8 Agents · 3 Workflows**",
+        "Referenzierbares Template — alle Agents dürfen dieses Format nutzen.",
+        "Specs liegen unter `/Users/landjunge/gnom-hub/showbox/spec/`."
+      ],
+      "buttons": ["nav_next", "nav_close"]
+    },
+    {
+      "slide_id": "showcase-2-layouts",
+      "type": "grid",
+      "color": "purple",
+      "layout": "grid",
+      "theme": "lila",
+      "accent": "soft",
+      "title": "🎨 6 Layouts verfügbar",
+      "content": [
+        "| Layout | Zweck | Status |",
+        "|--------|-------|--------|",
+        "| `hero` | Titelbild, Eyecatcher | ✅ |",
+        "| `grid` | Vergleiche, Übersichten | ✅ |",
+        "| `code` | Code-Beispiele, Specs | ✅ |",
+        "| `status` | Badges, Ampeln, Quotes | ✅ |",
+        "| `split` | Zwei-Spalten (Pipeline ↔ Aktion) | ✅ |",
+        "| `terminal` | CLI-Style, Logs, JSON-Dumps | ✅ |"
+      ],
+      "buttons": ["nav_back", "nav_next", "@CoderAG", "@EditorAG"]
+    },
+    {
+      "slide_id": "showcase-3-code",
+      "type": "code",
+      "color": "purple",
+      "layout": "code",
+      "theme": "dark",
+      "accent": "neon",
+      "title": "💻 Slide-Anatomie (Code-Beispiel)",
+      "content": [
+        "```json\n{\n  \"slide_id\": \"eindeutige-id-YYYY-MM-DD\",\n  \"type\": \"hero | grid | code | status | split | terminal\",\n  \"color\": \"purple\",\n  \"title\": \"Kurz & prägnant\",\n  \"content\": [\"Markdown-fähig\"],\n  \"buttons\": [\"nav_next\", \"@Agent\"]\n}\n```",
+        "**Regeln:** `slide_id` eindeutig · `type`/`layout` aus 6 wählbar · `content` als String-Array · `buttons` immer im Array (kein Pseudo-HTML)."
+      ],
+      "buttons": ["nav_back", "nav_next", "@CoderAG"]
+    },
+    {
+      "slide_id": "showcase-4-buttons",
+      "type": "status",
+      "color": "purple",
+      "layout": "status",
+      "theme": "lila",
+      "accent": "neon",
+      "title": "🔘 Buttons — 4 statische Presets",
+      "content": [
+        "**Quelle:** `showbox/buttons/{nav,actions,agents,workflow}.json` — dynamische Buttons in `dynamic/` archiviert (User-Verbot 2026-06-27: kein Auto-Cleanup).",
+        "",
+        "| Preset | Beispiele | Verwendung |",
+        "|--------|-----------|------------|",
+        "| `nav` | `nav_back`, `nav_next`, `nav_close` | Slides blättern |",
+        "| `actions` | `act_approve`, `act_reject`, `act_stop` | Workflow-Gates |",
+        "| `agents` | `@GeneralAG`, `@CoderAG`, …, `agents_call_all` | @-Dispatch |",
+        "| `workflow` | `wf_brainstorm`, `wf_vote`, `wf_pipeline` | Pipeline-Ketten |",
+        "",
+        "**Warnung:** Dynamische Buttons werden NIE auto-gelöscht. Agent-erzeugte Buttons gehören in `showbox/buttons/dynamic/`."
+      ],
+      "buttons": ["nav_back", "nav_next", "act_approve", "act_reject", "act_stop"]
+    },
+    {
+      "slide_id": "showcase-5-multidispatch",
+      "type": "split",
+      "color": "purple",
+      "layout": "split",
+      "theme": "lila",
+      "accent": "neon",
+      "title": "🚀 Multi-Agent-Dispatch (live)",
+      "content": [
+        "**Links — Pipeline:**\n• User → **GeneralAG** zerlegt\n• Parallel: **CoderAG** + **WriterAG** + **ResearcherAG**\n• **EditorAG** Review · **SecurityAG** Whitelist · **WatchdogAG** silent\n• **SoulAG** kuratiert die Showbox\n\n**Rechts — Buttons:**\n@Agent klicken = simulierter Dispatch.\n\n**Workflow-Kette:**\n🧠 Brainstorm → 🗳 Vote → ⛓ Pipeline → ✓ Approve"
+      ],
+      "buttons": ["@GeneralAG", "@CoderAG", "@WriterAG", "@EditorAG", "@ResearcherAG", "@WatchdogAG", "@SecurityAG", "@SoulAG", "wf_brainstorm", "wf_vote", "wf_pipeline", "act_approve"]
+    },
+    {
+      "slide_id": "showcase-6-meta",
+      "type": "status",
+      "color": "purple",
+      "layout": "status",
+      "theme": "lila",
+      "accent": "neon",
+      "title": "🎯 Was du jetzt kannst",
+      "content": [
+        "✅ **6 Layouts** — hero · grid · code · status · split · terminal",
+        "✅ **Statische Buttons** — 4 Presets aus `showbox/buttons/`",
+        "✅ **Dynamische Buttons** — Agents erzeugen on-the-fly, archiviert in `dynamic/`",
+        "✅ **Rich Content** — Code-Blöcke, Tabellen, Status-Badges, Quotes",
+        "✅ **Multi-Agent** — 8 Agents parallel dispatchbar",
+        "✅ **Workflows** — Brainstorm / Vote / Pipeline als klickbare Ketten",
+        "",
+        "**Limit:** Vorstellungskraft — nicht das Format.",
+        "",
+        "📁 Specs: `/Users/landjunge/gnom-hub/showbox/`",
+        "📁 Buttons: `showbox/buttons/{nav,actions,agents,workflow}.json`",
+        "📁 Diese Datei: `showbox/examples/showcase_capability_v1.json`"
+      ],
+      "buttons": ["nav_back", "nav_close", "@CoderAG", "@EditorAG"]
+    }
+  ]
+}

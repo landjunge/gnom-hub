@@ -1,0 +1,64 @@
+{
+  "$schema": "https://gnom-hub.local/schemas/showbox-preset.v1.json",
+  "_meta": {
+    "name": "Navigation",
+    "version": "2.0",
+    "updated": "2026-06-27",
+    "author": "Mavis",
+    "purpose": "Slide-Navigation + Showbox-Lifecycle",
+    "icon_set": "unicode-arrows",
+    "category": "navigation",
+    "tags": ["nav", "lifecycle", "always-present"]
+  },
+  "_notes": "Mindestens 1 Button aus diesem Set MUSS in jeder Showbox sein. Buttons sind deaktiviert wenn sinnlos (z.B. prev_slide auf Slide 1).",
+  "buttons": [
+    {
+      "label": "◀ Zurück",
+      "action": "prev_slide",
+      "color": "#7a90b8",
+      "icon": "◀",
+      "disabled_when": "current_slide == first",
+      "tooltip": "Vorherige Slide"
+    },
+    {
+      "label": "▶ Weiter",
+      "action": "next_slide",
+      "color": "#00e5ff",
+      "icon": "▶",
+      "primary": true,
+      "disabled_when": "current_slide == last",
+      "tooltip": "Nächste Slide"
+    },
+    {
+      "label": "⏮ Anfang",
+      "action": "nav_to_slide",
+      "args": {"slide_id": "first"},
+      "color": "#7a90b8",
+      "icon": "⏮",
+      "tooltip": "Zurück zum Start"
+    },
+    {
+      "label": "⏭ Ende",
+      "action": "nav_to_slide",
+      "args": {"slide_id": "last"},
+      "color": "#7a90b8",
+      "icon": "⏭",
+      "tooltip": "Springe zur letzten Slide"
+    },
+    {
+      "label": "✕ Schließen",
+      "action": "close_showbox",
+      "color": "#ff4d6d",
+      "icon": "✕",
+      "tooltip": "Showbox schließen",
+      "position": "right"
+    },
+    {
+      "label": "🔄 Neu laden",
+      "action": "reload_showbox",
+      "color": "#7a90b8",
+      "icon": "🔄",
+      "tooltip": "Diese Showbox neu rendern"
+    }
+  ]
+}

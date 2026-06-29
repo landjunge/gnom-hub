@@ -1,0 +1,23 @@
+{
+  "_preset": "welcome",
+  "_description": "Showbox beim Hub-Start",
+  "slides": [
+    {
+      "title": "🧠 Gnom-Hub",
+      "subtitle": "8 Agenten · 1 Bewusstsein",
+      "content": "<p style='text-align:center;color:#a0d8e8'>Willkommen. Drück einen Button oder schreib einfach los.</p>",
+      "color": "#00e5ff",
+      "duration_ms": 8000
+    },
+    {
+      "title": "Wie funktioniert's?",
+      "content": "<ul><li>Du schreibst — SoulAG antwortet in Showbox</li><li>Buttons = Aktionen</li><li>@CoderAG, @WriterAG, @EditorAG, @ResearcherAG = Worker direkt</li></ul>"
+    }
+  ],
+  "buttons": [
+    {"label": "📋 Status zeigen", "action": "agent_call", "target": "SoulAG", "message": "status"},
+    {"label": "🧠 @SoulAG ping", "action": "agent_call", "target": "SoulAG", "message": "ping"},
+    {"label": "⚙️ @GeneralAG", "action": "agent_call", "target": "GeneralAG", "message": "zeig was läuft"},
+    {"label": "✕ Schließen", "action": "close_showbox"}
+  ]
+}

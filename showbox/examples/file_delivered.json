@@ -1,0 +1,17 @@
+{
+  "_preset": "file_delivered",
+  "_description": "Eine Datei wurde via [WRITE:] erstellt — Buttons für follow-up",
+  "slides": [
+    {
+      "title": "✅ Datei geschrieben",
+      "content": "<p>Die Datei wurde erfolgreich auf die Disk geschrieben.</p>"
+    }
+  ],
+  "buttons": [
+    {"label": "👁 Anzeigen", "action": "open_url", "url": "file://$FILE_PATH"},
+    {"label": "📁 Im Finder zeigen", "action": "run_script", "path": "scripts/show_in_finder.sh", "args": {"path": "$FILE_PATH"}},
+    {"label": "✏️ Editieren", "action": "agent_call", "target": "CoderAG", "message": "edit $FILE_PATH"},
+    {"label": "🚀 Commit", "action": "run_script", "path": "scripts/git_commit.sh", "args": {"path": "$FILE_PATH"}, "confirm": true},
+    {"label": "✕ Schließen", "action": "close_showbox"}
+  ]
+}

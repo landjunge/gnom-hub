@@ -186,13 +186,15 @@ p.write_text(json.dumps(m, indent=2, ensure_ascii=False))
 log "✅ Backup erfolgreich: $BACKUP_DIR"
 
 # DB-Integrität nach Backup verifizieren
-if command -v "$REPO_ROOT/.venv/bin/python3" >/dev/null 2>&1; then
+if command -v python3.10 >/dev/null 2>&1; then
     log "🔍 Verifiziere DB-Integrität…"
-    if "$REPO_ROOT/.venv/bin/python3" "$REPO_ROOT/scripts/verify_dbs.py" 2>&1 | tee -a "$LOGFILE"; then
+    if python3.10 "$REPO_ROOT/scripts/verify_dbs.py"; then
         log "✓ DBs ok"
     else
         log "⚠️ DB-Verifikation fehlgeschlagen — Backup trotzdem erstellt"
     fi
+else
+    log "ℹ python3.10 nicht gefunden — DB-Verifikation übersprungen"
 fi
 log "   Dateien: $(ls -1 "$BACKUP_DIR" | wc -l | tr -d ' ')"
 log "   Größe:   $(du -sh "$BACKUP_DIR" | awk '{print $1}')"

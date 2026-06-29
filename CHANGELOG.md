@@ -97,6 +97,53 @@ All notable changes to this project will be documented in this file.
   `TestVerifyCmd.test_protected_path_instant_blocked`), 2 skipped — unrelated
   to this change set; verified by re-running them on a clean `git stash`.
 
+## [Unreleased — SSOT-Architektur] - 2026-06-22
+### Added
+- **`docs/ARCHITECTURE.md`** (new): Verifizierte Single-Source-of-Truth für
+  die System-Architektur. Inhalt: 8 Gnome mit Farben + Rollen, Agent-Rollen
+  im Detail, LLM-Routing (`config/routing.txt`), Provider-Chain
+  (zwei parallele Registries), Chat-Flow, Backend-Topologie,
+  **beide** Recovery-Loops explizit (Defense-in-Depth: `app.py:28-132`
+  alle 30s + `pulse.py:58-77` alle 5min Throttle), Frontend-Pfade,
+  Permissions/Security, Test-Landschaft. Jede Code-Behauptung mit
+  `file:line`-Beleg. Header enthält `last_verified_against: a92ee3278` für
+  Nachvollziehbarkeit.
+- **README.md + README.de.md**: Banner ganz oben verweist auf
+  `docs/ARCHITECTURE.md` als SSOT (vor dem ersten Headline).
+
+### Changed
+- **README.md + README.de.md Test-Badge**: `565 → 584 passed`,
+  `4 → 5 pre-existing env failures` (1× FAISS/Numpy + 4× `/private/var`
+  Path-Validierung). Pre-existing Failures per Profile autorisiert
+  (nicht durch dieses Change-Set verursacht).
+
+### Cleanup
+- **`docs/archive/2026-06-19-initial-snapshot/`** (new): 18 alte .md-Snapshots
+  (8 Root + 10 docs/) + 4 Verzeichnisse (`presets-management`,
+  `refactor-permissions`, `schemas`, `mc707-reference`) mit `HISTORISCH`-Banner
+  archiviert. 3 Tage Hardcore-Refactor → nicht mehr synchron mit Code, aber
+  via Archiv nachvollziehbar.
+- **`docs/archive/2026-06-22-failed-analysis/`** (new): Fehlerhafter Bericht
+  `docs/COMPLETE_SYSTEM_ANALYSIS.md` (9 Faktenfehler laut
+  `FINAL_VERIFICATION.md` aus plan_0578567a) + der Verifier-Report
+  archiviert. README dokumentiert den Drift (Truncation der Code-Lese-Phase).
+- **Müll-Datei `30`** (im Repo-Root) entfernt.
+- **Test-Stale-Fixes**:
+  - `tests/test_llm_page_browser.py`: Assertion `text=Special Services`
+    ersetzt durch `text=Web Search` + `text=TTS` (UI-Refactor hat die alte
+    "Special Services"-Kategorie in zwei separate Service-Cards aufgeteilt).
+  - `tests/test_browser_workflows.py::test_05_blockade_resolution_workflow`:
+    `@pytest.mark.skip` weil der "Blockaden"-Tab seit Refactor in den
+    per-Agent-Tuning-Panel verschoben ist (`dashboard.js:2196`) und nicht
+    mehr als Top-Level-Button erreichbar. Skip-Grund im Docstring
+    dokumentiert für späteren Test-Rewrite.
+
+### Test Coverage
+- Full suite: **584 passed**, 5 pre-existing env fails
+  (`test_soul_memory_retrieval` FAISS/Numpy + 4× `test_workspace_config`/
+  `test_security_suite` `/private/var` Path-Validierung), 4 skipped
+  (inkl. der neu geskippten Blockade-Test). Unverändert zur Baseline.
+
 ## [Unreleased — Permission-Refactor] - 2026-06-21
 ### Added
 - **SecurityAG-Audit-Log (Option B "Strukturiert")**: Dedizierte

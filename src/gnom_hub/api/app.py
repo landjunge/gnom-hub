@@ -25,6 +25,34 @@ async def start_openrouter_updater():
         # Stündlich aktualisieren
         await asyncio.sleep(3600)
 
+
+async def start_invalid_keys_reverifier():
+    """Re-verifiziert `# UNGÜLTIG:`-Keys in api_keys.txt periodisch.
+
+    Defense-in-Depth: `sync_desktop_keys()` liest nur aktive Zeilen.
+    Ohne diesen Loop bleibt ein einmal als invalid markierter Key für immer
+    disabled, auch wenn der Provider ihn inzwischen wieder akzeptiert
+    (Billing-Reset, revoke→re-grant, temp outage).
+
+    Throttle (30 min) lebt in `reverify_invalid_keys()` selbst.
+    """
+    import asyncio
+    from gnom_hub.infrastructure.llm.desktop_syncer import reverify_invalid_keys
+    # Initial-Delay damit Hub-Startup nicht durch 10+ HTTP-Calls ausgebremst wird
+    await asyncio.sleep(60)
+    while True:
+        try:
+            r = await reverify_invalid_keys()
+            if r.get("recovered"):
+                print(f"🔑 [KEY-REVERIFY] Recovered {len(r['recovered'])} key(s): {r['recovered']}")
+            elif r.get("checked"):
+                print(f"🔑 [KEY-REVERIFY] Checked {r['checked']} invalid key(s) — none recovered.")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"Error in invalid-keys reverifier: {e}")
+        await asyncio.sleep(30 * 60)  # 30 Minuten
+
 async def start_recovery_and_watchdog_loop(db_path: Path):
     import asyncio
     import time
@@ -239,13 +267,16 @@ async def lifespan(app: FastAPI):
 
     import asyncio
     from gnom_hub.core.config import DB_PATH
-    updater_task = asyncio.create_task(start_openrouter_updater())
+    # User-Mandat 2026-06-28 06:34 — OpenRouter-Updater RAUS.
+    # (Vorher: updater_task = asyncio.create_task(start_openrouter_updater()))
+    # Wir nutzen NUR MiniMax, kein 401-Spam alle 60min.
     recovery_task = asyncio.create_task(start_recovery_and_watchdog_loop(DB_PATH))
-    
+    reverify_task = asyncio.create_task(start_invalid_keys_reverifier())
+
     yield
-    
-    updater_task.cancel()
+
     recovery_task.cancel()
+    reverify_task.cancel()
     kill_background_agents()
 
 app = FastAPI(title="GNOM-HUB", lifespan=lifespan)

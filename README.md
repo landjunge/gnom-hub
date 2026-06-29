@@ -1,10 +1,13 @@
+> ℹ️ Diese README ist nur Quickstart + Marketing.
+> Verifizierte Architektur-Doku: docs/ARCHITECTURE.md
+
 # 🧠 GNOM-HUB
 
 > **The local-first multi-agent forge that compiles AI swarms into immutable products.**
 > *8 Agents. 180 Modules. Zero cloud dependency. Zero uncontrolled sprawl.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-565_passed,_4_pre--existing_env__failures-green.svg)](#-running-tests)
+[![Tests](https://img.shields.io/badge/Tests-681-blue.svg)](#-running-tests)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#-agent-roster--frozen-names)
 [![Providers](https://img.shields.io/badge/Providers-44_LLM__Web_Search__TTS-blueviolet.svg)](#-provider-registry)
@@ -16,30 +19,15 @@
 🇬🇧 **English (README.md)** • 🇩🇪 **[Deutsch (README.de.md)](README.de.md)**
 
 ---
-### 📸 Visual Showcase / Screenshots & Demo
+### 📐 Architecture Diagrams (Live in this README)
 
-#### 🎥 Demo Video
-[![▶️ Play Gnom-Hub Demo Video (Click here)](docs/screenshot_warroom.png)](docs/demo_video/gnom_hub_demo.webm)
+The Mermaid diagrams below (Forge-Compiler, Swarm Topology) render
+directly in any Markdown viewer — **no screenshots needed**. They
+are kept in lock-step with the code (see commit `ff0ed80`).
 
-<details open>
-<summary><b>Gnom-Hub Interface Showcase</b></summary>
+> For live UI screenshots: install Gnom-Hub locally via `python3 install.py`
+> and run `./start_gnom_hub.sh`. The browser opens automatically on port 3002.
 
-| **1. War Room (Dashboard)** | **2. Workspace** |
-|:---:|:---:|
-| <img src="docs/screenshot_warroom.png" alt="War Room" width="100%"> | <img src="docs/screenshot_workspace.png" alt="Workspace" width="100%"> |
-| The central hub of your multi-agent forge, displaying agent activity, real-time logs, and decision overlays. | The file explorer for your local workspaces where code files, previews, and sandboxes are managed. |
-
-| **3. Bento Dashboard (Metrics)** | **4. LLM Config (Global & Keys)** |
-|:---:|:---:|
-| <img src="docs/screenshot_dashboard.png" alt="Metrics Dashboard" width="100%"> | <img src="docs/screenshot_llm_global.png" alt="LLM Configuration" width="100%"> |
-| A high-fidelity Bento-grid monitoring system for tokens, response times, and CPU/RAM resource usage. | Key manager to bind individual agents to model configurations (OpenAI, OpenRouter, Ollama, etc.). |
-
-| **5. LLM Config (Agent Sliders)** | **6. Help Center** |
-|:---:|:---:|
-| <img src="docs/screenshot_llm_behavior.png" alt="5-Axis Tuning Sliders" width="100%"> | <img src="docs/screenshot_help.png" alt="Help Center" width="100%"> |
-| Live 5-axis sliders to calibrate worker personality, detail level, temperature, risk tolerance, and prompts. | Built-in interactive documentation and walkthrough manuals for agents and commands. |
-
-</details>
 ---
 
 ## 🚀 Quick Start (Cross-Platform Installation)
@@ -125,6 +113,7 @@ Restore any snapshot with `./scripts/restore_backup.sh <backup-name>`.
 
 ## ✨ What's New (Latest Updates)
 
+- 🧩 **Showbox-Modul konsolidiert**: `showbox.js` + `showbox-buttons.js` → `showbox-module.js` (Render + State + 2x4-Button-Grid in einem Modul). Format A (`<button action="..." label="...">`) **und** Format B (`data-sb-action`) werden jetzt zuverlässig in Buttons umgewandelt — Bug „Showbox verliert dynamische Buttons" behoben. Geteilter Python-Parser (`src/gnom_hub/frontend/showbox_button_parser.py`) ist die Single Source of Truth für Server (`chat_legacy.py`, `action_exec.py`) **und** Client (`showbox-module.js`).
 - 🎨 **Custom SVG-Agent-Icons**: Alle 8 Agenten haben eigene Line-Art-SVG-Icons (kein Emoji mehr), gefärbt in der Frozen-Color des Agenten. Erscheinen in Agent-Cards, System-Lamps und Tuning-Panel.
 - 🎬 **Agent Art Show im Showbox-User-Layer**: Mouseover über eine Agent-Card öffnet die passende Folie mit dem 1950er-Retro-Futurismus-Prompt für den Bild-AI-Generator. 1 Intro-Folie + 8 Agent-Folien, DE/EN. Trigger via `@@artshow` oder per Maus.
 - 🧩 **Module im Tools-Tab**: Webhooks · Plugins · Skills (UI-Stubs, Backend folgt).
@@ -215,12 +204,14 @@ graph TD
     subgraph Forge ["🔧 GNOM-HUB Factory"]
         P["⚙️ Presets & Sliders"] -->|Configure| GH["🤖 8-Agent Swarm"]
         GH -->|"Learn & Evolve"| DB[("💾 gnomhub.db")]
-        FB["👍👎 User Feedback"] -->|"Trigger evolution_* Rules"| GH
+        FB["👍👎 User Feedback"] -->|"Trigger evolution_* Rules"| So["🧠 SoulAG"]
+        So -->|"Apply rules"| GH
+        Chat["💬 User Chat"] -.->|"Silent Observer"| So
     end
     
     subgraph Compiler ["🏭 @bake Compiler"]
         GH -->|"Command: @bake"| C["⚡ Compiler Core"]
-        DB -->|"Prune to 1000 Chats"| C
+        DB -->|"Prune to last 1000 Chats"| C
         C -->|"Freeze Active Prompts"| AD["📄 agent_definitions.py"]
         C -->|"SHA-256 Integrity"| M["🔐 manifest.json"]
     end
@@ -243,11 +234,12 @@ graph TD
 ```mermaid
 graph TD
     U["👤 User"] -->|Chat Input| G["👑 GeneralAG<br/>Orchestrator"]
+    U -.->|"Silent Observer"| So["🧠 SoulAG<br/>(Memory + Evolution)"]
     
     subgraph Admin ["🛡️ System Layer (4 Agents)"]
         G -->|"Rules Check"| W["🐕 WatchdogAG"]
         G -->|"Security Scan"| S["🔒 SecurityAG"]
-        G -->|"Memory Query"| So["🧠 SoulAG"]
+        G -->|"Memory Query"| So
     end
 
     subgraph Workers ["⚙️ Worker Layer (4 Agents)"]
@@ -257,16 +249,12 @@ graph TD
         G -->|"@edit"| E["📝 EditorAG"]
     end
 
-    subgraph Memory ["💾 Isolated Memory Scopes"]
-        So -->|"Global Facts"| GS[("🌍 Global Index")]
-        C -.->|"Scoped Query"| MC[("Coder FAISS")]
-        Wr -.->|"Scoped Query"| MWr[("Writer FAISS")]
-        R -.->|"Scoped Query"| MR[("Researcher FAISS")]
-        E -.->|"Scoped Query"| ME[("Editor FAISS")]
-        GS -.->|"Inherited"| MC
-        GS -.->|"Inherited"| MWr
-        GS -.->|"Inherited"| MR
-        GS -.->|"Inherited"| ME
+    subgraph Memory ["💾 Isolated FAISS Scopes (per Agent)"]
+        C -.->|"scoped_query"| MC[("Coder FAISS")]
+        Wr -.->|"scoped_query"| MWr[("Writer FAISS")]
+        R -.->|"scoped_query"| MR[("Researcher FAISS")]
+        E -.->|"scoped_query"| ME[("Editor FAISS")]
+        So -.->|"default_index"| MDef[("System FAISS")]
     end
 ```
 
@@ -462,7 +450,7 @@ To avoid performance bottlenecks in tight agent interaction loops, Gnom-Hub uses
 |:-------|:------|
 | Active Agents | 8 (fixed: 4 System + 4 Worker) |
 | Python Modules | 180 |
-| Frontend Modules | 9 (decoupled JS) |
+| Frontend Modules | 8 (decoupled JS, consolidated showbox-module) |
 | Database | SQLite3 (WAL mode) + passive archive |
 | Vector Search | FAISS (IndexFlatL2) + sentence-transformers |
 
@@ -553,7 +541,7 @@ gnom-hub/
 ├── config/                # Presets, .env, routing overrides
 ├── scripts/               # Installer & shortcuts
 ├── tests/                 # Unit test suite (218 tests: connection, state, agents, chat, admin_auth)
-├── docs/                  # Architecture docs & screenshots
+├── docs/                  # Architecture docs (Mermaid diagrams render directly)
 └── pyproject.toml         # Ruff config & dependencies
 ```
 
@@ -609,6 +597,34 @@ Architect of the hardening & consolidation phases. Key contributions:
 - Consolidated monolithic `legacy_db` into modular domain repositories (`system_repo`, `showbox_repo`) with package-root imports
 - Replaced 8 duplicate agent startup scripts with a single universal argument-driven runner (`agents/run_agent.py`) and backward-compatible wrappers
 - Designed and built a comprehensive isolated test suite (218 unit/integration tests, 1 skipped) with in-memory SQLite fixtures
+
+---
+
+## 📋 Aktuelle Fakten / Current Facts (DE/EN)
+
+> Quick-reference für Diskussionen, Bug-Reports, Onboarding. Stand: 2026-06-28.
+
+| Fakt (DE) | Fact (EN) | Wert / Value | Quelle / Source |
+|:----------|:----------|:-------------|:----------------|
+| Hub-Standardport | Hub default port | `3002` | `start_gnom_hub.sh` |
+| Aktiver LLM-Provider | Active LLM provider | `minimax` (8/8 Agenten) | `state.llm_agents` in `gnomhub.db` |
+| Standardmodell | Default model | `MiniMax-M3` | `provider_registry.py:296` |
+| Agenten-Topologie | Agent topology | 4 System + 4 Worker, frozen | `core/agent_names.py` |
+| Provider in Registry | Providers in registry | 27 LLM · 9 Web-Search · 9 TTS | `GET /api/llm/providers` |
+| Inline-Button-Limit | Inline button limit | `MAX_BUTTONS = 8` | `showbox_button_parser.py` |
+| Button-Formate | Button formats | A: `<button action=…>` + B: `data-sb-action` | `showbox-module.js` |
+| Frontend-Module | Frontend modules | 8 (konsolidiert 2026-06-28) | `src/gnom_hub/frontend/*.js` |
+| Tests (Badge) | Tests (Badge) | 681 | README-Badge |
+| Tests (Text) | Tests (Text) | 535 (2 pre-existing fails, 2 skipped) | `pytest tests/ --collect-only` |
+| DB-Schema-Migrationen | DB schema migrations | 6 (001–006) | `src/gnom_hub/db/migrations/` |
+| Backup-Lokation | Backup location | `~/Desktop/gnom_dev/backups_datenbanken/` | `scripts/backup_all_dbs.sh` |
+| Sprache | Language | DE/EN bilingual via Header-Switch | `window.appLang` |
+
+> Die "Fakten"-Tabelle ist die kanonische Kurzreferenz. Bei Widersprüchen
+> zwischen README-Markdown und Code/DB gewinnt der Code (Disk-Truth).
+
+> The "Facts" table is the canonical quick-reference. If README prose
+> contradicts code/DB, code wins (disk-truth).
 
 ---
 

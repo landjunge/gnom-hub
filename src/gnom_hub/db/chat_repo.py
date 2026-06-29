@@ -5,9 +5,123 @@ This module contains two layers:
 2. Legacy functional API (re-exported from legacy_db.py for backward compatibility)
 """
 
-import json; from datetime import datetime; from uuid import UUID; from typing import List, Optional
+import json; import re; import time
+from datetime import datetime, timezone
+from uuid import UUID; from typing import List, Optional
 from abc import ABC, abstractmethod
 from gnom_hub.chat.entities import ChatMessage, FlexSoul
+
+# ── Agent-Filter (Stub + Rate-Limit + Worker-Sprech-Verbot) ──────────────
+# Welche Sender werden gefiltert? Nur bekannte Agent-Namen (nicht user, System,
+# war-room, Tester, verifier, etc.).
+KNOWN_AGENT_NAMES = frozenset({
+    "SoulAG", "GeneralAG", "CoderAG", "WriterAG",
+    "EditorAG", "ResearcherAG", "SecurityAG", "WatchdogAG",
+})
+# Worker: User-Mandat 2026-06-28 02:04 — SPRECH-VERBOT, nur Showbox.
+# Eine Worker-Chat-Message ohne Purpose-Tag (Showbox/Write/Read/Code-Block) ist
+# Audit-Verstoß und wird gedroppt.
+WORKER_AGENT_NAMES = frozenset({"CoderAG", "WriterAG", "EditorAG", "ResearcherAG"})
+
+# Stub-Pattern: kurze Quittungen / Idle-Reports. Bewusst eng gefasst — lieber
+# eine echte Message durchlassen als versehentlich filtern.
+_STUB_REGEXES = [
+    re.compile(r"\bwartet\s+auf\b", re.IGNORECASE),
+    re.compile(r"kein(?:er)?\s+(?:autonomer\s+)?Eingriff", re.IGNORECASE),
+    re.compile(r"kein(?:en)?\s+(?:echten?\s+)?Auftrag", re.IGNORECASE),
+    re.compile(r"keine\s+(?:weitere\s+)?Aktion\s+n[öo]tig", re.IGNORECASE),
+    re.compile(r"\bIdle\b", re.IGNORECASE),
+    re.compile(r"\bruht(?:\s+konsistent)?", re.IGNORECASE),
+    re.compile(r"Swarm\s+ruht", re.IGNORECASE),
+    re.compile(r"Quittung\s+erkannt", re.IGNORECASE),
+    re.compile(r"kein\s+Pending", re.IGNORECASE),
+]
+# Alleinstehende Showbox-Tags (keine Slides-Payload) sind per Definition Stub.
+_SHOWBOX_ARROW = r"(?:→|->)"
+_SHOWBOX_TAG_ONLY_RE = re.compile(
+    rf"^\s*\[\s*{_SHOWBOX_ARROW}\s*Showbox:[^\]]*\]\s*$", re.IGNORECASE
+)
+_SHOWBOX_TAG_STRIP_RE = re.compile(
+    rf"\[\s*{_SHOWBOX_ARROW}\s*Showbox:[^\]]*\]", re.IGNORECASE
+)
+# Substanz-Indikatoren: wenn vorhanden, NICHT filtern (echte Arbeit).
+_SUBSTANCE_MARKERS = ("```", "[WRITE:", "[READ:", '"slides":', '"slide_id":')
+
+# Per-Agent-Rate-Limit (in-memory, geht beim Hub-Restart verloren — gewollt).
+AGENT_COOLDOWN_THRESHOLD = 20    # max Nachrichten
+AGENT_COOLDOWN_WINDOW_S = 60.0   # pro rollendem Fenster
+_agent_msg_times: dict[str, list[float]] = {}
+
+
+def _agent_message_filter(sender: str, content: str, msg_type: str) -> tuple[bool, str]:
+    """Gibt (is_filtered, reason) zurück.
+
+    True wenn die Nachricht verworfen wird:
+      - Worker-Sprech-Verbot: Worker dürfen NUR Showbox/WRITE/READ/Code-Block.
+      - Stub-Detection (System-Agents): kurz + Pattern / Showbox-only / leer.
+      - Per-Agent-Rate-Limit (20 msgs / 60s).
+    False sonst.
+    """
+    if sender not in KNOWN_AGENT_NAMES:
+        return False, ""
+    if msg_type not in ("chat", "directive", "role_response"):
+        return False, ""
+
+    # ── Worker-Sprech-Verbot (VOR Stub-Detection) ───────────────────────
+    if sender in WORKER_AGENT_NAMES:
+        has_write_read = "[WRITE:" in content or "[READ:" in content
+        has_code_block = "```" in content
+        showbox_tag_only = bool(_SHOWBOX_TAG_ONLY_RE.match(content))
+        stripped = _SHOWBOX_TAG_STRIP_RE.sub("", content).strip()
+        # JSON-Slides im Showbox-Payload erkennen (slides sind im JSON verschachtelt,
+        # nicht Top-Level-Text → der alte Filter erkennt sie nicht)
+        has_json_slides = False
+        if stripped.startswith('[') or stripped.startswith('{'):
+            try:
+                parsed = json.loads(stripped)
+                if isinstance(parsed, list) and len(parsed) > 0:
+                    has_json_slides = bool(parsed[0])
+                elif isinstance(parsed, dict) and (parsed.get('slides') or parsed.get('content')):
+                    has_json_slides = True
+            except Exception:
+                pass
+        has_meaningful_showbox = (
+            bool(_SHOWBOX_TAG_STRIP_RE.search(content))
+            and (has_json_slides or bool(stripped))
+            and not showbox_tag_only
+        )
+        if not (has_meaningful_showbox or has_write_read or has_code_block):
+            return True, "worker_sprech_verbot"
+        return _check_rate_limit(sender)
+
+    # ── System-Agent Filter ──────────────────────────────────────────────
+    if len(content.strip()) < 5:
+        return True, "stub:empty_or_too_short"
+
+    text_without_showbox = _SHOWBOX_TAG_STRIP_RE.sub("", content).strip()
+    if not text_without_showbox:
+        return True, "stub:showbox_tags_only"
+
+    has_substance = any(m in content for m in _SUBSTANCE_MARKERS)
+    if has_substance:
+        return _check_rate_limit(sender)
+
+    if len(content) < 250:
+        for pat in _STUB_REGEXES:
+            if pat.search(content):
+                return True, f"stub:pattern:{pat.pattern}"
+
+    return _check_rate_limit(sender)
+
+
+def _check_rate_limit(sender: str) -> tuple[bool, str]:
+    now = time.time()
+    bucket = _agent_msg_times.setdefault(sender, [])
+    bucket[:] = [t for t in bucket if now - t < AGENT_COOLDOWN_WINDOW_S]
+    if len(bucket) >= AGENT_COOLDOWN_THRESHOLD:
+        return True, f"throttle:{len(bucket)}_msgs_in_{int(AGENT_COOLDOWN_WINDOW_S)}s"
+    bucket.append(now)
+    return False, ""
 
 class ChatRepository(ABC):
     @abstractmethod
@@ -48,7 +162,16 @@ class SQLiteChatRepository(ChatRepository):
     def save_flexsoul(self, fs: FlexSoul) -> Await:
         with get_db_connection() as conn:
             v = json.dumps({"short_term": [{"id": str(m.id), "agent_id": str(m.agent_id), "role": m.role, "content": m.content, "timestamp": m.timestamp.isoformat()} for m in fs.short_term], "long_term": fs.long_term_summary})
-            conn.execute("INSERT OR REPLACE INTO soul_memory (key, value, timestamp) VALUES (?, ?, ?)", (f"flexsoul:{fs.agent_id}", v, fs.last_updated.isoformat())); conn.commit()
+            # Per-Agent Working-Memory via Smart-Dedup.
+            # Key `flexsoul:<agent_id>` normalisiert sich zu `flexsoul_<agent_id>`
+            # (deterministisch + einzigartig pro Agent → kein Prefix-Match).
+            # Jaccard-Collisionen zwischen Agenten sind unwahrscheinlich, da jeder
+            # Eintrag eine andere `agent_id`-UUID in der JSON trägt → unterschiedliche Tokens.
+            from gnom_hub.db.soul_repo import save_soul_fact_smart
+            save_soul_fact_smart(
+                f"flexsoul:{fs.agent_id}", v, agent="System", priority="high",
+            )
+            conn.commit()
         return Await(fs)
     def clear_history(self, agent_id: UUID) -> Await:
         with get_db_connection() as conn: conn.execute("DELETE FROM chat WHERE agent_id = ?", (str(agent_id),)); conn.commit(); return Await(True)
@@ -118,7 +241,29 @@ def _legacy_row_to_msg(row):
     return d
 
 def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, content: str, metadata: dict = None):
-    """Fügt eine Nachricht direkt und relational in die chat-Tabelle ein (transaktionssicher)."""
+    """Fügt eine Nachricht direkt und relational in die chat-Tabelle ein (transaktionssicher).
+
+    Gibt ``msg_id`` (UUID) zurück, oder ``None`` wenn die Nachricht durch den
+    Agent-Filter (Stub + Rate-Limit + Worker-Sprech-Verbot) verworfen wurde.
+    """
+    # ── Agent-Filter (Stub + Rate-Limit + Worker-Sprech-Verbot) ──────────
+    try:
+        is_filtered, filter_reason = _agent_message_filter(sender, content, msg_type)
+        if is_filtered:
+            try:
+                from gnom_hub.core.audit_helpers import record_cooldown
+                is_throttle = filter_reason.startswith("throttle")
+                record_cooldown(
+                    sender,
+                    reason=filter_reason,
+                    duration_s=AGENT_COOLDOWN_WINDOW_S if is_throttle else 0.0,
+                )
+            except Exception:
+                pass
+            return None
+    except Exception as filter_exc:
+        _logger.debug(f"[DB] agent filter failed (passing through): {filter_exc}")
+
     try:
         with get_db_conn() as conn:
             with conn:

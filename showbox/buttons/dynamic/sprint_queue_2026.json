@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "created": "2026-07-04",
+  "created_by": "GeneralAG",
+  "archived_by": "SecurityAG",
+  "context": "Sprint-Disposition Web Speech API + View Transitions + WebGazer DSGVO-Opt-In",
+  "sprints": {
+    "sprint_1": {
+      "name": "Web Speech API (SpeechRecognition)",
+      "status": "cleared",
+      "blockades": [],
+      "capabilities": ["microphone:read", "speech_recognition:run"],
+      "routing": "SmartRouter → lightweight model"
+    },
+    "sprint_2": {
+      "name": "View Transitions (CSS/JS API)",
+      "status": "cleared",
+      "blockades": [],
+      "capabilities": ["dom:mutate", "view_transitions:api"],
+      "routing": "SmartRouter → lightweight model"
+    },
+    "sprint_3": {
+      "name": "WebGazer / Kamera-Capability + DSGVO-Consent",
+      "status": "hold_pending_research",
+      "blockades": ["camera:read (locked)", "webgazer:init (locked)"],
+      "required_artifacts": [
+        "consent_banner_text.md",
+        "permission_api_flow.md",
+        "lokal_only_verification.md",
+        "dsgvo_art_9_audit.md"
+      ],
+      "researcher_ag_task": "DSGVO-konformes Opt-In-Pattern",
+      "researcher_ag_status": "firing_now"
+    }
+  },
+  "user_approval_gates": [
+    {"label": "🚀 Sprint 1+2 freigeben", "action": "approve_sprint_1_2", "requires": "user_click"},
+    {"label": "🚀 Nur Sprint 1", "action": "approve_sprint_1", "requires": "user_click"},
+    {"label": "🛡 Sprint 3 Opt-In-Spec anfordern", "action": "request_sprint3_consent_spec", "requires": "user_click"},
+    {"label": "🌪 Alle 3 mit Sprint-3-Conditional", "action": "approve_all_conditional", "requires": "user_click"},
+    {"label": "🔓 Hard-Mode (alle Blockaden aus)", "action": "remove_all_blockades", "requires": "user_click"}
+  ],
+  "rule": "No sprint execution without user click on approval button. Sprint 3 additionally blocked until ResearcherAG consent-spec delivered + SecurityAG code-review."
+}

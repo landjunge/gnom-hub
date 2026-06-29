@@ -1,0 +1,151 @@
+{
+  "showcase_id": "showbox-capability-v1",
+  "version": "1.0.0",
+  "author": "WriterAG",
+  "created": "2026-07-27",
+  "description": "Copy für die 6-Slide-Showcase zur Demonstration der Showbox-Funktionalität. Metadaten, Sprecher-Notizen, Übergänge, CTA-Labels.",
+  "slides": [
+    {
+      "slide_id": "demo-01-welcome",
+      "type": "intro",
+      "color": "green",
+      "title": "🟢 Willkommen — Showbox Showcase",
+      "content": [
+        "Diese Demo zeigt, was die Showbox kann — von Begrüßung bis Multi-Agent-Routing.",
+        "Jede Slide nutzt echte Buttons aus `buttons/*.json`-Presets.",
+        "Navigation, Actions, Agent-Calls: alles funktioniert über die `buttons[]`-Arrays."
+      ],
+      "speaker_notes": "Hier wird das Konzept der Showbox als zentrales Antwort-Format eingeführt. Hinweis: Slides werden via [SHOWBOX:]-Tag gerendert.",
+      "transition": "fade-in",
+      "cta_label": "Los geht's",
+      "buttons": [
+        {"label": "◀ Zurück", "action": "nav.back"},
+        {"label": "▶ Weiter", "action": "nav.next"},
+        {"label": "✕ Schließen", "action": "nav.close"}
+      ]
+    },
+    {
+      "slide_id": "demo-02-capabilities",
+      "type": "info",
+      "color": "blue",
+      "title": "🔵 Was kann die Showbox?",
+      "content": [
+        "**Nav:** ◀ ▶ ✕ — Vor/Zurück/Schließen.",
+        "**Actions:** ✅ ❌ ⏹ — Approve/Reject/Stop.",
+        "**Agents:** @GeneralAG, @CoderAG, @WriterAG, @EditorAG, @ResearcherAG, @SecurityAG, @SoulAG, @WatchdogAG.",
+        "**Workflow:** 🧠 Brainstorm, 🗳 Vote, 🔗 Pipeline."
+      ],
+      "speaker_notes": "Vorstellung der vier Button-Kategorien. Jeder Button ist eine echte Aktion, kein Pseudo-HTML.",
+      "transition": "slide-left",
+      "cta_label": "Mehr erfahren",
+      "buttons": [
+        {"label": "◀ Zurück", "action": "nav.back"},
+        {"label": "▶ Weiter", "action": "nav.next"},
+        {"label": "@GeneralAG fragen", "action": "agent.call", "target": "GeneralAG"},
+        {"label": "@CoderAG fragen", "action": "agent.call", "target": "CoderAG"}
+      ]
+    },
+    {
+      "slide_id": "demo-03-workflow",
+      "type": "workflow",
+      "color": "purple",
+      "title": "🟣 Workflow-Beispiel",
+      "content": [
+        "**Brainstorm → Vote → Pipeline:** Drei-Phasen-Workflow für Team-Entscheidungen.",
+        "Dynamische Buttons werden on-the-fly erzeugt und in `buttons/dynamic/` archiviert.",
+        "User-Verbot 2026-06-27: Dynamische Buttons werden NIE auto-gelöscht — Archiv bleibt bestehen."
+      ],
+      "speaker_notes": "Erwähnen, dass dynamische Buttons vom Kontext abhängen und im Archiv landen. GeneralAG orchestriert die Übergänge.",
+      "transition": "slide-up",
+      "cta_label": "Workflow starten",
+      "buttons": [
+        {"label": "◀ Zurück", "action": "nav.back"},
+        {"label": "▶ Weiter", "action": "nav.next"},
+        {"label": "🧠 Brainstorm", "action": "workflow.brainstorm"},
+        {"label": "🗳 Vote", "action": "workflow.vote"},
+        {"label": "🔗 Pipeline", "action": "workflow.pipeline"}
+      ]
+    },
+    {
+      "slide_id": "demo-04-code-preview",
+      "type": "code",
+      "color": "orange",
+      "title": "🟠 Code-Vorschau — Render-Mechanik",
+      "content": [
+        "Showbox-Slides werden via Tag geparsed:",
+        "```json",
+        "[SHOWBOX:showcase_id]{",
+        "  'slides': [...], 'buttons': [...]",
+        "}[/SHOWBOX]",
+        "```",
+        "Renderer löst Button-Presets aus `buttons/*.json` auf und rendert interaktive UI."
+      ],
+      "speaker_notes": "Hier wird der technische Unterbau gezeigt. Wichtig: Buttons IMMER im `buttons[]`-Array, niemals als Pseudo-HTML im Content.",
+      "transition": "fade-in",
+      "cta_label": "Code ansehen",
+      "warning": "Dynamische Buttons werden NIE auto-gelöscht. Archiv unter `showbox/buttons/dynamic/` bleibt permanent bestehen — User-Verbot 2026-06-27.",
+      "buttons": [
+        {"label": "◀ Zurück", "action": "nav.back"},
+        {"label": "▶ Weiter", "action": "nav.next"},
+        {"label": "✅ Approve", "action": "action.approve"},
+        {"label": "❌ Reject", "action": "action.reject"}
+      ]
+    },
+    {
+      "slide_id": "demo-05-status-output",
+      "type": "status",
+      "color": "yellow",
+      "title": "🟡 Status & Terminal-Output",
+      "content": [
+        "**Render-Status:** 6/6 Slides geladen, JSON valide, Buttons aufgelöst.",
+        "**Terminal-Log (Mock):**",
+        "```",
+        "[render] parsing showcase_capability_v1.json...",
+        "[render] 6 slides loaded.",
+        "[render] buttons resolved: nav=3, actions=2, agents=2, workflow=3.",
+        "[render] dynamic archive: 4 entries, none auto-deleted.",
+        "[render] ✅ ready.",
+        "```",
+        "**Token-Budget:** Showcase nutzt ~1800 Tokens, weit unter 4000er Schwelle."
+      ],
+      "speaker_notes": "Status-Slide zeigt die technische Verifikation. Terminal-Log ist illustrativ — echter Renderer-Output variiert je nach Implementation.",
+      "transition": "fade-in",
+      "cta_label": "Verifikation prüfen",
+      "buttons": [
+        {"label": "◀ Zurück", "action": "nav.back"},
+        {"label": "▶ Weiter", "action": "nav.next"},
+        {"label": "✅ Approve", "action": "action.approve"},
+        {"label": "⏹ Stop", "action": "action.stop"}
+      ]
+    },
+    {
+      "slide_id": "demo-06-multi-agent-dispatch",
+      "type": "routing",
+      "color": "blue",
+      "title": "🔵 Multi-Agent-Dispatch",
+      "content": [
+        "Von hier aus kann jeder Agent direkt angesprochen werden:",
+        "**Tier 1:** User (Souverän)",
+        "**Tier 2:** SecurityAG, SoulAG (bei User-Delegation)",
+        "**Tier 3:** GeneralAG, CoderAG, WriterAG, EditorAG, ResearcherAG, WatchdogAG",
+        "**Beispiel-Kette:** User → SoulAG → GeneralAG → CoderAG → EditorAG → User",
+        "Klicke einen Agent-Button unten, um den Showcase abzuschließen."
+      ],
+      "speaker_notes": "Letzte Slide: Verabschiedung + Multi-Agent-Calls. Demonstriert die Authority-Hierarchie und die Showbox als Routing-Mechanik.",
+      "transition": "fade-out",
+      "cta_label": "Showcase abschließen",
+      "buttons": [
+        {"label": "◀ Zurück", "action": "nav.back"},
+        {"label": "✕ Schließen", "action": "nav.close"},
+        {"label": "@GeneralAG", "action": "agent.call", "target": "GeneralAG"},
+        {"label": "@CoderAG", "action": "agent.call", "target": "CoderAG"},
+        {"label": "@EditorAG", "action": "agent.call", "target": "EditorAG"},
+        {"label": "@WriterAG", "action": "agent.call", "target": "WriterAG"},
+        {"label": "@ResearcherAG", "action": "agent.call", "target": "ResearcherAG"},
+        {"label": "@WatchdogAG", "action": "agent.call", "target": "WatchdogAG"},
+        {"label": "@SecurityAG", "action": "agent.call", "target": "SecurityAG"},
+        {"label": "@SoulAG", "action": "agent.call", "target": "SoulAG"}
+      ]
+    }
+  ]
+}

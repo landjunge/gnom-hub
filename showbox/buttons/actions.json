@@ -1,0 +1,82 @@
+{
+  "$schema": "https://gnom-hub.local/schemas/showbox-preset.v1.json",
+  "_meta": {
+    "name": "Tribunal Actions",
+    "version": "2.0",
+    "updated": "2026-06-27",
+    "author": "Mavis",
+    "purpose": "Approve / Reject / Stop — für Tribunal-Workflows & Worker-Steuerung",
+    "icon_set": "unicode-symbols",
+    "category": "actions",
+    "tags": ["approve", "reject", "stop", "tribunal"]
+  },
+  "_notes": "Approve/Reject nur zeigen wenn eine offene Decision existiert. Confirm-Dialog bei destruktiven Aktionen (Stop, Reset).",
+  "buttons": [
+    {
+      "label": "✓ Approve",
+      "action": "approve",
+      "color": "#6ddb9c",
+      "icon": "✓",
+      "primary": true,
+      "confirm": true,
+      "confirm_text": "Diese Aktion wirklich freigeben?",
+      "tooltip": "Aktion freigeben"
+    },
+    {
+      "label": "✓✓ Alle approven",
+      "action": "approve_all",
+      "color": "#6ddb9c",
+      "icon": "✓✓",
+      "confirm": true,
+      "confirm_text": "Alle offenen Decisions freigeben?",
+      "tooltip": "Bulk-Approve für alle ausstehenden Decisions"
+    },
+    {
+      "label": "✗ Reject",
+      "action": "reject",
+      "color": "#ff4d6d",
+      "icon": "✗",
+      "confirm": true,
+      "confirm_text": "Aktion wirklich ablehnen?",
+      "tooltip": "Aktion ablehnen + Worker informieren"
+    },
+    {
+      "label": "⏸ Stop Worker",
+      "action": "stop_agent",
+      "args": {"target": "all_workers"},
+      "color": "#ffd84d",
+      "icon": "⏸",
+      "confirm": true,
+      "confirm_text": "ALLE Worker stoppen? Laufende Tasks werden abgebrochen.",
+      "tooltip": "Stoppt alle 4 Worker (CoderAG, WriterAG, EditorAG, ResearcherAG)"
+    },
+    {
+      "label": "⏹ Stop Hub",
+      "action": "stop_agent",
+      "args": {"target": "hub"},
+      "color": "#ff4d6d",
+      "icon": "⏹",
+      "confirm": true,
+      "confirm_text": "Den ganzen Hub stoppen? WebSocket wird getrennt.",
+      "tooltip": "Hub-Shutdown (User-initiiert)"
+    },
+    {
+      "label": "↻ Restart Hub",
+      "action": "run_script",
+      "args": {"path": "scripts/restart_hub.sh"},
+      "color": "#4d9fff",
+      "icon": "↻",
+      "confirm": true,
+      "confirm_text": "Hub neu starten? ~10s Downtime.",
+      "tooltip": "Sauberer Restart via start_gnom_hub.sh"
+    },
+    {
+      "label": "🧹 Cache leeren",
+      "action": "run_script",
+      "args": {"path": "scripts/clear_caches.sh"},
+      "color": "#7a90b8",
+      "icon": "🧹",
+      "tooltip": "FAISS + Embedding-Caches leeren"
+    }
+  ]
+}

@@ -44,11 +44,152 @@ def handle_crawl(ans, ms, ag, perms):
             ans = ans.replace(o, f"[Crawl-Ergebnis ({u[:60]}):\n{t[:3000]}]")
         except Exception as e: ans = ans.replace(o, f"[Crawl-Fehler: {str(e)[:80]}]")
     return ans
-def handle_showbox(ans, ms):
+# ── Permission-Grant/Revoke/List (SecurityAG Kernrolle 1+2) ─────────────
+# Tag-Formate (alle key=value, kommasepariert):
+#   [GRANT_PERM: type=directory agent=CoderAG path=/abs/path reason=refactor expires=24h]
+#   [REVOKE_PERM: agent=CoderAG path=/abs/path]
+#   [LIST_PERMS: agent=CoderAG]
+# Nur Agents mit db_write-Permission dürfen diese Tags ausführen (SecurityAG).
+# Andere Agents bekommen eine klare System-Meldung statt stillem Drop.
+
+_PERM_TAG_KV = _re.compile(r'(\w+)\s*=\s*("[^"]*"|\S+)')
+
+
+def _parse_perm_kv(text: str) -> dict:
+    """Parst key=value Paare aus einem Tag-Body. Quoted values werden entquotet."""
+    out = {}
+    for k, v in _PERM_TAG_KV.findall(text or ""):
+        out[k.lower()] = v.strip().strip('"').strip("'")
+    return out
+
+
+def _perm_denied(ag, tag: str) -> str:
+    return f"[System: {ag['name']} hat keine DB_WRITE-Berechtigung für Permission-Änderungen.]"
+
+
+def handle_grant_perm(ans, ms, ag, perms):
+    for m in ms:
+        body, original = m.group(1), m.group(0)
+        if "db_write" not in perms and "godmode" not in perms:
+            ans = ans.replace(original, _perm_denied(ag, original))
+            continue
+        kv = _parse_perm_kv(body)
+        path = kv.get("path", "").strip()
+        agent = kv.get("agent", "").strip()
+        rtype = kv.get("type", "directory").strip()
+        reason = kv.get("reason", "").strip()
+        expires = kv.get("expires", "").strip() or None
+        if not path or not agent:
+            ans = ans.replace(
+                original,
+                f"[System: GRANT_PERM fehlt 'agent=' oder 'path=' — Tag ignoriert.]",
+            )
+            continue
+        try:
+            from gnom_hub.db import grant_permission
+            rowid = grant_permission(
+                resource_type=rtype,
+                resource_path=path,
+                granted_to=agent,
+                granted_by=ag.get("name", "SecurityAG"),
+                reason=reason,
+                expires_at=expires,
+            )
+            ans = ans.replace(
+                original,
+                f"[Permission granted: {agent} may {rtype} '{path}'"
+                f"{f' (reason: {reason})' if reason else ''}]",
+            )
+        except ValueError as e:
+            ans = ans.replace(original, f"[Permission-Fehler: {e}]")
+        except Exception as e:
+            ans = ans.replace(original, f"[Permission-DB-Fehler: {str(e)[:80]}]")
+    return ans
+
+
+def handle_revoke_perm(ans, ms, ag, perms):
+    for m in ms:
+        body, original = m.group(1), m.group(0)
+        if "db_write" not in perms and "godmode" not in perms:
+            ans = ans.replace(original, _perm_denied(ag, original))
+            continue
+        kv = _parse_perm_kv(body)
+        path = kv.get("path", "").strip()
+        agent = kv.get("agent", "").strip()
+        if not path or not agent:
+            ans = ans.replace(
+                original, "[System: REVOKE_PERM fehlt 'agent=' oder 'path=' — Tag ignoriert.]"
+            )
+            continue
+        try:
+            from gnom_hub.db import revoke_permission
+            n = revoke_permission(resource_path=path, granted_to=agent)
+            ans = ans.replace(
+                original,
+                f"[Permission revoked: {n} Eintrag für {agent}/{path} deaktiviert.]",
+            )
+        except Exception as e:
+            ans = ans.replace(original, f"[Permission-DB-Fehler: {str(e)[:80]}]")
+    return ans
+
+
+def handle_list_perms(ans, ms, ag, perms):
+    for m in ms:
+        body, original = m.group(1), m.group(0)
+        kv = _parse_perm_kv(body)
+        agent = kv.get("agent", "").strip()
+        # list darf jeder Agent (auch Worker für Eigen-Check), read-only op
+        if not agent:
+            ans = ans.replace(original, "[System: LIST_PERMS fehlt 'agent=' — Tag ignoriert.]")
+            continue
+        try:
+            from gnom_hub.db import list_permissions_for_agent
+            perms_list = list_permissions_for_agent(agent)
+            if not perms_list:
+                ans = ans.replace(original, f"[Permissions for {agent}: (keine aktiven)]")
+            else:
+                lines = []
+                for p in perms_list:
+                    line = f"  - {p['resource_type']:9} {p['resource_path']}"
+                    if p['expires_at']:
+                        line += f"  (until {p['expires_at']})"
+                    lines.append(line)
+                ans = ans.replace(
+                    original,
+                    f"[Permissions for {agent}:\n" + "\n".join(lines) + "]",
+                )
+        except Exception as e:
+            ans = ans.replace(original, f"[Permission-DB-Fehler: {str(e)[:80]}]")
+    return ans
+
+
+def handle_showbox(ans, ms, agent=None, perms=None):
+    """Verarbeitet Showbox-Tag-Matches und speichert Präsentationen.
+
+    Args:
+        ans: Agent-Antworttext
+        ms: Liste von (full_match, name_or_idx, raw_payload) Tupeln
+        agent: Optional Dict {"name": "CoderAG", ...} — wenn übergeben, wird der
+               tatsächliche Agent-Name als sender in showbox_presentations
+               gespeichert (statt hartkodiertem "Agent"). Ohne agent fällt
+               der Sender auf "Agent" zurück (Legacy-Verhalten).
+        perms: Optional Liste der Agent-Permissions. Wenn "showbox_write"
+               fehlt, wird der Showbox-Tag mit klarer System-Meldung geblockt
+               (analog zu write/crawl Permission-Checks in handle_write/
+               handle_crawl). "godmode" umgeht den Check (SecurityAG-Notfall).
+    """
     from gnom_hub.core.json_sanitizer import _sanitize_json
     from gnom_hub.core.security.hmac_signer import generate_signature
     from gnom_hub.db import save_showbox_presentation, set_active_showbox
+    sender = (agent or {}).get("name") or "Agent"
+    showbox_allowed = perms is None or "showbox_write" in perms or "godmode" in perms
     for full, idx, raw in ms:
+        if not showbox_allowed:
+            ans = ans.replace(
+                full,
+                f"[System: {sender} hat keine SHOWBOX_WRITE-Berechtigung.]",
+            )
+            continue
         try:
             d = _sanitize_json(raw.strip())
             if isinstance(d, list):
@@ -68,7 +209,7 @@ def handle_showbox(ans, ms):
                 cleaned_slides.append(sld)
             slides = cleaned_slides
             d["slides"] = slides
-            
+
             d["sig"] = generate_signature("Gnom", json.dumps(d, separators=(',', ':'), sort_keys=True))
 
             # Map index/name
@@ -82,14 +223,28 @@ def handle_showbox(ans, ms):
             # Damit Konsistenz über alle 8 Agenten
             presentation_name = normalize_showbox_name(presentation_name)
 
-            # Save to SQLite database
-            # buttons=d.get('buttons'): ohne diesen Parameter droppt save_showbox_presentation
-            # das buttons[]-Array → UI-Klicks landen als Text im Chat statt als klickbarer
-            # Button. Alle 5 anderen Caller (chat_legacy, showbox endpoint) passen buttons
-            # bereits korrekt — nur action_exec hatte den Fix vergessen.
-            save_showbox_presentation(presentation_name, slides, sender="Agent", buttons=d.get("buttons") if isinstance(d, dict) else None)
+            # ── Button-Extraktion: 3 Quellen, Reihenfolge = Priorität ────────
+            # 1. JSON-Key "buttons" im Payload (höchste Priorität)
+            # 2. Inline <button action="..." label="..."> im Roh-Payload (Format A)
+            # 3. Inline <button data-sb-action="..."> in den Slides (Format B — DOM-Hooks)
+            # Geteilte Logik via parse_inline_buttons — gleiche Regex wie
+            # showbox-module.js (Client). Drift-Schutz.
+            final_btns = None
+            json_btns = d.get("buttons") if isinstance(d, dict) else None
+            if json_btns:
+                final_btns = json_btns[:8]
+            else:
+                from gnom_hub.frontend.showbox_button_parser import parse_inline_buttons
+                inline_btns = parse_inline_buttons(raw)
+                if inline_btns:
+                    final_btns = inline_btns[:8]
+
+            # Save to SQLite database — sender ist jetzt der echte Agent-Name
+            # (sonst landen alle Worker-Outputs im "worker"-Layer und überschreiben
+            # einander, weil MAX_PRESENTATIONS_PER_LAYER[worker]=3).
+            save_showbox_presentation(presentation_name, slides, sender=sender, buttons=final_btns)
             set_active_showbox(presentation_name)
-            
+
             ans = ans.replace(full, f"<SHOWBOX{':'+idx if idx else ''}>{json.dumps(d)}</SHOWBOX>")
         except Exception as e: ans = ans.replace(full, f"[Showbox-Fehler: {e}]")
     return ans

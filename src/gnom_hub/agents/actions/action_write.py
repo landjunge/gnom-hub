@@ -50,7 +50,14 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                     from gnom_hub.soul.zwc_soul import add_agent_metadata
                     r = f"[System: Datei '{fname}' gespeichert unter {os.path.abspath(fpath)}.{auto_open}]" + add_agent_metadata(agent["name"], "")
 
-                except Exception as e: r = f"[System-Fehler: {fname}: {e}]"
+                except Exception as e:
+                    try:
+                        from gnom_hub.core.audit_helpers import record_write_fail
+                        record_write_fail(agent["name"], path=str(fpath),
+                                          error=f"{type(e).__name__}: {e}")
+                    except Exception:
+                        pass
+                    r = f"[System-Fehler: {fname}: {e}]"
         answer = answer.replace(m.group(0), r)
     return answer
 

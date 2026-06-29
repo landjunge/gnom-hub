@@ -1,0 +1,75 @@
+{
+  "$schema": "https://gnom-hub.local/schemas/showbox-preset.v1.json",
+  "_meta": {
+    "name": "Workflows",
+    "version": "2.0",
+    "updated": "2026-06-27",
+    "author": "Mavis",
+    "purpose": "Multi-Step-Workflows: Brainstorm, Vote, Pipeline, Sprint",
+    "icon_set": "workflow-icons",
+    "category": "workflows",
+    "tags": ["brainstorm", "vote", "pipeline", "multi-step"]
+  },
+  "_notes": "Workflows orchestrieren mehrere Agents in Folge. UI zeigt Progress-Bar mit aktuellem Step.",
+  "buttons": [
+    {
+      "label": "🧠 @bs Brainstorm",
+      "action": "agent_call",
+      "args": {"target": "SoulAG", "message": "@bs starte brainstorming"},
+      "color": "#c47bff",
+      "icon": "🧠",
+      "primary": true,
+      "tooltip": "Brainstorm-Modus: alle Agents parallel, sammelt Ideen"
+    },
+    {
+      "label": "🗳 Vote starten",
+      "action": "custom",
+      "args": {"handler": "open_vote", "options_from": "current_showbox_options"},
+      "color": "#ffd84d",
+      "icon": "🗳",
+      "tooltip": "User-Vote über die aktuellen Optionen"
+    },
+    {
+      "label": "🔄 Pipeline",
+      "action": "agent_call",
+      "args": {"target": "GeneralAG", "message": "@GeneralAG pipeline start"},
+      "color": "#4d9fff",
+      "icon": "🔄",
+      "tooltip": "Sequential pipeline: Coder → Writer → Editor → Researcher"
+    },
+    {
+      "label": "📋 Plan zeigen",
+      "action": "nav_to_slide",
+      "args": {"slide_id": "plan"},
+      "color": "#7a90b8",
+      "icon": "📋",
+      "tooltip": "Springe zum Plan-Slide"
+    },
+    {
+      "label": "🚀 Commit + Push",
+      "action": "run_script",
+      "args": {"path": "scripts/git_commit_push.sh"},
+      "color": "#6ddb9c",
+      "icon": "🚀",
+      "confirm": true,
+      "confirm_text": "Git commit + push? Force-push ist aus.",
+      "tooltip": "Git-Workflow: add → commit → push"
+    },
+    {
+      "label": "📦 PR erstellen",
+      "action": "open_url",
+      "args": {"url": "https://github.com/landjunge/gnom-hub/compare/main...HEAD"},
+      "color": "#ff7ab8",
+      "icon": "📦",
+      "tooltip": "GitHub PR-Compare öffnen"
+    },
+    {
+      "label": "🎬 Demo zeigen",
+      "action": "open_url",
+      "args": {"url": "file:///Users/landjunge/gnom-Workspace/default/hub_live.html"},
+      "color": "#00e5ff",
+      "icon": "🎬",
+      "tooltip": "Live-Gnom-Hub im Browser öffnen"
+    }
+  ]
+}

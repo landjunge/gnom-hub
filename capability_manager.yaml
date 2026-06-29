@@ -1,0 +1,26 @@
+# SecurityAG · Capability-Manager
+# Stand: 2026-06-27
+version: 1
+agents:
+  WatchdogAG:
+    role: radar_only
+    capabilities:
+      read: allow_all
+      write: deny_all
+      execute: deny_all
+      recommend: allow_all
+      emit_buttons: allow
+    constraints:
+      - "kein [WRITE:]-Tag"
+      - "keine direkten Exekutionen"
+      - "nur Empfehlungen + Approve/Reject"
+    override_required: true
+
+  SecurityAG:
+    role: rights_manager
+    capabilities:
+      read: allow_all
+      write: allow_all
+      execute: allow_all
+      emit_buttons: allow
+    godmode: filesystem_emergency_repair

@@ -144,18 +144,31 @@ class TestAllAgentsMatrix:
     """All 8 agents match the target matrix exactly."""
 
     @pytest.mark.parametrize("agent_key,expected_de,expected_en", [
-        ("soulag", ["read", "evolve", "crawl"], ["read", "evolve", "crawl"]),
-        ("generalag", ["read", "@job"], ["read", "@job"]),
-        ("watchdogag", ["read"], ["read"]),
+        # showbox_write: in allen 8 Agents nach Refactor-Schritt 4 (Audit-Fix 2026-06-28).
+        # ResearcherAG: write ergänzt damit [WRITE: research.md] Persistenz funktioniert.
+        # GeneralAG: general_memory als logischer Token (general_memory-DB Schreibrecht).
+        ("soulag",
+         ["read", "evolve", "crawl", "showbox_write"],
+         ["read", "evolve", "crawl", "showbox_write"]),
+        ("generalag",
+         ["read", "@job", "general_memory", "showbox_write"],
+         ["read", "@job", "general_memory", "showbox_write"]),
+        ("watchdogag", ["read", "showbox_write"], ["read", "showbox_write"]),
         ("securityag",
-         ["read", "write", "run", "godmode"],
-         ["read", "write", "run", "godmode"]),
-        ("coderag", ["read", "write", "run"], ["read", "write", "run"]),
-        ("writerag", ["read", "write", "crawl"], ["read", "write", "crawl"]),
+         ["read", "write", "run", "godmode", "showbox_write"],
+         ["read", "write", "run", "godmode", "showbox_write"]),
+        ("coderag",
+         ["read", "write", "run", "showbox_write"],
+         ["read", "write", "run", "showbox_write"]),
+        ("writerag",
+         ["read", "write", "crawl", "showbox_write"],
+         ["read", "write", "crawl", "showbox_write"]),
         ("researcherag",
-         ["read", "crawl", "web_search", "browser"],
-         ["read", "crawl", "web_search", "browser"]),
-        ("editorag", ["read", "write"], ["read", "write"]),
+         ["read", "write", "crawl", "web_search", "browser", "showbox_write"],
+         ["read", "write", "crawl", "web_search", "browser", "showbox_write"]),
+        ("editorag",
+         ["read", "write", "showbox_write"],
+         ["read", "write", "showbox_write"]),
     ])
     def test_agent_permissions_match_matrix(self, agent_key, expected_de, expected_en):
         from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS

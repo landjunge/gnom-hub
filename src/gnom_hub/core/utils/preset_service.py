@@ -2,7 +2,8 @@
 import logging
 import os, json, uuid
 from datetime import datetime, timezone
-from gnom_hub.db import get_state_value, set_state_value, save_soul_fact, add_chat_message
+from gnom_hub.db import get_state_value, set_state_value, add_chat_message
+from gnom_hub.db.soul_repo import save_soul_fact_smart
 from gnom_hub.core.config import CONFIG_DIR
 
 _PRESETS_PATH = os.path.join(os.path.dirname(__file__), "presets.json")
@@ -221,8 +222,12 @@ def handle_preset_change(preset: str):
     with get_db_conn() as conn:
         conn.execute("BEGIN IMMEDIATE TRANSACTION")
         try:
-            conn.execute("INSERT OR REPLACE INTO soul_memory (key, value, timestamp, priority, agent) VALUES (?, ?, ?, ?, ?)",
-                         ("active_preset", preset, datetime.now(timezone.utc).isoformat(), "high", "System"))
+            # NOTE: `active_preset` wurde früher zusätzlich in `soul_memory` geschrieben.
+            # Das war redundant mit dem `state`-Tabellen-Eintrag (Source of Truth für
+            # `active_preset` ist seit Router-Refactor `get_state_value("active_preset")`).
+            # SoulAG-Validator + Permission-Check in save_soul_fact_smart prüfen den Wert
+            # beim Einspeisen über die /api/soul/save-API. Innerhalb dieser Transaktion
+            # wird nur noch die state-Tabelle atomar aktualisiert.
             conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)", ("active_preset", json.dumps(preset)))
             all_settings = {}
             row = conn.execute("SELECT value FROM state WHERE key=?", ("agent_settings",)).fetchone()

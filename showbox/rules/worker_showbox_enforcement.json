@@ -1,0 +1,21 @@
+{
+  "rule_id": "worker_showbox_enforcement_2026-06-27",
+  "issued_by": "SecurityAG",
+  "trigger": "Observer-Dispatch User→SoulAG",
+  "directive": "worker antworten in der showbox",
+  "scope": ["CoderAG", "WriterAG", "EditorAG", "ResearcherAG", "WatchdogAG", "GeneralAG"],
+  "mandate": {
+    "format": "showbox",
+    "min_slides_per_response": 1,
+    "buttons_in_array": true,
+    "pseudo_html_forbidden": true,
+    "use_existing_presets": true,
+    "archive_dynamic_buttons": "/showbox/buttons/dynamic/"
+  },
+  "violations": {
+    "on_breach": "block_response",
+    "log_to": "securityag_violations.json"
+  },
+  "effective": "2026-06-27T00:00:00Z",
+  "reversible_by_user": true
+}

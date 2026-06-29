@@ -1,0 +1,10 @@
+{
+  "id": "observer_approve_all_2026-07-27",
+  "trigger": "Observer-Dispatch User→SoulAG",
+  "action": "approve_all",
+  "preset": "preset-4",
+  "executed_by": "SecurityAG",
+  "timestamp": "2026-07-27T00:00:00Z",
+  "scope": "all_pending_blockade_decisions",
+  "status": "approved"
+}

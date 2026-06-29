@@ -1,0 +1,66 @@
+{
+  "capability_id": "eye_tracking_webgazer_camera",
+  "sprint": 3,
+  "owner": "SecurityAG",
+  "created": "2026-07-08",
+  "status": "pre_staged",
+  "trigger": "Sprint-3-Aktivierung — Hands-Free-Drag via Gaze-Tracking",
+  "dsgvo_basis": {
+    "primary": "Art. 9 Abs. 1 — biometrische Daten (Pupillenposition, Blickverlauf)",
+    "secondary": "Art. 6 Abs. 1 lit. a — explizite Einwilligung",
+    "interpretation_note": "Gaze-Heatmap ist NICHT zwingend biometrisch im Sinne der Verordnung, sofern KEINE eindeutige Identifikation erfolgt. Default-Policy trotzdem: höchste Schutzstufe anwenden."
+  },
+  "data_flow": {
+    "source": "Front-Kamera (getUserMedia)",
+    "processing": "LOKAL im Browser (WebGazer.js + TensorFlow.js Regression-Layer)",
+    "cloud_transit": "NONE — keine Kamera-Daten verlassen das Endgerät",
+    "persistence": {
+      "raw_video_frames": "NEVER — werden nach Verarbeitung verworfen",
+      "gaze_coordinates": "nur in-memory, max. Session-Dauer",
+      "calibration_data": "optional, localStorage, mit Consent",
+      "heatmap": "optional aggregate, anonymisiert, KEINE Personenzuordnung"
+    }
+  },
+  "consent_flow": {
+    "step_1_pre_check": "Capability-Check: !!navigator.mediaDevices?.getUserMedia",
+    "step_2_extended_consent": "Multi-Step-Dialog: (a) Was ist Eye-Tracking? (b) Welche Daten? (c) Wo verarbeitet? (d) Wie widerrufen?",
+    "step_3_calibration_consent": "Separater Dialog für 9-Punkt-Kalibrierung (User schaut auf Punkte)",
+    "step_4_granular_toggles": [
+      "Kamera-Stream: erlauben / ablehnen",
+      "Kalibrierung speichern: ja / nein",
+      "Heatmap-Aggregation: ja / nein"
+    ],
+    "step_5_persist": "localStorage.setItem('eye_tracking_consent', {granular: {...}, timestamp, version})",
+    "step_6_revoke": "Funktion: stopEyeTracking() — stoppt Video-Stream, löscht TF-Modell aus Memory, entfernt Calibration"
+  },
+  "kill_switch": {
+    "hotkey": "Escape (2x innerhalb 500ms)",
+    "button_id": "eye_tracking_stop_btn",
+    "effect": "Sofortiger Stream-Stop + Memory-Clear + UI-Reset auf Maus-Modus"
+  },
+  "ui_components": {
+    "consent_modal_id": "eye_tracking_consent_modal",
+    "status_indicator_id": "eye_tracking_active_dot",
+    "required_elements": [
+      "kamera_aktiv_indicator (rote LED bei aktivem Stream)",
+      "datenschutz_link (zur Showbox-Datenschutzerklärung)",
+      "kalibrierung_anleitung",
+      "stop_button (immer sichtbar während Tracking aktiv)"
+    ]
+  },
+  "blockade_rules": {
+    "default_state": "BLOCKED — HARD",
+    "unlock_conditions": [
+      "consent.kamera === true",
+      "consent.calibration_storage_decision === true OR false",
+      "datenschutzerklaerung.acknowledged === true"
+    ],
+    "audit_log": "soul_audit.db"
+  },
+  "performance_budget": {
+    "cpu_max": "35%",
+    "fps_target": "5-10",
+    "auto_disable_on": "cpu > 50% for 3s"
+  },
+  "datenschutzerklaerung_patch": "showbox/datenschutz.md — neuer Abschnitt 'Eye-Tracking' erforderlich"
+}

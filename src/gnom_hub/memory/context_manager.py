@@ -1,7 +1,9 @@
 # context_manager.py — Dynamic context budget management and priority eviction
+import hashlib
 import logging
 from typing import Literal
 from gnom_hub.db import get_db_conn, add_to_soul_memory
+from gnom_hub.db.soul_repo import save_soul_fact_smart
 
 # Priority values for eviction sorting (lower value gets evicted first)
 PRIORITY_VALUES = {
@@ -71,12 +73,49 @@ class ContextBudget:
 
     def add_fact(self, fact: str, priority: Literal["critical", "high", "medium", "low"]):
         tokens = count_tokens(fact)
-        
+
         if self.current_usage + tokens > self.available_for_context:
             # Evict lowest-priority old facts
             self.evict_by_priority(needed_tokens=tokens)
-        
+
         self.current_usage += tokens
         # SoulAG ist der einzige Schreiber — Quell-Agent im value-Prefix
         tagged = f"[source:{self.agent}] {fact}" if self.agent and self.agent.lower() != "soulag" else fact
+
+        # Pre-Dedup via Smart-Engine: deterministischer Key ohne UUID.
+        # Engine returnt canonical key (string) auf success, None auf reject.
+        # Wenn None (rejected) ODER der zurückgegebene key != unser dedup_key
+        # (= dedup hat in einen existierenden Slot gemerged), überspringen wir
+        # den UUID-basierten Insert in add_to_soul_memory.
+        dedup_key = f"ctx:{self.agent.lower()}:{hashlib.md5(fact.encode('utf-8')).hexdigest()[:12]}"
+        try:
+            result = save_soul_fact_smart(dedup_key, tagged, agent="SoulAG", priority=priority)
+            if isinstance(result, str):
+                if result is None:
+                    # Smart-Engine hat verworfen (Wert zu kurz oder leer)
+                    logging.getLogger(__name__).debug(
+                        "[ContextManager] Smart-Engine rejected dedup_key=%s — skip UUID insert",
+                        dedup_key,
+                    )
+                    return
+                if result != dedup_key:
+                    # Engine hat in einen bestehenden Slot gemerged
+                    # (Jaccard-Match oder Prefix-Match) — UUID-Insert überflüssig
+                    logging.getLogger(__name__).debug(
+                        "[ContextManager] Smart-Engine merged %s -> %s — skip UUID insert",
+                        dedup_key, result,
+                    )
+                    return
+            elif isinstance(result, dict):
+                # Forward-compat: dict-Rückgabe
+                action = result.get("action", "inserted")
+                if action in ("merged", "rejected"):
+                    return
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                "[ContextManager] Smart-Dedup pre-check failed: %s — fallback to direct insert", e,
+            )
+
+        # Smart-Engine hat inserted (result == dedup_key) oder war nicht verfügbar
+        # → normaler UUID-Insert für kompatibilität mit altem Code
         add_to_soul_memory(tagged, priority=priority, agent="SoulAG")
