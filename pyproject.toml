@@ -55,7 +55,7 @@ dev = ["pytest>=7.0", "httpx>=0.24", "pytest-asyncio", "playwright>=1.40"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
-markers = ["load_test: marks tests as load/stress tests (longer runtime)"]
+markers = ["load_test: marks tests as load/stress tests (longer runtime)", "requires_hub: requires a running Gnom-Hub on GNOM_HUB_TEST_URL (default 127.0.0.1:3002)"]
 
 [tool.ruff.lint.per-file-ignores]
 "agents/*.py" = ["E402"]  # module level import not at top

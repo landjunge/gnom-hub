@@ -3,8 +3,39 @@ import sqlite3
 import json
 import os
 import tempfile
+import urllib.request
+import urllib.error
 from pathlib import Path
 from unittest.mock import patch
+
+
+# test_stress_50.py ist ein Live-Hub-Integrationstest (kein pytest-Test-File
+# mit test_*-Funktionen, sondern ein Top-Level-Script das beim Import gegen
+# den Live-Hub auf GNOM_HUB_TEST_URL feuert). Standardmäßig nicht in CI/Pre-Push
+# ausführen — explizit aktivieren via `pytest tests/test_stress_50.py` lokal.
+collect_ignore_glob = ["test_stress_50.py"]
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests mit marker 'requires_hub' wenn Hub nicht erreichbar.
+    Erlaubt CI/Pre-Push ohne laufenden Hub (default skip), lokal mit
+    `pytest -m requires_hub` für Live-Stresstest.
+    """
+    hub_url = os.environ.get("GNOM_HUB_TEST_URL", "http://127.0.0.1:3002")
+    hub_up = False
+    try:
+        with urllib.request.urlopen(hub_url, timeout=1) as r:
+            hub_up = (r.status == 200)
+    except (urllib.error.URLError, ConnectionError, OSError):
+        pass
+
+    if hub_up:
+        return  # Hub läuft — alles ausführen
+
+    skip_marker = pytest.mark.skip(reason=f"requires_hub: Hub nicht erreichbar auf {hub_url}")
+    for item in items:
+        if "requires_hub" in item.keywords:
+            item.add_marker(skip_marker)
 
 
 @pytest.fixture(autouse=True, scope="session")

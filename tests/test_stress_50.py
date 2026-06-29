@@ -1,9 +1,16 @@
 """
 GNOM-HUB: 50 Extreme System-Stress-Tests
 Testet: Chat, Agent-Kommunikation, Versionierung, Last, Priorisierung, FTP-Publish
+
+Marker 'requires_hub': diese Tests brauchen einen laufenden Hub auf BASE.
+CI / Pre-Push skippt sie via `pytest -m "not requires_hub"`.
+Lokal: `pytest -m requires_hub` für vollen Live-Hub-Stresstest.
 """
+import pytest
 import requests, json, time, uuid, os, threading, re, random
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+pytestmark = pytest.mark.requires_hub
 
 BASE = "http://127.0.0.1:3002"
 PASS, FAIL, SKIP = 0, 0, 0
