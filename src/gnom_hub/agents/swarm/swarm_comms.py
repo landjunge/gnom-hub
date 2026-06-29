@@ -794,3 +794,114 @@ def fail_dependent_messages(msg_id: int, reason: str, conn: sqlite3.Connection) 
     """, (msg_id, now)).rowcount
     if affected:
         logger.error("%d Messages in DLQ (root=%d, reason=%s)", affected, msg_id, reason)
+
+
+# ── Deterministic Routing Wrapper (opt-in) ─────────────────────────────────
+#
+# ``dispatch_by_capability_with_resolution`` ist ein **dünner Wrapper** über
+# :func:`dispatch_by_capability` — die Kernfunktion bleibt unverändert.
+# Dieser Wrapper löst den Intent zuerst deterministisch auf (siehe
+# :mod:`gnom_hub.agents.routing`) und benutzt dann die Whitelist-Filterung
+# der existierenden Funktion. So entsteht eine Brücke zwischen LLM-Intent
+# (``intent_text``) und der deterministischen Capability-Maschinerie, ohne
+# den bisherigen Pfad zu brechen.
+
+
+def dispatch_by_capability_with_resolution(
+    sender: str,
+    intent_text: str,
+    text: str,
+    context_id: str,
+    db_path: str,
+    available_capabilities: Optional[List[str]] = None,
+    node_resolver_fn=None,
+    session_id: str = "default",
+    current_depth: int = 0,
+    parent_msg_id: Optional[int] = None,
+    priority: Optional[Union[str, int]] = None,
+) -> Tuple[Optional[str], Optional[int]]:
+    """Wie :func:`dispatch_by_capability`, aber mit deterministischem Vor-Layer.
+
+    Ablauf
+    ------
+    1. Wenn der Intent einen ``node_id`` enthält (Pattern ``^[a-f0-9]{8}$``),
+       wird via :func:`gnom_hub.agents.routing.resolve_with_node_id` der
+       Offload-Content geladen und als High-Confidence-Quelle benutzt.
+    2. Sonst läuft :func:`gnom_hub.agents.routing.resolve_capability`.
+    3. Das Ergebnis (``ResolvedCapability``) wird in eine
+       Capability-Anforderung an ``dispatch_by_capability`` umgewandelt.
+    4. Wenn die Auflösung ``("" , 0.0, "none")`` liefert, wird die
+       Fallback-Chain (``general``) als Anforderung benutzt.
+
+    Die Funktion modifiziert **nicht** :func:`dispatch_by_capability`.
+    """
+    # Lokale Imports zur Vermeidung von Zyklen beim Modul-Init.
+    try:
+        from gnom_hub.agents.routing import (
+            resolve_capability as _resolve_cap,
+            resolve_with_node_id as _resolve_with_nid,
+            build_fallback_chain as _build_chain,
+        )
+    except Exception as _routing_exc:
+        logger.debug("routing import failed; fallback to direct dispatch: %s", _routing_exc)
+        # Wenn das Routing-Modul nicht verfügbar ist, verhalten wir uns wie
+        # die Original-Funktion (general-Fallback).
+        return dispatch_by_capability(
+            sender, "general", text, context_id, db_path,
+            current_depth, parent_msg_id, priority,
+        )
+
+    # Wenn keine ``available_capabilities`` übergeben wurden, aus der DB laden.
+    if available_capabilities is None:
+        try:
+            from gnom_hub.db.connection import get_db_connection
+            with get_db_connection() as _conn:
+                _rows = _conn.execute(
+                    "SELECT DISTINCT capability FROM agent_capabilities"
+                ).fetchall()
+                available_capabilities = [r["capability"] for r in _rows]
+        except Exception as _db_exc:
+            logger.debug("available_capabilities lookup failed: %s", _db_exc)
+            available_capabilities = []
+
+    # node_id-aware Resolver (Brücke zu Offload)
+    if node_resolver_fn is None and session_id:
+        try:
+            from gnom_hub.memory.node_resolver import resolve_node as _rn_default
+
+            def _node_resolver_factory(_sid: str):
+                def _fn(nid: str) -> Optional[str]:
+                    return _rn_default(nid, _sid)
+                return _fn
+
+            node_resolver_fn = _node_resolver_factory(session_id)
+        except Exception:
+            node_resolver_fn = None
+
+    try:
+        resolved = _resolve_with_nid(
+            intent_text,
+            available_capabilities,
+            node_resolver_fn=node_resolver_fn,
+        )
+    except Exception as _res_exc:
+        logger.debug("resolve_with_node_id raised; fallback: %s", _res_exc)
+        resolved = _resolve_cap(intent_text, available_capabilities)
+
+    # Capability-Auswahl mit Fallback-Chain
+    if resolved.source == "none" or not resolved.capability:
+        chain = _build_chain("", available_capabilities)
+        chosen = next((c for c in chain if c), "general")
+    else:
+        chosen = resolved.capability
+
+    return dispatch_by_capability(
+        sender=sender,
+        task_type=chosen,
+        text=text,
+        context_id=context_id,
+        db_path=db_path,
+        current_depth=current_depth,
+        parent_msg_id=parent_msg_id,
+        priority=priority,
+    )

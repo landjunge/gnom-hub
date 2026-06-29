@@ -147,6 +147,82 @@ class BaseAgent:
 
                 r = await _to_thread(ask_router, text, None, agent_name=self.n, depth=msg["depth"], parent_msg_id=msg["msg_id"])
 
+                # ── Deterministic Routing Supplement (opt-in) ─────────────
+                # Wenn ``Config.ROUTING_DETERMINISTIC_MODE`` aktiviert ist,
+                # läuft zusätzlich zum LLM-basierten ask_router ein
+                # deterministischer Capability-Resolver. Das Ergebnis
+                # ersetzt die ask_router-Pfadführung NICHT — es wird nur
+                # geloggt + im State-Store abgelegt, damit Operatoren die
+                # Routing-Decisions inspizieren können. Modul
+                # ``gnom_hub.agents.routing``.
+                try:
+                    from gnom_hub.core.config import Config as _DetCfg
+                    if getattr(_DetCfg, "ROUTING_DETERMINISTIC_MODE", False):
+                        from gnom_hub.agents.routing import (
+                            resolve_capability as _det_resolve,
+                            build_fallback_chain as _det_chain,
+                        )
+                        # Verfügbare Capabilities aus der DB laden
+                        _avail_caps: list[str] = []
+                        try:
+                            with get_db_conn() as _cap_conn:
+                                _rows = _cap_conn.execute(
+                                    "SELECT DISTINCT capability FROM agent_capabilities"
+                                ).fetchall()
+                                _avail_caps = [r["capability"] for r in _rows]
+                        except Exception:
+                            _avail_caps = []
+                        _det_resolved = _det_resolve(text, _avail_caps or None)
+                        _det_logger = logging.getLogger(__name__)
+                        _log_level = getattr(
+                            _DetCfg, "ROUTING_LOG_LEVEL", "info"
+                        )
+                        _det_log_fn = getattr(
+                            _det_logger,
+                            _log_level if _log_level in ("debug", "info", "warning") else "info",
+                            _det_logger.info,
+                        )
+                        _det_log_fn(
+                            "[det-routing] %s → capability=%r confidence=%.2f source=%s (avail=%d)",
+                            self.n, _det_resolved.capability,
+                            _det_resolved.confidence, _det_resolved.source,
+                            len(_avail_caps),
+                        )
+                        # In den State-Store schreiben (rotationsbegrenzt)
+                        try:
+                            from gnom_hub.db.state_repo import SQLiteStateRepository
+                            _det_store = SQLiteStateRepository()
+                            _det_key = f"routing_resolution_{self.n}"
+                            _det_log = _det_store.get_value(_det_key) or []
+                            _det_threshold = float(
+                                getattr(_DetCfg, "ROUTING_RESOLUTION_LOG_MIN_CONF", 0.3)
+                            )
+                            if _det_resolved.source != "none" and _det_resolved.confidence >= _det_threshold:
+                                _det_log.append({
+                                    "ts": time.time(),
+                                    "msg_id": msg["msg_id"],
+                                    "text": text[:200],
+                                    "capability": _det_resolved.capability,
+                                    "confidence": _det_resolved.confidence,
+                                    "source": _det_resolved.source,
+                                })
+                                _max = int(
+                                    getattr(_DetCfg, "ROUTING_RESOLUTION_LOG_MAX", 50)
+                                )
+                                if len(_det_log) > _max:
+                                    _det_log = _det_log[-_max:]
+                                _det_store.set_value(_det_key, _det_log)
+                        except Exception as _det_store_exc:
+                            _det_logger.debug(
+                                "deterministic routing state-store write failed: %s",
+                                _det_store_exc,
+                            )
+                except Exception as _det_exc:
+                    logging.getLogger(__name__).debug(
+                        "deterministic routing hook failed (non-fatal): %s",
+                        _det_exc,
+                    )
+
                 # Timeout-Check (600s = 10 Min, war 300s)
                 if time.time() - _processing_start > 600:
                     raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >10 Min (msg_id={msg['msg_id']})")
