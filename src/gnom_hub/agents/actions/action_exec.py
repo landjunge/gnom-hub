@@ -83,7 +83,11 @@ def handle_showbox(ans, ms):
             presentation_name = normalize_showbox_name(presentation_name)
 
             # Save to SQLite database
-            save_showbox_presentation(presentation_name, slides, sender="Agent")
+            # buttons=d.get('buttons'): ohne diesen Parameter droppt save_showbox_presentation
+            # das buttons[]-Array → UI-Klicks landen als Text im Chat statt als klickbarer
+            # Button. Alle 5 anderen Caller (chat_legacy, showbox endpoint) passen buttons
+            # bereits korrekt — nur action_exec hatte den Fix vergessen.
+            save_showbox_presentation(presentation_name, slides, sender="Agent", buttons=d.get("buttons") if isinstance(d, dict) else None)
             set_active_showbox(presentation_name)
             
             ans = ans.replace(full, f"<SHOWBOX{':'+idx if idx else ''}>{json.dumps(d)}</SHOWBOX>")
