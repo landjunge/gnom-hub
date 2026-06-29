@@ -86,12 +86,30 @@ Lange Tool-Outputs (Bash-Ergebnisse, Such-Treffer, Datei-Inhalte) werden **auf D
 
 ```mermaid
 graph TD
-    A[user: baue landing page] --> B[bash: ls -la]
-    A --> C[search: 'AI agent framework']
-    A --> D[read: README.md]
-    B -->|node_id: a3f2c1b8| B_voll[Voller Output auf Disk]
-    C -->|node_id: 7e91d204| C_voll[Voller Output auf Disk]
-    D -->|node_id: 91b2f3e0| D_voll[Voller Output auf Disk]
+    A["⚙️ Agent<br/>'build landing page'"]:::agent --> B["🔧 bash ls -la"]
+    A --> C["🔍 search AI framework"]
+    A --> D["📖 read README"]
+
+    B -->|"8 KB"| E{"maybe_offload?"}:::decision
+    C -->|"24 KB"| E
+    D -->|"12 KB"| E
+
+    E -->|unter Schwelle| F["✓ Im Context behalten"]:::kept
+    E -->|über Schwelle| G["💾 Auf Disk<br/>OFFLOAD_DATA_DIR/"]:::disk
+
+    F --> H["🗺️ Mermaid-Canvas<br/>im System-Prompt"]:::canvas
+    G -->|node_id: a3f2c1b8| H
+
+    H -->|"agent fragt Details"| I["🔄 OFFLOAD_RECALL:a3f2c1b8"]:::recall
+    I -->|node_resolver| J["📄 Volltext zurück<br/>im nächsten Turn"]:::restore
+
+    classDef agent fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px,color:#1a1810
+    classDef decision fill:#fdfaf2,stroke:#b8743a,stroke-width:2px,color:#b8743a
+    classDef kept fill:#ebe4d2,stroke:#8a8470,stroke-width:1px,color:#1a1810
+    classDef disk fill:#b8743a,stroke:#8a5529,stroke-width:1.5px,color:#fdfaf2
+    classDef canvas fill:#2d5a3d,stroke:#1d3d28,stroke-width:1.5px,color:#fdfaf2
+    classDef recall fill:#4a5a6a,stroke:#2a3a4a,stroke-width:1.5px,color:#fdfaf2
+    classDef restore fill:#c9a449,stroke:#8a6a29,stroke-width:1.5px,color:#fdfaf2
 ```
 
 Volltext abrufen: `[OFFLOAD_RECALL:<node_id>]` in der Agent-Antwort.
@@ -100,10 +118,20 @@ Volltext abrufen: `[OFFLOAD_RECALL:<node_id>]` in der Agent-Antwort.
 
 ### 2. Geschichteter Langzeitspeicher (3-Layer-SQLite)
 
-```
-HOT  → gnomhub.db → soul_memory          (74 Zeilen, indiziert, <1s Lookup)
-WARM → soul_passive.db → soul_archive     (26 Zeilen, niedrigere Priorität)
-COLD → passive_archive.db → archive_log  (93 Zeilen, Volltextsuche)
+```mermaid
+graph LR
+    Q["🔍<br/>User-Query"]:::query -->|1. Lookup| H["🔥<br/>HOT<br/><i>soul_memory</i>"]:::hot
+    H -->|Treffer| R1["Antwort"]:::answer
+    H -->|kein Treffer| W["🟠<br/>WARM<br/><i>soul_archive</i>"]:::warm
+    W -->|Treffer| R2["Antwort"]:::answer
+    W -->|kein Treffer| C["⚪<br/>COLD<br/><i>archive_log</i>"]:::cold
+    C -->|Volltext-Suche| R3["Antwort"]:::answer
+
+    classDef query fill:#fdfaf2,stroke:#8a8470,stroke-width:1px,color:#1a1810
+    classDef hot fill:#2d5a3d,stroke:#1d3d28,stroke-width:1.5px,color:#fdfaf2
+    classDef warm fill:#b8743a,stroke:#8a5529,stroke-width:1.5px,color:#fdfaf2
+    classDef cold fill:#4a5a6a,stroke:#2a3a4a,stroke-width:1.5px,color:#fdfaf2
+    classDef answer fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px,color:#1d3d28
 ```
 
 Embeddings nutzen **FAISS** (wenn torch + faiss verfügbar) mit **TF-IDF** als deterministischem CPU-Fallback (keine GPU nötig).
@@ -122,6 +150,66 @@ Embeddings nutzen **FAISS** (wenn torch + faiss verfügbar) mit **TF-IDF** als d
 | **WriterAG** | Text-Worker | Lange Texte, Blog-Posts, Dokumentation |
 | **EditorAG** | Polish-Worker | Korrekturlesen, Style-Cleanup, Formatierung |
 | **ResearcherAG** | Research-Worker | Web-Suche, GitHub-Recherche, Fact-Gathering |
+
+---
+
+## 🗄️ Datenbank-Architektur
+
+Der Hub nutzt **6 spezialisierte SQLite-Datenbanken** in `~/.gnom-hub-3003/data/`. Jede hat genau eine Verantwortung — kein Multi-Tenant-Chaos, keine geteilten Tabellen. So fließt eine User-Anfrage durch sie hindurch:
+
+```mermaid
+sequenceDiagram
+    participant U as 🌐 User
+    participant H as ⚡ Hub
+    participant R as 📋 Rules
+    participant S as 🧠 SoulAG
+    participant M as 💾 gnomhub
+    participant C as 📍 Context
+    participant L as 📊 Coordination
+
+    U->>H: "Schreib ein Python-Script"
+    H->>R: Check rules
+    R-->>H: ✓ erlaubt
+    H->>S: Routing
+    S->>C: open_context(id)
+    C->>C: log "started"
+    S->>M: SELECT workers
+    M-->>S: CoderAG: 0.95
+    S->>L: get_worker_stats
+    L-->>S: 23 jobs · 96%
+    S->>M: INSERT chat
+    S->>CoderAG: delegieren
+    CoderAG->>M: WRITE script.py
+    CoderAG-->>H: response
+    H->>M: audit_log
+    H->>C: log "completed"
+    H-->>U: Antwort
+```
+
+### Wie ein Hub-Start die Datenbank behandelt
+
+```mermaid
+graph TD
+    S["🚀 Hub-Start"]:::start --> C{"schema_migrations<br/>existiert?"}:::decision
+    C -->|leere DB| F["🌱 Fresh-Mode<br/>alle ausführen"]:::fresh
+    C -->|Legacy-Tabellen| B["🔄 Bootstrap-Mode<br/>alle als 'applied'<br/>SQL re-executed"]:::bootstrap
+    C -->|vorhanden| N["✓ Normal-Mode<br/>nur pending"]:::normal
+    F --> M["📋 schema_migrations<br/>6 rows"]:::end
+    B --> M
+    N --> M
+    M --> END["⚡ Hub ready"]:::end
+
+    classDef start fill:#fdfaf2,stroke:#1a1810,stroke-width:1.5px,color:#1a1810
+    classDef decision fill:#fdfaf2,stroke:#b8743a,stroke-width:2px,color:#b8743a
+    classDef fresh fill:#ebe4d2,stroke:#8a8470,stroke-width:1px,color:#1a1810
+    classDef bootstrap fill:#b8743a,stroke:#8a5529,stroke-width:1.5px,color:#fdfaf2
+    classDef normal fill:#2d5a3d,stroke:#1d3d28,stroke-width:1.5px,color:#fdfaf2
+    classDef end fill:#1d3d28,stroke:#1a1810,stroke-width:1.5px,color:#fdfaf2
+```
+
+Der **Bootstrap-Modus** macht das System resilient: Legacy-DBs ohne `schema_migrations`-Tabelle kriegen alle Migrationen re-applied mit Toleranz für `ALTER TABLE ADD COLUMN` auf existierenden Spalten — so verpassen alte DBs nie stillschweigend neue Spalten.
+
+> **Diagram-Quellen** leben in [`docs/diagrams/`](docs/diagrams/). Siehe [`docs/diagrams/README.md`](docs/diagrams/README.md) für die Design-Palette und wie du sie bearbeitest.
 
 ---
 

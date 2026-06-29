@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant U as 🌐 User
+    participant H as ⚡ Hub
+    participant R as 📋 Rules
+    participant S as 🧠 SoulAG
+    participant M as 💾 gnomhub
+    participant C as 📍 Context
+    participant L as 📊 Coordination
+
+    U->>H: "Schreib ein Python-Script"
+    H->>R: Check rules
+    R-->>H: ✓ erlaubt
+    H->>S: Routing
+    S->>C: open_context(id)
+    C->>C: log "started"
+    S->>M: SELECT workers
+    M-->>S: CoderAG: 0.95
+    S->>L: get_worker_stats
+    L-->>S: 23 jobs · 96%
+    S->>M: INSERT chat
+    S->>CoderAG: delegieren
+    CoderAG->>M: WRITE script.py
+    CoderAG-->>H: response
+    H->>M: audit_log
+    H->>C: log "completed"
+    H-->>U: Antwort

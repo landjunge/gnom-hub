@@ -1,0 +1,13 @@
+graph LR
+    Q["🔍<br/>User-Query"]:::query -->|1. Lookup| H["🔥<br/>HOT<br/><i>soul_memory</i>"]:::hot
+    H -->|Treffer| R1["Antwort"]:::answer
+    H -->|kein Treffer| W["🟠<br/>WARM<br/><i>soul_archive</i>"]:::warm
+    W -->|Treffer| R2["Antwort"]:::answer
+    W -->|kein Treffer| C["⚪<br/>COLD<br/><i>archive_log</i>"]:::cold
+    C -->|Volltext-Suche| R3["Antwort"]:::answer
+
+    classDef query fill:#fdfaf2,stroke:#8a8470,stroke-width:1px,color:#1a1810
+    classDef hot fill:#2d5a3d,stroke:#1d3d28,stroke-width:1.5px,color:#fdfaf2
+    classDef warm fill:#b8743a,stroke:#8a5529,stroke-width:1.5px,color:#fdfaf2
+    classDef cold fill:#4a5a6a,stroke:#2a3a4a,stroke-width:1.5px,color:#fdfaf2
+    classDef answer fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px,color:#1d3d28

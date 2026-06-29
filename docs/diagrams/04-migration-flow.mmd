@@ -1,0 +1,16 @@
+graph TD
+    S["🚀 Hub-Start"]:::start --> C{"schema_migrations<br/>existiert?"}:::decision
+    C -->|leere DB| F["🌱 Fresh-Mode<br/>alle ausführen"]:::fresh
+    C -->|Legacy-Tabellen| B["🔄 Bootstrap-Mode<br/>alle als 'applied'<br/>SQL re-executed"]:::bootstrap
+    C -->|vorhanden| N["✓ Normal-Mode<br/>nur pending"]:::normal
+    F --> M["📋 schema_migrations<br/>6 rows"]:::end
+    B --> M
+    N --> M
+    M --> END["⚡ Hub ready"]:::end
+
+    classDef start fill:#fdfaf2,stroke:#1a1810,stroke-width:1.5px,color:#1a1810
+    classDef decision fill:#fdfaf2,stroke:#b8743a,stroke-width:2px,color:#b8743a
+    classDef fresh fill:#ebe4d2,stroke:#8a8470,stroke-width:1px,color:#1a1810
+    classDef bootstrap fill:#b8743a,stroke:#8a5529,stroke-width:1.5px,color:#fdfaf2
+    classDef normal fill:#2d5a3d,stroke:#1d3d28,stroke-width:1.5px,color:#fdfaf2
+    classDef end fill:#1d3d28,stroke:#1a1810,stroke-width:1.5px,color:#fdfaf2

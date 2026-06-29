@@ -1,0 +1,25 @@
+graph TD
+    A["⚙️ Agent<br/>'build landing page'"]:::agent --> B["🔧 bash ls -la"]
+    A --> C["🔍 search AI framework"]
+    A --> D["📖 read README"]
+
+    B -->|"8 KB"| E{"maybe_offload?"}:::decision
+    C -->|"24 KB"| E
+    D -->|"12 KB"| E
+
+    E -->|unter Schwelle| F["✓ Im Context behalten"]:::kept
+    E -->|über Schwelle| G["💾 Auf Disk<br/>OFFLOAD_DATA_DIR/"]:::disk
+
+    F --> H["🗺️ Mermaid-Canvas<br/>im System-Prompt"]:::canvas
+    G -->|node_id: a3f2c1b8| H
+
+    H -->|"agent fragt Details"| I["🔄 OFFLOAD_RECALL:a3f2c1b8"]:::recall
+    I -->|node_resolver| J["📄 Volltext zurück<br/>im nächsten Turn"]:::restore
+
+    classDef agent fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px,color:#1a1810
+    classDef decision fill:#fdfaf2,stroke:#b8743a,stroke-width:2px,color:#b8743a
+    classDef kept fill:#ebe4d2,stroke:#8a8470,stroke-width:1px,color:#1a1810
+    classDef disk fill:#b8743a,stroke:#8a5529,stroke-width:1.5px,color:#fdfaf2
+    classDef canvas fill:#2d5a3d,stroke:#1d3d28,stroke-width:1.5px,color:#fdfaf2
+    classDef recall fill:#4a5a6a,stroke:#2a3a4a,stroke-width:1.5px,color:#fdfaf2
+    classDef restore fill:#c9a449,stroke:#8a6a29,stroke-width:1.5px,color:#fdfaf2
