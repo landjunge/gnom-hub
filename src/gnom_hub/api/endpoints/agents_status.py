@@ -1,15 +1,16 @@
-from datetime import datetime, timezone
 import json
 import logging
 import os
-from typing import Optional
+from datetime import datetime, timezone
 from uuid import uuid4
-from fastapi import APIRouter, HTTPException, Query, Request, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+
 from gnom_hub.agents.entities import Agent
+from gnom_hub.api.endpoints.auth import verify_admin
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.db.chat_repo import SQLiteChatRepository
-from gnom_hub.api.endpoints.auth import verify_admin
 
 router = APIRouter()
 
@@ -41,9 +42,9 @@ class AgentSettings(BaseModel):
     sys_prompt: str
 
 class ImportData(BaseModel):
-    settings: Optional[dict] = None
-    soul_facts: Optional[list] = None
-    prompt_versions: Optional[list] = None
+    settings: dict | None = None
+    soul_facts: list | None = None
+    prompt_versions: list | None = None
 
 class SavePresetPayload(BaseModel):
     name: str
@@ -54,7 +55,7 @@ def get_agent_token_stats(agent_name: str) -> dict:
     res = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     if os.path.exists(TOKENS_FILE):
         try:
-            with open(TOKENS_FILE, "r") as f:
+            with open(TOKENS_FILE) as f:
                 data = json.load(f)
                 for entry in data.get("history", []):
                     key = entry.get("key") or ""
@@ -74,7 +75,7 @@ def get_agent_status(a_id: str):
     return {"status": st}
 
 @router.api_route("/api/agents/{a_id}/status", methods=["PUT", "POST"])
-async def set_status(a_id: str, request: Request, update: Optional[StatusUpdate] = None, status: Optional[str] = Query(None)):
+async def set_status(a_id: str, request: Request, update: StatusUpdate | None = None, status: str | None = Query(None)):
     real_status = status
     if not real_status and request.method == "POST":
         try:
@@ -104,11 +105,11 @@ def delete_agent(a_id: str, _=Depends(verify_admin)):
     return {"status": "deleted"}
 
 class SliderUpdatePayload(BaseModel):
-    creativity:        Optional[int] = None
-    precision:         Optional[int] = None
-    speed:             Optional[int] = None
-    critical_thinking: Optional[int] = None
-    obedience:         Optional[int] = None
+    creativity:        int | None = None
+    precision:         int | None = None
+    speed:             int | None = None
+    critical_thinking: int | None = None
+    obedience:         int | None = None
 
 @router.get("/api/agents/{a_id}/sliders")
 def get_agent_sliders(a_id: str):
@@ -125,7 +126,7 @@ def update_agent_sliders(a_id: str, data: SliderUpdatePayload, _=Depends(verify_
     agent = repo.get_by_id(a_id)
     if not agent:
         raise HTTPException(404, "Agent not found")
-    from gnom_hub.core.utils.slider_prompt import update_slider, SLIDER_KEYS
+    from gnom_hub.core.utils.slider_prompt import SLIDER_KEYS, update_slider
     for key in SLIDER_KEYS:
         val = getattr(data, key, None)
         if val is not None and 0 <= val <= 4:
@@ -141,14 +142,14 @@ def get_agent_blockades(a_id: str, limit: int = 50):
     agent = repo.get_by_id(a_id)
     if not agent:
         raise HTTPException(404, "Agent not found")
-    from gnom_hub.db import get_blockades_for_agent, get_blockade_count
+    from gnom_hub.db import get_blockade_count, get_blockades_for_agent
     blockades = get_blockades_for_agent(agent.name, limit)
     count = get_blockade_count(agent.name)
     return {"agent": agent.name, "count": count, "blockades": blockades}
 
 @router.get("/api/blockades/overview")
 def get_blockades_overview():
-    from gnom_hub.db import get_all_blockade_counts, get_blockades_for_agent
+    from gnom_hub.db import get_all_blockade_counts
     counts = get_all_blockade_counts()
     return {"agents": counts}
 
@@ -174,7 +175,7 @@ def clear_agent_blockades_route(a_id: str):
 
 @router.get("/api/blockades")
 def get_all_blockades_route(limit: int = 200):
-    from gnom_hub.db import get_all_blockades, get_all_blockade_counts
+    from gnom_hub.db import get_all_blockade_counts, get_all_blockades
     blockades = get_all_blockades(limit)
     counts = get_all_blockade_counts()
     return {"blockades": blockades, "counts": counts}
@@ -200,8 +201,8 @@ class BlockadeActionPayload(BaseModel):
 
 @router.post("/api/blockades/{blockade_id}/action")
 def blockade_action_route(blockade_id: int, payload: BlockadeActionPayload):
-    from gnom_hub.db import get_db_conn
     from gnom_hub.core.security.gatekeeper import add_blockade_rule
+    from gnom_hub.db import get_db_conn
 
     # Fetch the blockade entry to get target details
     with get_db_conn() as conn:
@@ -213,7 +214,7 @@ def blockade_action_route(blockade_id: int, payload: BlockadeActionPayload):
         return {"status": "error", "message": "Blockade not found"}
 
     agent_name = row["agent_name"]
-    action_type = row["action_type"]
+    row["action_type"]
     detail = row["detail"]
     target_value = payload.target_value or detail
 
@@ -274,9 +275,9 @@ def toggle_agent_tool(a_id: str, data: ToolToggle, _=Depends(verify_admin)):
     agent = repo.get_by_id(a_id)
     if not agent:
         raise HTTPException(404, "Agent not found")
-    from gnom_hub.db import get_state_value, set_state_value
     from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
     from gnom_hub.agents.tool_registry import get_tools_for_agent
+    from gnom_hub.db import get_state_value, set_state_value
     all_settings = get_state_value("agent_settings", {})
     key = agent.name.lower()
     agent_cfg = all_settings.get(key, {})
@@ -391,8 +392,8 @@ def export_agent(a_id: str):
 @router.post("/api/agents/{a_id}/import")
 def import_agent(a_id: str, data: ImportData):
     from gnom_hub.db import get_state_value, set_state_value
-    from gnom_hub.db.soul_repo import save_soul_fact_smart
     from gnom_hub.db.connection import get_db_conn
+    from gnom_hub.db.soul_repo import save_soul_fact_smart
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
     if not agent: raise HTTPException(404, "Agent not found")
@@ -423,8 +424,8 @@ def get_agent_profile(a_id: str):
     """One-shot endpoint: permissions, tools, LLM routing, soul summary."""
     from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
     from gnom_hub.agents.tool_registry import get_tools_for_agent
-    from gnom_hub.db.state_repo import SQLiteStateRepository
     from gnom_hub.db.connection import get_db_conn
+    from gnom_hub.db.state_repo import SQLiteStateRepository
     repo = SQLiteAgentRepository()
     agent = repo.get_by_id(a_id)
     if not agent:
@@ -547,11 +548,12 @@ class SwarmCompletePayload(BaseModel):
 
 @router.post("/api/swarm/complete")
 def swarm_complete(data: SwarmCompletePayload):
-    from gnom_hub.db.connection import get_db_conn
-    from gnom_hub.agents.swarm.swarm_coordinator import signal_completion
-    import time
     import json
     import logging
+    import time
+
+    from gnom_hub.agents.swarm.swarm_coordinator import signal_completion
+    from gnom_hub.db.connection import get_db_conn
 
     workflow_msg_id = None
 

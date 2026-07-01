@@ -16,7 +16,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from gnom_hub.core.config import DATA_DIR
 
@@ -69,7 +69,7 @@ def _cache_key(provider: str, text: str, voice_id: str) -> str:
     return f"{provider}:{voice_id}:{text}"
 
 
-def _cache_get(key: str) -> Optional[Path]:
+def _cache_get(key: str) -> Path | None:
     entry = _TTS_CACHE.get(key)
     if not entry:
         return None
@@ -103,7 +103,7 @@ def _cache_purge_expired() -> int:
 
 # ─── Provider-Backends ───────────────────────────────────────────────────────
 
-def _tts_elevenlabs(text: str, voice_id: str) -> Optional[Path]:
+def _tts_elevenlabs(text: str, voice_id: str) -> Path | None:
     """Bestehender ElevenLabs-Pfad (unverändertes Verhalten)."""
     if not ELEVEN_KEY:
         return None
@@ -122,7 +122,7 @@ def _tts_elevenlabs(text: str, voice_id: str) -> Optional[Path]:
     return out
 
 
-def _tts_openai_compat(base_url: str, api_key: str, model: str, text: str, voice: str) -> Optional[Path]:
+def _tts_openai_compat(base_url: str, api_key: str, model: str, text: str, voice: str) -> Path | None:
     """OpenAI-kompatibles /v1/audio/speech (OpenAI, MiniMax, kompatible)."""
     import requests
     r = requests.post(
@@ -147,7 +147,7 @@ def _strip_zero_width(text: str) -> str:
     return text
 
 
-def tts(text: str, voice_id: str = "") -> Optional[Path]:
+def tts(text: str, voice_id: str = "") -> Path | None:
     """Provider-dispatchable TTS → MP3-Pfad. None = Caller fällt auf Web Speech.
 
     Reihenfolge:
@@ -172,7 +172,7 @@ def tts(text: str, voice_id: str = "") -> Optional[Path]:
     if cached:
         return cached
 
-    out: Optional[Path] = None
+    out: Path | None = None
 
     # ── 1. Provider-spezifischer Pfad ────────────────────────────────────────
     if provider == "minimax":
@@ -242,7 +242,7 @@ def cache_stats() -> dict:
 def cache_clear() -> int:
     """Leert den gesamten Cache. Returns Anzahl gelöschter Einträge."""
     count = len(_TTS_CACHE)
-    for k, (_, path) in list(_TTS_CACHE.items()):
+    for _k, (_, path) in list(_TTS_CACHE.items()):
         try:
             if path and path.exists():
                 path.unlink()

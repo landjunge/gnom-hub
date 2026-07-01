@@ -158,7 +158,7 @@ class TestHandleBrowserExtraction:
     def test_no_match_returns_input_unchanged(self):
         from gnom_hub.agents.actions.action_browser import handle_browser
         ans = "no browser action here, just text"
-        result = handle_browser(ans, [], {"name": "X"}, ["godmode"], "/tmp")
+        result = handle_browser(ans, [], {"name": "X"}, ["godmode"], "/tmp")  # noqa: S108 — Test-Fixture.
         assert result == ans
 
 

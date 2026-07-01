@@ -16,19 +16,24 @@
 #   - Threading.Event Notification-Verlust bei hoher Last
 #   - DLQ-Kaskadierung bei sequenziellen Abhängigkeiten
 
-import time
 import json
 import threading
+import time
+
 import pytest
-from typing import Optional
-from gnom_hub.db.connection import get_db_connection
+
 from gnom_hub.agents.swarm.swarm_comms import (
-    dispatch_mention, dispatch_sequence, dispatch_by_capability,
-    fetch_next_message, ack_message, nack_message,
-    recover_stuck_messages, notify_agent,
-    MAX_QUEUE_DEPTH, MAX_CONCURRENT, RETRY_MAX, PRIORITY_MAPPING,
-    find_best_agent_for, parse_agent_sequence,
+    MAX_QUEUE_DEPTH,
+    RETRY_MAX,
+    ack_message,
+    dispatch_mention,
+    dispatch_sequence,
+    fetch_next_message,
+    nack_message,
+    notify_agent,
+    recover_stuck_messages,
 )
+from gnom_hub.db.connection import get_db_connection
 
 # ── Test-Konfiguration ─────────────────────────────────────────────────────
 NUM_AGENTS = 5
@@ -148,7 +153,7 @@ class MockAgentWorker(threading.Thread):
                 else:
                     ack_message(msg["msg_id"], self.db_path)
                     self.processed += 1
-            except Exception as e:
+            except Exception:
                 self.errors += 1
 
     def stop(self):
@@ -239,7 +244,7 @@ class TestQueueStability:
         fast_worker.start()
 
         # Phase 1: Tasks dispatchen während CrashAG stuck messages produziert
-        print(f"\n  Phase 1: Dispatche Tasks mit CrashAG als Stuck-Produzent...")
+        print("\n  Phase 1: Dispatche Tasks mit CrashAG als Stuck-Produzent...")
         t0 = time.time()
         for i in range(20):
             dispatch_mention("User", f"@CrashAG bomb_task_{i}", "loadtest", db_path, priority="low")
@@ -310,7 +315,7 @@ class TestQueueStability:
         db_path = str(isolated_db)
 
         # ═══════ Szenario 1: parent_msg_id-Korrektheit ════════════════════
-        print(f"\n  Szenario 1: parent_msg_id-Verkettung...")
+        print("\n  Szenario 1: parent_msg_id-Verkettung...")
         dispatch_sequence("User", "\n".join(f"@ChainAG -> chainA_step{s}" for s in range(4)), "chainA", db_path)
         dispatch_sequence("User", "\n".join(f"@ChainAG -> chainB_step{s}" for s in range(3)), "chainB", db_path)
 
@@ -338,7 +343,7 @@ class TestQueueStability:
         # ═══════ Szenario 2: fetch_next_message blockt bis parent done ════
         # ack_message() setzt jetzt child.deliver_after=0 (Bugfix), sodass das Child
         # sofort nach Parent-Erledigung abholbar ist – ohne 3s Reschedule-Verzögerung.
-        print(f"  Szenario 2: fetch blockt bis parent geackt (mit deliver_after-Reset)...")
+        print("  Szenario 2: fetch blockt bis parent geackt (mit deliver_after-Reset)...")
         dispatch_sequence("User", "@DepAG -> dep_step1\n@DepAG -> dep_step2", "sc2", db_path)
 
         conn = get_db_connection()
@@ -362,12 +367,12 @@ class TestQueueStability:
         assert msg2_after is not None, "Step 2 sollte nach ack sofort abholbar sein (deliver_after-Reset)"
         assert msg2_after["msg_id"] == s2["id"]
         assert msg2_after["parent_msg_id"] == s1["id"]
-        print(f"    ✅ Step 1 geackt → Step 2 sofort abholbar (deliver_after-Reset funktioniert)")
+        print("    ✅ Step 1 geackt → Step 2 sofort abholbar (deliver_after-Reset funktioniert)")
 
         # ═══════ Szenario 3: DEPENDENCY_TIMEOUT → Child in DLQ ════════════
         # fetch_next_message prüft jetzt processing_since (nicht created_at).
         # Setze processing_since künstlich alt + DEPENDENCY_TIMEOUT kurz.
-        print(f"  Szenario 3: DEPENDENCY_TIMEOUT → Child in DLQ...")
+        print("  Szenario 3: DEPENDENCY_TIMEOUT → Child in DLQ...")
         import gnom_hub.agents.swarm.swarm_comms as sc
         original_timeout = sc.DEPENDENCY_TIMEOUT
         sc.DEPENDENCY_TIMEOUT = 0.05
@@ -399,7 +404,7 @@ class TestQueueStability:
 
             # fetch_next_message sieht child, prüft parent.processing_since (60s > 0.05s),
             # und schiebt child in DLQ
-            msg_child = fetch_next_message("TimeoutAG", db_path, timeout=0.5)
+            fetch_next_message("TimeoutAG", db_path, timeout=0.5)
 
             conn = get_db_connection()
             try:
@@ -416,7 +421,7 @@ class TestQueueStability:
             sc.DEPENDENCY_TIMEOUT = original_timeout
 
         # ═══════ Szenario 4: Dead-Letter-Parent → Kind SOFORT DLQ ═════════
-        print(f"  Szenario 4: Parent in DLQ → Child sofort DLQ (kein Timeout)...")
+        print("  Szenario 4: Parent in DLQ → Child sofort DLQ (kein Timeout)...")
         dispatch_sequence("User", "@DLQAG -> dlq_parent\n@DLQAG -> dlq_child", "sc4", db_path)
 
         conn = get_db_connection()
@@ -439,10 +444,10 @@ class TestQueueStability:
             )
         finally:
             conn.close()
-        print(f"    ✅ Child sofort in DLQ (kein Timeout)")
+        print("    ✅ Child sofort in DLQ (kein Timeout)")
 
         # ═══════ Szenario 5: Chain über verschiedene Agenten ═══════════════
-        print(f"  Szenario 5: Mixed-Agent-Chain...")
+        print("  Szenario 5: Mixed-Agent-Chain...")
         dispatch_sequence("User", "@MixedAG -> mixed_code\n@MixedAG -> mixed_text\n@MixedAG -> mixed_more", "sc5", db_path)
 
         conn = get_db_connection()
@@ -456,7 +461,7 @@ class TestQueueStability:
             assert rows_s5[2]["recipient"] == "MixedAG"
             assert rows_s5[1]["parent_msg_id"] == rows_s5[0]["id"]
             assert rows_s5[2]["parent_msg_id"] == rows_s5[1]["id"]
-            print(f"    ✅ 3-Step-Chain korrekt (parent-Verkettung intakt)")
+            print("    ✅ 3-Step-Chain korrekt (parent-Verkettung intakt)")
         finally:
             conn.close()
 
@@ -503,14 +508,13 @@ class TestQueueStability:
 
         # ── Szenario 2: Release & Re-fill ────────────────────────────────
         # 10 Messages ack-en → danach müssen genau 10 neue durchkommen
-        print(f"  Szenario 2: 10 ack → 10 neue dispatchen...")
-        for i in range(15):
+        print("  Szenario 2: 10 ack → 10 neue dispatchen...")
+        for _i in range(15):
             msg = fetch_next_message(agent, db_path, timeout=0.3)
             if msg is None:
                 break
             ack_message(msg["msg_id"], db_path)
 
-        acked = 15
         accepted2 = 0
         rejected2 = 0
         for i in range(25):
@@ -533,7 +537,7 @@ class TestQueueStability:
         print(f"    ✅ Nach Release: {accepted2} accepted, {rejected2} rejected, Queue={queue_count2}")
 
         # ── Szenario 3: dispatch_sequence respektiert jetzt Backpressure ──
-        print(f"  Szenario 3: dispatch_sequence mit vollem Ziel-Agent (neuer Fix)...")
+        print("  Szenario 3: dispatch_sequence mit vollem Ziel-Agent (neuer Fix)...")
         conn = get_db_connection()
         try:
             conn.execute("DELETE FROM agent_messages WHERE recipient = ?", (agent,))
@@ -555,14 +559,14 @@ class TestQueueStability:
 
         assert len(dispatched_seq) == 0, f"dispatch_sequence sollte 0 dispatchen bei voller Queue, bekam {len(dispatched_seq)}"
         assert queue_count3 == MAX_QUEUE_DEPTH, f"Queue darf nicht wachsen: {queue_count3}"
-        print(f"    ✅ dispatch_sequence dispatche 0 Tasks bei voller Queue (Backpressure greift)")
+        print("    ✅ dispatch_sequence dispatche 0 Tasks bei voller Queue (Backpressure greift)")
 
         # ── Szenario 4: dispatch_mention Return-Werte präzise ────────────
         # dispatch_mention gibt leeres-Liste bei Backpressure, Liste mit Agent bei Erfolg
-        print(f"  Szenario 4: dispatch_mention Return-Werte prüfen...")
+        print("  Szenario 4: dispatch_mention Return-Werte prüfen...")
         conn = get_db_connection()
         try:
-            conn.execute(f"UPDATE agent_messages SET status='done' WHERE recipient = ?", (agent,))
+            conn.execute("UPDATE agent_messages SET status='done' WHERE recipient = ?", (agent,))
             conn.execute("DELETE FROM agent_messages WHERE recipient != ?", (agent,))
             conn.commit()
         finally:
@@ -588,7 +592,7 @@ class TestQueueStability:
         db_path = str(isolated_db)
         priorities = {"critical": 5, "normal": 15, "low": 10}
 
-        print(f"\n  Phase 1: Dispatche Tasks mit gemischten Prioritäten...")
+        print("\n  Phase 1: Dispatche Tasks mit gemischten Prioritäten...")
         for prio, count in priorities.items():
             for i in range(count):
                 dispatch_mention("User", f"@FastAG {prio}_task_{i}", "loadtest", db_path, priority=prio)
@@ -608,7 +612,7 @@ class TestQueueStability:
         normal_count = sum(1 for t in fetched_order if "normal_task" in t)
         low_count = sum(1 for t in fetched_order if "low_task" in t)
 
-        print(f"\n  Priority-Sorting:")
+        print("\n  Priority-Sorting:")
         print(f"    critical: {critical_count}/{priorities['critical']} zuerst")
         print(f"    normal:   {normal_count}/{priorities['normal']}")
         print(f"    low:      {low_count}/{priorities['low']} zuletzt")
@@ -661,7 +665,7 @@ class TestQueueStability:
                 conn2.close()
 
         # ═══════ Szenario 1: 5er-Kette, Step 1 stirbt → alle 5 DLQ ═══════
-        print(f"\n  Szenario 1: 5er-Kette, Step 1 stirbt → alle 5 DLQ...")
+        print("\n  Szenario 1: 5er-Kette, Step 1 stirbt → alle 5 DLQ...")
         dispatch_sequence("User", "\n".join(f"@ChainAG -> s1_step{s}" for s in range(5)), "sc1", db_path)
 
         # Step 1 (älteste, niedrigste id) in DLQ zwingen
@@ -685,12 +689,12 @@ class TestQueueStability:
                 assert row["status"] == "dead_letter", (
                     f"Step {i+1} (id={row['id']}) sollte dead_letter sein, ist {row['status']}"
                 )
-            print(f"    ✅ Alle 5 Steps korrekt in DLQ kaskadiert")
+            print("    ✅ Alle 5 Steps korrekt in DLQ kaskadiert")
         finally:
             conn.close()
 
         # ═══════ Szenario 2: 5er-Kette, Step 1 ok → rest läuft ═══════════
-        print(f"  Szenario 2: 5er-Kette, Step 1 wird geackt → rest normal...")
+        print("  Szenario 2: 5er-Kette, Step 1 wird geackt → rest normal...")
         dispatch_sequence("User", "\n".join(f"@ChainAG -> s2_step{s}" for s in range(5)), "sc2", db_path)
 
         conn = get_db_connection()
@@ -712,7 +716,7 @@ class TestQueueStability:
         ack_message(msg2["msg_id"], db_path)
 
         # ═══════ Szenario 3: 3er-Kette, Step 2 stirbt → Steps 2+3 DLQ ═══
-        print(f"  Szenario 3: 3er-Kette, Step 2 stirbt → Steps 2+3 DLQ (Step 1 bleibt)...")
+        print("  Szenario 3: 3er-Kette, Step 2 stirbt → Steps 2+3 DLQ (Step 1 bleibt)...")
         dispatch_sequence("User", "\n".join(f"@ChainAG -> s3_step{s}" for s in range(3)), "sc3", db_path)
 
         conn = get_db_connection()
@@ -755,7 +759,7 @@ class TestQueueStability:
         # ═══════ Szenario 4: done-Messages werden NICHT überschrieben, aber
         # ihre Children trotzdem kaskadiert (Bugfix: Cascade überspringt done,
         # aber setzt sich bei deren Children fort).
-        print(f"  Szenario 4: done-Step wird nicht überschrieben, Cascade geht weiter...")
+        print("  Szenario 4: done-Step wird nicht überschrieben, Cascade geht weiter...")
         dispatch_sequence("User", "\n".join(f"@ChainAG -> s4_step{s}" for s in range(4)), "sc4", db_path)
         time.sleep(0.03)
 
@@ -875,7 +879,7 @@ class TestQueueStability:
             conn.close()
         assert before == 1, "Message mit NULL processing_since muss existieren"
 
-        print(f"\n  Phase 1: recover_stuck_messages() auf NULL processing_since...")
+        print("\n  Phase 1: recover_stuck_messages() auf NULL processing_since...")
         recover_stuck_messages(db_path, timeout=300.0)
 
         conn = get_db_connection()
@@ -951,7 +955,7 @@ class TestQueueStability:
         finally:
             conn.close()
 
-        print(f"\n  Konsistenz-Checks:")
+        print("\n  Konsistenz-Checks:")
         print(f"    total = status_sum: {total} == {status_sum}  {'✅' if total == status_sum else '❌'}")
         print(f"    Waisen (orphans): {orphans}  {'✅' if orphans == 0 else '⚠️'}")
 
@@ -976,7 +980,7 @@ class TestQueueStability:
         db_path = str(isolated_db)
 
         # Szenario 1: deliver_after in der Zukunft
-        print(f"\n  Szenario 1: deliver_after in der Zukunft → unsichtbar...")
+        print("\n  Szenario 1: deliver_after in der Zukunft → unsichtbar...")
         future = time.time() + 60
         conn = get_db_connection()
         try:
@@ -993,7 +997,7 @@ class TestQueueStability:
         print(f"    ✅ Future-Message ({future:.1f}) nicht gefunden (deliver_after > now)")
 
         # Szenario 2: deliver_after in der Vergangenheit → sofort sichtbar
-        print(f"  Szenario 2: deliver_after in der Vergangenheit → sofort sichtbar...")
+        print("  Szenario 2: deliver_after in der Vergangenheit → sofort sichtbar...")
         past = time.time() - 60
         conn = get_db_connection()
         try:
@@ -1008,11 +1012,11 @@ class TestQueueStability:
         msg = fetch_next_message("DelayAG", db_path, timeout=0.3)
         assert msg is not None, "Past-Message sollte sofort abholbar sein"
         assert "past_task" in msg["payload"].get("text", "")
-        print(f"    ✅ Past-Message sofort gefunden")
+        print("    ✅ Past-Message sofort gefunden")
         ack_message(msg["msg_id"], db_path)
 
         # Szenario 3: deliver_after zurücksetzen → Message wird sofort sichtbar
-        print(f"  Szenario 3: deliver_after=0 setzen → sofort sichtbar...")
+        print("  Szenario 3: deliver_after=0 setzen → sofort sichtbar...")
         conn = get_db_connection()
         try:
             conn.execute("UPDATE agent_messages SET deliver_after=0 WHERE status='pending'")
@@ -1023,7 +1027,7 @@ class TestQueueStability:
         msg = fetch_next_message("DelayAG", db_path, timeout=0.3)
         assert msg is not None, "future_task sollte nach deliver_after=0 abholbar sein"
         assert "future_task" in msg["payload"].get("text", "")
-        print(f"    ✅ Future-Message nach Reset sofort gefunden")
+        print("    ✅ Future-Message nach Reset sofort gefunden")
 
     def test_fifo_within_same_priority(self, isolated_db):
         """Messages gleicher Priorität werden FIFO (ORDER BY priority ASC, id ASC) ausgeliefert.
@@ -1042,7 +1046,7 @@ class TestQueueStability:
         db_path = str(isolated_db)
 
         # 20 Messages mit gleicher Priorität dispatchen
-        print(f"\n  Phase 1: 20 Messages mit priority=5 dispatchen...")
+        print("\n  Phase 1: 20 Messages mit priority=5 dispatchen...")
         for i in range(20):
             dispatch_mention("User", f"@FIFOAG fifo_task_{i:02d}", "fifo_test", db_path, priority="normal")
 
@@ -1066,10 +1070,10 @@ class TestQueueStability:
                 f"FIFO verletzt: Position {i} erwartet {i}, bekommen {fetched[i]}\n"
                 f"Fetched: {fetched[:10]}..."
             )
-        print(f"    ✅ FIFO korrekt: alle 20 Messages in Insertions-Reihenfolge")
+        print("    ✅ FIFO korrekt: alle 20 Messages in Insertions-Reihenfolge")
 
         # Gemischte Prioritäten: critical (prio=1) muss VOR normal (prio=5) kommen
-        print(f"  Phase 2: Gemischte Prioritäten (critical + normal)...")
+        print("  Phase 2: Gemischte Prioritäten (critical + normal)...")
         for i in range(5):
             dispatch_mention("User", f"@FIFOAG normal_post_{i}", "fifo_mix", db_path, priority="normal")
         for i in range(5):
@@ -1112,7 +1116,7 @@ class TestQueueStability:
 
         # Event setzen bevor Messages existieren (Event-Overrun: wird gesetzt,
         # fetch_next_message sieht nichts, cleared, dann kommt die Message)
-        print(f"\n  Phase 1: notify_agent() vor dem Dispatch...")
+        print("\n  Phase 1: notify_agent() vor dem Dispatch...")
         notify_agent("EventAG")
         notify_agent("EventAG")
         time.sleep(0.05)
@@ -1125,11 +1129,11 @@ class TestQueueStability:
         msg = fetch_next_message("EventAG", db_path, timeout=0.5)
         assert msg is not None, "Message sollte trotz Event-Overrun abholbar sein"
         ack_message(msg["msg_id"], db_path)
-        print(f"    ✅ Message gefunden trotz vorherigem notify_agent()")
+        print("    ✅ Message gefunden trotz vorherigem notify_agent()")
 
         # 10 notify_agent() hintereinander, dann 10 Messages dispatchen
         # Alle 10 müssen ankommen
-        print(f"  Phase 2: 10× notify + 10 Messages...")
+        print("  Phase 2: 10× notify + 10 Messages...")
         for _ in range(10):
             notify_agent("EventAG")
 
@@ -1140,14 +1144,14 @@ class TestQueueStability:
             msg = fetch_next_message("EventAG", db_path, timeout=0.5)
             assert msg is not None, f"Message {i} nach Event-Burst nicht gefunden"
             ack_message(msg["msg_id"], db_path)
-        print(f"    ✅ Alle 10 Messages nach 10× notify_agent() gefunden")
+        print("    ✅ Alle 10 Messages nach 10× notify_agent() gefunden")
 
         # notify_agent() auf Agent der keine Messages hat → kein Fehler
-        print(f"  Phase 3: notify_agent() auf leeren Agenten...")
+        print("  Phase 3: notify_agent() auf leeren Agenten...")
         notify_agent("EventAG")
         msg = fetch_next_message("EventAG", db_path, timeout=0.3)
         assert msg is None, "fetch sollte None liefern (keine Messages)"
-        print(f"    ✅ notify_agent() auf leeren Agenten verursacht keinen Fehler")
+        print("    ✅ notify_agent() auf leeren Agenten verursacht keinen Fehler")
 
     def test_self_dispatch_blocked(self, isolated_db):
         """Agent kann keine Nachricht an sich selbst dispatchen.
@@ -1168,7 +1172,7 @@ class TestQueueStability:
         db_path = str(isolated_db)
 
         # Szenario 1: dispatch_mention mit Selbst-Adressierung
-        print(f"\n  Szenario 1: dispatch_mention(SelfAG, @SelfAG ...)...")
+        print("\n  Szenario 1: dispatch_mention(SelfAG, @SelfAG ...)...")
         dispatched = dispatch_mention("SelfAG", "@SelfAG hello_self", "self_test", db_path)
         assert dispatched == [], f"Self-Dispatch sollte [] sein, bekam {dispatched}"
 
@@ -1178,10 +1182,10 @@ class TestQueueStability:
         finally:
             conn.close()
         assert count == 0, f"Keine Messages an SelfAG erwartet, gefunden {count}"
-        print(f"    ✅ Selbst-Dispatch via dispatch_mention blockiert")
+        print("    ✅ Selbst-Dispatch via dispatch_mention blockiert")
 
         # Szenario 2: dispatch_sequence mit Selbst-Adressierung
-        print(f"  Szenario 2: dispatch_sequence(SelfAG, @SelfAG -> task)...")
+        print("  Szenario 2: dispatch_sequence(SelfAG, @SelfAG -> task)...")
         dispatched = dispatch_sequence("SelfAG", "@SelfAG -> self_step1\n@SelfAG -> self_step2", "self_seq", db_path)
         assert dispatched == [], f"Self-Sequence sollte [] sein, bekam {dispatched}"
 
@@ -1191,10 +1195,10 @@ class TestQueueStability:
         finally:
             conn.close()
         assert count == 0, f"Keine Messages in self_seq erwartet, gefunden {count}"
-        print(f"    ✅ Selbst-Dispatch via dispatch_sequence blockiert")
+        print("    ✅ Selbst-Dispatch via dispatch_sequence blockiert")
 
         # Szenario 3: Cross-Dispatch zu anderen Agenten funktioniert weiterhin
-        print(f"  Szenario 3: Cross-Dispatch zu anderem Agenten (muss funktionieren)...")
+        print("  Szenario 3: Cross-Dispatch zu anderem Agenten (muss funktionieren)...")
         dispatched = dispatch_mention("SelfAG", "@FastAG cross_task", "cross_test", db_path)
         assert dispatched == ["FastAG"], f"Cross-Dispatch sollte ['FastAG'] sein, bekam {dispatched}"
 
@@ -1204,7 +1208,7 @@ class TestQueueStability:
         finally:
             conn.close()
         assert count == 1, f"1 Message an FastAG erwartet, gefunden {count}"
-        print(f"    ✅ Cross-Dispatch funktioniert (nur Selbst-Dispatch blockiert)")
+        print("    ✅ Cross-Dispatch funktioniert (nur Selbst-Dispatch blockiert)")
 
     def test_vacuum_during_queue_activity(self, isolated_db):
         """VACUUM während aktiver Queue-Operationen.
@@ -1223,7 +1227,7 @@ class TestQueueStability:
         db_path = str(isolated_db)
 
         # Phase 1: Messages dispatchen
-        print(f"\n  Phase 1: 30 Messages dispatchen...")
+        print("\n  Phase 1: 30 Messages dispatchen...")
         for i in range(30):
             dispatch_mention("User", f"@VacAG vac_task_{i}", "vac_test", db_path)
 
@@ -1234,7 +1238,7 @@ class TestQueueStability:
                 ack_message(msg["msg_id"], db_path)
 
         # Phase 3: VACUUM in separater Verbindung
-        print(f"  Phase 2: VACUUM + gleichzeitig dispatchen...")
+        print("  Phase 2: VACUUM + gleichzeitig dispatchen...")
         def vacuum_worker():
             try:
                 v_conn = get_db_connection()
@@ -1283,7 +1287,7 @@ class TestQueueStability:
         finally:
             conn.close()
         assert remaining == 0, f"Alle sollten verarbeitet sein, {remaining} bleiben"
-        print(f"    ✅ Alle 40 Messages erfolgreich verarbeitet")
+        print("    ✅ Alle 40 Messages erfolgreich verarbeitet")
 
     def test_rollback_path_on_error(self, isolated_db):
         """fetch_next_message rollbackt bei Fehler korrekt (except: conn.rollback()).
@@ -1353,4 +1357,4 @@ class TestQueueStability:
         msg = fetch_next_message("RollbackAG", db_path, timeout=0.5)
         assert msg is not None, "Reparierte Message muss abholbar sein"
         ack_message(msg["msg_id"], db_path)
-        print(f"    ✅ Reparierte Message normal verarbeitet")
+        print("    ✅ Reparierte Message normal verarbeitet")

@@ -1,7 +1,12 @@
 # router_call.py — Router API calls executor with token tracking
+import json
 import logging
-import requests, time, json; from .router_tokens import track_tokens; from .router_keys import get_keys
+import time
 
+import requests
+
+from .router_keys import get_keys
+from .router_tokens import track_tokens
 
 # HTTP status codes that should trigger key rotation in _try_keys once the
 # in-call retry loop is exhausted. We raise _RetryableCallError so _try_keys
@@ -92,7 +97,7 @@ def _call(pvd, mdl, key, msgs, n):
         # M3 (MiniMax) generiert endlos wenn nicht gestoppt → stop nach 深思
         if pvd == "minimax":
             existing = pyld.get("stop")
-            stop_token = "深思"
+            stop_token = "深思"  # noqa: S105 — Sentinel-String für LLM stop-Sequence, kein Passwort
             if isinstance(existing, list):
                 if stop_token not in existing:
                     pyld["stop"] = existing + [stop_token]
@@ -112,7 +117,7 @@ def _call(pvd, mdl, key, msgs, n):
                 try: res_json = r.json()
                 except (json.JSONDecodeError, ValueError): res_json = {}
                 if pvd == "anthropic": ans = res_json.get("content", [{}])[0].get("text")
-                elif pvd == "lokal" and not res_json: ans = "".join(json.loads(l).get("message", {}).get("content", "") for l in r.text.strip().split("\n") if l).strip()
+                elif pvd == "lokal" and not res_json: ans = "".join(json.loads(letter).get("message", {}).get("content", "") for letter in r.text.strip().split("\n") if letter).strip()
                 elif pvd == "lokal": ans = res_json.get("message", {}).get("content", "")
                 else:
                     msg_obj = res_json.get("choices", [{}])[0].get("message", {})

@@ -5,11 +5,11 @@
 - find_best_agent_for_task() wählt nach Erfolgsrate
 - Worker unter 40% nach 5+ Jobs werden übersprungen
 """
-import pytest
-import sqlite3
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 
 @pytest.fixture

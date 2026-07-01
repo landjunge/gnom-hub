@@ -1,10 +1,11 @@
 # showbox_repo.py — Showbox presentation database operations
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
-from gnom_hub.db.connection import get_db_conn
+
 from gnom_hub.core.logger import get_logger
-import sqlite3
+from gnom_hub.db.connection import get_db_conn
 
 logger = get_logger("db.showbox")
 

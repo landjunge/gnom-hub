@@ -4,11 +4,11 @@
 # via path_validator. Shell commands are restricted via argv-style execution
 # (no shell interpolation) plus the gatekeeper whitelist.
 import logging
+import os
 import re as _re
 import shlex
 import subprocess
 import sys
-import os
 
 from gnom_hub.core.config import WORKSPACE_DIR
 

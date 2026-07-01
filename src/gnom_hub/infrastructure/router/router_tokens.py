@@ -1,5 +1,9 @@
+import json
 import logging
-import os, json, threading, tempfile
+import os
+import tempfile
+import threading
+
 from gnom_hub.core.config import TOKENS_FILE
 from gnom_hub.core.logger import get_logger
 

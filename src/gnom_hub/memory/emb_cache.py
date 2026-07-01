@@ -1,6 +1,12 @@
 # emb_cache.py — LRU-bounded caching for sentence embeddings
-import os, json, logging, threading, numpy as np
+import json
+import logging
+import os
+import threading
 from collections import OrderedDict
+
+import numpy as np
+
 from gnom_hub.core.config import DATA_DIR
 
 _MAX_CACHE_SIZE = 5000
@@ -12,7 +18,7 @@ _dirty_count = 0
 _SAVE_EVERY = 50  # Save to disk every N new embeddings
 try:
     if os.path.exists(_CACHE_PATH):
-        with open(_CACHE_PATH, "r", encoding="utf-8") as f:
+        with open(_CACHE_PATH, encoding="utf-8") as f:
             raw = json.load(f)
             for k, v in raw.items():
                 _cache[k] = np.array(v, dtype=np.float32)

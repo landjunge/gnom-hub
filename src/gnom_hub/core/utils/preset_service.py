@@ -1,9 +1,10 @@
 # preset_service.py — Preset management loader and trigger actions
+import json
 import logging
-import os, json, uuid
+import os
+import uuid
 from datetime import datetime, timezone
-from gnom_hub.db import get_state_value, set_state_value, add_chat_message
-from gnom_hub.db.soul_repo import save_soul_fact_smart
+
 from gnom_hub.core.config import CONFIG_DIR
 
 _PRESETS_PATH = os.path.join(os.path.dirname(__file__), "presets.json")
@@ -13,7 +14,7 @@ _ALL_AGENTS = _SYSTEM_AGENTS + _WORKER_AGENTS
 
 
 def _read_presets_file():
-    with open(_PRESETS_PATH, "r", encoding="utf-8") as f:
+    with open(_PRESETS_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -32,7 +33,7 @@ def load_presets():
     if pdir.exists():
         for fn in [f for f in os.listdir(pdir) if f.endswith(".json")]:
             try:
-                with open(pdir / fn, "r", encoding="utf-8") as f: c = json.load(f)
+                with open(pdir / fn, encoding="utf-8") as f: c = json.load(f)
                 name = c.get("name")
                 if name:
                     data.setdefault("prompts", {})[name] = c.get("prompt_modifier", {})
@@ -236,7 +237,7 @@ def handle_preset_change(preset: str):
                 except Exception as e:
                     logging.getLogger(__name__).error('Fehler in Agent-Settings-Parsing: %s', e)
             if preset_file.exists():
-                with open(preset_file, "r", encoding="utf-8") as f:
+                with open(preset_file, encoding="utf-8") as f:
                     c = json.load(f)
                     if "agent_settings" in c:
                         for a_name, a_set in c["agent_settings"].items(): all_settings[a_name.lower()] = a_set

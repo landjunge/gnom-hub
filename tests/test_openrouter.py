@@ -1,8 +1,9 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from gnom_hub.core.config import Config
-from gnom_hub.infrastructure.llm.key_verifier import clean_key
+
 from gnom_hub.db.state_repo import SQLiteStateRepository
+from gnom_hub.infrastructure.llm.key_verifier import clean_key
 from gnom_hub.infrastructure.router.router_stage import SmartRouter
 
 

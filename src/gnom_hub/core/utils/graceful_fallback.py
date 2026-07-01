@@ -2,9 +2,9 @@
 import asyncio
 import logging
 import re
-from typing import Dict, Union
-from gnom_hub.infrastructure.router.router import ask_router
+
 from gnom_hub.infrastructure.monitoring import get_agent_metrics
+from gnom_hub.infrastructure.router.router import ask_router
 
 logger = logging.getLogger("fallback")
 
@@ -62,7 +62,7 @@ class FallbackAgent:
     def __repr__(self):
         return self.name
 
-async def estimate_quality(fallback_agent: Union[str, FallbackAgent], task: str) -> float:
+async def estimate_quality(fallback_agent: str | FallbackAgent, task: str) -> float:
     """Estimates the confidence score (0.0 - 1.0) of a fallback agent executing the task."""
     agent_name = fallback_agent.name if isinstance(fallback_agent, FallbackAgent) else str(fallback_agent)
     prompt = (
@@ -81,14 +81,14 @@ async def estimate_quality(fallback_agent: Union[str, FallbackAgent], task: str)
         return float(match.group(1))
     return 0.8  # Fallback quality
 
-async def execute_with_fallback(agent: Union[str, FallbackAgent], task: str) -> FallbackResult:
+async def execute_with_fallback(agent: str | FallbackAgent, task: str) -> FallbackResult:
     # Convert string agent to FallbackAgent wrapper
     main_agent = FallbackAgent(agent) if isinstance(agent, str) else agent
     agent_name = main_agent.name
 
     try:
         return await main_agent.execute(task)
-    except AgentUnavailableError:
+    except AgentUnavailableError as e:
         logger.warning(f"{agent_name} unavailable, trying fallback")
         print(f"[Fallback] {agent_name} unavailable, trying fallback...")
         
@@ -109,4 +109,4 @@ async def execute_with_fallback(agent: Union[str, FallbackAgent], task: str) -> 
                 result.degradation_note = f"Note: {agent_name} was unavailable, {fallback_name} handled this instead."
                 return result
         
-        raise AllAgentsFailedError(f"No fallback available for {task}")
+        raise AllAgentsFailedError(f"No fallback available for {task}") from e

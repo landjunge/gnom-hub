@@ -1,7 +1,6 @@
 """Tests for admin_system.py endpoints."""
 import time
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import MagicMock, patch
 
 
 def test_kill_processes_by_name_excludes_self_pid():
@@ -18,8 +17,8 @@ def test_kill_processes_by_name_excludes_self_pid():
 
 def test_delayed_restart_logs_when_script_missing(tmp_path, caplog):
     """Wenn start_gnom_hub.sh fehlt: keine Exception, aber Log-Warning."""
+
     from gnom_hub.api.endpoints.admin_system import _delayed_restart
-    import logging
     with patch("gnom_hub.core.config.PROJECT_ROOT", str(tmp_path)):
         with caplog.at_level("WARNING", logger="gnom_hub.api.endpoints.admin_system"):
             _delayed_restart(old_hub_pid=99999)  # pid_exists False, Polling endet schnell

@@ -1,13 +1,16 @@
 import os
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from gnom_hub.infrastructure.process.process_manager import start_background_agents, kill_background_agents
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 from gnom_hub.api.router import router as api_router
 from gnom_hub.chat import chat_commands
+from gnom_hub.infrastructure.process.process_manager import kill_background_agents, start_background_agents
+
 
 async def start_openrouter_updater():
     import asyncio
@@ -37,6 +40,7 @@ async def start_invalid_keys_reverifier():
     Throttle (30 min) lebt in `reverify_invalid_keys()` selbst.
     """
     import asyncio
+
     from gnom_hub.infrastructure.llm.desktop_syncer import reverify_invalid_keys
     # Initial-Delay damit Hub-Startup nicht durch 10+ HTTP-Calls ausgebremst wird
     await asyncio.sleep(60)
@@ -56,11 +60,12 @@ async def start_invalid_keys_reverifier():
 async def start_recovery_and_watchdog_loop(db_path: Path):
     import asyncio
     import time
+    from datetime import datetime, timezone
+
     from gnom_hub.agents.swarm.swarm_comms import recover_stuck_messages
-    from gnom_hub.infrastructure.process.process_manager import _get_proc, restart_single_agent
     from gnom_hub.db import get_all_agents, update_agent_status
     from gnom_hub.db.connection import get_db_connection
-    from datetime import datetime, timezone
+    from gnom_hub.infrastructure.process.process_manager import _get_proc, restart_single_agent
 
     check_interval = 30.0
     checkpoint_counter = 0
@@ -169,7 +174,7 @@ async def lifespan(app: FastAPI):
 
     # ── Datei-Integritätsprüfung (ZWC-Signaturen) ──────────────────────────
     try:
-        from gnom_hub.core.security.integrity import verify_system_files, is_integrity_enabled
+        from gnom_hub.core.security.integrity import is_integrity_enabled, verify_system_files
         if is_integrity_enabled():
             from pathlib import Path as _Path
             _root = _Path(__file__).parent.parent.parent.parent.resolve()
@@ -199,16 +204,18 @@ async def lifespan(app: FastAPI):
     from gnom_hub.core.config import CONFIG_DIR
     if os.getenv("SUPERGNOM_MODE", "False").lower() == "true":
         try:
-            import json, hashlib
+            import hashlib
+            import json
+
             from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
             manifest_path = CONFIG_DIR / "manifest.json"
             if manifest_path.exists():
-                with open(manifest_path, "r", encoding="utf-8") as f:
+                with open(manifest_path, encoding="utf-8") as f:
                     manifest = json.load(f)
                 corrupted = []
                 for name, expected_hash in manifest.items():
                     found = False
-                    for k, v in AGENT_DEFINITIONS.items():
+                    for _k, v in AGENT_DEFINITIONS.items():
                         if v["name"].lower() == name.lower():
                             found = True
                             p_bytes = v["sys_prompt"].encode("utf-8")
@@ -234,7 +241,7 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
         repo = Path(__file__).parent.parent.resolve()
         if (repo / ".git").exists():
-            r = subprocess.run(
+            subprocess.run(
                 ["git", "fetch", "--dry-run"],
                 cwd=str(repo), capture_output=True, text=True, timeout=10
             )
@@ -266,6 +273,7 @@ async def lifespan(app: FastAPI):
     start_pulse()
 
     import asyncio
+
     from gnom_hub.core.config import DB_PATH
     # User-Mandat 2026-06-28 06:34 — OpenRouter-Updater RAUS.
     # (Vorher: updater_task = asyncio.create_task(start_openrouter_updater()))
@@ -305,6 +313,8 @@ if FRONT.exists(): app.mount("/static", StaticFiles(directory=str(FRONT)), name=
 
 # Force no-cache for all static files (prevents stale JS/CSS)
 from starlette.middleware.base import BaseHTTPMiddleware
+
+
 class NoCacheStaticMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)

@@ -1,4 +1,8 @@
-import json, base64, logging, time
+import base64
+import json
+import logging
+import time
+
 Z, R = {'0': '\u200b', '1': '\u200c'}, {'\u200b': '0', '\u200c': '1'}
 _log = logging.getLogger(__name__)
 
@@ -146,7 +150,7 @@ def extract_facts_from_text(text: str, agent_name: str) -> list:
     except Exception:
         return []
 
-    for pattern, kind, priority in _THOUGHT_PATTERNS:
+    for pattern, kind, _priority in _THOUGHT_PATTERNS:
         for m in _re.finditer(pattern, text_lower, flags=_re.IGNORECASE | _re.DOTALL):
             fact = m.group(1).strip().rstrip(".!?\n")
             if len(fact) < 15 or len(fact) > 300:

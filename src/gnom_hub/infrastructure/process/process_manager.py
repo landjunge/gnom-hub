@@ -1,8 +1,14 @@
 import logging
-import os, sys, subprocess, psutil
-from gnom_hub.core.config import RUN_DIR, PROJECT_ROOT
-from gnom_hub.core.constants import PROCESS_TERMINATE_TIMEOUT, PROCESS_KILL_SLEEP
+import os
+import subprocess
+import sys
+
+import psutil
+
 from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+from gnom_hub.core.config import PROJECT_ROOT, RUN_DIR
+from gnom_hub.core.constants import PROCESS_KILL_SLEEP, PROCESS_TERMINATE_TIMEOUT
+
 AGENTS = ["generalAG", "soulAG", "researcherAG", "writerAG", "editorAG", "coderAG", "watchdogAG", "securityAG"]
 AGENT_DEFINITIONS_KEYS = list(AGENT_DEFINITIONS.keys())
 
@@ -94,8 +100,8 @@ def start_background_agents() -> None:
         # Rotation: bestehende Datei zu .1, .2, .3 wenn > 10MB
         if log_file.exists() and log_file.stat().st_size > 10 * 1024 * 1024:
             for i in range(3, 0, -1):
-                old = log_file.with_suffix(f".txt.{i-1}" if i > 1 else ".txt.1")
-                old_bk = log_file.with_name(f"{log_file.name}.{i-1}" if i > 1 else f"{log_file.name}.1")
+                log_file.with_suffix(f".txt.{i-1}" if i > 1 else ".txt.1")
+                log_file.with_name(f"{log_file.name}.{i-1}" if i > 1 else f"{log_file.name}.1")
                 if log_file.with_name(f"{log_file.name}.{i-1}").exists():
                     log_file.with_name(f"{log_file.name}.{i}").write_bytes(log_file.with_name(f"{log_file.name}.{i-1}").read_bytes())
             if log_file.with_name(f"{log_file.name}.1").exists():
@@ -122,7 +128,7 @@ def process_status() -> str:
     return "\n".join(f"{a}: {'RUNNING' if _get_proc(a) else 'STOPPED'}" for a in AGENTS)
 
 def restart_hub() -> None:
-    import os, signal
+    import signal
     os.environ["GNOM_HUB_RESTART"] = "true"
     os.kill(os.getpid(), signal.SIGINT)
 

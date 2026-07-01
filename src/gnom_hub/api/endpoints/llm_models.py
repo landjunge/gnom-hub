@@ -1,10 +1,11 @@
-import sys
-import time
 import asyncio
 import logging
-from typing import Any, Dict
-from fastapi import APIRouter, Request
+import sys
+import time
+
 import httpx
+from fastapi import APIRouter, Request
+
 from gnom_hub.core.config import Config
 from gnom_hub.db.state_repo import SQLiteStateRepository
 
@@ -60,12 +61,10 @@ async def check_and_update_models():
     User-Mandat 2026-06-28 06:34: OpenRouter-Pfad DEAKTIVIERT.
     Wir nutzen NUR MiniMax. Nur OpenCode-Zen wird noch gepingt (falls vorhanden).
     """
-    repo = SQLiteStateRepository()
+    SQLiteStateRepository()
 
     # ── 1. OpenRouter free models — DEAKTIVIERT (User-Mandat 2026-06-28 06:34) ──
-    or_models = []   # leer — keine OpenRouter-Calls mehr
     or_working = []
-    or_key = None
 
     # ── 2. OpenCode-Zen models ──
     zen_working = await check_opencode_zen_models()

@@ -1,9 +1,8 @@
 # passive_db.py — Portable passive archiving database for SuperGNOM & emergency queries
-import os
-import sqlite3
 import json
+import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
+
 from gnom_hub.core.config import DATA_DIR
 from gnom_hub.core.logger import get_logger
 

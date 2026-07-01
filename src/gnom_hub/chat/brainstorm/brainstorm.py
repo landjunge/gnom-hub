@@ -1,4 +1,10 @@
-import threading, time; from gnom_hub.soul.zwc_soul import strip_zwc; from gnom_hub.chat.brainstorm.brainstorm_helpers import ask_llm, get_ctx
+import threading
+import time
+
+from gnom_hub.chat.brainstorm.brainstorm_helpers import ask_llm
+from gnom_hub.soul.zwc_soul import strip_zwc
+
+
 def _run_phase(ags, q, ctx, bs=False):
     ts = []
     for a in ags:

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 from gnom_hub.memory.offload import OffloadEntry
 

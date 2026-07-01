@@ -23,8 +23,9 @@ from unittest.mock import patch
 import pytest
 
 from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+from gnom_hub.core.prompt.builder import _apply_post_processing
+from gnom_hub.core.prompt.builder import build_system_prompt as new_build
 from gnom_hub.core.utils.slider_prompt import build_system_prompt as old_build
-from gnom_hub.core.prompt.builder import build_system_prompt as new_build, _apply_post_processing
 
 ALL_AGENTS: tuple[str, ...] = (
     "SoulAG", "GeneralAG", "WatchdogAG", "SecurityAG",

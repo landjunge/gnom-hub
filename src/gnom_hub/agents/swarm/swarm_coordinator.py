@@ -1,13 +1,15 @@
 # swarm_coordinator.py — Coordinates team workflows and gathers results
 import logging
-import time, threading, re
-from typing import List, Dict, Tuple, Set
-from gnom_hub.db.agent_repo import SQLiteAgentRepository as AR
-from gnom_hub.db.state_repo import SQLiteStateRepository as SR
+import re
+import threading
+import time
+
+from gnom_hub.agents.actions.action_handlers import process_actions
 from gnom_hub.agents.role_tools import _llm
 from gnom_hub.chat.brainstorm.brainstorm import _collect_worker_responses, dispatch
-from gnom_hub.chat.brainstorm.brainstorm_helpers import post, get_workspace_dir
-from gnom_hub.agents.actions.action_handlers import process_actions
+from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir, post
+from gnom_hub.db.agent_repo import SQLiteAgentRepository as AR
+from gnom_hub.db.state_repo import SQLiteStateRepository as SR
 from gnom_hub.soul import get_soul
 
 logger = logging.getLogger(__name__)
@@ -18,12 +20,12 @@ class WorkerCompletionTracker:
     Ersetzt das blockierende _wait()-Pattern durch ein Event-basiertes System.
     """
 
-    def __init__(self, worker_names: List[str], timeout: float = 180.0):
+    def __init__(self, worker_names: list[str], timeout: float = 180.0):
         self._pending  = set(worker_names)
         self._lock     = threading.Lock()
         self._done_evt = threading.Event()
         self._timeout  = timeout
-        self._results  : Dict[str, dict] = {}
+        self._results  : dict[str, dict] = {}
 
     def mark_done(self, agent_name: str, result: dict) -> None:
         """
@@ -36,7 +38,7 @@ class WorkerCompletionTracker:
             if not self._pending:
                 self._done_evt.set()
 
-    def wait(self) -> Tuple[bool, Dict[str, dict]]:
+    def wait(self) -> tuple[bool, dict[str, dict]]:
         """
         Blockiert maximal `timeout` Sekunden.
         Gibt (completed: bool, results: dict) zurück.
@@ -54,13 +56,13 @@ class WorkerCompletionTracker:
         return completed, self._results.copy()
 
     @property
-    def pending(self) -> Set[str]:
+    def pending(self) -> set[str]:
         with self._lock:
             return self._pending.copy()
 
 
 # ── Globale Tracker-Registry ───────────────────────────────────────────────
-_trackers: Dict[str, WorkerCompletionTracker] = {}
+_trackers: dict[str, WorkerCompletionTracker] = {}
 _registry_lock = threading.Lock()
 
 

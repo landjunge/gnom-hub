@@ -32,9 +32,11 @@ from gnom_hub.core.config import CONFIG_DIR
 
 from .context import get_context_blocks
 from .post_processing import (
-    apply_post_processing as _apply_post_processing,
-    _get_obedience_instructions,
     _get_behavioral_instructions,
+    _get_obedience_instructions,
+)
+from .post_processing import (
+    apply_post_processing as _apply_post_processing,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,9 @@
+
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
-from typing import Dict, Optional
-from gnom_hub.db.state_repo import SQLiteStateRepository as SR
+
 from gnom_hub.db import set_agent_role, update_agent_role_memory
+from gnom_hub.db.state_repo import SQLiteStateRepository as SR
 
 router = APIRouter(prefix="/api/admin")
 ROLES = {
@@ -56,7 +57,7 @@ class BrowserDockerPayload(BaseModel):
 
 class GeneratePresetPayload(BaseModel):
     description: str
-    answer: Optional[str] = None
+    answer: str | None = None
 
 SYSTEM_PRESET_GEN = """Du bist der Gnom-Hub Preset-Generator. Deine Aufgabe ist es, für den User maßgeschneiderte Teampresets (Gangs) für die 4 Worker-Agenten (coderag, researcherag, writerag, editorag) zu entwerfen.
 
@@ -85,8 +86,9 @@ Wichtig: Die System-Rollen der Agenten müssen auf Englisch verfasst sein, da di
 
 @router.post("/presets/generate")
 def generate_preset(p: GeneratePresetPayload):
-    from gnom_hub.infrastructure.router.router import ask_router
     import json
+
+    from gnom_hub.infrastructure.router.router import ask_router
     prompt_content = f"User will ein Preset für folgendes Thema: {p.description}"
     if p.answer:
         prompt_content += f"\nZusätzliche Details vom User: {p.answer}"
@@ -115,12 +117,13 @@ def generate_preset(p: GeneratePresetPayload):
 class SaveCustomPresetPayload(BaseModel):
     name: str
     description: str
-    prompt_modifier: Dict[str, str]
+    prompt_modifier: dict[str, str]
 
 @router.post("/presets/save_custom")
 def save_custom_preset(p: SaveCustomPresetPayload):
-    from gnom_hub.core.config import CONFIG_DIR
     import json
+
+    from gnom_hub.core.config import CONFIG_DIR
     preset_data = {
         "name": p.name,
         "description": p.description,

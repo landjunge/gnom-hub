@@ -1,6 +1,12 @@
 import logging
-import os, sys, subprocess, platform, psutil
+import os
+import platform
+import subprocess
+import sys
+
+import psutil
 from fastapi import APIRouter, Request
+
 from gnom_hub.core.security.hmac_signer import _get_or_create_secret
 
 router = APIRouter()
@@ -28,7 +34,8 @@ def get_system_info():
 def restart_server(request: Request):
     if request.headers.get("X-Hub-Secret") != _get_or_create_secret().hex():
         return {"error": "Unauthorized"}
-    import signal, threading
+    import signal
+    import threading
     subprocess.Popen([sys.executable] + sys.argv)
     # Give the new process time to start, then exit cleanly
     def _delayed_exit():

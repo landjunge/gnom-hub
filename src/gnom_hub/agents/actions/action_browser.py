@@ -1,7 +1,12 @@
 # action_browser.py — Playwright Browser automation execution
 # Docker- und Sandbox-Pfade entfernt am 2026-06-15.
 # Skripte laufen direkt im Host (cwd=workspace), Gatekeeper (verify_browser) bleibt aktiv.
-import os, uuid, re, logging, subprocess
+import logging
+import os
+import re
+import subprocess
+import uuid
+
 from gnom_hub.core.security.gatekeeper_browser import verify_browser
 from gnom_hub.infrastructure.process.sandbox import run_browser_in_sandbox
 

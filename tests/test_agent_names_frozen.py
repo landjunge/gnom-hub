@@ -7,21 +7,22 @@ ohne Farbe zu setzen, oder FROZEN auf False flippt.
 Wenn du wirklich einen Agent umbenennen willst: überlege dir das
 zweimal. Die ganze Codebase hängt von diesen Strings.
 """
-import pytest
 from pathlib import Path
 
+import pytest
+
 from gnom_hub.core.agent_names import (
+    AGENT_AVATARS,
+    AGENT_COLORS,
     ALL_AGENTS,
+    FROZEN,
+    SHOWBOX_THEME,
     SYSTEM_AGENTS,
     WORKER_AGENTS,
-    FROZEN,
-    AGENT_COLORS,
-    AGENT_AVATARS,
-    SHOWBOX_THEME,
-    is_known_agent,
+    avatar_url,
     category_of,
     color_of,
-    avatar_url,
+    is_known_agent,
 )
 
 

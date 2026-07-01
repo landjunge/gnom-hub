@@ -14,12 +14,7 @@ These tests run quickly (under 5s on a clean environment) and cover:
 from __future__ import annotations
 
 import asyncio
-import os
-import sys
 from pathlib import Path
-
-import pytest
-
 
 # ─── /api/llm/providers ────────────────────────────────────────────────
 
@@ -202,7 +197,7 @@ def test_admin_backup_endpoint_runs_script(monkeypatch):
 
 def test_detect_provider_from_key_prefers_longer_prefix():
     """The bug: sk-cp-… must NOT match openai."""
-    from gnom_hub.infrastructure.llm.providers import PROVIDERS, detect_provider_from_key
+    from gnom_hub.infrastructure.llm.providers import PROVIDERS
 
     # Sort providers by max prefix length DESC and pick the first match.
     # This is the rule the frontend detector enforces.
@@ -246,7 +241,7 @@ def test_detect_provider_from_label():
 
 
 def test_router_includes_new_endpoints():
-    from gnom_hub.api.endpoints import llm_models, admin_tools
+    from gnom_hub.api.endpoints import admin_tools, llm_models
 
     paths = []
     for sub in [llm_models.router, admin_tools.router]:

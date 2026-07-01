@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from gnom_hub.core.config import Config
 from gnom_hub.core.exceptions import ValidationError
 
@@ -16,8 +17,8 @@ def validate_workspace_path(path: str | Path) -> Path:
     resolved = path.resolve()
     try:
         resolved.relative_to(workspace_root)
-    except ValueError:
-        raise ValidationError(f"Ungültiger Pfad: {path} liegt außerhalb des Workspace-Verzeichnisses")
+    except ValueError as e:
+        raise ValidationError(f"Ungültiger Pfad: {path} liegt außerhalb des Workspace-Verzeichnisses") from e
     
     if not resolved.exists():
         raise ValidationError(f"Pfad existiert nicht: {resolved}")

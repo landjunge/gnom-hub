@@ -1,9 +1,29 @@
 from fastapi import APIRouter
+
 from . import (
-    memory_crud, memory_search, agents_list, agents_status, nudge, registry,
-    chat_legacy, audio, admin_tools, admin_system, admin_config, workspace,
-    llm_keys, llm_agents, llm_models, system_info, showbox, admin, metrics, integrity, workflows, observability,
+    admin,
+    admin_config,
+    admin_system,
+    admin_tools,
+    agents_list,
+    agents_status,
+    audio,
+    chat_legacy,
+    integrity,
+    llm_agents,
+    llm_keys,
+    llm_models,
+    memory_crud,
+    memory_search,
+    metrics,
+    nudge,
+    observability,
     presets,
+    registry,
+    showbox,
+    system_info,
+    workflows,
+    workspace,
 )
 
 router = APIRouter()

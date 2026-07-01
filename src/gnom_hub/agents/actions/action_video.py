@@ -6,7 +6,6 @@ import re
 import subprocess
 import uuid
 
-
 VIDEO_BLOCK = re.compile(
     r"rm\s+-rf\s+/.+|:\(\)\s*\{\s*:\|\:&\s*\}\;:",  # catastrophic patterns only
     re.I,
@@ -92,18 +91,26 @@ def handle_screen_record(ans, ms, agent, perms, wd):
                 )
             except Exception:
                 pass
-            # Probe-Test
+            # Probe-Test mit tempfile — race-safe unter Unix.
             try:
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix=".png", prefix="gnom_sc_probe_", delete=False) as _probe_f:
+                    _probe_path = _probe_f.name
                 probe = subprocess.run(
-                    ["screencapture", "-x", "-C", "-t", "png", "/tmp/_sc_probe.png"],
+                    ["screencapture", "-x", "-C", "-t", "png", _probe_path],
                     capture_output=True, text=True, timeout=3,
                 )
                 probe_ok = (probe.returncode == 0
-                            and os.path.exists("/tmp/_sc_probe.png")
-                            and os.path.getsize("/tmp/_sc_probe.png") > 100)
+                            and os.path.exists(_probe_path)
+                            and os.path.getsize(_probe_path) > 100)
+                try:
+                    os.unlink(_probe_path)
+                except OSError:
+                    pass
             except Exception:
                 probe_ok = False
-            try: os.remove("/tmp/_sc_probe.png")
+            # Cleanup vom alten Probe-Path (legacy), falls vorhanden.
+            try: os.remove("/tmp/_sc_probe.png")  # noqa: S108
             except OSError: pass
             if not probe_ok:
                 ans = ans.replace(

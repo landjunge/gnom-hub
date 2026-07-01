@@ -14,11 +14,7 @@ read ``Config`` lazily, never at import time, so this is safe.
 """
 from __future__ import annotations
 
-import importlib
-import os
-import shutil
 import uuid
-from pathlib import Path
 
 import pytest
 
@@ -283,7 +279,7 @@ def test_offload_atomic_write(tmp_path):
 
     cfg = OffloadConfig(enabled=True, data_dir=str(tmp_path))
     off = ContextOffloader("atomic", cfg)
-    for i in range(20):
+    for _i in range(20):
         payload = uuid.uuid4().hex + ("y" * 200)
         entry = off.maybe_offload(tool_name="t", content=payload)
         assert entry is not None
@@ -356,7 +352,7 @@ def test_canvas_deterministic_for_same_input():
 
 def test_get_offloader_returns_same_instance():
     """get_offloader caches per session_id."""
-    from gnom_hub.memory.offload import get_offloader, OffloadConfig
+    from gnom_hub.memory.offload import OffloadConfig, get_offloader
 
     cfg = OffloadConfig(enabled=True)
     a = get_offloader("cache_test", cfg)
@@ -366,10 +362,10 @@ def test_get_offloader_returns_same_instance():
 
 def test_handle_offload_recall_in_process_actions():
     """[OFFLOAD_RECALL:<id>] tags in agent responses get replaced with content."""
+    import tempfile
+
     from gnom_hub.agents.actions.action_handlers import _handle_offload_recall
     from gnom_hub.memory.offload import ContextOffloader, OffloadConfig
-
-    import tempfile
     with tempfile.TemporaryDirectory() as td:
         cfg = OffloadConfig(enabled=True, data_dir=td)
         off = ContextOffloader("RecallTester", cfg)

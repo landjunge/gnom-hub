@@ -12,9 +12,7 @@
 # Frontend (showbox-buttons.js) ruft diese Presets beim Showbox-Open ab
 # und füllt leere Slots im 2x4-Grid mit kontextuellen Standard-Buttons.
 import json
-import os
 from pathlib import Path
-from typing import Optional, List, Dict, Any
 
 # Pfad zum showbox-Ordner — Repo-Root-relative
 PRESETS_DIR = Path(__file__).resolve().parents[3] / "showbox" / "buttons"
@@ -41,7 +39,7 @@ def _load_file(path: Path) -> dict:
         return {"_meta": {"name": path.stem, "error": str(e)}, "buttons": []}
 
 
-def categories() -> List[str]:
+def categories() -> list[str]:
     """Alle verfügbaren Preset-Kategorien (Dateinamen ohne .json)."""
     if not PRESETS_DIR.exists():
         return []
@@ -58,7 +56,7 @@ def all_buttons() -> dict:
     return {cat: get_preset(cat) for cat in categories()}
 
 
-def get_buttons_for_context(context: str = "default") -> List[dict]:
+def get_buttons_for_context(context: str = "default") -> list[dict]:
     """Wählt kontextuell passende Buttons aus den Presets.
 
     Strategie:

@@ -23,7 +23,6 @@ from playwright.sync_api import (
     Browser,
     BrowserContext,
     Page,
-    expect,
     sync_playwright,
 )
 
@@ -388,7 +387,7 @@ def test_mouse_drag_selects_text_in_input(page: Page) -> None:
     # Best-effort: akzeptiere entweder erfolgreiche Selektion ODER dass der Wert erhalten blieb
     assert val == "hello world this is draggable text for selection test", "Wert verändert durch Drag"
     if sel == 0:
-        print(f"  ⚠ Selektion nicht ausgelöst (Chromium-Headless-Limitation), aber Wert intakt")
+        print("  ⚠ Selektion nicht ausgelöst (Chromium-Headless-Limitation), aber Wert intakt")
     else:
         print(f"  ✓ Text-Selektion erfolgreich (selectionStart={sel})")
 
@@ -441,7 +440,7 @@ def test_send_chat_message_via_mouse_full_e2e(page: Page) -> None:
     assert test_msg in disp_txt, (
         f"User-Message nicht im Display:\n{disp_txt!r}\nerwartet enthielt: {test_msg!r}"
     )
-    print(f"  ✓ User-Message im Display nach Maus-Klick auf Send")
+    print("  ✓ User-Message im Display nach Maus-Klick auf Send")
 
     # 5. Screenshot für visuelle Verifikation
     shot = ARTIFACT_DIR / "e2e_send.png"

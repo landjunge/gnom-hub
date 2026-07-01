@@ -1,7 +1,7 @@
-import sqlite3
-import json
 import logging
-from gnom_hub.db.connection import get_db_conn, get_db_connection
+import sqlite3
+
+from gnom_hub.db.connection import get_db_conn
 
 logger = logging.getLogger(__name__)
 

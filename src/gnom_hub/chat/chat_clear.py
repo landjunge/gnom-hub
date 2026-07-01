@@ -2,9 +2,9 @@
 def handle_clear(q=""):
     q = q.strip().lower()
     if q in ("db", "database", "all"):
+        from gnom_hub.chat.chat_commands import _post_chat
         from gnom_hub.db.connection import get_db_connection
         from gnom_hub.db.passive_db import get_passive_conn, init_passive_db
-        from gnom_hub.chat.chat_commands import _post_chat
         try:
             # 1. Primary DB clean
             with get_db_connection() as conn:
@@ -43,7 +43,7 @@ def handle_clear(q=""):
     from gnom_hub.db import get_active_project; p = get_active_project()
     if q == "@projekt":
         from gnom_hub.db import clear_project_chat; clear_project_chat(p)
-        import os, shutil; from gnom_hub.core.config import Config; wd = os.path.join(str(Config.workspace_dir()), p)
+        import os; import shutil; from gnom_hub.core.config import Config; wd = os.path.join(str(Config.workspace_dir()), p)
         # Path traversal protection
         from pathlib import Path
         wd_resolved = Path(wd).resolve()

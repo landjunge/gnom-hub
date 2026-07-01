@@ -1,9 +1,7 @@
 """Test: _kill_orphans_by_cmdline killt Waisen, die nicht in PID-Dateien stehen."""
-import os
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import psutil
 
@@ -87,7 +85,7 @@ def test_orphans_kill_only_target_agent():
         time.sleep(0.5)
         assert not psutil.pid_exists(pid_gen), "generalAG sollte tot sein"
         assert psutil.pid_exists(pid_soul), "soulAG fälschlich gekillt"
-        print(f"OK: generalAG tot, soulAG lebt")
+        print("OK: generalAG tot, soulAG lebt")
     finally:
         if psutil.pid_exists(pid_soul):
             psutil.Process(pid_soul).terminate()

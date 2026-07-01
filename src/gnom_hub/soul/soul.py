@@ -1,15 +1,16 @@
 # soul.py — SoulAG Gedächtnis & Automatische Lerneinheit (v3)
-import json, threading, os, re, uuid, logging, time
+import json
+import logging
+import re
+import threading
+import time
+import uuid
 from datetime import datetime
+
 from gnom_hub.db import add_chat_message, get_active_project
 from gnom_hub.db.soul_repo import save_soul_fact_smart
 from gnom_hub.infrastructure.router.router import ask_router
-from gnom_hub.core.config import WORKSPACE_DIR
-from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
-from gnom_hub.soul.memory_layers import (
-    get_cache, get_passive_db, get_rules_db, get_coordination_db,
-    query_memory, save_fact_all_layers
-)
+from gnom_hub.soul.memory_layers import get_cache, query_memory, save_fact_all_layers
 
 _log = logging.getLogger("soul")
 
@@ -77,7 +78,7 @@ def _periodic_cleanup():
             if total == 0:
                 return
 
-            now_iso = datetime.now().isoformat()[:19]
+            datetime.now().isoformat()[:19]
             deleted = 0
 
             for prio, max_days in [("low", LOW_PRIO_MAX_AGE_DAYS),
@@ -149,7 +150,8 @@ class SoulAG:
         if Config.SUPERGNOM_MODE:
             return
         import hashlib
-        msg_hash = hashlib.md5(m.encode()).hexdigest()[:16]
+        # md5 als Non-Crypto-Hash für Message-Dedup ("seen before"-Tracking).
+        msg_hash = hashlib.md5(m.encode()).hexdigest()[:16]  # noqa: S324
         now = time.time()
         if not hasattr(self, '_last_seen_hash'):
             self._last_seen_hash = {}
@@ -175,19 +177,21 @@ class SoulAG:
 
     def _pulse_status(self):
         try:
-            import requests, os
+            import os
+
+            import requests
             port = os.environ.get('GNOM_HUB_PORT', '3002')
             requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=busy", timeout=2)
             def _back():
                 import time; time.sleep(2)
                 try: requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=online", timeout=2)
-                except: pass
+                except: pass  # noqa: E722 — Best-Effort Status-Update, Hub läuft vielleicht noch nicht
             threading.Thread(target=_back, daemon=True).start()
-        except:
+        except:  # noqa: E722 — Best-Effort Status-Update, wir wollen SoulAG nicht crashen
             pass
 
     def _val(self, k: str, v: str) -> bool:
-        kl = k.lower()
+        k.lower()
         if len(v.strip()) < MIN_VALUE_LENGTH:
             return False
         if BLOCKED_RE.search(v):
@@ -211,10 +215,8 @@ class SoulAG:
         SoulAG v7.0 — PRIMARY: Task-Formulierung aus User-Input.
         SECONDARY: Fakten-Extraktion (bleibt für Kontext-Building).
         """
-        import hashlib
         try:
             _periodic_cleanup()
-            msg_hash = hashlib.md5(m.encode()).hexdigest()[:8]
 
             # ── TASK-FORMULIERUNG (PRIMARY, nur User-Messages) ──
             if is_user:
@@ -325,6 +327,7 @@ class SoulAG:
         """Erstellt einen Task in soul_tasks DB. Gibt Task-ID zurück."""
         try:
             import uuid
+
             from gnom_hub.db.connection import get_db_conn
             task_id = f"soul_{uuid.uuid4().hex[:10]}"
             now = time.time()
@@ -484,7 +487,7 @@ class SoulAG:
 
     def emit_directive(self, target_agent: str, directive: str, ttl: int = 3600):
         from gnom_hub.soul.zwc_soul import add_directive as _add_dir
-        zwc = _add_dir(target_agent, directive, ttl)
+        _add_dir(target_agent, directive, ttl)
         _log.info("[Soul] Directive emitted: %s -> %s: %s", target_agent, directive[:60], ttl)
 
     def get_definitions(self) -> dict:
@@ -548,7 +551,7 @@ def handle_user_feedback(vote: str, comment: str):
             sender = msg.get("sender")
             if sender and sender.lower() not in ["user", "system", "generalag", "soulag", "watchdogag", "securityag"]:
                 from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
-                for ag_key, ag_def in AGENT_DEFINITIONS.items():
+                for _ag_key, ag_def in AGENT_DEFINITIONS.items():
                     if ag_def["name"].lower() == sender.lower():
                         active_agents.add(ag_def["name"])
         if not active_agents:

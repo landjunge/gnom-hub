@@ -1,7 +1,8 @@
-from fastapi import APIRouter
 import requests
-from gnom_hub.db.agent_repo import SQLiteAgentRepository
+from fastapi import APIRouter
+
 from gnom_hub.core.logger import get_logger
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
 
 router = APIRouter()
 logger = get_logger("nudge")

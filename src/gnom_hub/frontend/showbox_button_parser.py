@@ -37,7 +37,7 @@ Wird verwendet von:
 from __future__ import annotations
 
 import re
-from typing import List, Dict, Any
+from typing import Any
 
 MAX_BUTTONS = 8
 DEFAULT_ICON = "▶"
@@ -104,7 +104,7 @@ def _normalize_label(label: str, action: str) -> str:
     return action[:50] or "OK"
 
 
-def parse_inline_buttons(html: str) -> List[Dict[str, Any]]:
+def parse_inline_buttons(html: str) -> list[dict[str, Any]]:
     """Extrahiert Inline-Buttons aus Worker-HTML oder DOM-String.
 
     Args:
@@ -123,7 +123,7 @@ def parse_inline_buttons(html: str) -> List[Dict[str, Any]]:
     if not html or not isinstance(html, str):
         return []
 
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     seen_actions: set[str] = set()  # Deduplizierung nach Action
 
     for m in _BTN_INLINE_RE.finditer(html):
@@ -164,7 +164,7 @@ def parse_inline_buttons(html: str) -> List[Dict[str, Any]]:
     return out
 
 
-def parse_inline_buttons_with_format(html: str) -> Dict[str, List[Dict[str, Any]]]:
+def parse_inline_buttons_with_format(html: str) -> dict[str, list[dict[str, Any]]]:
     """Debug-Helper: Gibt extrahierte Buttons nach Format aufgeschlüsselt zurück.
 
     Nützlich für Diagnose-Tools (Welches Format dominiert? Driftet das JS-Modul?).
@@ -172,8 +172,8 @@ def parse_inline_buttons_with_format(html: str) -> Dict[str, List[Dict[str, Any]
     if not html:
         return {"format_a": [], "format_b": [], "merged": []}
 
-    out_a: List[Dict[str, Any]] = []
-    out_b: List[Dict[str, Any]] = []
+    out_a: list[dict[str, Any]] = []
+    out_b: list[dict[str, Any]] = []
     seen: set[str] = set()
 
     # Format A: explizit action= (nicht data-sb-action)

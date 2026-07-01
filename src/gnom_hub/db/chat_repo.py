@@ -5,10 +5,13 @@ This module contains two layers:
 2. Legacy functional API (re-exported from legacy_db.py for backward compatibility)
 """
 
-import json; import re; import time
-from datetime import datetime, timezone
-from uuid import UUID; from typing import List, Optional
+import json
+import re
+import time
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
+from uuid import UUID
+
 from gnom_hub.chat.entities import ChatMessage, FlexSoul
 
 # ── Agent-Filter (Stub + Rate-Limit + Worker-Sprech-Verbot) ──────────────
@@ -125,16 +128,18 @@ def _check_rate_limit(sender: str) -> tuple[bool, str]:
 
 class ChatRepository(ABC):
     @abstractmethod
-    def get_messages(self, agent_id: UUID, limit: int = 50) -> List[ChatMessage]: pass
+    def get_messages(self, agent_id: UUID, limit: int = 50) -> list[ChatMessage]: pass
     @abstractmethod
     def save_message(self, message: ChatMessage) -> ChatMessage: pass
     @abstractmethod
-    def get_flexsoul(self, agent_id: UUID) -> Optional[FlexSoul]: pass
+    def get_flexsoul(self, agent_id: UUID) -> FlexSoul | None: pass
     @abstractmethod
     def save_flexsoul(self, flexsoul: FlexSoul) -> FlexSoul: pass
     @abstractmethod
     def clear_history(self, agent_id: UUID) -> bool: pass
-from .connection import get_db_connection, Await, parse_dt
+from .connection import Await, get_db_connection, parse_dt
+
+
 def _row_to_msg(r) -> ChatMessage:
     role = "user" if r["sender"] == "user" else "assistant"
     try: aid = UUID(r["agent_id"])
@@ -219,7 +224,6 @@ class SQLiteChatRepository(ChatRepository):
 
 import sqlite3
 import uuid
-from datetime import timezone
 
 from gnom_hub.core.logger import get_logger
 from gnom_hub.db.connection import get_db_conn

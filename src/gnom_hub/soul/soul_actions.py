@@ -12,12 +12,18 @@ Beispiel-Use-Cases:
 - "Bei aktueller Bedrohung, sprich User direkt an" (SoulAG.speak)
 """
 import logging
+
+from gnom_hub.soul.agent_voices import (
+    SYSTEM as _SYSTEM,
+)
+from gnom_hub.soul.agent_voices import (
+    get_voice_for_agent,
+)
 from gnom_hub.soul.agent_voices import (
     list_voices as _list_voices,
-    get_voice_for_agent,
+)
+from gnom_hub.soul.agent_voices import (
     speak as _speak_raw,
-    ENGINE as _ENGINE,
-    SYSTEM as _SYSTEM,
 )
 
 _log = logging.getLogger(__name__)
@@ -57,7 +63,6 @@ def dispatch_agent(target_agent: str, task: str, sender: str = "SoulAG",
         return False
     try:
         from gnom_hub.chat.brainstorm.brainstorm import dispatch
-        from gnom_hub.core.config import DB_PATH
         from gnom_hub.db import get_active_project
         proj = context_id or get_active_project() or "default"
         # Erweiterte @mention mit SoulAG-Kontext

@@ -10,10 +10,12 @@ Zusätzliche Spezial-DBs:
   - coordination_db — Worker-Fähigkeiten + Job-History für GeneralAG
 """
 
-import sqlite3, threading, time, logging, os
-from pathlib import Path
+import logging
+import sqlite3
+import threading
+import time
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
 
 _log = logging.getLogger("soul.memory_layers")
 
@@ -69,7 +71,7 @@ class SoulCache:
         except Exception as e:
             _log.warning("[Cache] Warm-up fehlgeschlagen: %s", e)
 
-    def get(self, key: str) -> Optional[dict]:
+    def get(self, key: str) -> dict | None:
         with self._lock:
             return self._facts.get(key)
 
@@ -191,7 +193,7 @@ class PassiveDB:
             _log.warning("[PassiveDB] Search fehlgeschlagen: %s", e)
             return []
 
-    def get(self, key: str) -> Optional[dict]:
+    def get(self, key: str) -> dict | None:
         try:
             with sqlite3.connect(self._path) as conn:
                 conn.row_factory = sqlite3.Row
@@ -273,7 +275,7 @@ class RulesDB:
         except Exception as e:
             _log.warning("[RulesDB] Cache-Reload fehlgeschlagen: %s", e)
 
-    def check(self, rule_type: str, pattern: str, agent: str = "all") -> Optional[str]:
+    def check(self, rule_type: str, pattern: str, agent: str = "all") -> str | None:
         """
         Prüft ob eine Regel greift.
         Returns: 'allow', 'block', oder None (keine Regel)
@@ -331,7 +333,7 @@ def _bootstrap_rules(conn):
         ("block_path", ".env", "all", ".env geschützt", "system"),
         ("block_path", "run.sh", "all", "Startup-Script geschützt", "system"),
         ("allow_path", "gnom_workspace/", "all", "Workspace immer erlaubt", "system"),
-        ("allow_path", "/tmp/", "all", "Temp immer erlaubt", "system"),
+        ("allow_path", "/tmp/", "all", "Temp immer erlaubt", "system"),  # noqa: S108 — Pfad-String als Permission-Rule, keine File-Operation.
         ("allow_cmd", "pytest", "all", "Tests immer erlaubt", "system"),
         ("allow_cmd", "pip install", "all", "Package-Install erlaubt", "system"),
         ("allow_cmd", "npm install", "all", "NPM-Install erlaubt", "system"),
@@ -446,7 +448,7 @@ class CoordinationDB:
         except Exception as e:
             _log.warning("[CoordDB] record_job fehlgeschlagen: %s", e)
 
-    def get_best_worker(self, task_type: str) -> tuple[str, Optional[str]]:
+    def get_best_worker(self, task_type: str) -> tuple[str, str | None]:
         """Gibt preferred + fallback Worker für einen Task-Typ zurück."""
         try:
             with sqlite3.connect(self._path) as conn:

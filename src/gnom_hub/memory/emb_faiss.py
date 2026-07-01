@@ -1,5 +1,16 @@
 # emb_faiss.py — FAISS index and sentence embeddings logic helper
-import os, json, sqlite3, logging, numpy as np, faiss, threading; from sentence_transformers import SentenceTransformer; from gnom_hub.memory.emb_cache import get_emb; from gnom_hub.db.connection import get_db_connection
+import json
+import logging
+import os
+import sqlite3
+import threading
+
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+from gnom_hub.db.connection import get_db_connection
+from gnom_hub.memory.emb_cache import get_emb
 
 _models_cache = {}
 _models_lock = threading.Lock()
@@ -33,7 +44,7 @@ class FaissEmbeddingHelper:
         else:
             self.index = faiss.read_index(self.index_path)
             try:
-                with open(self.json_path, "r", encoding="utf-8") as f:
+                with open(self.json_path, encoding="utf-8") as f:
                     self.fact_ids = json.load(f)
             except Exception as e: logging.getLogger(__name__).error('Fehler beim Laden der fact_ids: %s', e)
     def _create(self):
@@ -78,7 +89,7 @@ class FaissEmbeddingHelper:
         
         distances, indices = self.index.search(get_emb(self.model, query), candidate_k)
         candidates = []
-        for dist, idx in zip(distances[0], indices[0]):
+        for dist, idx in zip(distances[0], indices[0], strict=False):
             if 0 <= idx < len(self.fact_ids):
                 candidates.append((float(dist), self.fact_ids[idx]))
 

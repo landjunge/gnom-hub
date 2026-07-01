@@ -1,10 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock
-import os
-import json
+from unittest.mock import MagicMock, patch
 
 from gnom_hub.agents.actions.action_handlers import process_actions
 from gnom_hub.chat.brainstorm.brainstorm_helpers import ask_llm
+
 
 class TestAgentSelfDiagnosis(unittest.TestCase):
     def test_gatekeeper_permission_denial(self):
@@ -12,7 +11,7 @@ class TestAgentSelfDiagnosis(unittest.TestCase):
         agent = {"name": "CoderAG", "role": "developer"}
         permissions = ["read"] # No "write"
         ans = "[WRITE: output.txt] test code [/WRITE]"
-        result = process_actions(ans, agent, permissions, False, "/tmp")
+        result = process_actions(ans, agent, permissions, False, "/tmp")  # noqa: S108 — Test-Fixture, /tmp nur als wd-Parameter.
         self.assertTrue("keine WRITE-Berechtigung" in result or "Schreibzugriff" in result)
 
     @patch("gnom_hub.soul.get_soul")

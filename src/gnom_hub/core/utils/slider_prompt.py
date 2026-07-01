@@ -6,7 +6,6 @@ Baut den System-Prompt aus Blöcken + Slider-Konfiguration zusammen.
 
 import json
 import os
-from typing import List
 
 LEVELS = ["minimal", "low", "medium", "high", "maximum"]
 
@@ -20,7 +19,7 @@ def load_slider_config(agent_name: str) -> dict:
     path = os.path.join(str(AGENTS_BASE), "agents", f"{agent_name}.json")
     if not os.path.exists(path):
         return {}
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -38,7 +37,7 @@ def build_slider_block(config: dict) -> str:
 def build_system_prompt(
     agent_identity_block: str,
     agent_name: str,
-    soul_facts: List[str],
+    soul_facts: list[str],
     agent_tools_block: str,
     agent_security_block: str,
 ) -> str:
@@ -80,6 +79,7 @@ def update_slider(agent_name: str, key: str, value: int) -> bool:
     config["prompt_blocks"][key] = _get_default_block(key, level)
 
     import tempfile
+
     from gnom_hub.core.config import CONFIG_DIR as AGENTS_BASE
     path = os.path.join(str(AGENTS_BASE), "agents", f"{agent_name}.json")
     tmp = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, dir=os.path.dirname(path))

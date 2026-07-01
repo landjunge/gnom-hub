@@ -1,13 +1,9 @@
-import pytest
-import sqlite3
-import json
 import os
-import tempfile
-import urllib.request
 import urllib.error
-from pathlib import Path
+import urllib.request
 from unittest.mock import patch
 
+import pytest
 
 # test_stress_50.py ist ein Live-Hub-Integrationstest (kein pytest-Test-File
 # mit test_*-Funktionen, sondern ein Top-Level-Script das beim Import gegen
@@ -170,9 +166,10 @@ def page(hub_url):
     Browser-Tests überspringen sich automatisch wenn der Hub nicht auf hub_url
     erreichbar ist. So laufen CI-Runs ohne laufenden Hub durch.
     """
-    from playwright.sync_api import sync_playwright
-    import urllib.request
     import urllib.error
+    import urllib.request
+
+    from playwright.sync_api import sync_playwright
     try:
         with urllib.request.urlopen(hub_url, timeout=2) as r:
             if r.status != 200:

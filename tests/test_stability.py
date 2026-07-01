@@ -1,11 +1,15 @@
-import time
 import json
-import pytest
-from gnom_hub.db.connection import get_db_connection
+import time
+
 from gnom_hub.agents.swarm.swarm_comms import (
-    dispatch_mention, recover_stuck_messages, MAX_QUEUE_DEPTH, get_agent_event,
-    find_best_agent_for, dispatch_by_capability
+    MAX_QUEUE_DEPTH,
+    dispatch_by_capability,
+    dispatch_mention,
+    find_best_agent_for,
+    recover_stuck_messages,
 )
+from gnom_hub.db.connection import get_db_connection
+
 
 def test_recover_stuck_messages(isolated_db):
     """Test that stuck processing messages are recovered or moved to DLQ."""
@@ -98,8 +102,8 @@ def test_backpressure_queue_limit(isolated_db):
 
 def test_callback_idempotency(isolated_db):
     """Test that callbacks are idempotent and do not duplicate coordinator signaling."""
-    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
-    from gnom_hub.agents.swarm.swarm_coordinator import register_tracker, WorkerCompletionTracker
+    from gnom_hub.agents.swarm.swarm_coordinator import WorkerCompletionTracker, register_tracker
+    from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
     
     # Set up a tracker
     tracker = WorkerCompletionTracker(["CoderAG"], timeout=10.0)
@@ -152,7 +156,8 @@ def test_prometheus_metrics(isolated_db):
 def test_dlq_management_api(isolated_db):
     """Test standard admin dead-letter endpoints (list, retry, delete, purge)."""
     from fastapi import Request
-    from gnom_hub.api.endpoints.admin import list_dead_letters, retry_dead_letter, discard_dead_letter, purge_dead_letters
+
+    from gnom_hub.api.endpoints.admin import discard_dead_letter, list_dead_letters, purge_dead_letters, retry_dead_letter
     
     # 1. Insert a dead letter
     conn = get_db_connection()
@@ -284,8 +289,8 @@ def test_capability_registry_routing(isolated_db):
 
 def test_prioritization_mapping(isolated_db):
     """Test that string priorities are mapped to integers and ordered correctly."""
-    from gnom_hub.core.config import DB_PATH
     from gnom_hub.agents.swarm.swarm_comms import fetch_next_message
+    from gnom_hub.core.config import DB_PATH
     
     conn = get_db_connection()
     try:
@@ -345,7 +350,7 @@ def test_agent_quarantine(isolated_db):
 
 def test_circuit_breaker(isolated_db):
     """Test that consecutive failures trip the circuit breaker and success resets it."""
-    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
+    from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
     
     conn = get_db_connection()
     try:
@@ -459,10 +464,11 @@ def seed_workflow_agents(conn):
 
 def test_linear_workflow_execution(isolated_db):
     """Test standard linear workflow A -> B."""
-    from gnom_hub.db.connection import get_db_connection
-    from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
-    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
     import json
+
+    from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
+    from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
+    from gnom_hub.db.connection import get_db_connection
 
     conn = get_db_connection()
     try:
@@ -549,10 +555,11 @@ def test_linear_workflow_execution(isolated_db):
 
 def test_parallel_workflow_execution(isolated_db):
     """Test parallel workflow execution where A (runs on CoderAG), B (runs on SecurityAG) -> C (runs on CoderAG)."""
-    from gnom_hub.db.connection import get_db_connection
-    from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
-    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
     import json
+
+    from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
+    from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
+    from gnom_hub.db.connection import get_db_connection
 
     conn = get_db_connection()
     try:
@@ -665,9 +672,9 @@ def test_parallel_workflow_execution(isolated_db):
 
 def test_workflow_failure_handling(isolated_db):
     """Test that a failed task aborts the workflow."""
-    from gnom_hub.db.connection import get_db_connection
     from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
-    from gnom_hub.api.endpoints.agents_status import swarm_complete, SwarmCompletePayload
+    from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
+    from gnom_hub.db.connection import get_db_connection
 
     conn = get_db_connection()
     try:
@@ -719,9 +726,10 @@ def test_workflow_failure_handling(isolated_db):
 
 def test_completed_at_telemetry(isolated_db):
     """Test that completed_at is set during ack/nack operations."""
-    from gnom_hub.db.connection import get_db_connection
-    from gnom_hub.agents.swarm.swarm_comms import ack_message, nack_message, recover_stuck_messages
     import time
+
+    from gnom_hub.agents.swarm.swarm_comms import ack_message, recover_stuck_messages
+    from gnom_hub.db.connection import get_db_connection
     
     conn = get_db_connection()
     try:
@@ -766,9 +774,10 @@ def test_completed_at_telemetry(isolated_db):
 
 def test_observability_metrics_api(isolated_db):
     """Test the observability metrics collection and endpoint API calculations."""
-    from gnom_hub.db.connection import get_db_connection
-    from gnom_hub.api.endpoints.observability import get_observability_metrics
     import time
+
+    from gnom_hub.api.endpoints.observability import get_observability_metrics
+    from gnom_hub.db.connection import get_db_connection
     
     conn = get_db_connection()
     try:
@@ -821,7 +830,8 @@ def test_observability_metrics_api(isolated_db):
 def test_fetch_next_message_atomicity(isolated_db):
     """Test that concurrent calls to fetch_next_message do not result in double delivery."""
     import threading
-    from gnom_hub.agents.swarm.swarm_comms import fetch_next_message, dispatch_mention
+
+    from gnom_hub.agents.swarm.swarm_comms import dispatch_mention, fetch_next_message
     from gnom_hub.core.config import DB_PATH
 
     conn = get_db_connection()

@@ -1,5 +1,6 @@
 # eo_wrap.py — Wraps raw LLM response into ExplainableOutput
 import logging
+
 from gnom_hub.agents.explainability.eo_builder import ExplainableOutputBuilder
 from gnom_hub.agents.explainability.eo_class import ExplainableOutput
 from gnom_hub.agents.explainability.eo_store import ExplainableOutputStore

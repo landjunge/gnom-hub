@@ -1,17 +1,21 @@
 import subprocess
 import time
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
-from pathlib import Path
-from gnom_hub.db.state_repo import SQLiteStateRepository
+
+from gnom_hub.chat.chat_commands_handlers import _post_chat
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
-from gnom_hub.chat.chat_commands_handlers import handle_clear, handle_status, handle_job, _post_chat
+from gnom_hub.db.state_repo import SQLiteStateRepository
 
 router = APIRouter()
 
 def handle_allclear(q):
     """Führt kompletten System-Cleanup durch und startet Hub neu."""
-    import requests, os
+    import os
+
+    import requests
     port = os.environ.get('GNOM_HUB_PORT', '3002')
     try:
         r = requests.post(f"http://127.0.0.1:{port}/api/admin/clean-all", timeout=10)
@@ -94,7 +98,7 @@ def handle_resume(q):
         _post_chat("System", "Fehler: Bitte gib einen Agenten-Namen an (z.B. @@resume CoderAG)")
         return {"status": "error", "message": "Missing agent name"}
     
-    from gnom_hub.db import set_agent_status, get_all_agents
+    from gnom_hub.db import get_all_agents, set_agent_status
     agents = get_all_agents()
     agent = next((a for a in agents if a["name"].lower() == agent_name.lower()), None)
     if not agent:
@@ -297,7 +301,7 @@ def handle_confirmations(q):
 
 
 def handle_spass(q):
-    from gnom_hub.db import get_state_value, set_state_value, get_all_agents
+    from gnom_hub.db import get_all_agents, get_state_value, set_state_value
     agents = get_all_agents()
     settings = get_state_value("agent_settings", {})
     
@@ -347,7 +351,7 @@ def handle_spass(q):
 
 
 def handle_blockade(q):
-    from gnom_hub.db import get_state_value, set_state_value, set_agent_status
+    from gnom_hub.db import get_state_value, set_agent_status, set_state_value
     val = q.strip().lower()
     if val in ("off", "false", "0", "disable", "aus"):
         set_state_value("enable_confirmations", False)

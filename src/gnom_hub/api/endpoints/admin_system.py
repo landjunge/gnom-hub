@@ -1,13 +1,16 @@
-import hmac, os, threading, subprocess, logging
-from typing import List
-from fastapi import APIRouter, Request
+import hmac
+import logging
+import os
+import subprocess
+import threading
+
 import psutil
-from gnom_hub.db.agent_repo import SQLiteAgentRepository
-from gnom_hub.db.chat_repo import SQLiteChatRepository
-from gnom_hub.db.state_repo import SQLiteStateRepository
+from fastapi import APIRouter, Request
+
 from gnom_hub.core.security.hmac_signer import _get_or_create_secret
-from gnom_hub.infrastructure.process.process_manager import _kill_proc, AGENTS
-from gnom_hub.core.constants import ADMIN_SYSTEM_PKILL_TIMEOUT
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.state_repo import SQLiteStateRepository
+from gnom_hub.infrastructure.process.process_manager import AGENTS, _kill_proc
 
 router = APIRouter(prefix="/api/admin")
 log = logging.getLogger(__name__)
@@ -21,7 +24,10 @@ def cleanup_offline():
 
 @router.get("/health")
 def health():
-    import os, time, sqlite3
+    import os
+    import sqlite3
+    import time
+
     from gnom_hub.core.config import DB_PATH
     # DB-Integrität prüfen
     db_ok = False
@@ -47,6 +53,7 @@ def health():
     chat_count = 0
     try:
         import sqlite3
+
         from gnom_hub.core.config import DB_PATH
         conn = sqlite3.connect(str(DB_PATH))
         chat_count = conn.execute("SELECT COUNT(*) FROM chat").fetchone()[0]
@@ -110,7 +117,7 @@ def nuke_restart(request: Request):
     return {"status": "nuked", "msg": f"{killed} Prozesse gekillt, Hub startet neu in 1.5s"}
 
 
-def _kill_processes_by_name(names: List[str], exclude_pids: list = None) -> int:
+def _kill_processes_by_name(names: list[str], exclude_pids: list = None) -> int:
     killed = 0
     exclude_pids = exclude_pids or []
     for proc in psutil.process_iter(["pid", "name", "cmdline"]):

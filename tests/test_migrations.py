@@ -20,8 +20,6 @@ import os
 import sqlite3
 from pathlib import Path
 
-import pytest
-
 # Ensure tests don't accidentally touch the user's live DB.
 os.environ["GNOM_HUB_ENV"] = "test"
 os.environ["TESTING"] = "true"
@@ -32,7 +30,6 @@ from gnom_hub.db.migrations import (  # noqa: E402  (after env-var set)
     get_migration_status,
     list_migration_files,
 )
-
 
 # Tables that should exist after a clean run of every migration.
 EXPECTED_TABLES = {

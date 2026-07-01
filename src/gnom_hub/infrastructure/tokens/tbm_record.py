@@ -2,8 +2,10 @@
 import logging
 import uuid
 from datetime import datetime, timezone
-from gnom_hub.db import get_db_conn, add_chat_message
+
+from gnom_hub.db import add_chat_message, get_db_conn
 from gnom_hub.infrastructure.tokens.tbm_pricing import MODEL_PRICING
+
 
 async def record_operation(tbm, op_id: str, agent: str, op_type: str, input_tok: int, output_tok: int, model: str) -> float:
     pricing = MODEL_PRICING.get(model.lower(), {"input": 0.002, "output": 0.002})

@@ -1,5 +1,7 @@
 from pathlib import Path
+
 from .workspace_entities import WorkspacePath
+
 
 def is_path_allowed(base_path: Path, target_path: Path) -> bool:
     """Prüft, ob ein Pfad innerhalb des erlaubten Workspace liegt."""

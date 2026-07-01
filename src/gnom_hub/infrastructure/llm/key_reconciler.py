@@ -6,6 +6,7 @@ Wird vom Hub-Main gehookt (siehe infrastructure/hub_app.py).
 """
 import logging
 from pathlib import Path
+
 from gnom_hub.db.state_repo import SQLiteStateRepository
 
 log = logging.getLogger(__name__)

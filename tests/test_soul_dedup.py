@@ -18,11 +18,9 @@ import pytest
 
 from gnom_hub.db.connection import get_db_conn
 from gnom_hub.db.soul_repo import (
+    _jaccard,
     _normalize_key,
     _strip_version_suffix,
-    _tokenize,
-    _jaccard,
-    _prio_rank,
     save_soul_fact,
     save_soul_fact_smart,
 )

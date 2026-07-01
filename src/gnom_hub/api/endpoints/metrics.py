@@ -1,8 +1,13 @@
 # metrics.py — FastAPI Router for agent metrics and audit logs
-from fastapi import APIRouter; from pydantic import BaseModel
-from gnom_hub.infrastructure.monitoring import get_agent_metrics
+import sqlite3
+
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+from gnom_hub.db import get_state_value
 from gnom_hub.db.connection import get_db_conn
-from gnom_hub.db import get_state_value; import sqlite3
+from gnom_hub.infrastructure.monitoring import get_agent_metrics
+
 router = APIRouter()
 class FeedbackMsg(BaseModel): vote: str; comment: str
 @router.get("/api/metrics")
@@ -69,9 +74,10 @@ def get_security_audit_log(
 
 @router.get("/metrics")
 def prometheus_metrics():
-    from fastapi.responses import PlainTextResponse
     import time
     from datetime import datetime
+
+    from fastapi.responses import PlainTextResponse
     
     lines = []
     with get_db_conn() as conn:

@@ -1,8 +1,10 @@
 import hmac
 import os
+
 from fastapi import APIRouter, Depends, HTTPException, Request
-from gnom_hub.core.security.hmac_signer import _get_or_create_secret
+
 from gnom_hub.api.dependencies import get_admin_service
+from gnom_hub.core.security.hmac_signer import _get_or_create_secret
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -41,7 +43,7 @@ async def nuke_database(request: Request, _=Depends(verify_admin), service=Depen
         service.nuke()
         return {"status": "ok", "message": "Datenbank wurde komplett zurückgesetzt"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Nuke fehlgeschlagen: {e}")
+        raise HTTPException(status_code=500, detail=f"Nuke fehlgeschlagen: {e}") from e
 
 
 @router.post("/clean")
@@ -51,7 +53,7 @@ async def clean_workspace(request: Request, _=Depends(verify_admin), service=Dep
         service.clean()
         return {"status": "ok", "message": "Workspace temporäre Dateien wurden bereinigt"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Clean fehlgeschlagen: {e}")
+        raise HTTPException(status_code=500, detail=f"Clean fehlgeschlagen: {e}") from e
 
 
 @router.get("/dead-letter")
@@ -72,8 +74,8 @@ def list_dead_letters(request: Request, _=Depends(verify_admin)):
 @router.post("/dead-letter/{msg_id}/retry")
 def retry_dead_letter(msg_id: int, request: Request, _=Depends(verify_admin)):
     """Setzt eine DLQ-Nachricht zurück auf 'pending' für manuellen Retry."""
-    from gnom_hub.db.connection import get_db_conn
     from gnom_hub.agents.swarm.swarm_comms import notify_agent
+    from gnom_hub.db.connection import get_db_conn
 
     with get_db_conn() as db:
         affected = db.execute("""

@@ -1,4 +1,14 @@
-import asyncio, os, logging, threading, requests; from gnom_hub.soul import get_soul; from gnom_hub.infrastructure.router.router import ask_router
+import asyncio
+import logging
+import os
+import threading
+
+import requests
+
+from gnom_hub.db.connection import get_db_conn
+from gnom_hub.infrastructure.router.router import ask_router
+from gnom_hub.soul import get_soul
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
 class BaseAgent:
@@ -55,10 +65,11 @@ class BaseAgent:
             while len(self._seen_ids) > self._seen_max:
                 self._seen_ids.popitem(last=False)
     async def run(self):
-        from gnom_hub.agents.swarm.swarm_comms import fetch_next_message, ack_message, nack_message
-        from gnom_hub.core.config import DB_PATH
-        import time
         import functools
+        import time
+
+        from gnom_hub.agents.swarm.swarm_comms import ack_message, fetch_next_message, nack_message
+        from gnom_hub.core.config import DB_PATH
 
         async def _to_thread(func, *args, **kwargs):
             loop = asyncio.get_running_loop()
@@ -103,7 +114,6 @@ class BaseAgent:
                 except Exception:
                     pass
 
-                from gnom_hub.soul import soul_instance
 
                 # ── Context-Offload: Mermaid-Canvas injizieren ────────────
                 # Wenn offload aktiv ist, wird die Mermaid-Task-Canvas aus
@@ -116,11 +126,13 @@ class BaseAgent:
                 try:
                     from gnom_hub.core.config import Config as _Cfg
                     if getattr(_Cfg, "OFFLOAD_ENABLED", False):
+                        from gnom_hub.memory.mermaid_canvas import build_canvas as _build_canvas
                         from gnom_hub.memory.offload import (
-                            get_offloader as _get_offloader,
                             OffloadConfig as _OffCfg,
                         )
-                        from gnom_hub.memory.mermaid_canvas import build_canvas as _build_canvas
+                        from gnom_hub.memory.offload import (
+                            get_offloader as _get_offloader,
+                        )
                         _session_id = str(msg.get("context_id") or self.n)
                         _ocfg = _OffCfg(
                             enabled=True,
@@ -160,7 +172,6 @@ class BaseAgent:
                     if getattr(_DetCfg, "ROUTING_DETERMINISTIC_MODE", False):
                         from gnom_hub.agents.routing import (
                             resolve_capability as _det_resolve,
-                            build_fallback_chain as _det_chain,
                         )
                         # Verfügbare Capabilities aus der DB laden
                         _avail_caps: list[str] = []
@@ -289,7 +300,7 @@ class BaseAgent:
                 })
                 # Job-Erfolg in CoordinationDB + ContextDB aufzeichnen
                 try:
-                    from gnom_hub.soul.memory_layers import get_coordination_db, get_context_db
+                    from gnom_hub.soul.memory_layers import get_context_db, get_coordination_db
                     get_coordination_db().record_job(
                         worker=self.n,
                         task_summary=text[:100],
@@ -313,7 +324,7 @@ class BaseAgent:
                 })
                 # Job-Fehler in CoordinationDB + ContextDB aufzeichnen
                 try:
-                    from gnom_hub.soul.memory_layers import get_coordination_db, get_context_db
+                    from gnom_hub.soul.memory_layers import get_context_db, get_coordination_db
                     _task_text = text[:100] if "text" in dir() else "unknown"
                     get_coordination_db().record_job(
                         worker=self.n,

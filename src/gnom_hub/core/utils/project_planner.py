@@ -1,6 +1,8 @@
 # project_planner.py — Critical path analysis and lookahead execution coordinator
-import asyncio, logging
-from typing import List, Literal, Dict
+import asyncio
+import logging
+from typing import Literal
+
 
 class Step:
     def __init__(
@@ -8,7 +10,7 @@ class Step:
         id: str,
         description: str,
         assigned_agent: str,
-        depends_on: List[str],
+        depends_on: list[str],
         estimated_duration: int,
         criticality: Literal["blocker", "important", "nice_to_have"]
     ):
@@ -23,23 +25,23 @@ class Step:
         return f"<Step id={self.id} agent={self.assigned_agent} duration={self.estimated_duration}>"
 
 class ProjectPlan:
-    def __init__(self, id: str, title: str, steps: List[Step]):
+    def __init__(self, id: str, title: str, steps: list[Step]):
         self.id = id
         self.title = title
         self.steps = steps
         self.lookahead_prepped = set()
         self.executed_steps = set()
 
-    def calculate_critical_path(self) -> List[Step]:
+    def calculate_critical_path(self) -> list[Step]:
         """Calculates the critical path (longest duration path of dependent steps)."""
         if not self.steps:
             return []
 
         # Map steps by their ID for easy lookup
-        step_map: Dict[str, Step] = {s.id: s for s in self.steps}
+        step_map: dict[str, Step] = {s.id: s for s in self.steps}
 
         # Memoization dictionary for storing (longest_duration, path_list)
-        memo: Dict[str, tuple] = {}
+        memo: dict[str, tuple] = {}
 
         def get_longest_path(step_id: str) -> tuple:
             if step_id in memo:

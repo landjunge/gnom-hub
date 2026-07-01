@@ -9,7 +9,6 @@ The conftest.py setup_db fixture provides isolated SQLite per test.
 """
 import pytest
 
-
 # ── WatchdogAG: now only `read`, no more `run` or `godmode` ───────────────
 
 class TestWatchdogCannotExecute:
@@ -21,7 +20,7 @@ class TestWatchdogCannotExecute:
         ans = "[SHELL: ls -la]"
         agent = {"name": "WatchdogAG", "role": "watchdog"}
         perms = ["read"]  # post-refactor: only read
-        wd = "/tmp"
+        wd = "/tmp"  # noqa: S108 — Test-Fixture.
         result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd=wd)
         assert "WatchdogAG" in result, f"Expected agent name in error, got: {result}"
         assert "keine SHELL-Berechtigung" in result, (
@@ -34,7 +33,7 @@ class TestWatchdogCannotExecute:
         ans = "[WRITE: /tmp/foo.txt]hello[/WRITE]"
         agent = {"name": "WatchdogAG", "role": "watchdog"}
         perms = ["read"]  # post-refactor: only read
-        wd = "/tmp"
+        wd = "/tmp"  # noqa: S108 — Test-Fixture.
         result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd=wd)
         assert "WatchdogAG" in result
         assert "keine Schreibberechtigung" in result
@@ -50,7 +49,7 @@ class TestEditorCannotRun:
         ans = "[SHELL: pytest -v]"
         agent = {"name": "EditorAG", "role": "editor"}
         perms = ["read", "write"]  # post-refactor: read + write only
-        wd = "/tmp"
+        wd = "/tmp"  # noqa: S108 — Test-Fixture.
         result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd=wd)
         assert "EditorAG" in result
         assert "keine SHELL-Berechtigung" in result
@@ -89,7 +88,9 @@ class TestSecurityAuditHookFires:
     action by SecurityAG must produce a security_audit_log entry."""
 
     def test_security_write_creates_audit_entry(self):
-        import os, tempfile, sqlite3
+        import sqlite3
+        import tempfile
+
         from gnom_hub.agents.actions import action_handlers
         # Setup: isolated DB in temp dir
         with tempfile.TemporaryDirectory() as wd:
@@ -104,7 +105,7 @@ class TestSecurityAuditHookFires:
             try:
                 from gnom_hub.db import get_db_conn
                 with get_db_conn() as conn:
-                    rows = conn.execute(
+                    conn.execute(
                         "SELECT event_type, details FROM security_audit_log "
                         "WHERE agent = ? ORDER BY id DESC LIMIT 5",
                         ("SecurityAG",),

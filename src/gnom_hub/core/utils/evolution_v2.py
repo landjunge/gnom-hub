@@ -1,10 +1,11 @@
 # evolution_v2.py — Prompt Versioning & Auto-Rollback
-import json
 import hashlib
+import json
 from datetime import datetime, timezone
-from typing import List, Optional
-from gnom_hub.db.connection import get_db_conn
+
 from gnom_hub.db import add_chat_message, log_audit_event
+from gnom_hub.db.connection import get_db_conn
+
 
 class PromptVersion:
     def __init__(
@@ -12,12 +13,12 @@ class PromptVersion:
         id: str,
         agent: str,
         base_prompt: str,
-        modifications: List[str],
+        modifications: list[str],
         performance_score: float,
         created_at: datetime,
         feedback_count: int,
         is_active: bool = False,
-        parent_id: Optional[str] = None
+        parent_id: str | None = None
     ):
         self.id = id
         self.agent = agent
@@ -56,7 +57,7 @@ def _row_to_version(row) -> PromptVersion:
         parent_id=row["parent_id"]
     )
 
-def get_active_version(agent_name: str) -> Optional[PromptVersion]:
+def get_active_version(agent_name: str) -> PromptVersion | None:
     try:
         with get_db_conn() as conn:
             row = conn.execute(
@@ -70,7 +71,7 @@ def get_active_version(agent_name: str) -> Optional[PromptVersion]:
         logging.getLogger("db").error(f"[EvolutionV2] Error getting active version: {e}")
     return None
 
-def get_version_by_id(version_id: str) -> Optional[PromptVersion]:
+def get_version_by_id(version_id: str) -> PromptVersion | None:
     try:
         with get_db_conn() as conn:
             row = conn.execute(
@@ -84,7 +85,7 @@ def get_version_by_id(version_id: str) -> Optional[PromptVersion]:
         logging.getLogger("db").error(f"[EvolutionV2] Error getting version by ID: {e}")
     return None
 
-def create_version(agent_name: str, new_rule: str, base_prompt: Optional[str] = None) -> PromptVersion:
+def create_version(agent_name: str, new_rule: str, base_prompt: str | None = None) -> PromptVersion:
     # 1. Get current active version (parent)
     parent = get_active_version(agent_name)
     
@@ -188,7 +189,7 @@ def use_version(version: PromptVersion):
         import logging
         logging.getLogger("db").error(f"[EvolutionV2] Error switching version: {e}")
 
-def update_version_score(agent_name: str, vote: str) -> Optional[PromptVersion]:
+def update_version_score(agent_name: str, vote: str) -> PromptVersion | None:
     version = get_active_version(agent_name)
     if not version:
         return None

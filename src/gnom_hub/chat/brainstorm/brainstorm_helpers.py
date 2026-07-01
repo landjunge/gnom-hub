@@ -1,4 +1,10 @@
-import os, uuid; from datetime import datetime, timezone; from gnom_hub.db import add_chat_message, get_chat_history, get_active_project; from gnom_hub.infrastructure.router.router import ask_router; from gnom_hub.core.config import WORKSPACE_DIR
+import os
+
+from gnom_hub.core.config import WORKSPACE_DIR
+from gnom_hub.db import add_chat_message, get_active_project, get_chat_history
+from gnom_hub.infrastructure.router.router import ask_router
+
+
 def get_workspace_dir():
     d = os.path.join(str(WORKSPACE_DIR), get_active_project()); os.makedirs(d, exist_ok=True); return d
 def post(sender, content, depth=0):
@@ -7,7 +13,10 @@ def get_ctx():
     from gnom_hub.soul.zwc_soul import strip_zwc; c = list(reversed(get_chat_history(get_active_project(), limit=8)))
     return "\n".join(f"[{m.get('sender','?')}] {strip_zwc(m['content'])[:1000]}" for m in c)
 def ask_llm(ag, q, ctx, bs_mode=False, depth=0):
-    from gnom_hub.agents.tool_registry import format_tools_prompt; from gnom_hub.soul import get_soul; from gnom_hub.agents.actions.action_handlers import process_actions; from gnom_hub.db import set_agent_status, update_agent_active_job
+    from gnom_hub.agents.actions.action_handlers import process_actions
+    from gnom_hub.agents.tool_registry import format_tools_prompt
+    from gnom_hub.db import set_agent_status, update_agent_active_job
+    from gnom_hub.soul import get_soul
     soul = get_soul(ag["name"]) or {"role": ag.get('description', ''), "permissions": ["read"]}
     sys = format_tools_prompt(soul, ag["name"])
     from gnom_hub.soul import soul_instance
@@ -24,7 +33,7 @@ def ask_llm(ag, q, ctx, bs_mode=False, depth=0):
     set_agent_status(ag["name"], "busy")
     try:
         eo = ask_router(u_msg, sys, agent_name=ag.get("name", ""), depth=depth)
-        if not eo.content: return post(ag["name"], f"[Fehler: Keine Antwort vom LLM]", depth=depth)
+        if not eo.content: return post(ag["name"], "[Fehler: Keine Antwort vom LLM]", depth=depth)
         processed = process_actions(eo.content, ag, soul.get("permissions", []), bs_mode, wd)
         post(ag["name"], processed, depth=depth)
     except Exception as e: post(ag["name"], f"[Fehler: {str(e)[:80]}]", depth=depth)

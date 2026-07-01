@@ -3,9 +3,7 @@
 DB-Wert soll Vorrang vor routing.txt haben. Wenn die DB einen Eintrag
 für einen Agenten hat, wird routing.txt ignoriert.
 """
-import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 def test_db_config_wins_over_routing_txt(tmp_path):
@@ -14,7 +12,6 @@ def test_db_config_wins_over_routing_txt(tmp_path):
     Setup: routing.txt sagt 'minimax', DB sagt 'deepseek'.
     Erwartung: ask_router ruft _try_keys('deepseek', ...) auf, NICHT 'minimax'.
     """
-    from gnom_hub.core.config import PROJECT_ROOT
     routing_file = tmp_path / "config"
     routing_file.mkdir()
     (routing_file / "routing.txt").write_text("soulag = minimax | MiniMax-M3\n")

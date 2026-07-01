@@ -1,6 +1,7 @@
 """Tests for the unified connection layer."""
 import sqlite3
-from gnom_hub.db.connection import get_db_conn, get_db_connection
+
+from gnom_hub.db.connection import get_db_conn
 
 
 def test_get_db_conn_returns_connection(isolated_db):

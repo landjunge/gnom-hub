@@ -1,4 +1,7 @@
-import hmac, hashlib, os
+import hashlib
+import hmac
+import os
+
 from gnom_hub.core.config import DATA_DIR
 
 SECRET_FILE = DATA_DIR / ".hub_secret"
@@ -10,7 +13,7 @@ def _get_or_create_secret() -> bytes:
     return SECRET_FILE.read_bytes()
 
 def generate_signature(agent: str, content: str) -> str:
-    return hmac.new(_get_or_create_secret(), f"{agent}:{content}".encode('utf-8'), hashlib.sha256).hexdigest()
+    return hmac.new(_get_or_create_secret(), f"{agent}:{content}".encode(), hashlib.sha256).hexdigest()
 
 def verify_signature(agent: str, content: str, signature: str) -> bool:
     """Timing-safe Verifizierung einer HMAC-Signatur."""

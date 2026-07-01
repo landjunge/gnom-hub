@@ -2,6 +2,7 @@
 from gnom_hub.db.connection import get_db_conn
 from gnom_hub.memory.smr.smr_math import cosine_similarity
 
+
 def retrieve_similar_sync(query: str, top_k: int = 8, agent_name: str = None, raw: bool = False) -> list:
     try:
         with get_db_conn() as conn:

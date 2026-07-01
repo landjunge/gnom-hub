@@ -10,11 +10,8 @@ Abdeckung für die 3 Fixes vom Permissions-Audit:
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -171,7 +168,7 @@ class TestHighRiskExecPaths:
         # `rm -rf <config-path>` → Args haben rm, -rf, dann der Pfad
         args = ["rm", "-rf", config_path]
         assert _is_high_risk_exec("rm", args) is True, (
-            f"rm -rf on config/ should be high-risk, got False"
+            "rm -rf on config/ should be high-risk, got False"
         )
 
     def test_rm_rf_on_scripts_is_high_risk(self, fake_workspace):

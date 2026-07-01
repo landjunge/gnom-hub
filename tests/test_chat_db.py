@@ -1,8 +1,5 @@
 """Tests for chat message operations."""
-from gnom_hub.db.legacy_db import (
-    add_chat_message, get_chat_history, get_chat_count,
-    clear_project_chat, delete_project_completely
-)
+from gnom_hub.db.legacy_db import add_chat_message, delete_project_completely, get_chat_count, get_chat_history
 
 
 def test_add_chat_message(isolated_db):

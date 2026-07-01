@@ -1,4 +1,10 @@
-import os, sys, uvicorn, signal, time
+import os
+import signal
+import sys
+import time
+
+import uvicorn
+
 
 def main():
     from gnom_hub.infrastructure.logging_setup import setup_logging
@@ -14,7 +20,7 @@ def main():
     # Verhindert dass Provider-Keys (z.B. MiniMax) "verschwinden" weil ein
     # Side-Effect (z.B. service-card inline-key save) die DB überschreibt.
     try:
-        from gnom_hub.infrastructure.llm.key_reconciler import reconcile_keys_on_startup, force_minimax_routing
+        from gnom_hub.infrastructure.llm.key_reconciler import force_minimax_routing, reconcile_keys_on_startup
         stats = reconcile_keys_on_startup()
         if stats.get("added", 0) > 0:
             print(f"[Startup] Key-Reconcile: {stats['added']} key(s) merged from Desktop → DB")
@@ -75,8 +81,8 @@ def _total_kill_pre_start() -> int:
                 for pid in r.stdout.split():
                     if pid.strip().isdigit():
                         try: os.kill(int(pid), signal.SIGKILL)
-                        except: pass
-            except: pass
+                        except: pass  # noqa: E722 — process kann schon tot sein, kein Recovery nötig
+            except: pass  # noqa: E722 — defensive cleanup, wir wollen weiterlaufen auch wenn lsof/ps fehlt
 
         print(f"[Pre-Start] Total-Kill: {len(pids)} Prozess(e) geräumt")
         return len(pids)

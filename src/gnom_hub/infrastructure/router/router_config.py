@@ -1,5 +1,7 @@
 import os
+
 from dotenv import load_dotenv
+
 from gnom_hub.core.config import CONFIG_DIR
 
 _env = CONFIG_DIR / ".env"

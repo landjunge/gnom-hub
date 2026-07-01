@@ -1,7 +1,10 @@
 import logging
+
 from fastapi import APIRouter
 from pydantic import BaseModel
+
 from gnom_hub.db.state_repo import SQLiteStateRepository
+
 _log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin")
@@ -15,12 +18,19 @@ class BakeRequest(BaseModel):
     preset_selections: dict = {}  # {agent_name: preset_slug} per-agent selection
 
 # Async Bake — Background Jobs
-import threading, uuid, time as _time
+import threading
+import uuid
+
 _bake_jobs = {}
 
 def _do_bake(job_id: str, req: 'BakeRequest'):
-    import os, json, logging, stat, tempfile
-    from gnom_hub.core.config import PROJECT_ROOT, CONFIG_DIR
+    import json
+    import logging
+    import os
+    import stat
+    import tempfile
+
+    from gnom_hub.core.config import CONFIG_DIR
     _log = logging.getLogger(__name__)
     try:
         if req.preset_file:
@@ -30,8 +40,9 @@ def _do_bake(job_id: str, req: 'BakeRequest'):
                 from gnom_hub.db import set_state_value
                 if data.get("agent_settings"):
                     set_state_value("agent_settings", data["agent_settings"])
-        from gnom_hub.core.utils.compiler import bake_supergnom
         from pathlib import Path
+
+        from gnom_hub.core.utils.compiler import bake_supergnom
         path = bake_supergnom(req.name, req.template, req.selected_models, req.preset_selections)
         dist_path = Path(path)
         if req.embed_api_key:
@@ -114,11 +125,13 @@ def bake_status(job_id: str):
 def clean_all():
     """Alles zurücksetzen: DB, Tokens, Workspace, Logs. Dann Neustart.
     Erstellt ZUERST ein unveränderliches Backup (cleanAll-Trigger)."""
-    import os, shutil, subprocess
+    import os
+    import subprocess
     from pathlib import Path
+
+    from gnom_hub.core.config import CONFIG_DIR, PROJECT_ROOT
     from gnom_hub.db.connection import get_db_connection
     from gnom_hub.db.passive_db import get_passive_conn
-    from gnom_hub.core.config import CONFIG_DIR, WORKSPACE_DIR, PROJECT_ROOT
 
     # ── 1. Backup ZUERST (nie überschreiben, atomar) ─────────
     backup_script = Path(PROJECT_ROOT) / "scripts" / "backup_all_dbs.sh"
@@ -154,10 +167,11 @@ def clean_all():
     # Alle nicht-essentiellen Tabellen leeren.
     # soul_memory wird BEHALTEN — ist das Lern-Gedächtnis von Gnom.
     # Soll explizit via eigenem Endpoint oder manuell gelöscht werden.
+    # Tabellenamen stammen aus hardcoded Liste oben — kein User-Input.
     for tbl in ['chat','audit_log','security_audit_log','prompt_versions','capabilities','showbox_presentations',
                 'explainable_outputs','agent_messages','swarm_callbacks','agent_capabilities',
                 'workflows','workflow_tasks','token_budget_logs','token_budget_alerts']:
-        try: conn.execute(f'DELETE FROM {tbl}')
+        try: conn.execute(f'DELETE FROM {tbl}')  # noqa: S608
         except Exception as e:
             _log.warning("Cleanup: Tabelle %s nicht leerbar: %s", tbl, e)
     # State reset
@@ -176,7 +190,7 @@ def clean_all():
     try:
         pconn = get_passive_conn()
         for t in pconn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall():
-            try: pconn.execute(f'DELETE FROM {t["name"]}')
+            try: pconn.execute(f'DELETE FROM {t["name"]}')  # noqa: S608 — Tabellennamen aus sqlite_master, kein User-Input.
             except Exception as e:
                 _log.warning("Passive DB: Tabelle %s nicht leerbar: %s", t["name"], e)
         pconn.commit()
@@ -195,7 +209,7 @@ def clean_all():
 
     # Neustart in 3s (nachdem die Antwort zurück ist)
     import threading
-    import os
+
     from gnom_hub.api.endpoints.admin_system import _delayed_restart
     my_pid = os.getpid()
     threading.Timer(3.0, _delayed_restart, args=[my_pid]).start()
@@ -213,8 +227,9 @@ def create_backup():
 
     Trigger label: 'manual'. Does NOT touch any DB tables or workspace.
     """
-    import os, subprocess
+    import subprocess
     from pathlib import Path
+
     from gnom_hub.core.config import PROJECT_ROOT
 
     backup_script = Path(PROJECT_ROOT) / "scripts" / "backup_all_dbs.sh"
@@ -286,7 +301,9 @@ def clean_workspace(payload: dict = None):
 
     Body: {"confirm": "DELETE"}
     """
-    import os, shutil
+    import os
+    import shutil
+
     from gnom_hub.core.config import WORKSPACE_DIR
 
     payload = payload or {}

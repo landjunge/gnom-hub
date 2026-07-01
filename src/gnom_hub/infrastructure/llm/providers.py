@@ -269,16 +269,6 @@ PROVIDERS = {
         "key_prefixes": ["AIzaSy"],
         "label_patterns": ["google_search", "google-search", "cse"],
     },
-    "tavily": {
-        "id": "tavily",
-        "display_name": "Tavily Search",
-        "caps": ["web"],
-        "test_url": "https://api.tavily.com/search",
-        "test_method": "POST",
-        "test_headers": {},
-        "key_prefixes": ["tvly-"],
-        "label_patterns": ["tavily"],
-    },
     "serper": {
         "id": "serper",
         "display_name": "Serper.dev",
@@ -512,9 +502,9 @@ def detect_provider_from_key(key: str) -> str | None:
 
 def detect_provider_from_label(label: str) -> str | None:
     """Auto-detect provider based on env-var label (e.g. OPENAI_API_KEY)."""
-    l = label.lower()
+    letter = label.lower()
     for pid, p in PROVIDERS.items():
         for pattern in p["label_patterns"]:
-            if pattern and pattern in l:
+            if pattern and pattern in letter:
                 return pid
     return None

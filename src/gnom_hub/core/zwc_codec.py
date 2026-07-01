@@ -16,7 +16,6 @@ import json
 import logging
 import time
 
-
 # Zero-width character map: bit '0' → U+200B, bit '1' → U+200C.
 Z = {"0": "​", "1": "‌"}
 R = {"​": "0", "‌": "1"}

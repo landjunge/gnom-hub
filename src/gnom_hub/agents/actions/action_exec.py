@@ -1,4 +1,6 @@
-import json, re as _re
+import json
+import re as _re
+
 from gnom_hub.agents.agent_names import normalize_showbox_name
 
 # Hinweis (2026-06-18): Die hier ausgeführten Befehle werden VOR der Ausführung
@@ -39,7 +41,7 @@ def handle_crawl(ans, ms, ag, perms):
         u, o = m.group(1).strip(), m.group(0)
         if "crawl" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine CRAWL-Berechtigung.]"); continue
         try:
-            from gnom_hub.infrastructure.utils.crawler_engine import crawl_smart, crawl_data
+            from gnom_hub.infrastructure.utils.crawler_engine import crawl_data, crawl_smart
             t = crawl_data(u) if "data" in ag["name"].lower() else crawl_smart(u)
             ans = ans.replace(o, f"[Crawl-Ergebnis ({u[:60]}):\n{t[:3000]}]")
         except Exception as e: ans = ans.replace(o, f"[Crawl-Fehler: {str(e)[:80]}]")
@@ -82,12 +84,12 @@ def handle_grant_perm(ans, ms, ag, perms):
         if not path or not agent:
             ans = ans.replace(
                 original,
-                f"[System: GRANT_PERM fehlt 'agent=' oder 'path=' — Tag ignoriert.]",
+                "[System: GRANT_PERM fehlt 'agent=' oder 'path=' — Tag ignoriert.]",
             )
             continue
         try:
             from gnom_hub.db import grant_permission
-            rowid = grant_permission(
+            grant_permission(
                 resource_type=rtype,
                 resource_path=path,
                 granted_to=agent,

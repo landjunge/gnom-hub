@@ -5,25 +5,33 @@ This module contains two layers:
 2. Legacy functional API (re-exported from legacy_db.py for backward compatibility)
 """
 
-import json; import logging; from uuid import UUID; from datetime import datetime; from typing import List, Optional
+import json
+import logging
 from abc import ABC, abstractmethod
+from datetime import datetime
+from uuid import UUID
+
 from gnom_hub.agents.entities import Agent
+
 
 class AgentRepository(ABC):
     @abstractmethod
-    def get_by_id(self, agent_id) -> Optional[Agent]: pass
+    def get_by_id(self, agent_id) -> Agent | None: pass
     @abstractmethod
-    def get_by_name(self, name: str) -> Optional[Agent]: pass
+    def get_by_name(self, name: str) -> Agent | None: pass
     @abstractmethod
-    def list_all(self) -> List[Agent]: pass
+    def list_all(self) -> list[Agent]: pass
     @abstractmethod
     def save(self, agent: Agent) -> Agent: pass
     @abstractmethod
     def delete(self, agent_id) -> bool: pass
-from .connection import get_db_conn, Await, parse_dt
-def _to_ag(r) -> Optional[Agent]:
+from .connection import Await, parse_dt  # get_db_conn separat importiert (Zeile 84)
+
+
+def _to_ag(r) -> Agent | None:
     if not r: return None
-    from gnom_hub.core.config import RUN_DIR; from gnom_hub.db import get_state_value
+    from gnom_hub.core.config import RUN_DIR
+    from gnom_hub.db import get_state_value
     n, pid = r["name"], None
     for pn in (n, n[0].lower() + n[1:] if n else ""):
         try: pid = int((RUN_DIR / f"{pn}.pid").read_text().strip())
@@ -73,8 +81,8 @@ from datetime import timezone
 
 from gnom_hub.core.logger import get_logger
 from gnom_hub.db.connection import get_db_conn
-from gnom_hub.db.system_repo import is_testing
 from gnom_hub.db.schema import _seed_agents
+from gnom_hub.db.system_repo import is_testing
 
 _logger = get_logger("db")
 
@@ -189,8 +197,9 @@ def delete_non_system_agents(system_agents: list):
     try:
         with get_db_conn() as conn:
             with conn:
+                # placeholders sind ?, Werte werden parametrisiert übergeben.
                 placeholders = ",".join("?" for _ in system_agents)
-                conn.execute(f"DELETE FROM agents WHERE LOWER(name) NOT IN ({placeholders})", [n.lower() for n in system_agents])
+                conn.execute(f"DELETE FROM agents WHERE LOWER(name) NOT IN ({placeholders})", [n.lower() for n in system_agents])  # noqa: S608
     except sqlite3.Error as e:
         _logger.error(f"[DB] Failed to delete non-system agents: {e}")
 

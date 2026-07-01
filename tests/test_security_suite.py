@@ -4,15 +4,14 @@ Gnom-Hub Test-Suite — Unit Tests für Security, Gatekeeper, Capability Manager
 Run: pytest tests/test_security_suite.py -v
 """
 
-import pytest
-import time
 import json
 import os
 import sqlite3
-import hashlib
-from unittest.mock import patch, MagicMock, call
-from datetime import datetime, timezone, timedelta
+import time
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ==============================================================================
 # FIXTURES & HELPERS
@@ -34,7 +33,6 @@ class TestCapabilityManager:
 
     def setup_method(self):
         """Frischer In-Memory State vor jedem Test"""
-        import importlib
         # Wir patchen get_db_conn mit einer In-Memory SQLite DB
         self.conn = sqlite3.connect(":memory:")
         self.conn.execute("""
@@ -545,16 +543,18 @@ class TestHandleShellPatterns:
 
     def test_brainstorm_mode_no_longer_blocks_shell(self):
         """Brainstorm-Modus blockiert Shell NICHT mehr (Blockaden entfernt in 37fb2f9)"""
-        from gnom_hub.agents.actions.action_exec import handle_shell
         import re
+
+        from gnom_hub.agents.actions.action_exec import handle_shell
         ms = list(re.finditer(r"\[SHELL:\s*(.*?)\]", "[SHELL: ls]"))
         result = handle_shell("[SHELL: ls]", ms, make_agent(), ["run"], True, "/workspace")
         assert "Brainstorm" not in result and "blockiert" not in result.lower()
 
     def test_no_run_permission_blocks_shell(self):
         """Ohne 'run' Permission → blockiert"""
-        from gnom_hub.agents.actions.action_exec import handle_shell
         import re
+
+        from gnom_hub.agents.actions.action_exec import handle_shell
         ms = list(re.finditer(r"\[SHELL:\s*(.*?)\]", "[SHELL: ls]"))
         result = handle_shell("[SHELL: ls]", ms, make_agent(), ["read", "write"], False, "/workspace")
         assert "Berechtigung" in result or "blockiert" in result.lower()
@@ -867,8 +867,9 @@ class TestWaitForDecisionTimeout:
 
     def test_approved_decision_returns_true(self):
         """Wenn decision approved → True"""
-        from gnom_hub.core.security.gatekeeper import _signal_decision, _decisions
         import uuid as _uuid
+
+        from gnom_hub.core.security.gatekeeper import _signal_decision
 
         did = str(_uuid.uuid4())
 
@@ -1028,6 +1029,7 @@ class TestPromptInjectionValidator:
     def test_api_chat_blocks_prompt_injection(self):
         """API /api/chat blockiert prompt injection und loggt SecurityAG Warnung"""
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         from gnom_hub.db import get_chat_history
 

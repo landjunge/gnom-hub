@@ -1,12 +1,13 @@
 # system_repo.py — System state, audit, and maintenance operations
 import hashlib
 import json
-import sys
 import os
 import sqlite3
+import sys
 from datetime import datetime, timezone
-from gnom_hub.db.connection import get_db_conn
+
 from gnom_hub.core.logger import get_logger
+from gnom_hub.db.connection import get_db_conn
 
 logger = get_logger("db.system")
 
@@ -139,7 +140,7 @@ def _compute_security_audit_hash(conn, target: str, result: str) -> str:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
     except sqlite3.Error:
         # Fallback: hash ohne prev_prefix (Kette unterbrochen, aber Eintrag bleibt eindeutig)
-        return hashlib.sha256(f"{target}|{result}".encode("utf-8")).hexdigest()[:16]
+        return hashlib.sha256(f"{target}|{result}".encode()).hexdigest()[:16]
 
 
 def log_security_audit(agent: str, action_type: str, target: str,
@@ -208,8 +209,9 @@ def cleanup_old_data(days_chat: int = 7, days_soul: int = 30):
             with conn:
                 conn.execute("DELETE FROM chat WHERE timestamp < ? AND msg_type != 'role'", (limit_chat,))
                 protected = ["active_preset", "approved_system_paths", "approved_security_writes", "approved_security_commands"]
+                # placeholders sind ?, Werte werden parametrisiert.
                 placeholders = ",".join("?" for _ in protected)
-                conn.execute(f"DELETE FROM soul_memory WHERE timestamp < ? AND key NOT IN ({placeholders})", (limit_soul, *protected))
+                conn.execute(f"DELETE FROM soul_memory WHERE timestamp < ? AND key NOT IN ({placeholders})", (limit_soul, *protected))  # noqa: S608
         logger.info("[DB] Old chats and soul facts cleaned up successfully.")
     except Exception as e:
         logger.error(f"[DB] Cleanup failed: {e}")

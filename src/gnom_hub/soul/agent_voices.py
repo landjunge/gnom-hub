@@ -13,11 +13,11 @@ SoulAG weist jedem Agent eine Stimme zu basierend auf:
 
 User kann manuell überschreiben via state['agent_voices'] dict.
 """
+import logging
 import platform
-import subprocess
 import re
 import shutil
-import logging
+import subprocess
 
 _log = logging.getLogger(__name__)
 

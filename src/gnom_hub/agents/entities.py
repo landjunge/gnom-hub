@@ -1,21 +1,21 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, List
 from uuid import UUID, uuid4
+
 
 @dataclass
 class Agent:
     id: UUID = field(default_factory=uuid4)
     name: str = ""
     status: str = "stopped"
-    pid: Optional[int] = None
-    last_seen: Optional[datetime] = None
-    model: Optional[str] = None
+    pid: int | None = None
+    last_seen: datetime | None = None
+    model: str | None = None
     port: int = 0
     description: str = ""
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     role: str = "normal"
-    active_job: Optional[str] = None
+    active_job: str | None = None
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 

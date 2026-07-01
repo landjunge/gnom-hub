@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 # integrity.py — ZWC-based system file integrity protection
 """
 Schützt Gnom-Systemdateien mit unsichtbaren ZWC-Signaturen (Zero-Width Characters).
@@ -48,7 +49,7 @@ def sign_system_files(root: Path) -> dict:
     ZWC-kodierte Manifest nach config/integrity.zwc.
     Gibt das Hash-Dict zurück.
     """
-    from gnom_hub.soul.zwc_soul import soul_to_bits, bits_to_zwc
+    from gnom_hub.soul.zwc_soul import bits_to_zwc, soul_to_bits
 
     hashes: dict[str, str] = {}
     missing: list[str] = []

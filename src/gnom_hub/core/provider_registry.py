@@ -31,9 +31,8 @@ Each entry is also exposed as a :class:`ProviderInfo` dataclass via
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import Dict, Iterable, List, Optional
-
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
 
 # ─── Dataclass ──────────────────────────────────────────────────────────────
 
@@ -48,10 +47,10 @@ class ProviderInfo:
 
     name: str
     display_name: str
-    api_key_prefixes: List[str] = field(default_factory=list)
+    api_key_prefixes: list[str] = field(default_factory=list)
     key_validation_endpoint: str = ""
     model_discovery_endpoint: str = ""
-    capabilities: List[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     free_tier_supported: bool = False
     notes: str = ""
 
@@ -67,7 +66,7 @@ class ProviderInfo:
 #              capabilities, free_tier, notes)
 # Keep entries alphabetised within their group for readability.
 
-_LLM_PROVIDERS: List[ProviderInfo] = [
+_LLM_PROVIDERS: list[ProviderInfo] = [
     ProviderInfo(
         name="ai21",
         display_name="AI21 Labs",
@@ -301,7 +300,7 @@ _LLM_PROVIDERS: List[ProviderInfo] = [
     ),
 ]
 
-_WEB_SEARCH_PROVIDERS: List[ProviderInfo] = [
+_WEB_SEARCH_PROVIDERS: list[ProviderInfo] = [
     ProviderInfo(
         name="brave",
         display_name="Brave Search",
@@ -414,7 +413,7 @@ _WEB_SEARCH_PROVIDERS: List[ProviderInfo] = [
     ),
 ]
 
-_TTS_PROVIDERS: List[ProviderInfo] = [
+_TTS_PROVIDERS: list[ProviderInfo] = [
     ProviderInfo(
         name="elevenlabs",
         display_name="ElevenLabs",
@@ -507,7 +506,7 @@ _TTS_PROVIDERS: List[ProviderInfo] = [
     ),
 ]
 
-_OTHER_PROVIDERS: List[ProviderInfo] = [
+_OTHER_PROVIDERS: list[ProviderInfo] = [
     ProviderInfo(
         name="elevenlabs",
         display_name="ElevenLabs",
@@ -551,10 +550,10 @@ _OTHER_PROVIDERS: List[ProviderInfo] = [
 ]
 
 
-def _all_providers() -> List[ProviderInfo]:
+def _all_providers() -> list[ProviderInfo]:
     """Flatten the per-category lists, deduping by name (first wins)."""
     seen = set()
-    out: List[ProviderInfo] = []
+    out: list[ProviderInfo] = []
     for lst in (_LLM_PROVIDERS, _WEB_SEARCH_PROVIDERS, _TTS_PROVIDERS, _OTHER_PROVIDERS):
         for p in lst:
             if p.name in seen:
@@ -566,16 +565,16 @@ def _all_providers() -> List[ProviderInfo]:
 
 # ─── Public dict & helpers ──────────────────────────────────────────────────
 
-PROVIDERS: Dict[str, dict] = {p.name: p.to_dict() for p in _all_providers()}
+PROVIDERS: dict[str, dict] = {p.name: p.to_dict() for p in _all_providers()}
 
 
-def get_provider(name: str) -> Optional[dict]:
+def get_provider(name: str) -> dict | None:
     """Return the provider dict for *name* or ``None`` if unknown."""
     p = PROVIDERS.get(name)
     return dict(p) if p else None
 
 
-def get_providers_by_capability(cap: str) -> List[dict]:
+def get_providers_by_capability(cap: str) -> list[dict]:
     """Return all providers that advertise *cap* (e.g. ``"chat"``, ``"web_search"``)."""
     return [
         info.to_dict() for info in _all_providers()
@@ -583,7 +582,7 @@ def get_providers_by_capability(cap: str) -> List[dict]:
     ]
 
 
-def get_provider_names() -> List[str]:
+def get_provider_names() -> list[str]:
     """Return the list of registered provider names."""
     return list(PROVIDERS.keys())
 
@@ -593,7 +592,7 @@ def iter_providers() -> Iterable[ProviderInfo]:
     yield from _all_providers()
 
 
-def detect_provider_from_key(key: str) -> Optional[str]:
+def detect_provider_from_key(key: str) -> str | None:
     """Auto-detect the provider from a key prefix.
 
     Picks the longest matching prefix across all registered providers so a
@@ -602,7 +601,7 @@ def detect_provider_from_key(key: str) -> Optional[str]:
     """
     if not isinstance(key, str):
         return None
-    best_name: Optional[str] = None
+    best_name: str | None = None
     best_len = 0
     for info in _all_providers():
         for prefix in info.api_key_prefixes:
@@ -614,7 +613,7 @@ def detect_provider_from_key(key: str) -> Optional[str]:
     return best_name
 
 
-def detect_provider_from_label(label: str) -> Optional[str]:
+def detect_provider_from_label(label: str) -> str | None:
     """Heuristic provider detection from an env-var label.
 
     Used for ``.env`` files where the key isn't visible (``KEY=…``) but the

@@ -1,9 +1,8 @@
 # capability_manager.py — Capability manager with TTL-cache
 import logging
-import sqlite3
-import time
 import threading
-from datetime import datetime, timezone, timedelta
+import time
+from datetime import datetime, timedelta, timezone
 
 from gnom_hub.db.connection import get_db_conn
 

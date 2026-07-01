@@ -1,6 +1,7 @@
 # tests/test_gnom_hub.py — Relational & Security Integration Tests for Gnom-Hub
-import sys
 import os
+import sys
+
 import pytest
 
 # Ensure the src directory and project root are in the Python path
@@ -11,11 +12,13 @@ import gnom_hub.db.legacy_db as db
 from gnom_hub.core.security.gatekeeper import is_command_safe_and_whitelisted
 from gnom_hub.memory.soul_retrieval import retrieve_relevant_facts
 
+
 @pytest.fixture(autouse=True)
 def setup_db():
     """Idempotently initialize and clean up the database state before each test."""
     # Reset FAISS embeddings singleton and cache files to avoid cross-test contamination
     import glob
+
     import gnom_hub.memory.embeddings as emb
     emb._instance = None
     for f in glob.glob("data/soul_embeddings_*.index") + glob.glob("data/soul_fact_ids_*.pkl"):
@@ -98,8 +101,9 @@ def test_command_whitelisting_security():
 def test_merken_and_spass_commands():
     """Verify that @merken and @spass chat commands work as intended."""
     from fastapi.testclient import TestClient
+
     from gnom_hub.api.app import app
-    from gnom_hub.db.legacy_db import get_state_value, get_db_conn, register_agent_in_db, delete_agent_by_id
+    from gnom_hub.db.legacy_db import delete_agent_by_id, get_db_conn, get_state_value, register_agent_in_db
     
     # Register mock CoderAG so that get_all_agents inside the command handler finds it
     mock_coder = register_agent_in_db("CoderAG", 9992, "mock coder")
@@ -148,8 +152,9 @@ def test_merken_and_spass_commands():
 def test_worker_command():
     """Verify that @worker chat command works as intended."""
     from fastapi.testclient import TestClient
+
     from gnom_hub.api.app import app
-    from gnom_hub.db.legacy_db import register_agent_in_db, delete_agent_by_id
+    from gnom_hub.db.legacy_db import delete_agent_by_id, register_agent_in_db
     
     # Register mock worker agent to be online
     mock_coder = register_agent_in_db("CoderAG", 9991, "mock coder")
@@ -169,8 +174,9 @@ def test_worker_command():
 def test_blockade_command():
     """Verify that @blockade chat command works as intended."""
     from fastapi.testclient import TestClient
+
     from gnom_hub.api.app import app
-    from gnom_hub.db.legacy_db import get_state_value, set_state_value, register_agent_in_db, delete_agent_by_id, set_agent_status
+    from gnom_hub.db.legacy_db import delete_agent_by_id, get_state_value, register_agent_in_db, set_agent_status, set_state_value
     
     # 1. Register a mock agent and set its status to paused
     mock_coder = register_agent_in_db("CoderAG", 9993, "mock coder")

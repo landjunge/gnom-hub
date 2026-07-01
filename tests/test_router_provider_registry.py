@@ -9,11 +9,9 @@ Covers:
 
 from __future__ import annotations
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
-
 
 # ─── Provider Registry: shape & invariants ────────────────────────────────
 
@@ -50,6 +48,7 @@ class TestProviderRegistryShape:
 
     def test_provider_names_are_snake_case(self):
         import re
+
         from gnom_hub.core.provider_registry import PROVIDERS
         pat = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
         for name in PROVIDERS:
@@ -162,6 +161,7 @@ class TestProviderUrls:
 
     def test_all_key_validation_urls_are_valid(self):
         import re
+
         from gnom_hub.core.provider_registry import PROVIDERS
         # Matches http(s)://host with optional path
         url_re = re.compile(r"^https?://[^\s/$.?#].[^\s]*$")
@@ -173,6 +173,7 @@ class TestProviderUrls:
 
     def test_all_model_discovery_urls_are_valid(self):
         import re
+
         from gnom_hub.core.provider_registry import PROVIDERS
         url_re = re.compile(r"^https?://[^\s/$.?#].[^\s]*$")
         for name, info in PROVIDERS.items():
@@ -425,7 +426,7 @@ class TestTryKeys:
         return r
 
     def test_returns_first_successful_answer(self):
-        from gnom_hub.infrastructure.router.router_call import _try_keys, _call
+        from gnom_hub.infrastructure.router.router_call import _try_keys
 
         with patch("gnom_hub.infrastructure.router.router_call._call") as mc, \
              patch("gnom_hub.infrastructure.router.router_call.get_keys") as gk:
@@ -452,7 +453,7 @@ class TestTryKeys:
         assert mc.call_count == 2
 
     def test_rotates_on_401(self):
-        from gnom_hub.infrastructure.router.router_call import _try_keys, _RetryableCallError
+        from gnom_hub.infrastructure.router.router_call import _RetryableCallError, _try_keys
 
         with patch("gnom_hub.infrastructure.router.router_call._call") as mc, \
              patch("gnom_hub.infrastructure.router.router_call.get_keys") as gk:
@@ -465,7 +466,7 @@ class TestTryKeys:
         assert ans == "answer from second key"
 
     def test_rotates_on_500(self):
-        from gnom_hub.infrastructure.router.router_call import _try_keys, _RetryableCallError
+        from gnom_hub.infrastructure.router.router_call import _RetryableCallError, _try_keys
 
         with patch("gnom_hub.infrastructure.router.router_call._call") as mc, \
              patch("gnom_hub.infrastructure.router.router_call.get_keys") as gk:
@@ -480,7 +481,7 @@ class TestTryKeys:
         assert mc.call_count == 3
 
     def test_returns_none_when_all_keys_exhausted(self):
-        from gnom_hub.infrastructure.router.router_call import _try_keys, _RetryableCallError
+        from gnom_hub.infrastructure.router.router_call import _RetryableCallError, _try_keys
 
         with patch("gnom_hub.infrastructure.router.router_call._call") as mc, \
              patch("gnom_hub.infrastructure.router.router_call.get_keys") as gk:

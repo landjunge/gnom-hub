@@ -1,7 +1,8 @@
 # routing_override.py — Handles simple text-based agent routing overrides
-import os
 from pathlib import Path
+
 from gnom_hub.core.config import PROJECT_ROOT
+
 
 def load_routing_from_txt() -> dict:
     # Precedence paths to check:
@@ -18,7 +19,7 @@ def load_routing_from_txt() -> dict:
     for p in paths_to_check:
         if p.exists():
             try:
-                with open(p, "r", encoding="utf-8") as f:
+                with open(p, encoding="utf-8") as f:
                     for line in f:
                         line = line.strip()
                         if not line or line.startswith("#") or line.startswith("//"):

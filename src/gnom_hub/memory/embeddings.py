@@ -1,12 +1,13 @@
 # embeddings.py — Local embeddings / semantic retrieval helper (Singleton)
 # Try to import FAISS + sentence-transformers, but gracefully degrade to TF-IDF if unavailable
-import gnom_hub.memory.smr.smr_retrieve as sr
 import logging
 import threading
 
+import gnom_hub.memory.smr.smr_retrieve as sr
+
 try:
-    from sentence_transformers import SentenceTransformer
-    import faiss
+    import faiss  # noqa: F401 — Verfügbarkeits-Check, Nutzung via getattr
+    from sentence_transformers import SentenceTransformer  # noqa: F401 — Verfügbarkeits-Check
     HAS_FAISS = True
     _log_faiss = "available"
 except ImportError:
@@ -144,6 +145,7 @@ class SoulEmbedder:
             if not results:
                 return False
             import numpy as np
+
             from gnom_hub.memory.emb_cache import get_emb
             val_text = text.split(": ", 1)[1] if ": " in text else text
             res_val = results[0].split(": ", 1)[1] if ": " in results[0] else results[0]

@@ -29,9 +29,7 @@ returns ``None`` so the calling agent code can produce a graceful
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
-from typing import Optional
 
 from gnom_hub.memory.offload import NODE_ID_PATTERN
 
@@ -42,7 +40,7 @@ def resolve_node(
     node_id: str,
     session_id: str,
     data_dir: str = "data/offload",
-) -> Optional[str]:
+) -> str | None:
     """Return the offloaded content for ``node_id`` or ``None``.
 
     Parameters

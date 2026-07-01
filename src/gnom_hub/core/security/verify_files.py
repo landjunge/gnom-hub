@@ -1,7 +1,9 @@
 from pathlib import Path
+
 from gnom_hub.core.config import Config
-from .policy import WorkspacePolicy
 from gnom_hub.core.exceptions import ValidationError
+
+from .policy import WorkspacePolicy
 
 
 class FileVerifier:

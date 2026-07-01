@@ -3,10 +3,11 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
-from gnom_hub.db.connection import get_db_conn
+
 from gnom_hub.agents.explainability.eo_class import ExplainableOutput
 from gnom_hub.agents.explainability.eo_formatter import ExplainableOutputFormatter
+from gnom_hub.db.connection import get_db_conn
+
 
 class ExplainableOutputStore:
     def __init__(self, db=None):
@@ -28,7 +29,7 @@ class ExplainableOutputStore:
         except Exception as e: logging.getLogger(__name__).error('Fehler in Speichern des ExplainableOutput: %s', e)
         return oid
 
-    def get(self, oid: str) -> Optional[ExplainableOutput]:
+    def get(self, oid: str) -> ExplainableOutput | None:
         try:
             with get_db_conn() as conn:
                 r = conn.execute("SELECT * FROM explainable_outputs WHERE id = ?", (oid,)).fetchone()

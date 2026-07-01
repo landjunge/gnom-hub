@@ -1,6 +1,7 @@
 # smr_stats.py
 from gnom_hub.db.connection import get_db_conn
 
+
 def get_memory_stats() -> dict:
     try:
         with get_db_conn() as conn:

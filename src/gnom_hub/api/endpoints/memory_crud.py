@@ -1,22 +1,24 @@
+import uuid
 from datetime import datetime, timezone
-import uuid; from typing import Optional
-from fastapi import APIRouter, HTTPException, Request, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+
+from gnom_hub.api.endpoints.auth import verify_admin
+from gnom_hub.api.endpoints.nudge import nudge
 from gnom_hub.chat.entities import ChatMessage
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.db.chat_repo import SQLiteChatRepository
-from gnom_hub.api.endpoints.nudge import nudge
-from gnom_hub.api.endpoints.auth import verify_admin
 
 router = APIRouter()
 class MemoryEntry(BaseModel):
-    agent_id: str; content: str; timestamp: Optional[str] = None
+    agent_id: str; content: str; timestamp: str | None = None
 
 @router.post("/api/memory")
 @router.post("/api/tools/save_memory")
 def add_memory(e: MemoryEntry):
     if not SQLiteAgentRepository().get_by_name(e.agent_id): raise HTTPException(404, "Agent not found")
-    m = ChatMessage(agent_id=UUID(e.agent_id), role="user", content=e.content, id=UUID(str(uuid.uuid4())), timestamp=datetime.now(timezone.utc))
+    m = ChatMessage(agent_id=uuid.UUID(e.agent_id), role="user", content=e.content, id=uuid.uuid4(), timestamp=datetime.now(timezone.utc))
     SQLiteChatRepository().add_message(m); nudge(e.agent_id); return m.__dict__
 
 @router.get("/api/agents/{a_id}/memory")

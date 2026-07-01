@@ -17,13 +17,6 @@ All tests are isolated by ``tests/conftest.py::isolated_db`` (autouse).
 """
 from __future__ import annotations
 
-import logging
-import sqlite3
-from pathlib import Path
-
-import pytest
-
-
 # ── 1. Exact-Match (Phrase) ─────────────────────────────────────────────────
 
 
@@ -182,9 +175,9 @@ def test_routing_deterministic_mode_default_off():
 
 def test_routing_integration_with_dispatch_by_capability(isolated_db):
     """Vollständige Integration: Wrapper wählt anhand Intent den richtigen Agenten."""
-    from gnom_hub.db.connection import get_db_conn
     from gnom_hub.agents.swarm.swarm_comms import dispatch_by_capability_with_resolution
     from gnom_hub.core.config import DB_PATH
+    from gnom_hub.db.connection import get_db_conn
 
     # DB-Setup: 3 Agenten, jeweils mit Capabilities
     with get_db_conn() as conn:
@@ -271,7 +264,7 @@ def test_resolve_capability_handles_german_keywords():
     assert r.source == "exact_match"
 
     # Bonus: einzelnes deutsches Verb → write-Generalkapability (synonym)
-    r2 = resolve_capability("kannst du das bitte korrigieren")
+    resolve_capability("kannst du das bitte korrigieren")
     # "korrigieren" hat keine Synonym-Liste → "none"
     # Stattdessen prüfen wir "bearbeite datei" → editing oder edit
     r3 = resolve_capability("bearbeite das modul bitte")
@@ -331,6 +324,7 @@ def test_canonical_capability_keys_have_no_leading_whitespace():
     späteren Maintenance-Versuch verwirrt hätte.
     """
     import re as _re
+
     from gnom_hub.agents.routing import _CANONICAL_CAPABILITIES
 
     canonical_pat = _re.compile(r"^[a-z_][a-z0-9_]*$")

@@ -1,5 +1,7 @@
 """Role Tools — distribute_job (General)."""
 from gnom_hub.db import get_all_agents
+
+
 def _llm(sys_prompt, user_prompt, max_tokens=None):
     from gnom_hub.infrastructure.router.router import ask_router
     return str(ask_router(user_prompt, sys_prompt))

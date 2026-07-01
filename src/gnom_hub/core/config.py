@@ -1,6 +1,7 @@
-import os
 import logging
+import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -132,7 +133,7 @@ class Config:
         config_path = cls.BASE_DIR / "supergnom_config.json"
         if config_path.exists():
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     data = json.load(f)
                     return data.get("template", "chat")
             except Exception as e:

@@ -6,9 +6,12 @@ Marker 'requires_hub': diese Tests brauchen einen laufenden Hub auf BASE.
 CI / Pre-Push skippt sie via `pytest -m "not requires_hub"`.
 Lokal: `pytest -m requires_hub` für vollen Live-Hub-Stresstest.
 """
-import pytest
-import requests, json, time, uuid, os, threading, re, random
+import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import pytest
+import requests
 
 pytestmark = pytest.mark.requires_hub
 
@@ -388,6 +391,7 @@ log(45, "GeneralAG delegiert Fehler an Sicherheits-Agents", "PASS" if sicherheit
 
 # Test 46: Monitor-Skript läuft und freed
 import subprocess as sp
+
 r = sp.run(["pgrep", "-f", "gnom-monitor"], capture_output=True, text=True)
 monitor_pids = r.stdout.strip().split()
 log(46, "Monitor-Skript läuft (Auto-Free)", "PASS" if monitor_pids else "FAIL", f"PID(s): {monitor_pids}")

@@ -9,6 +9,7 @@ dem ersten Commit der Gnom-Hub-Codebase dieselben und haben sich
 historisch als gut lesbar erwiesen.
 """
 from __future__ import annotations
+
 from typing import Final
 
 # ── Frozen agent names ────────────────────────────────────────────────────────

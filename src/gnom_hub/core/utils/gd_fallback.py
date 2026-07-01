@@ -1,6 +1,9 @@
 # gd_fallback.py
-import uuid, asyncio, logging
+import asyncio
+import logging
+import uuid
 from datetime import datetime, timezone
+
 from gnom_hub.db import get_db_conn, log_audit_event
 from gnom_hub.infrastructure.router.router import ask_router
 

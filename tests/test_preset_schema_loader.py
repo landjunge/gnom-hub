@@ -15,16 +15,11 @@ from __future__ import annotations
 
 import copy
 import json
-import os
-import shutil
 import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -55,30 +50,21 @@ def minimal_bundle():
     """Ein minimal gültiges PresetBundle für Tests."""
     from gnom_hub.core.preset_schema import (
         AgentDef,
-        HookDef,
         HooksConfig,
         MCPConfig,
-        MCPInterface,
         MemoryConfig,
         PermissionsConfig,
-        PluginDef,
         PluginsConfig,
         PresetBundle,
         PresetConfig,
         SecurityConfig,
-        SkillDef,
         SkillsConfig,
         SystemAgentsConfig,
-        TemplateDef,
         TemplatesConfig,
-        ToolDef,
         ToolsConfig,
-        WebhookDef,
         WebhooksConfig,
-        WorkflowDef,
-        WorkflowStep,
-        WorkflowsConfig,
         WorkersConfig,
+        WorkflowsConfig,
     )
 
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -342,11 +328,9 @@ class TestLoadSaveDefault:
         # Wir benutzen hier den realen Default-Pfad, weil load_preset in
         # _preset_root() hartkodiert ist. Das Default-Preset ist versioniert
         # im Repo und sollte immer valide sein.
-        from gnom_hub.core.preset_loader import load_preset
-        from gnom_hub.core.preset_schema import PRESET_FILES
-
         # 14 Dateien müssen existieren
-        from gnom_hub.core.preset_loader import _preset_root
+        from gnom_hub.core.preset_loader import _preset_root, load_preset
+        from gnom_hub.core.preset_schema import PRESET_FILES
         pdir = _preset_root() / "default"
         if not pdir.is_dir():
             pytest.skip("Default-Preset nicht im Repo vorhanden — überspringe.")
@@ -362,9 +346,7 @@ class TestLoadSaveDefault:
             assert required in wf_ids, f"Workflow {required!r} fehlt im default"
 
     def test_soul_locked_in_default(self):
-        from gnom_hub.core.preset_loader import load_preset
-        from gnom_hub.core.preset_schema import PRESET_FILES
-        from gnom_hub.core.preset_loader import _preset_root
+        from gnom_hub.core.preset_loader import _preset_root, load_preset
 
         pdir = _preset_root() / "default"
         if not pdir.is_dir():
@@ -404,7 +386,7 @@ class TestSavePreset:
         """Wenn beim Schreiben der 8. Datei ein Fehler auftritt, dürfen
         weder die 7 Original-Dateien verändert worden sein, noch eine
         halb-geschriebene 8. Datei existieren."""
-        from gnom_hub.core.preset_loader import load_preset, save_preset
+        from gnom_hub.core.preset_loader import save_preset
         # Zuerst erfolgreich speichern
         save_preset("atomic", minimal_bundle)
         original_files = sorted(
@@ -447,7 +429,7 @@ class TestSavePreset:
         current_files = sorted(
             (preset_tmp_root / "atomic").iterdir()
         )
-        current_names = sorted(p.name for p in current_files)
+        sorted(p.name for p in current_files)
         # Mindestens die 14 Dateien müssen noch da sein (oder genau die 14)
         for name in original_names:
             assert (preset_tmp_root / "atomic" / name).is_file()
@@ -621,6 +603,7 @@ class TestPresetEndpoints:
     def client(self, preset_tmp_root, monkeypatch):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.endpoints.presets import router
 
         # get_state_value/set_state_value monkeypatchen, damit wir keine
@@ -752,8 +735,8 @@ class TestPresetEndpoints:
 
     def test_put_with_invalid_bundle_422(self, client, preset_tmp_root, minimal_bundle):
         """Wenn die Cross-File-Validierung fehlschlägt, muss der Endpoint 422 liefern."""
-        from gnom_hub.core.preset_schema import ToolDef
         from gnom_hub.core.preset_loader import save_preset
+        from gnom_hub.core.preset_schema import ToolDef
         save_preset("valid", minimal_bundle)
         # Bundle mit ungültiger Tool-Referenz
         bad = copy.deepcopy(minimal_bundle)
@@ -794,7 +777,7 @@ class TestSchemaRobustness:
     def test_invalid_preset_id_rejected(self, preset_tmp_root):
         """Unsichere Preset-IDs (Path-Traversal) dürfen kein Verzeichnis
         außerhalb des Preset-Roots treffen."""
-        from gnom_hub.core.preset_loader import preset_dir, get_presets_root
+        from gnom_hub.core.preset_loader import get_presets_root, preset_dir
         root = get_presets_root().resolve()
         # ``..`` würde über das Root hinausspringen — stellen wir sicher,
         # dass der Loader das entweder wirft ODER den Pfad zumindest
@@ -829,7 +812,7 @@ class TestJsonFileFormat:
         lines = content.splitlines()
         assert lines[0] == "{"
         # Property-Lines beginnen mit 2 Spaces
-        indented = [l for l in lines if l.startswith("  ")]
+        indented = [letter for letter in lines if letter.startswith("  ")]
         assert len(indented) > 0
         # Keine Key-Sortierung: Reihenfolge wie im Pydantic-Modell
         assert '"name":' in content

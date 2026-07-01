@@ -1,9 +1,11 @@
 """Tests for admin authentication."""
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from gnom_hub.api.endpoints.admin import verify_admin
 from fastapi import HTTPException
+
+from gnom_hub.api.endpoints.admin import verify_admin
 
 
 def _make_request(host="127.0.0.1", headers=None):

@@ -1,9 +1,12 @@
 """Tests for agent database operations."""
-import uuid
 from gnom_hub.db.legacy_db import (
-    create_agent_record, get_all_agents, set_agent_status,
-    delete_agent_by_id, update_agent_active_job, clear_agent_jobs,
-    agent_exists
+    agent_exists,
+    clear_agent_jobs,
+    create_agent_record,
+    delete_agent_by_id,
+    get_all_agents,
+    set_agent_status,
+    update_agent_active_job,
 )
 
 

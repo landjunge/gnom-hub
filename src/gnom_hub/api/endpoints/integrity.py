@@ -1,13 +1,13 @@
 """API-Endpunkte für @system save / @system unsave / Integritätsstatus."""
 import logging
 from pathlib import Path
+
 from fastapi import APIRouter
 
 router = APIRouter()
 log = logging.getLogger(__name__)
 
 def _get_root() -> Path:
-    from gnom_hub.core.config import WORKSPACE_DIR
     # Projekt-Root = zwei Ebenen über src/gnom_hub
     return Path(__file__).parent.parent.parent.parent.parent.resolve()
 
@@ -47,9 +47,7 @@ def system_unsave():
 def system_integrity_status():
     """Gibt den aktuellen Integritätsstatus zurück."""
     try:
-        from gnom_hub.core.security.integrity import (
-            verify_system_files, is_integrity_enabled
-        )
+        from gnom_hub.core.security.integrity import is_integrity_enabled, verify_system_files
         enabled = is_integrity_enabled()
         if not enabled:
             return {"enabled": False, "status": "disabled", "tampered": []}

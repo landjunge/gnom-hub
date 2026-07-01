@@ -8,9 +8,9 @@ Features:
 - Echte Gnom-Hub UI Interaktionen
 """
 import os
-import time
 from pathlib import Path
-from playwright.sync_api import sync_playwright, expect
+
+from playwright.sync_api import sync_playwright
 
 HUB_URL = "http://127.0.0.1:3002"
 KEYS_FILE = os.path.expanduser("~/Desktop/api_keys.txt")
@@ -32,7 +32,7 @@ def test_full_workflow_chromium():
         )
         page = context.new_page()
 
-        print(f"\n=== CHROMIUM TEST ===")
+        print("\n=== CHROMIUM TEST ===")
         print(f"Videos in: {test_dir}/videos/")
 
         # 1. Hub öffnen
@@ -42,7 +42,7 @@ def test_full_workflow_chromium():
         print(f"1. Hub geladen, Title: {page.title()}")
 
         # 2. Maus über Header-Buttons hovern
-        print(f"2. Hover über Header-Buttons...")
+        print("2. Hover über Header-Buttons...")
         for btn_text in ["Workspace", "Dashboard", "Workflows", "LLM", "Tuning"]:
             btn = page.locator(f"button:has-text('{btn_text}')").first
             if btn.count() > 0:
@@ -54,7 +54,7 @@ def test_full_workflow_chromium():
         page.locator("button:has-text('LLM')").first.click()
         page.wait_for_timeout(2000)
         page.screenshot(path=test_dir / "03_llm_page.png", full_page=True)
-        print(f"3. LLM-Seite geladen")
+        print("3. LLM-Seite geladen")
 
         # 4. Maus-Bewegung über Modus-Buttons
         mode_btns = page.locator(".llm-mode-btn")
@@ -91,7 +91,7 @@ def test_full_workflow_chromium():
             print(f"7. Status-Lamp {i}: {txt!r}")
 
         # 8. Drag-Simulation: Maus auf eine Card, halte
-        print(f"8. Maus-Drag-Simulation...")
+        print("8. Maus-Drag-Simulation...")
         page.mouse.move(800, 500)
         page.mouse.down()
         page.mouse.move(900, 500, steps=5)
@@ -125,14 +125,14 @@ def test_full_workflow_firefox():
         )
         page = context.new_page()
 
-        print(f"\n=== FIREFOX TEST ===")
+        print("\n=== FIREFOX TEST ===")
         page.goto(HUB_URL, wait_until="domcontentloaded", timeout=15000)
         page.wait_for_timeout(3000)
         page.screenshot(path=test_dir / "01_firefox_hub.png", full_page=True)
         page.locator("button:has-text('LLM')").first.click()
         page.wait_for_timeout(2000)
         page.screenshot(path=test_dir / "02_firefox_llm.png", full_page=True)
-        print(f"✓ Firefox-Test PASSED")
+        print("✓ Firefox-Test PASSED")
 
         page.close()
         context.close()
@@ -149,14 +149,14 @@ def test_full_workflow_webkit():
         context = browser.new_context(viewport={"width": 1600, "height": 1000})
         page = context.new_page()
 
-        print(f"\n=== WEBKIT TEST ===")
+        print("\n=== WEBKIT TEST ===")
         page.goto(HUB_URL, wait_until="domcontentloaded", timeout=15000)
         page.wait_for_timeout(3000)
         page.screenshot(path=test_dir / "01_webkit_hub.png", full_page=True)
         page.locator("button:has-text('LLM')").first.click()
         page.wait_for_timeout(2000)
         page.screenshot(path=test_dir / "02_webkit_llm.png", full_page=True)
-        print(f"✓ WebKit-Test PASSED")
+        print("✓ WebKit-Test PASSED")
 
         page.close()
         context.close()
@@ -173,7 +173,7 @@ def test_vision_tools():
         context = browser.new_context(viewport={"width": 1600, "height": 1000})
         page = context.new_page()
 
-        print(f"\n=== VISION TEST ===")
+        print("\n=== VISION TEST ===")
 
         # 1. Page öffnen + Full-Screenshot
         page.goto(HUB_URL, wait_until="domcontentloaded", timeout=15000)
@@ -186,14 +186,14 @@ def test_vision_tools():
         page.wait_for_timeout(2000)
         page.screenshot(path=test_dir / "02_llm_viewport.png", full_page=False)
         page.screenshot(path=test_dir / "03_llm_fullpage.png", full_page=True)
-        print(f"2. Element-Screenshots gemacht")
+        print("2. Element-Screenshots gemacht")
 
         # 3. Mask-Screenshot (nur ein Element)
         if page.locator("#llm-keys-input").count() > 0:
             page.locator("#llm-keys-input").screenshot(
                 path=test_dir / "04_key_input.png"
             )
-            print(f"3. Key-Input Element-Screenshot")
+            print("3. Key-Input Element-Screenshot")
 
         # 4. Per-Agent Row Screenshots
         rows = page.locator("tr[data-agent]")
@@ -246,5 +246,5 @@ if __name__ == "__main__":
     test_full_workflow_firefox()
     test_full_workflow_webkit()
     test_vision_tools()
-    print(f"\n=== ALLE TESTS PASSED ===")
+    print("\n=== ALLE TESTS PASSED ===")
     print(f"Artifacts: {ARTIFACT_DIR}/")

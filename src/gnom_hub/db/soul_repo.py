@@ -1,6 +1,5 @@
 """Soul memory repository — operations for soul facts and semantic retrieval."""
 
-import json
 import re
 import sqlite3
 import uuid
@@ -236,7 +235,6 @@ def save_soul_fact_smart(key: str, value: str, agent: str = "System", priority: 
                 new_tokens = _tokenize(value_str)
                 best_match = None
                 best_sim = 0.0
-                best_score = -1.0
                 for c in sim_candidates:
                     sim = _jaccard(new_tokens, _tokenize(c["value"]))
                     if sim >= 0.6 and sim > best_sim:

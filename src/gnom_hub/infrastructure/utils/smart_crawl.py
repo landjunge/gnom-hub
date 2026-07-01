@@ -1,8 +1,18 @@
+import json
 import logging
-import os, json, time, random, re, requests, threading; from urllib.parse import urlparse; from gnom_hub.core.config import DATA_DIR
+import random
+import re
+import threading
+import time
+from urllib.parse import urlparse
+
+import requests
+
+from gnom_hub.core.config import DATA_DIR
+
 _lock, _DB = threading.Lock(), DATA_DIR / "domains.json"
 _UA = ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/125.0", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0", "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Firefox/128.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) Safari/605.1.15", "Mozilla/5.0 (Windows NT 10.0; Win64) Firefox/127.0"]
-def rotate_user_agent(): return random.choice(_UA)
+def rotate_user_agent(): return random.choice(_UA)  # noqa: S311 — Anti-Bot-Rotation, kein Crypto
 def _dom(url): return urlparse(url).netloc
 def _load():
     with _lock:
@@ -17,11 +27,11 @@ def check_for_block(r):
     return any(s in r.text[:2000].lower() for s in ["cloudflare", "captcha", "cf-browser", "access denied"])
 def smart_request(url):
     dom, db = urlparse(url).netloc, _load()
-    info = db.get(dom, {"blocks": 0, "last": 0}); delay = random.uniform(1.2, 4.5) * min(1 + info["blocks"] * 0.8, 10)
+    info = db.get(dom, {"blocks": 0, "last": 0}); delay = random.uniform(1.2, 4.5) * min(1 + info["blocks"] * 0.8, 10)  # noqa: S311 — Anti-Bot-Jitter, kein Crypto
     since = time.time() - info["last"]
     if since < delay: time.sleep(delay - since)
-    if info["blocks"] >= 3: time.sleep(random.uniform(8, 15))
-    h = {"User-Agent": random.choice(_UA), "Accept": "text/html,*/*", "Accept-Language": "de,en;q=0.5", "Referer": f"https://google.com/search?q={dom}", "DNT": "1"}
+    if info["blocks"] >= 3: time.sleep(random.uniform(8, 15))  # noqa: S311 — Cooldown-Jitter, kein Crypto
+    h = {"User-Agent": random.choice(_UA), "Accept": "text/html,*/*", "Accept-Language": "de,en;q=0.5", "Referer": f"https://google.com/search?q={dom}", "DNT": "1"}  # noqa: S311 — UA-Rotation, kein Crypto
     try:
         r = requests.get(url, timeout=20, headers=h); info["last"] = time.time()
         if check_for_block(r):

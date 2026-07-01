@@ -1,6 +1,8 @@
 import re
-from gnom_hub.db.state_repo import SQLiteStateRepository
+
 from gnom_hub.chat.chat_commands import _post_chat
+from gnom_hub.db.state_repo import SQLiteStateRepository
+
 
 def _parse(t):
     t_clean = t.strip()
@@ -21,9 +23,11 @@ def _handle_sys(q, m):
         q_str = (q or "").strip()
         parts = q_str.split(None, 1)
         if parts and parts[0].lower() in ("delete", "remove"):
-            from gnom_hub.db import get_active_project, delete_project_completely
+            import os
+            import shutil
+
             from gnom_hub.core.config import Config
-            import os, shutil
+            from gnom_hub.db import delete_project_completely, get_active_project
             
             target_proj = parts[1].strip() if len(parts) > 1 else ""
             if not target_proj or target_proj.lower() == "current":

@@ -1,11 +1,15 @@
 # compiler.py — Compiles a Gnom-Hub instance into a standalone SuperGNOM
+import json
+import logging
 import os
 import shutil
 import sqlite3
-import json, logging
+from datetime import datetime
 from pathlib import Path
-from gnom_hub.core.config import PROJECT_ROOT, DB_PATH
+
 from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+from gnom_hub.core.config import DB_PATH, PROJECT_ROOT
+
 
 def to_yaml(data, indent=0) -> str:
     lines = []
@@ -35,7 +39,7 @@ def to_yaml(data, indent=0) -> str:
 def get_dependencies() -> list:
     deps = []
     try:
-        with open(PROJECT_ROOT / "pyproject.toml", "r", encoding="utf-8") as f:
+        with open(PROJECT_ROOT / "pyproject.toml", encoding="utf-8") as f:
             lines = f.readlines()
         in_deps = False
         for line in lines:
@@ -200,10 +204,11 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
     # Clean temporary and session-bound tables in target DB copy
     try:
         conn = sqlite3.connect(str(db_dest))
+        # Tabellenamen aus hardcoded Liste.
         for tbl in ["audit_log", "security_audit_log", "explainable_outputs", "graceful_degradation_failures",
                     "token_budget_logs", "token_budget_alerts", "showbox_presentations"]:
             try:
-                conn.execute(f"DELETE FROM {tbl}")
+                conn.execute(f"DELETE FROM {tbl}")  # noqa: S608
             except sqlite3.OperationalError as e:
                 logging.getLogger(__name__).error('Fehler in bake_supergnom (Tabelle löschen): %s', e)
         try:
@@ -223,6 +228,7 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
     comp_defs_dummy = {}
     try:
         import hashlib
+
         from gnom_hub.core.utils.evolution_v2 import get_active_version
         
         compiled_defs = {}
@@ -283,7 +289,7 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
             try:
                 from gnom_hub.core.utils.preset_service import get_preset
                 baked_presets = {}
-                for agent_key, slug in preset_selections.items():
+                for _agent_key, slug in preset_selections.items():
                     if not slug:
                         continue
                     p = get_preset(slug)
@@ -304,21 +310,22 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
     # Copy package configurations
     shutil.copy2(PROJECT_ROOT / "pyproject.toml", dist_dir / "pyproject.toml")
 
+    # Initialize config_data — try block unten kann jetzt ollama_models anhängen.
+    config_data = {
+        "name": safe_name,
+        "template": template,
+        # os.popen("date") durch datetime ersetzt — kein shell, deterministisch.
+        "baked_at": datetime.now().isoformat(),
+    }
+
     # Bake Ollama models (auto-detect: <2GB embedded, else linker)
     try:
         models_info = bake_ollama_models(dist_dir, selected_models)
         config_data["ollama_models"] = models_info
-        with open(dist_dir / "supergnom_config.json", "w", encoding="utf-8") as f:
-            json.dump(config_data, f, indent=2, ensure_ascii=False)
     except Exception as e:
         logging.getLogger(__name__).error('Bake Ollama-Modelle fehlgeschlagen: %s', e)
 
-    # Generate custom static configuration file (for backward compatibility)
-    config_data = {
-        "name": safe_name,
-        "template": template,
-        "baked_at": os.popen("date").read().strip(),
-    }
+    # Write supergnom_config.json — single source of truth für gebackene Config.
     with open(dist_dir / "supergnom_config.json", "w", encoding="utf-8") as f:
         json.dump(config_data, f, indent=2, ensure_ascii=False)
 
@@ -331,7 +338,7 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
             custom_models = {}
         
         models_lock = {}
-        for k, v in AGENT_DEFINITIONS.items():
+        for _k, v in AGENT_DEFINITIONS.items():
             agent_name = v["name"]
             model_info = custom_models.get(agent_name.lower(), {})
             models_lock[agent_name] = model_info.get("model") or v.get("model", "ollama/deepseek-r1")
@@ -454,12 +461,13 @@ def bake_supergnom(name: str, template: str = "chat", selected_models: list = No
     run_sh_path = dist_dir / "run.sh"
     with open(run_sh_path, "w", encoding="utf-8") as f:
         f.write(run_sh_content)
-    os.chmod(run_sh_path, 0o755)
+    os.chmod(run_sh_path, 0o755)  # noqa: S103 — Standard-Executable-Permissions für run.sh
 
     # Write README.txt
     readme_content = (
         f"SUPERGNOM: {safe_name}\n"
-        f"Gebacken am: {os.popen('date').read().strip()}\n"
+        # os.popen("date") durch datetime ersetzt — kein shell, deterministisch, locale-safe.
+        f"Gebacken am: {datetime.now().isoformat()}\n"
         f"\n"
         f"START (Mac/Linux):\n"
         f"  bash run.sh\n"

@@ -1,5 +1,8 @@
 import logging
-import time, threading, os
+import os
+import threading
+import time
+
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.infrastructure.process.process_manager import AGENTS, _get_proc
 
@@ -8,7 +11,6 @@ BUSY_TIMEOUT = 15 if os.environ.get("TESTING") == "true" else 300  # (war 60)
 def pulse_janitor():
     repo = SQLiteAgentRepository()
     from datetime import datetime, timezone
-    import json
     now_utc = datetime.now(timezone.utc)
     now_local = datetime.now()
     for agent in repo.list_all():
@@ -62,8 +64,8 @@ def _maybe_recover_stuck():
         return
     _last_recovery = now
     try:
-        from gnom_hub.core.config import DB_PATH
         from gnom_hub.agents.swarm.swarm_comms import recover_stuck_messages
+        from gnom_hub.core.config import DB_PATH
         recover_stuck_messages(str(DB_PATH), timeout=300.0)
     except Exception as e:
         logging.getLogger(__name__).error("recover_stuck_messages fehlgeschlagen: %s", e)

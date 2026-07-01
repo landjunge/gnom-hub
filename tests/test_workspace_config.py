@@ -14,11 +14,10 @@ Run: pytest tests/test_workspace_config.py -v
 """
 
 import os
-import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
+import pytest
 
 # ============================================================================
 # 1. Config.workspace_dir() — Hot-Reload via State
@@ -61,7 +60,7 @@ class TestConfigWorkspaceDirHotReload:
         Modul-Initialwert Path("") ist (durch leeren Env-Var), darf
         workspace_dir() nicht '.' zurückgeben.
         """
-        from gnom_hub.core.config import Config, WORKSPACE_DIR
+        from gnom_hub.core.config import WORKSPACE_DIR, Config
         from gnom_hub.db import set_state_value
 
         set_state_value("workspace_dir_override", "")
@@ -75,7 +74,7 @@ class TestConfigWorkspaceDirHotReload:
 
     def test_db_failure_falls_back_to_default(self, monkeypatch):
         """DB-Lookup-Failure darf nicht crashen — Fallback auf Modul-Default."""
-        from gnom_hub.core.config import Config, WORKSPACE_DIR
+        from gnom_hub.core.config import Config
         from gnom_hub.db import state_repo
 
         def boom(self, key, default=None):
@@ -99,6 +98,7 @@ class TestGetWorkspaceConfig:
 
     def test_returns_current_path_and_default(self):
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         client = TestClient(app)
 
@@ -110,6 +110,7 @@ class TestGetWorkspaceConfig:
 
     def test_default_flag_true_when_no_override(self):
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         from gnom_hub.db import set_state_value
         client = TestClient(app)
@@ -137,6 +138,7 @@ class TestPutWorkspaceConfig:
 
     def test_valid_path_returns_200(self):
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         from gnom_hub.db import set_state_value
         client = TestClient(app)
@@ -153,6 +155,7 @@ class TestPutWorkspaceConfig:
     def test_home_relative_path_expanded(self):
         """~/foo wird zu HOME/foo expandiert."""
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         from gnom_hub.db import set_state_value
         client = TestClient(app)
@@ -169,6 +172,7 @@ class TestPutWorkspaceConfig:
 
     def test_empty_path_rejected(self):
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         client = TestClient(app)
         r = client.put("/api/workspace/config", json={"path": ""})
@@ -177,6 +181,7 @@ class TestPutWorkspaceConfig:
 
     def test_relative_path_rejected(self):
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         client = TestClient(app)
         r = client.put("/api/workspace/config", json={"path": "relative/subdir"})
@@ -197,6 +202,7 @@ class TestPutWorkspaceConfig:
     def test_system_paths_rejected(self, blocked):
         """Pfade unter /etc, /usr, /var etc. werden abgelehnt."""
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         client = TestClient(app)
         r = client.put("/api/workspace/config", json={"path": blocked})
@@ -206,6 +212,7 @@ class TestPutWorkspaceConfig:
     def test_path_is_actually_created(self):
         """Wenn der Pfad nicht existiert, wird er angelegt."""
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         from gnom_hub.db import set_state_value
         client = TestClient(app)
@@ -232,6 +239,7 @@ class TestResetWorkspaceConfig:
 
     def test_reset_clears_override(self):
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         from gnom_hub.db import set_state_value
         client = TestClient(app)
@@ -253,6 +261,7 @@ class TestResetWorkspaceConfig:
 
     def test_reset_is_idempotent(self):
         from fastapi.testclient import TestClient
+
         from gnom_hub.api.app import app
         client = TestClient(app)
 
@@ -270,10 +279,11 @@ class TestHotReload:
     den neuen Pfad sofort sehen — ohne Neustart."""
 
     def test_config_workspace_dir_picks_up_change(self):
+        from fastapi.testclient import TestClient
+
+        from gnom_hub.api.app import app
         from gnom_hub.core.config import Config
         from gnom_hub.db import set_state_value
-        from fastapi.testclient import TestClient
-        from gnom_hub.api.app import app
 
         client = TestClient(app)
         custom = tempfile.mkdtemp(prefix="ws-hot-")

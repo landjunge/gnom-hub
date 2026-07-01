@@ -1,14 +1,10 @@
 import json
+
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
+
 from gnom_hub.core.config import FRONTEND_DIR
-from gnom_hub.db import (
-    get_showbox_presentations,
-    save_showbox_presentation,
-    delete_showbox_presentation,
-    get_active_showbox,
-    set_active_showbox
-)
+from gnom_hub.db import delete_showbox_presentation, get_active_showbox, get_showbox_presentations, save_showbox_presentation, set_active_showbox
 
 router = APIRouter()
 THEMES_PATH = FRONTEND_DIR / "themes.js"
@@ -48,7 +44,7 @@ def save_themes(data: ThemesData):
             THEMES_PATH.write_text(data.content, encoding="utf-8")
         return {"status": "ok"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.get("/api/showbox/presentations")
 def get_presentations():
@@ -225,8 +221,8 @@ def push_live_chat_showbox(message: str = ""):
     live mit Provider-Info sieht.
     """
     from gnom_hub.db.connection import get_db_conn
-    from gnom_hub.soul.zwc_soul import strip_zwc
     from gnom_hub.db.state_repo import SQLiteStateRepository
+    from gnom_hub.soul.zwc_soul import strip_zwc
 
     db = SQLiteStateRepository()
     adb = db.get_value("llm_agents", {}) or {}
@@ -313,13 +309,13 @@ def test_minimax_showbox():
     oder Test) würde der ask_router auf dem landen statt auf MiniMax. Wir
     wollen hier den BEWEIS dass MiniMax-M3 funktioniert.
     """
-    from gnom_hub.infrastructure.router.router_call import _call, _try_keys
-    from gnom_hub.db.state_repo import SQLiteStateRepository
-    from gnom_hub.db import get_showbox_presentations
-    from gnom_hub.soul.zwc_soul import strip_zwc
-    from gnom_hub.infrastructure.router.router import _build_sys
-    from gnom_hub.agents.explainability.eo_wrap import wrap_error
     import time
+
+    from gnom_hub.db import get_showbox_presentations
+    from gnom_hub.db.state_repo import SQLiteStateRepository
+    from gnom_hub.infrastructure.router.router import _build_sys
+    from gnom_hub.infrastructure.router.router_call import _try_keys
+    from gnom_hub.soul.zwc_soul import strip_zwc
 
     db = SQLiteStateRepository()
     provider = "minimax"

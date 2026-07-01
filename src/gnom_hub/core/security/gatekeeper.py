@@ -1,24 +1,23 @@
 # gatekeeper.py — Double approval verification for file writes and shell commands with Showbox decisions
-import os
-import uuid
-import time
-import threading
 import logging
-import json
+import os
+import threading
+import time
+import uuid
 from html import escape as html_escape
+
+from gnom_hub.agents.capability_manager import request_capability
+from gnom_hub.core.security.path_validator import is_security_block, is_worker_blocked
 from gnom_hub.db import (
-    add_chat_message, 
-    get_state_value, 
-    set_state_value, 
-    save_showbox_presentation, 
-    set_active_showbox, 
-    get_active_project, 
-    set_agent_status,
+    add_chat_message,
+    get_active_project,
+    get_state_value,
     log_blockade,
+    save_showbox_presentation,
+    set_active_showbox,
+    set_agent_status,
+    set_state_value,
 )
-import gnom_hub.infrastructure.router.router as router
-from gnom_hub.core.security.path_validator import is_worker_blocked, is_security_block, _safe
-from gnom_hub.agents.capability_manager import check_capability, request_capability
 
 # ── Event-basierte Entscheidungs-Warteschlange ──
 # Ersetzt das while-True-Polling (3000 Iterationen in 5min) durch
@@ -314,10 +313,10 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
 
     sev = is_security_block(agent, fn, content, wd, perms)
     if sev == "high":
-        log_blockade(name, "WRITE", fn, f"Hochriskantes Code-Pattern blockiert", "blocked", "SecurityAG", content[:200] if content else "")
+        log_blockade(name, "WRITE", fn, "Hochriskantes Code-Pattern blockiert", "blocked", "SecurityAG", content[:200] if content else "")
         return False
     if sev == "medium":
-        log_blockade(name, "WRITE", fn, f"Mittelriskantes Code-Pattern — gewarnt", "warning", "SecurityAG", content[:200] if content else "")
+        log_blockade(name, "WRITE", fn, "Mittelriskantes Code-Pattern — gewarnt", "warning", "SecurityAG", content[:200] if content else "")
         # Allow with warning
 
     request_capability(name, "WRITE", fn, "AutoApprovedSafePath")
@@ -441,7 +440,7 @@ def verify_cmd(agent, cmd):
     - Keine Warte-Dialoge.
     """
     name = (agent or {}).get("name", "Unknown")
-    role = (agent or {}).get("role", "")
+    (agent or {}).get("role", "")
 
     # Benutzerregeln zuerst prüfen
     rule_result = check_blockade_rules(name, "SHELL", cmd)
@@ -457,15 +456,15 @@ def verify_cmd(agent, cmd):
         request_capability(name, "SHELL", cmd, "AutoMarkedHarmless")
         return True
 
-    from gnom_hub.core.config import WORKSPACE_DIR
+
     from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
+    from gnom_hub.core.config import WORKSPACE_DIR
     from gnom_hub.core.security.path_validator import is_system_path
-    import re as _re
 
     real_wd = os.path.realpath(str(WORKSPACE_DIR))
     wd = get_workspace_dir()
 
-    cmd_lower = cmd.lower()
+    cmd.lower()
     tokens = cmd.split()
     cleaned_tokens = []
     for token in tokens:
@@ -482,7 +481,7 @@ def verify_cmd(agent, cmd):
     cleaned_cmd = " ".join(cleaned_tokens).lower()
 
     if is_system_path(cleaned_cmd):
-        log_blockade(name, "SHELL", cmd[:150], f"Befehl enthält System-Pfad", "blocked", "PathValidator", cmd[:100])
+        log_blockade(name, "SHELL", cmd[:150], "Befehl enthält System-Pfad", "blocked", "PathValidator", cmd[:100])
         return False
 
     is_safe, sev, _block_reason = is_command_safe_and_whitelisted(cmd, agent)

@@ -4,17 +4,15 @@ Verifies that Gnom-Hub's database layer handles concurrent, multi-threaded
 access cleanly under WAL mode without raising SQLITE_BUSY (database is locked) errors.
 """
 
-import pytest
-import threading
 import queue
-import time
 import random
-from gnom_hub.db import (
-    add_chat_message,
-    get_chat_history,
-    set_state_value,
-    get_state_value
-)
+import threading
+import time
+
+import pytest
+
+from gnom_hub.db import add_chat_message, get_chat_history, get_state_value, set_state_value
+
 
 def test_sqlite_concurrency(isolated_db):
     """

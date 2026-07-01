@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, Depends
-from gnom_hub.db.state_repo import SQLiteStateRepository
-from gnom_hub.db.agent_repo import SQLiteAgentRepository
-from gnom_hub.infrastructure.llm.key_verifier import auto_detect_and_verify, verify_key
-from gnom_hub.infrastructure.llm.desktop_syncer import sync_desktop_keys, write_keys_to_desktop
+from fastapi import APIRouter, Depends, Request
+
 from gnom_hub.api.endpoints.auth import verify_admin
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.state_repo import SQLiteStateRepository
+from gnom_hub.infrastructure.llm.desktop_syncer import sync_desktop_keys, write_keys_to_desktop
+from gnom_hub.infrastructure.llm.key_verifier import auto_detect_and_verify, verify_key
 
 router = APIRouter()
 
@@ -33,6 +34,7 @@ async def save_keys(req: Request, _=Depends(verify_admin)):
     
     # Trigger model verification in background
     import asyncio
+
     from gnom_hub.api.endpoints.llm_models import check_and_update_models
     asyncio.create_task(check_and_update_models())
     
@@ -56,9 +58,9 @@ async def reverify_keys():
 @router.post("/api/llm/test")
 async def test_key(req: Request):
     j = await req.json()
-    k, p, l = j.get("key"), j.get("provider"), j.get("label", "")
+    k, p, letter = j.get("key"), j.get("provider"), j.get("label", "")
     if p: return await verify_key(p, k)
-    return await auto_detect_and_verify(k, l)
+    return await auto_detect_and_verify(k, letter)
 
 @router.post("/api/llm/auto_assign")
 async def auto_assign(force_provider: str = None):

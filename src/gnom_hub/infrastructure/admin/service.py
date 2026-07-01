@@ -1,5 +1,7 @@
-from ...core.config import Config
 from gnom_hub.db.schema import init_database
+
+from ...core.config import Config
+
 
 class AdminService:
     def nuke(self):

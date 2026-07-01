@@ -1,12 +1,12 @@
 # team_velocity.py — Track agent utilization and identify pipeline bottlenecks
-from typing import Dict
+
 
 class VelocityMetric:
     def __init__(
         self,
         jobs_completed_per_day: int,
         avg_duration_per_job: float,
-        agent_utilization: Dict[str, float],
+        agent_utilization: dict[str, float],
         critical_path_overhead: float
     ):
         self.jobs_completed_per_day = jobs_completed_per_day

@@ -1,7 +1,8 @@
-from fastapi import APIRouter
-from gnom_hub.db.connection import get_db_conn
 import sqlite3
-import json
+
+from fastapi import APIRouter
+
+from gnom_hub.db.connection import get_db_conn
 
 router = APIRouter(prefix="/api/observability")
 

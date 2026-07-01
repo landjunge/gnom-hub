@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
-import os, subprocess
+import os
+import subprocess
 from pathlib import Path
-from gnom_hub.core.config import Config, WORKSPACE_DIR
+
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
+
+from gnom_hub.core.config import Config
+from gnom_hub.db import set_state_value
 from gnom_hub.db.state_repo import SQLiteStateRepository
-from gnom_hub.db import get_state_value, set_state_value
 
 router = APIRouter()
 
@@ -85,7 +88,7 @@ def set_workspace_config(payload: dict):
     try:
         p.mkdir(parents=True, exist_ok=True)
     except OSError as e:
-        raise HTTPException(status_code=400, detail=f"Verzeichnis nicht anlegbar: {e}")
+        raise HTTPException(status_code=400, detail=f"Verzeichnis nicht anlegbar: {e}") from e
 
     if not os.access(str(p), os.W_OK):
         raise HTTPException(status_code=400, detail=f"Verzeichnis nicht beschreibbar: {p}")
@@ -117,7 +120,7 @@ def reset_workspace_config():
 def read_workspace_file(filename: str):
     p = _safe_path(filename)
     if os.path.exists(p):
-        with open(p, "r", encoding="utf-8") as f:
+        with open(p, encoding="utf-8") as f:
             return {"content": f.read()}
     return {"error": "File not found"}
 
@@ -126,7 +129,7 @@ def read_workspace_file(filename: str):
 def serve_workspace_file(filename: str):
     p = _safe_path(filename)
     if os.path.exists(p):
-        with open(p, "r", encoding="utf-8") as f:
+        with open(p, encoding="utf-8") as f:
             return HTMLResponse(f.read())
     return HTMLResponse("<h1>Datei nicht gefunden</h1>", status_code=404)
 

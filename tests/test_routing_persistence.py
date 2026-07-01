@@ -1,10 +1,13 @@
-import pytest
-from gnom_hub.db.state_repo import SQLiteStateRepository
-from gnom_hub.db.agent_repo import SQLiteAgentRepository
-from gnom_hub.core.utils.preset_service import handle_preset_change
-from gnom_hub.api.endpoints.llm_keys import auto_assign
-from gnom_hub.agents.entities import Agent
 from uuid import uuid4
+
+import pytest
+
+from gnom_hub.agents.entities import Agent
+from gnom_hub.api.endpoints.llm_keys import auto_assign
+from gnom_hub.core.utils.preset_service import handle_preset_change
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.state_repo import SQLiteStateRepository
+
 
 @pytest.mark.anyio
 async def test_auto_assign_saves_to_preset(isolated_db):

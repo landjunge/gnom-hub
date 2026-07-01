@@ -3,10 +3,16 @@
 Nutzt die zentrale Provider-Registry in `providers.py` — neue Provider
 dort hinzufügen, hier wird nichts geändert.
 """
-import httpx, asyncio, re
+import asyncio
+import re
+
+import httpx
+
 from gnom_hub.infrastructure.llm.providers import (
-    PROVIDERS, build_test_request,
-    detect_provider_from_key, detect_provider_from_label,
+    PROVIDERS,
+    build_test_request,
+    detect_provider_from_key,
+    detect_provider_from_label,
 )
 
 
@@ -66,7 +72,7 @@ async def auto_detect_and_verify(key: str, label: str = "") -> dict:
         res = await asyncio.gather(
             *(verify_key(p, key) for p in candidates), return_exceptions=True
         )
-        for p, r in zip(candidates, res):
+        for p, r in zip(candidates, res, strict=False):
             if isinstance(r, dict) and r.get("valid"):
                 return {**r, "provider": p}
 

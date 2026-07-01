@@ -25,12 +25,11 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from gnom_hub.core.preset_loader import (  # noqa: E402
-    load_preset,
     list_presets,
+    load_preset,
     validate_preset_bundle,
 )
 from gnom_hub.core.preset_schema import PRESET_FILES  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

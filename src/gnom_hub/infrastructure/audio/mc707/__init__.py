@@ -17,6 +17,7 @@ New code should prefer ``from mc707 import ...``.
 from __future__ import annotations
 
 from mc707 import (
+    MC707,
     MIDIIO,
     PARAM_ADDRESSES,
     AmpEnvelope,
@@ -28,7 +29,6 @@ from mc707 import (
     FilterType,
     LFOParams,
     LfoTarget,
-    MC707,
     OscillatorParams,
     PatternController,
     SceneController,

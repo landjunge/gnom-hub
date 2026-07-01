@@ -1,6 +1,13 @@
-import asyncio, time, re, os, logging, gnom_hub.db.state_repo as sr
+import asyncio
+import logging
+import os
+import re
+import time
 from pathlib import Path
+
+import gnom_hub.db.state_repo as sr
 from gnom_hub.infrastructure.llm.key_verifier import auto_detect_and_verify, clean_key
+
 DESKTOP_TXT = Path.home() / "Desktop" / "api_keys.txt"
 
 # Re-Verify Throttle: damit der Periodische Background-Task nicht zu oft
@@ -40,7 +47,7 @@ async def reverify_invalid_keys(desktop_path: Path = None, force: bool = False) 
         return {"checked": 0, "recovered": [], "still_invalid": [], "skipped": False}
 
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             raw_lines = f.read().splitlines()
     except Exception as e:
         logging.getLogger(__name__).error('reverify_invalid_keys: read failed: %s', e)
@@ -70,7 +77,7 @@ async def reverify_invalid_keys(desktop_path: Path = None, force: bool = False) 
 
     recovered_labels: list[str] = []
     still_invalid_labels: list[str] = []
-    for (lbl, k, idx), res in zip(invalid_entries, results):
+    for (lbl, k, idx), res in zip(invalid_entries, results, strict=False):
         if isinstance(res, dict) and res.get("valid"):
             # Reaktivieren: aus der UNGÜLTIG-Zeile eine aktive Zeile machen
             raw_lines[idx] = f"{lbl}={k}"
@@ -111,8 +118,8 @@ async def sync_desktop_keys(db_keys: dict) -> dict:
         db_keys = {kid: v for kid, v in db_keys.items() if isinstance(v, dict) and v.get("valid")}
         return db_keys
     try:
-        with open(DESKTOP_TXT, "r") as f:
-            lines = [l.strip() for l in f if l.strip()]
+        with open(DESKTOP_TXT) as f:
+            lines = [letter.strip() for letter in f if letter.strip()]
         if not lines:
             # Clear keys if file is empty
             sr.SQLiteStateRepository().set_value("llm_keys", {})
@@ -120,11 +127,11 @@ async def sync_desktop_keys(db_keys: dict) -> dict:
             
         parsed_active = []
         parsed_invalid = []
-        for l in lines:
-            is_comment = l.startswith("#") or "UNGÜLTIG" in l.upper()
-            parts = l.split("=", 1)
+        for letter in lines:
+            is_comment = letter.startswith("#") or "UNGÜLTIG" in letter.upper()
+            parts = letter.split("=", 1)
             lbl = re.sub(r'^[\s#]*(UNGÜLTIG:\s*)?', '', parts[0], flags=re.IGNORECASE).strip() if len(parts) > 1 else "API_KEY"
-            key = clean_key(l)
+            key = clean_key(letter)
             if key:
                 if is_comment:
                     parsed_invalid.append((lbl, key))
@@ -145,7 +152,7 @@ async def sync_desktop_keys(db_keys: dict) -> dict:
                 
         if to_verify:
             res_list = await asyncio.gather(*(auto_detect_and_verify(k, lbl) for lbl, k in to_verify), return_exceptions=True)
-            for idx, ((lbl, clean_k), res) in enumerate(zip(to_verify, res_list)):
+            for idx, ((lbl, clean_k), res) in enumerate(zip(to_verify, res_list, strict=False)):
                 d = res if isinstance(res, dict) else {}
                 if d.get("valid"):
                     kid = f"k_{int(time.time() * 1000) + idx}"
@@ -165,13 +172,13 @@ async def sync_desktop_keys(db_keys: dict) -> dict:
         
         # Rewrite to Desktop txt
         new_lines = []
-        for kid, v in db_keys.items():
+        for _kid, v in db_keys.items():
             new_lines.append(f"{v.get('label', 'API_KEY')}={v['key']}\n")
         for lbl, k in parsed_invalid:
             new_lines.append(f"# UNGÜLTIG: {lbl}={k}\n")
             
         target = "".join(new_lines)
-        with open(DESKTOP_TXT, "r") as f:
+        with open(DESKTOP_TXT) as f:
             current = f.read()
         if current != target:
             with open(DESKTOP_TXT, "w") as f:
@@ -192,17 +199,17 @@ def write_keys_to_desktop(keys: dict):
     try:
         existing_invalid = []
         if DESKTOP_TXT.exists():
-            with open(DESKTOP_TXT, "r") as f:
-                for l in f:
-                    if l.strip().startswith("#") or "UNGÜLTIG" in l.upper():
-                        parts = l.strip().split("=", 1)
+            with open(DESKTOP_TXT) as f:
+                for letter in f:
+                    if letter.strip().startswith("#") or "UNGÜLTIG" in letter.upper():
+                        parts = letter.strip().split("=", 1)
                         lbl = re.sub(r'^[\s#]*(UNGÜLTIG:\s*)?', '', parts[0], flags=re.IGNORECASE).strip() if len(parts) > 1 else "API_KEY"
-                        k = clean_key(l)
+                        k = clean_key(letter)
                         if k:
                             existing_invalid.append((lbl, k))
                             
         with open(DESKTOP_TXT, "w") as f:
-            for kid, v in keys.items():
+            for _kid, v in keys.items():
                 if isinstance(v, dict) and v.get("key"):
                     if v.get("valid"):
                         f.write(f"{v.get('label', 'API_KEY')}={v['key']}\n")

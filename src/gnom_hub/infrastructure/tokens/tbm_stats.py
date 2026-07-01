@@ -1,7 +1,9 @@
 # tbm_stats.py
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+
 from gnom_hub.db.connection import get_db_conn
+
 
 def get_budget_status(limit: float) -> dict:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")

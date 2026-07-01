@@ -1,6 +1,6 @@
 # token_economy.py — Token cost budgeting and spending guardrails
 import asyncio
-from typing import List
+
 from gnom_hub.db import add_chat_message
 
 PRICE_PER_1K_TOKENS = 0.002  # $0.002 per 1k tokens
@@ -38,8 +38,9 @@ class TokenBudgetAgent:
         self.name = name
 
     async def execute(self, prompt: str):
-        from gnom_hub.infrastructure.router.router import ask_router
         import functools
+
+        from gnom_hub.infrastructure.router.router import ask_router
         loop = asyncio.get_running_loop()
         eo = await loop.run_in_executor(
             None,
@@ -56,7 +57,7 @@ class TokenBudget:
     def __init__(self, daily_limit: float = 100_000):
         self.daily_limit = daily_limit  # Budget limit (can represent tokens or cost)
         self.spent_today = 0.0
-        self.alerts: List[Alert] = []
+        self.alerts: list[Alert] = []
 
     async def execute_with_budget(self, agent, prompt: str):
         # Resolve agent to TokenBudgetAgent if string is passed

@@ -20,18 +20,26 @@ Das aktive Preset wird in der ``state``-Tabelle unter dem Schlüssel
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Path as PathParam
+from fastapi import APIRouter, HTTPException
+from fastapi import Path as PathParam
 from pydantic import BaseModel, ValidationError
 
 from gnom_hub.core.preset_loader import (
     delete_preset as _delete_preset,
+)
+from gnom_hub.core.preset_loader import (
     get_presets_root,
-    list_presets as _list_presets,
-    load_preset as _load_preset,
-    save_preset as _save_preset,
     validate_preset_bundle,
+)
+from gnom_hub.core.preset_loader import (
+    list_presets as _list_presets,
+)
+from gnom_hub.core.preset_loader import (
+    load_preset as _load_preset,
+)
+from gnom_hub.core.preset_loader import (
+    save_preset as _save_preset,
 )
 from gnom_hub.core.preset_schema import PresetBundle
 
@@ -46,7 +54,7 @@ router = APIRouter(prefix="/api/presets", tags=["presets"])
 ACTIVE_PRESET_KEY = "active_preset"
 
 
-def _get_active_preset_id() -> Optional[str]:
+def _get_active_preset_id() -> str | None:
     """Liest die ID des aktuell aktiven Presets aus dem State-Store."""
     try:
         from gnom_hub.db.system_repo import get_state_value
@@ -59,7 +67,7 @@ def _get_active_preset_id() -> Optional[str]:
     return None
 
 
-def _set_active_preset_id(preset_id: Optional[str]) -> None:
+def _set_active_preset_id(preset_id: str | None) -> None:
     """Setzt die ID des aktuell aktiven Presets im State-Store."""
     try:
         from gnom_hub.db.system_repo import set_state_value
@@ -74,8 +82,8 @@ def _set_active_preset_id(preset_id: Optional[str]) -> None:
 # --------------------------------------------------------------------- #
 
 class ActivePresetResponse(BaseModel):
-    id: Optional[str]
-    name: Optional[str] = None
+    id: str | None
+    name: str | None = None
 
 
 class CreatePresetRequest(BaseModel):
@@ -110,7 +118,7 @@ def list_presets_endpoint():
         return [p.model_dump(mode="json") for p in _list_presets()]
     except Exception as e:
         logger.exception("list_presets failed")
-        raise HTTPException(status_code=500, detail=f"list_presets failed: {e}")
+        raise HTTPException(status_code=500, detail=f"list_presets failed: {e}") from e
 
 
 @router.get("/active")
@@ -137,10 +145,10 @@ def activate_preset_endpoint(preset_id: str = PathParam(..., min_length=1, max_l
     try:
         # Validierung: Preset muss tatsächlich existieren + ladbar sein.
         _load_preset(preset_id)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' nicht gefunden.")
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' nicht gefunden.") from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=f"Preset '{preset_id}' ist ungültig: {e}")
+        raise HTTPException(status_code=422, detail=f"Preset '{preset_id}' ist ungültig: {e}") from e
     _set_active_preset_id(preset_id)
     return {"status": "ok", "active_preset": preset_id}
 
@@ -168,7 +176,7 @@ def create_preset_endpoint(req: CreatePresetRequest):
         _save_preset(pid, req.bundle)
     except Exception as e:
         logger.exception("create_preset failed")
-        raise HTTPException(status_code=500, detail=f"save_preset failed: {e}")
+        raise HTTPException(status_code=500, detail=f"save_preset failed: {e}") from e
     return CreatePresetResponse(id=pid, status="ok").model_dump()
 
 
@@ -178,12 +186,12 @@ def get_preset_endpoint(preset_id: str = PathParam(..., min_length=1, max_length
     try:
         bundle = _load_preset(preset_id)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=f"Preset ungültig: {e}")
+        raise HTTPException(status_code=422, detail=f"Preset ungültig: {e}") from e
     except Exception as e:
         logger.exception("get_preset failed")
-        raise HTTPException(status_code=500, detail=f"load_preset failed: {e}")
+        raise HTTPException(status_code=500, detail=f"load_preset failed: {e}") from e
     return bundle.model_dump(mode="json")
 
 
@@ -220,7 +228,7 @@ def put_preset_endpoint(
         _save_preset(preset_id, req.bundle)
     except Exception as e:
         logger.exception("put_preset failed")
-        raise HTTPException(status_code=500, detail=f"save_preset failed: {e}")
+        raise HTTPException(status_code=500, detail=f"save_preset failed: {e}") from e
     return {"status": "ok", "preset_id": preset_id}
 
 
@@ -230,7 +238,7 @@ def delete_preset_endpoint(preset_id: str = PathParam(..., min_length=1, max_len
     try:
         ok = _delete_preset(preset_id)
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=str(e)) from e
     if not ok:
         raise HTTPException(status_code=404, detail=f"Preset '{preset_id}' nicht gefunden.")
     # Falls das aktive Preset gelöscht wurde → zurücksetzen.
@@ -280,7 +288,7 @@ def get_layer_a_preset_endpoint(slug: str = PathParam(..., min_length=1, max_len
         raise
     except Exception as e:
         logger.warning("get_layer_a_preset_endpoint failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/layer-a/{slug}/agents/{agent_name}")
@@ -302,7 +310,7 @@ def update_layer_a_preset_agent_endpoint(
         raise
     except Exception as e:
         logger.warning("update_layer_a_preset_agent_endpoint failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/layer-a")
@@ -318,7 +326,7 @@ def create_layer_a_preset_endpoint(body: dict = None):
         raise
     except Exception as e:
         logger.warning("create_layer_a_preset_endpoint failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/layer-a/{slug}/clone")
@@ -339,7 +347,7 @@ def clone_layer_a_preset_endpoint(
         raise
     except Exception as e:
         logger.warning("clone_layer_a_preset_endpoint failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/layer-a/{slug}")
@@ -355,7 +363,7 @@ def delete_layer_a_preset_endpoint(slug: str = PathParam(..., min_length=1, max_
         raise
     except Exception as e:
         logger.warning("delete_layer_a_preset_endpoint failed: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 __all__ = ["router"]

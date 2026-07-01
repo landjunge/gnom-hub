@@ -1,5 +1,6 @@
+
 import httpx
-from typing import Optional
+
 from gnom_hub.core.config import Config
 from gnom_hub.core.exceptions import LLMProviderError
 
@@ -11,7 +12,7 @@ class OllamaClient:
         self.base_url = Config.OLLAMA_BASE_URL.rstrip("/")
         self.timeout = 600.0  # Ollama kann bei großen Modellen langsam sein
 
-    async def ask(self, prompt: str, model: Optional[str] = None) -> str:
+    async def ask(self, prompt: str, model: str | None = None) -> str:
         """Sendet eine einfache Prompt-Anfrage an Ollama."""
         model = model or "llama3"  # Standard-Modell, falls keines angegeben
 

@@ -1,6 +1,5 @@
 # injection_validator.py — Local input validation for prompt-injection threats
 import re
-from typing import Tuple, Optional
 
 # Compiled regex patterns for prompt-injection signatures
 INJECTION_PATTERNS = [
@@ -59,7 +58,7 @@ INJECTION_PATTERNS = [
     )
 ]
 
-def validate_input(content: str) -> Tuple[bool, Optional[str]]:
+def validate_input(content: str) -> tuple[bool, str | None]:
     """
     Validates user input against a list of prompt-injection and jailbreak patterns.
     Returns (is_safe, reason).

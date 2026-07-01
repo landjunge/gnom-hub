@@ -1,12 +1,12 @@
 # eo_class.py — ExplainableOutput: Einzige Antwort-Struktur der Pipeline
-from typing import List, Dict, Optional
+
 
 class ExplainableOutput:
     def __init__(
         self, agent: str, task: str, answer: str = "", confidence: float = 0.0,
-        reasoning_chain: List[str] = None, sources: List[Dict[str, str]] = None,
-        alternatives: List[Dict] = None, execution_time_ms: int = 0,
-        degradation_note: Optional[str] = None
+        reasoning_chain: list[str] = None, sources: list[dict[str, str]] = None,
+        alternatives: list[dict] = None, execution_time_ms: int = 0,
+        degradation_note: str | None = None
     ):
         self.agent = agent
         self.task = task

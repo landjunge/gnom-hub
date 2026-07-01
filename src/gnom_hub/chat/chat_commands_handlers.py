@@ -1,10 +1,11 @@
 # chat_commands_handlers.py — Handlers for clear, status, and job command
-import uuid, re
+import re
+import uuid
 from datetime import datetime, timezone
-from gnom_hub.db.state_repo import SQLiteStateRepository
+
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
-from gnom_hub.db.chat_repo import SQLiteChatRepository
-from gnom_hub.chat.entities import ChatMessage
+from gnom_hub.db.state_repo import SQLiteStateRepository
+
 
 def _post_chat(s, c):
     from gnom_hub.db import add_chat_message, get_active_project
@@ -18,7 +19,8 @@ def handle_status():
     return {"agents": [{"name": a.name, "role": a.role, "st": a.status} for a in SQLiteAgentRepository().get_all()]}
 
 def handle_job(task):
-    from gnom_hub.agents.role_tools import distribute_job; from gnom_hub.chat.brainstorm.brainstorm import dispatch
+    from gnom_hub.agents.role_tools import distribute_job
+    from gnom_hub.chat.brainstorm.brainstorm import dispatch
     agent_repo, state_repo = SQLiteAgentRepository(), SQLiteStateRepository()
     ags = agent_repo.get_all()
     gen = next((a for a in ags if a.role == "general" or a.name.lower() == "generalag"), None)

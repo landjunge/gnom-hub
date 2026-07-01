@@ -1,10 +1,10 @@
-import re
-import time
 import json
-import threading
 import logging
-from typing import Optional, List, Dict, Union, Tuple
+import re
 import sqlite3
+import threading
+import time
+
 from gnom_hub.db.connection import get_db_connection
 
 PRIORITY_MAPPING = {
@@ -27,7 +27,7 @@ DEPENDENCY_TIMEOUT  = 120.0  # Max. Wartezeit auf eine Abhängigkeit (Sekunden)
 DEPENDENCY_POLL_S   = 1.0     # (war 3.0) — schnellere Dependency-Auflösung    # Poll-Intervall für Dependency-Checks
 
 # ── Notification-Bus: Agenten warten auf dieses Event statt zu pollen ──────
-_new_message_event: Dict[str, threading.Event] = {}
+_new_message_event: dict[str, threading.Event] = {}
 _event_lock = threading.Lock()
 
 
@@ -63,7 +63,7 @@ def can_accept_message(agent_name: str, conn: sqlite3.Connection) -> bool:
     return True
 
 
-def parse_agent_sequence(text: str) -> List[Tuple[str, str]]:
+def parse_agent_sequence(text: str) -> list[tuple[str, str]]:
     """
     Parst mehrzeilige Delegationen im Format:
       @CoderAG -> Erstelle HTML
@@ -90,7 +90,7 @@ def dispatch_sequence(
     context_id: str,
     db_path: str,
     current_depth: int = 0,
-) -> List[str]:
+) -> list[str]:
     """
     Zerlegt eine mehrzeilige Delegation in sequenzielle Tasks.
     Jeder Task hat eine sequence_id und sequence_step.
@@ -177,7 +177,7 @@ def dispatch_sequence(
     return dispatched
 
 
-def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> Optional[str]:
+def find_best_agent_for_task(task: str, conn: sqlite3.Connection) -> str | None:
     """
     3-stufige Agent-Auswahl:
     1. coordination.db — Erfolgsrate + Fehlerhistorie (lernt aus echten Jobs)
@@ -314,9 +314,9 @@ def dispatch_mention(
     context_id: str,
     db_path: str,
     current_depth: int = 0,
-    parent_msg_id: Optional[int] = None,
-    priority: Optional[Union[str, int]] = None,
-) -> List[str]:
+    parent_msg_id: int | None = None,
+    priority: str | int | None = None,
+) -> list[str]:
     """
     Parst @Mentions und legt Nachrichten in die persistente Queue.
     Gibt Liste der angesprochenen Agenten zurück (für Logging).
@@ -421,7 +421,7 @@ def fetch_next_message(
     agent_name: str,
     db_path: str,
     timeout: float = 30.0,
-) -> Optional[dict]:
+) -> dict | None:
     """
     Blockiert maximal `timeout` Sekunden auf die nächste Nachricht.
     Prüft parent_msg_id-Abhängigkeiten:
@@ -468,7 +468,7 @@ def fetch_next_message(
 
                         if parent_row["status"] == "dead_letter":
                             # Parent fehlgeschlagen → auch dieses Child in DLQ
-                            fail_dependent_messages(row["id"], "parent_msg_id=%d in dead_letter" % parent_id, conn)
+                            fail_dependent_messages(row["id"], f"parent_msg_id={parent_id} in dead_letter", conn)
                             conn.commit()
                             logger.error("Sequenz-Abbruch: Parent %d in DLQ – Child %d ebenfalls abgebrochen", parent_id, row["id"])
                             time.sleep(0.5)
@@ -487,7 +487,7 @@ def fetch_next_message(
                             if ps is not None:
                                 elapsed = time.time() - ps
                                 if elapsed > DEPENDENCY_TIMEOUT:
-                                    fail_dependent_messages(parent_id, "DEPENDENCY_TIMEOUT=%.0fs" % DEPENDENCY_TIMEOUT, conn)
+                                    fail_dependent_messages(parent_id, f"DEPENDENCY_TIMEOUT={DEPENDENCY_TIMEOUT:.0f}s", conn)
                                     conn.commit()
                                     logger.error("Sequenz-Abbruch: Parent %d nach %.0fs processing – Kaskade ausgelöst", parent_id, elapsed)
                                     time.sleep(0.5)
@@ -587,7 +587,7 @@ def nack_message(msg_id: int, db_path: str, reason: str = "") -> None:
         retries = row["retry_count"] + 1
 
         if retries >= RETRY_MAX:
-            fail_dependent_messages(msg_id, "max_retries (%s)" % reason, conn)
+            fail_dependent_messages(msg_id, f"max_retries ({reason})", conn)
             conn.commit()
             # GeneralAG benachrichtigen
             from gnom_hub.chat.chat_commands import _post_chat
@@ -609,7 +609,7 @@ def nack_message(msg_id: int, db_path: str, reason: str = "") -> None:
         conn.close()
 
 
-def process_swarm_mentions(sender: str, text: str, depth: int = 0, parent_msg_id: Optional[int] = None):
+def process_swarm_mentions(sender: str, text: str, depth: int = 0, parent_msg_id: int | None = None):
     """
     Router-Schnittstelle. Erkennt mehrzeilige Delegationen und routet
     sie entweder als Sequenz oder als einfache Mentions.
@@ -627,7 +627,7 @@ def process_swarm_mentions(sender: str, text: str, depth: int = 0, parent_msg_id
         dispatch_mention(sender, clean, proj, str(DB_PATH), depth + 1, parent_msg_id=parent_msg_id)
 
 
-def find_best_agent_for(task_type: str, conn: sqlite3.Connection) -> Optional[str]:
+def find_best_agent_for(task_type: str, conn: sqlite3.Connection) -> str | None:
     """
     Findet den am besten geeigneten verfügbaren Agenten für eine Fähigkeit.
     Priorisiert Confidence und wählt bei Gleichstand den Agenten mit der kleinsten Queue-Tiefe.
@@ -661,9 +661,9 @@ def dispatch_by_capability(
     context_id: str,
     db_path: str,
     current_depth: int = 0,
-    parent_msg_id: Optional[int] = None,
-    priority: Optional[Union[str, int]] = None,
-) -> Tuple[Optional[str], Optional[int]]:
+    parent_msg_id: int | None = None,
+    priority: str | int | None = None,
+) -> tuple[str | None, int | None]:
     """
     Routet eine Aufgabe basierend auf den Fähigkeiten der Agenten statt über direkten Namen.
     Gibt Tuple (target_agent, msg_id) zurück.
@@ -746,7 +746,7 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
                     (retries, time.time(), msg_id)
                 )
                 # Auch abhängige Messages kaskadieren (retry_count bleibt unverändert)
-                fail_dependent_messages(msg_id, "parent_stuck_retries_%d" % retries, conn)
+                fail_dependent_messages(msg_id, f"parent_stuck_retries_{retries}", conn)
                 logger.error(
                     "Nachricht %d (Ziel=%s) zu oft blockiert – Kaskade ausgelöst",
                     msg_id, recipient
@@ -813,13 +813,13 @@ def dispatch_by_capability_with_resolution(
     text: str,
     context_id: str,
     db_path: str,
-    available_capabilities: Optional[List[str]] = None,
+    available_capabilities: list[str] | None = None,
     node_resolver_fn=None,
     session_id: str = "default",
     current_depth: int = 0,
-    parent_msg_id: Optional[int] = None,
-    priority: Optional[Union[str, int]] = None,
-) -> Tuple[Optional[str], Optional[int]]:
+    parent_msg_id: int | None = None,
+    priority: str | int | None = None,
+) -> tuple[str | None, int | None]:
     """Wie :func:`dispatch_by_capability`, aber mit deterministischem Vor-Layer.
 
     Ablauf
@@ -838,9 +838,13 @@ def dispatch_by_capability_with_resolution(
     # Lokale Imports zur Vermeidung von Zyklen beim Modul-Init.
     try:
         from gnom_hub.agents.routing import (
-            resolve_capability as _resolve_cap,
-            resolve_with_node_id as _resolve_with_nid,
             build_fallback_chain as _build_chain,
+        )
+        from gnom_hub.agents.routing import (
+            resolve_capability as _resolve_cap,
+        )
+        from gnom_hub.agents.routing import (
+            resolve_with_node_id as _resolve_with_nid,
         )
     except Exception as _routing_exc:
         logger.debug("routing import failed; fallback to direct dispatch: %s", _routing_exc)
@@ -870,7 +874,7 @@ def dispatch_by_capability_with_resolution(
             from gnom_hub.memory.node_resolver import resolve_node as _rn_default
 
             def _node_resolver_factory(_sid: str):
-                def _fn(nid: str) -> Optional[str]:
+                def _fn(nid: str) -> str | None:
                     return _rn_default(nid, _sid)
                 return _fn
 

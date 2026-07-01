@@ -1,6 +1,7 @@
 # gd_test.py
 import asyncio
 
+
 async def simulate_agent_failure(mgr, agent: str):
     mgr.simulated_failures.add(agent.lower())
     print(f"[Degradation] Simulated failure active for {agent}")

@@ -1,9 +1,8 @@
 # specialization_monitor.py — Monitor agent drift and recommend corrective tasks
-import asyncio
-from typing import Dict
 from gnom_hub.db import add_chat_message, log_audit_event
 
-async def analyze_task_categories(agent: str) -> Dict[str, float]:
+
+async def analyze_task_categories(agent: str) -> dict[str, float]:
     """Simulates or analyzes historical agent task category performance."""
     # We provide realistic defaults that showcase drift for testing
     if agent == "WriterAG":
@@ -24,7 +23,7 @@ async def analyze_task_categories(agent: str) -> Dict[str, float]:
             "coordination": 0.88
         }
 
-async def escalate_to_soul(agent: str, message: str, categories: Dict[str, float]):
+async def escalate_to_soul(agent: str, message: str, categories: dict[str, float]):
     """Logs drift escalation in audit log and notifies the user in chat."""
     # Identify the lowest-performing category to recommend training
     min_category = min(categories, key=categories.get)

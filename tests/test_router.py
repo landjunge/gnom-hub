@@ -1,7 +1,6 @@
 """tests/test_router.py — Unit Tests für den Router (router.py)"""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestGetObedienceInstructions:

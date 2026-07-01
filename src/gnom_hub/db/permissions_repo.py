@@ -10,8 +10,8 @@ Code-Pfad schrieb je hinein. SecurityAG's Kernrolle war damit
 funktionslos.
 """
 import time
-from gnom_hub.db.connection import get_db_conn
 
+from gnom_hub.db.connection import get_db_conn
 
 VALID_RESOURCE_TYPES = {"directory", "file", "tool"}
 
@@ -121,4 +121,4 @@ def list_permissions_for_agent(granted_to: str) -> list[dict]:
             "resource_type", "resource_path", "granted_by",
             "reason", "created_at", "expires_at",
         )
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]

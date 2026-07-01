@@ -1,12 +1,15 @@
 """STT Engine — Whisper lokal, OpenAI API Fallback."""
+import io
 import logging
-import os, io, tempfile
-from typing import Optional
+import os
+import tempfile
+
 _log = logging.getLogger(__name__)
-def stt_local(audio_bytes: bytes) -> Optional[str]:
+def stt_local(audio_bytes: bytes) -> str | None:
     """Lokales faster-whisper STT."""
     try:
         from faster_whisper import WhisperModel
+
         from gnom_hub.db import get_language
         model = WhisperModel("tiny", compute_type="int8")
         tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -17,12 +20,13 @@ def stt_local(audio_bytes: bytes) -> Optional[str]:
     except Exception as e:
         _log.warning("Lokales STT fehlgeschlagen: %s", e)
         return None
-def stt_cloud(audio_bytes: bytes) -> Optional[str]:
+def stt_cloud(audio_bytes: bytes) -> str | None:
     """OpenAI Whisper API Fallback."""
     key = os.environ.get("OPENAI_API_KEY", "")
     if not key: return None
     try:
         import requests
+
         from gnom_hub.db import get_language
         r = requests.post("https://api.openai.com/v1/audio/transcriptions",
             headers={"Authorization": f"Bearer {key}"},

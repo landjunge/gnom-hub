@@ -20,7 +20,7 @@ def _make_test_db():
 
 def test_cap_triggers_when_over_max():
     """Bei >MAX_ROWS werden die ältesten gelöscht, bis KEEP_ROWS erreicht ist."""
-    from gnom_hub.db.system_repo import _enforce_audit_cap, AUDIT_LOG_MAX_ROWS, AUDIT_LOG_KEEP_ROWS
+    from gnom_hub.db.system_repo import AUDIT_LOG_KEEP_ROWS, AUDIT_LOG_MAX_ROWS, _enforce_audit_cap
 
     conn = _make_test_db()
     now = datetime.now(timezone.utc).isoformat()
@@ -45,7 +45,7 @@ def test_cap_triggers_when_over_max():
 
 def test_cap_does_nothing_under_max():
     """Unter dem Limit passiert nichts."""
-    from gnom_hub.db.system_repo import _enforce_audit_cap, AUDIT_LOG_MAX_ROWS
+    from gnom_hub.db.system_repo import _enforce_audit_cap
 
     conn = _make_test_db()
     now = datetime.now(timezone.utc).isoformat()
@@ -64,7 +64,7 @@ def test_cap_does_nothing_under_max():
 
 def test_cap_keeps_newest():
     """Die jüngsten Einträge müssen erhalten bleiben."""
-    from gnom_hub.db.system_repo import _enforce_audit_cap, AUDIT_LOG_MAX_ROWS, AUDIT_LOG_KEEP_ROWS
+    from gnom_hub.db.system_repo import AUDIT_LOG_MAX_ROWS, _enforce_audit_cap
 
     conn = _make_test_db()
     # Sequenziell wachsende timestamps

@@ -1,7 +1,10 @@
-import json, os
+import json
+import os
+
 from fastapi import APIRouter
-from gnom_hub.db.agent_repo import SQLiteAgentRepository
+
 from gnom_hub.core.config import TOKENS_FILE
+from gnom_hub.db.agent_repo import SQLiteAgentRepository
 
 router = APIRouter(tags=["agents"])
 
@@ -24,10 +27,10 @@ def get_agent(a_id: str):
 
 @router.get("/api/stats")
 def get_system_stats():
-    from gnom_hub.soul import SOULS
     from gnom_hub.db.chat_repo import SQLiteChatRepository
     from gnom_hub.db.state_repo import SQLiteStateRepository
     from gnom_hub.memory.smr.smr_stats import get_memory_stats
+    from gnom_hub.soul import SOULS
     sys_set = {k for k, v in SOULS.items() if v.get("role") not in ("writer","coder","researcher","editor")}
     d = json.load(open(str(TOKENS_FILE))) if os.path.exists(str(TOKENS_FILE)) else {}
     ags = list_agents()

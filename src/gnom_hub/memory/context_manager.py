@@ -2,7 +2,8 @@
 import hashlib
 import logging
 from typing import Literal
-from gnom_hub.db import get_db_conn, add_to_soul_memory
+
+from gnom_hub.db import add_to_soul_memory, get_db_conn
 from gnom_hub.db.soul_repo import save_soul_fact_smart
 
 # Priority values for eviction sorting (lower value gets evicted first)
@@ -87,7 +88,8 @@ class ContextBudget:
         # Wenn None (rejected) ODER der zurückgegebene key != unser dedup_key
         # (= dedup hat in einen existierenden Slot gemerged), überspringen wir
         # den UUID-basierten Insert in add_to_soul_memory.
-        dedup_key = f"ctx:{self.agent.lower()}:{hashlib.md5(fact.encode('utf-8')).hexdigest()[:12]}"
+        # md5 als Non-Crypto-Content-Hash für Dedup-Key — Kollisionsresistenz irrelevant, Geschwindigkeit zählt.
+        dedup_key = f"ctx:{self.agent.lower()}:{hashlib.md5(fact.encode('utf-8')).hexdigest()[:12]}"  # noqa: S324
         try:
             result = save_soul_fact_smart(dedup_key, tagged, agent="SoulAG", priority=priority)
             if isinstance(result, str):

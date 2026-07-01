@@ -1,13 +1,13 @@
 # adaptive_decomposition.py — Adaptive task decomposition and execution routing
 import asyncio
-import json
 import re
-from typing import List, Dict
-from gnom_hub.infrastructure.router.router import ask_router
+
 from gnom_hub.infrastructure.monitoring import get_agent_metrics
+from gnom_hub.infrastructure.router.router import ask_router
+
 
 class Route:
-    def __init__(self, subtasks: List[str], agents: List[str], duration: float, cost: float):
+    def __init__(self, subtasks: list[str], agents: list[str], duration: float, cost: float):
         self.subtasks = subtasks
         self.agents = agents
         self.duration = duration
@@ -17,7 +17,7 @@ class Route:
         return f"<Route agents={self.agents} duration={self.duration:.1f}s cost=${self.cost:.2f}>"
 
 class RouteOptimizer:
-    def pick_cheapest_route(self, task: str, capacities: Dict[str, Dict], complexity: int) -> Route:
+    def pick_cheapest_route(self, task: str, capacities: dict[str, dict], complexity: int) -> Route:
         # We define three standard fallback routing strategies based on task characteristics
         # Strategy A: Parallel (e.g. WriterAG + CoderAG)
         # Strategy B: Serial (e.g. WriterAG -> EditorAG)
@@ -44,7 +44,7 @@ class RouteOptimizer:
         dur_coder = get_dur("coderag", 25.0)
         dur_writer = get_dur("writerag", 15.0)
         dur_editor = get_dur("editorag", 10.0)
-        dur_researcher = get_dur("researcherag", 12.0)
+        get_dur("researcherag", 12.0)
         dur_general = get_dur("generalag", 40.0)
 
         # Evaluate routes

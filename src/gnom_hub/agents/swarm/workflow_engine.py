@@ -1,18 +1,17 @@
-import sqlite3
 import json
-import uuid
-import time
 import logging
-from typing import List, Dict, Optional, Tuple
-from gnom_hub.db.connection import get_db_connection
+import time
+import uuid
+
 from gnom_hub.agents.swarm.swarm_comms import (
     dispatch_by_capability,
     dispatch_by_capability_with_resolution,
 )
 from gnom_hub.core.config import DB_PATH, Config
 from gnom_hub.core.constants import (
-    WORKFLOW_MAX_RETRIES, WORKFLOW_RETRY_DELAY, WORKFLOW_STUCK_TIMEOUT,
+    WORKFLOW_STUCK_TIMEOUT,
 )
+from gnom_hub.db.connection import get_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ def _log_wf(workflow_id: str, msg: str, level: str = "info", task_id: str = ""):
     getattr(logger, level)(f"{ctx} {msg}")
 
 
-def get_task_output_text(result_str: Optional[str]) -> str:
+def get_task_output_text(result_str: str | None) -> str:
     """Extrahiert Text aus einem Agenten-Resultat (Content/Text/Summary)."""
     if not result_str:
         return ""
@@ -43,7 +42,7 @@ def get_task_output_text(result_str: Optional[str]) -> str:
         return str(result_str)
 
 
-def interpolate_template(template: str, variables: Dict[str, str]) -> str:
+def interpolate_template(template: str, variables: dict[str, str]) -> str:
     """
     Erweiterte Interpolation:
     {task_id}            → kompletter Output-Text
@@ -95,7 +94,7 @@ def _dispatch_task(
     task_id: str,
     capability: str,
     text: str,
-) -> Tuple[Optional[str], Optional[int]]:
+) -> tuple[str | None, int | None]:
     """Dispatch a workflow task to the appropriate agent.
 
     Wenn ``Config.ROUTING_DETERMINISTIC_MODE`` aktiviert ist, wird der
@@ -216,7 +215,7 @@ def _record_wf_result(workflow_id: str, task_chain: list, overall_result: str,
 
 # ── Core Workflow Functions ─────────────────────────────────────────────────
 
-def create_workflow(name: str, tasks: List[Dict]) -> str:
+def create_workflow(name: str, tasks: list[dict]) -> str:
     """Erstellt einen neuen Workflow mit Tasks. Gibt workflow_id zurück."""
     workflow_id = str(uuid.uuid4())
     conn = get_db_connection()
@@ -462,7 +461,6 @@ def handle_task_completion(msg_id: int, result: dict) -> None:
                 )
             _log_wf(workflow_id, f"Task {task_id} FAILED: {summary}", "error", task_id)
         else:
-            status = "completed"
             with conn:
                 conn.execute(
                     "UPDATE workflow_tasks SET status='completed', result_json=? WHERE workflow_id=? AND task_id=?",

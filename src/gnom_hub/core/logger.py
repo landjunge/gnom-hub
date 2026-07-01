@@ -1,6 +1,7 @@
 import logging
 import sys
 
+
 def setup_logging(level: str = "INFO") -> logging.Logger:
     logger = logging.getLogger("gnom_hub")
     if logger.handlers:

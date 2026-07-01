@@ -1,11 +1,8 @@
 """tests/test_swarm_comms.py — Unit Tests für Swarm Communications (swarm_comms.py)"""
 
-import pytest
 import sqlite3
-import time
-from unittest.mock import patch, MagicMock
-from typing import Optional
 
+import pytest
 
 # ==============================================================================
 # 1. PARSE AGENT SEQUENCE
@@ -148,7 +145,7 @@ class TestCanAcceptMessage:
         assert can_accept_message("coderag", self.conn) is True
 
     def test_rejects_when_queue_at_limit(self):
-        from gnom_hub.agents.swarm.swarm_comms import can_accept_message, MAX_QUEUE_DEPTH
+        from gnom_hub.agents.swarm.swarm_comms import MAX_QUEUE_DEPTH, can_accept_message
         for _ in range(MAX_QUEUE_DEPTH):
             self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'pending')")
         assert can_accept_message("coderag", self.conn) is False

@@ -1,5 +1,6 @@
 def get_agent_soul_path(agent_name: str) -> str:
     import os
+
     from gnom_hub.api.endpoints.workspace import get_workspace_dir
     wd = get_workspace_dir()
     agents_dir = os.path.join(wd, ".agents", agent_name.lower())
@@ -7,7 +8,8 @@ def get_agent_soul_path(agent_name: str) -> str:
     return os.path.join(agents_dir, "soul.json")
 
 def _commit_soul_git(agent_name: str, path: str):
-    import subprocess, os
+    import os
+    import subprocess
     from pathlib import Path
     try:
         agent_dir = os.path.dirname(path)
@@ -28,9 +30,11 @@ def _commit_soul_git(agent_name: str, path: str):
         print(f"Git commit for agent soul failed: {e}")
 
 def get_soul(agent_name: str) -> dict:
-    import os, json
-    from gnom_hub.db import get_language
+    import json
+    import os
+
     from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+    from gnom_hub.db import get_language
     
     lang = get_language()
     name_lower = agent_name.lower()
@@ -46,7 +50,7 @@ def get_soul(agent_name: str) -> dict:
     path = get_agent_soul_path(agent_name)
     if os.path.exists(path):
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
                 dirty = False
                 if data.get("role") != role: data["role"] = role; dirty = True
@@ -111,7 +115,8 @@ SOULS = DynamicSouls()
 
 def check_and_wait_breakpoint(agent_name: str, operation: str, detail: str):
     import time
-    from gnom_hub.db import get_active_project, add_chat_message, get_all_agents, set_agent_status
+
+    from gnom_hub.db import add_chat_message, get_active_project, get_all_agents, set_agent_status
     
     soul = get_soul(agent_name)
     breakpoints = soul.get("breakpoints", [])

@@ -1,11 +1,11 @@
 # action_desktop.py — Desktop GUI automation (Mouse & Keyboard control)
-import os
 import json
-import re
+import os
 import uuid
 
+
 def verify_desktop(agent, action, details) -> bool:
-    from gnom_hub.db import get_state_value, get_active_project, add_chat_message
+    from gnom_hub.db import add_chat_message, get_active_project, get_state_value
     name = (agent or {}).get("name", "Unknown")
     
     if not get_state_value("enable_confirmations", False):

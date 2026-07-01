@@ -1,9 +1,9 @@
 import sqlite3
-from pathlib import Path
-from datetime import datetime
-from typing import Optional
 from contextlib import contextmanager
+from datetime import datetime
+
 from gnom_hub.core.config import Config
+
 
 class Await:
     def __init__(self, v): self._v = v
@@ -16,7 +16,7 @@ class Await:
     def __len__(self): return len(self._v)
     def __bool__(self): return bool(self._v)
 
-def parse_dt(s) -> Optional[datetime]:
+def parse_dt(s) -> datetime | None:
     if not s: return None
     s = str(s)
     if s.endswith("Z"): s = s[:-1] if ("+" in s[:-1] or "-" in s[:-1]) else s[:-1] + "+00:00"

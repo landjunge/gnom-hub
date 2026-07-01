@@ -1,16 +1,16 @@
-import time
 import logging
-from gnom_hub.db import get_state_value, set_state_value, get_all_agents, set_agent_status
-from gnom_hub.db.connection import get_db_conn
-from gnom_hub.infrastructure.router.router_call import _call, _try_keys
-from gnom_hub.core.structured_log import AgentLogger
-from gnom_hub.infrastructure.monitoring import record_agent_request
-from gnom_hub.agents.explainability.eo_wrap import wrap_response, wrap_error
-from gnom_hub.core.utils.evolution_v2 import get_active_version
-from gnom_hub.db.state_repo import SQLiteStateRepository
-from gnom_hub.infrastructure.router.router_stage import SmartRouter
-from gnom_hub.core.utils.routing_override import load_routing_from_txt
+import time
+
+from gnom_hub.agents.explainability.eo_wrap import wrap_error, wrap_response
 from gnom_hub.core.config import Config
+from gnom_hub.core.structured_log import AgentLogger
+from gnom_hub.core.utils.routing_override import load_routing_from_txt
+from gnom_hub.db import get_all_agents, get_state_value, set_agent_status, set_state_value
+from gnom_hub.db.state_repo import SQLiteStateRepository
+from gnom_hub.infrastructure.monitoring import record_agent_request
+from gnom_hub.infrastructure.router.router_call import _call, _try_keys
+from gnom_hub.infrastructure.router.router_stage import SmartRouter
+
 
 def _try(pvd, mdl, key, msgs, n):
     try:

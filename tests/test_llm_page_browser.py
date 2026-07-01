@@ -11,7 +11,8 @@ Was dieser Test macht:
 """
 import os
 import time
-from playwright.sync_api import sync_playwright, expect
+
+from playwright.sync_api import sync_playwright
 
 HUB_URL = "http://127.0.0.1:3002"
 KEYS_FILE = os.path.expanduser("~/Desktop/api_keys.txt")
@@ -36,7 +37,7 @@ def test_llm_page_full_workflow():
         assert "Gnom" in title or "GNOM" in title, f"Unerwarteter Title: {title}"
 
         # 2. LLM-Button klicken
-        print(f"2. Klicke LLM-Button...")
+        print("2. Klicke LLM-Button...")
         llm_btn = page.locator("button:has-text('LLM')").first
         if llm_btn.count() == 0:
             print("   ⚠ LLM-Button nicht gefunden, nehme ersten btn-primary")
@@ -60,7 +61,7 @@ def test_llm_page_full_workflow():
         assert has_tts, "TTS Service-Card nicht gefunden"
 
         # 4. Auto-Route-Modi prüfen
-        print(f"4. Prüfe Auto-Route-Modi...")
+        print("4. Prüfe Auto-Route-Modi...")
         modes = ["Only Free Models", "Local First", "Cost Optimized", "Balanced", "Performance"]
         for mode in modes:
             mode_btn = page.locator(f"button:has-text('{mode}')")
@@ -69,7 +70,7 @@ def test_llm_page_full_workflow():
             assert count > 0, f"Mode '{mode}' nicht gefunden"
 
         # 5. Agent-Tabelle prüfen
-        print(f"5. Prüfe Agent-Tabelle...")
+        print("5. Prüfe Agent-Tabelle...")
         agents = ["SoulAG", "WatchdogAG", "GeneralAG", "SecurityAG",
                   "WriterAG", "CoderAG", "ResearcherAG", "EditorAG"]
         for agent in agents:
@@ -78,20 +79,20 @@ def test_llm_page_full_workflow():
             assert count > 0, f"Agent '{agent}' nicht gefunden"
 
         # 6. Auto-Route klicken (erste Mode: "Only Free Models")
-        print(f"6. Klicke 'Only Free Models' für System Agents...")
+        print("6. Klicke 'Only Free Models' für System Agents...")
         page.locator(".llm-mode-btn:has-text('Only Free Models')").first.click()
         time.sleep(2)
         page.screenshot(path=f"{SCREENSHOT_DIR}/03_after_autoroute.png", full_page=True)
 
         # 7. Status-Banner prüfen
-        print(f"7. Prüfe Status-Banner...")
+        print("7. Prüfe Status-Banner...")
         status = page.locator("#llm-status")
         if status.count() > 0:
             status_text = status.inner_text()
             print(f"   Status: {status_text}")
 
         # 8. Provider-Dropdown prüfen
-        print(f"8. Prüfe Provider-Dropdowns...")
+        print("8. Prüfe Provider-Dropdowns...")
         selects = page.locator("select[data-field='provider']")
         select_count = selects.count()
         print(f"   {select_count} Provider-Dropdowns")
@@ -101,7 +102,7 @@ def test_llm_page_full_workflow():
             print(f"   First dropdown options: {options}")
 
         # 9. Status-Lampen im Header prüfen
-        print(f"9. Prüfe Header-Status-Lamps...")
+        print("9. Prüfe Header-Status-Lamps...")
         lamps = page.locator(".sys-agent-card")
         print(f"   {lamps.count()} Status-Lamps im Header")
 
@@ -110,7 +111,7 @@ def test_llm_page_full_workflow():
         print(f"\n10. Screenshots gespeichert in {SCREENSHOT_DIR}/")
 
         browser.close()
-        print(f"\n✓ Test PASSED")
+        print("\n✓ Test PASSED")
 
 
 if __name__ == "__main__":

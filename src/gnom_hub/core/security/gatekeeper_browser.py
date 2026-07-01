@@ -2,11 +2,12 @@
 # Static analysis + AST check gates dangerous calls before the script is even written to disk.
 # Approved scripts are run in a subprocess with cwd=workspace, no shell, no env-injection.
 import ast
-import re
 import hashlib
 import logging
-from gnom_hub.db import add_chat_message, get_state_value
-from gnom_hub.agents.capability_manager import check_capability, request_capability
+import re
+
+from gnom_hub.agents.capability_manager import request_capability
+from gnom_hub.db import add_chat_message
 
 _log = logging.getLogger(__name__)
 

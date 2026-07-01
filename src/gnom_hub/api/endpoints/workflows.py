@@ -1,10 +1,11 @@
 import json
 import logging
-from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from gnom_hub.db.connection import get_db_conn
+
 from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
+from gnom_hub.db.connection import get_db_conn
 
 logger = logging.getLogger(__name__)
 
@@ -21,17 +22,17 @@ class TaskPayload(BaseModel):
     capability: str = Field(..., min_length=1, max_length=80,
                             description="Capability-Name (matched against agents)")
     input_template: str = Field(..., min_length=0, max_length=8000)
-    depends_on: List[str] = Field(default_factory=list)
+    depends_on: list[str] = Field(default_factory=list)
 
 
 class WorkflowPayload(BaseModel):
     """POST /api/workflows Body. Validiert sich selbst via Pydantic v2."""
     name: str = Field(..., min_length=1, max_length=200)
-    tasks: List[TaskPayload] = Field(..., min_length=1, max_length=200)
+    tasks: list[TaskPayload] = Field(..., min_length=1, max_length=200)
 
     @field_validator("tasks")
     @classmethod
-    def _no_duplicate_task_ids(cls, tasks: List[TaskPayload]) -> List[TaskPayload]:
+    def _no_duplicate_task_ids(cls, tasks: list[TaskPayload]) -> list[TaskPayload]:
         """Stellt sicher, dass task_ids innerhalb des Workflows eindeutig sind."""
         seen = set()
         for t in tasks:
@@ -42,7 +43,7 @@ class WorkflowPayload(BaseModel):
 
     @field_validator("tasks")
     @classmethod
-    def _no_self_dependency(cls, tasks: List[TaskPayload]) -> List[TaskPayload]:
+    def _no_self_dependency(cls, tasks: list[TaskPayload]) -> list[TaskPayload]:
         """Verhindert offensichtliche Selbst-Referenzen (A→A)."""
         for t in tasks:
             if t.task_id in t.depends_on:
@@ -52,7 +53,7 @@ class WorkflowPayload(BaseModel):
         return tasks
 
 
-def _safe_get_workflow_status(workflow_id: str) -> Optional[str]:
+def _safe_get_workflow_status(workflow_id: str) -> str | None:
     """Liest den Workflow-Status aus der DB, None wenn nicht (mehr) vorhanden."""
     try:
         with get_db_conn() as conn:
@@ -88,7 +89,7 @@ def api_create_workflow(payload: WorkflowPayload):
         workflow_id = create_workflow(payload.name, tasks_dicts)
     except Exception as e:
         logger.exception("create_workflow failed for %r", payload.name)
-        raise HTTPException(500, detail=f"Failed to create workflow: {e}")
+        raise HTTPException(500, detail=f"Failed to create workflow: {e}") from e
 
     # Versuche zu starten. Wenn dispatch_by_capability fehlschlägt, bleibt der
     # Workflow als 'running' mit einem 'failed'-Task in der DB — der Aufrufer
@@ -96,7 +97,7 @@ def api_create_workflow(payload: WorkflowPayload):
     dispatch_failed = False
     try:
         start_workflow(workflow_id)
-    except Exception as e:
+    except Exception:
         logger.exception("start_workflow failed for %s", workflow_id)
         dispatch_failed = True
 
@@ -161,7 +162,7 @@ def api_get_workflow(workflow_id: str):
 
             # depends_on kann String/None/Array sein — robust parsen
             depends_on_raw = t["depends_on"]
-            depends_on_val: List[str] = []
+            depends_on_val: list[str] = []
             if depends_on_raw:
                 try:
                     parsed = json.loads(depends_on_raw)

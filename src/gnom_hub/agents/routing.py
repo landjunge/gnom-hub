@@ -39,8 +39,9 @@ from __future__ import annotations
 import logging
 import re
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal, Optional
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -385,7 +386,7 @@ def _tokenize(text: str) -> list[str]:
 
 def resolve_capability(
     intent_text: str,
-    available_capabilities: Optional[list[str]] = None,
+    available_capabilities: list[str] | None = None,
 ) -> ResolvedCapability:
     """Bestimmt deterministisch eine Capability aus ``intent_text``.
 
@@ -413,7 +414,7 @@ def resolve_capability(
 
     text_lower = intent_text.lower()
     tokens = _tokenize(text_lower)
-    available_set: Optional[set[str]] = (
+    available_set: set[str] | None = (
         None if available_capabilities is None
         else {c.lower() for c in available_capabilities}
     )
@@ -462,8 +463,8 @@ def resolve_capability(
 
 def resolve_with_node_id(
     intent_text: str,
-    available_capabilities: Optional[list[str]],
-    node_resolver_fn: Optional[Callable[[str], Optional[str]]] = None,
+    available_capabilities: list[str] | None,
+    node_resolver_fn: Callable[[str], str | None] | None = None,
 ) -> ResolvedCapability:
     """Wie :func:`resolve_capability`, aber mit Offload-Node-ID-Bridge.
 
@@ -495,7 +496,7 @@ def resolve_with_node_id(
     # Für den Lookup in Freitext tokenisieren wir und prüfen jeden Token via
     # ``.match()``; das respektiert die strikte Validierung.
     tokens = _tokenize(intent_text or "")
-    node_id_match_str: Optional[str] = None
+    node_id_match_str: str | None = None
     for _tok in tokens:
         if NODE_ID_PATTERN.match(_tok):
             node_id_match_str = _tok
@@ -535,7 +536,7 @@ def resolve_with_node_id(
 
 def build_fallback_chain(
     primary: str,
-    available: Optional[list[str]] = None,
+    available: list[str] | None = None,
 ) -> list[str]:
     """Erzeugt eine deterministische Fallback-Kette für Routing-Dead-Ends.
 

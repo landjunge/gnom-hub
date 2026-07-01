@@ -1,8 +1,30 @@
-from fastapi import APIRouter; from pydantic import BaseModel
-from gnom_hub.db import get_all_agents, get_active_project, add_chat_message, get_chat_history
-from gnom_hub.chat.brainstorm.brainstorm import dispatch; from gnom_hub.soul import soul_instance
-from gnom_hub.core.security.showbox_validator import sanitize_showboxes; from .chat_helpers import _parse, _handle_sys
-from gnom_hub.chat.chat_commands import handle_status, handle_job, handle_free, handle_git, handle_resume, handle_approve_decision, handle_reject_decision, handle_bake, handle_emergency, handle_diagnose, handle_confirmations, handle_spass, handle_blockade, handle_help, handle_allclear
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+from gnom_hub.chat.brainstorm.brainstorm import dispatch
+from gnom_hub.chat.chat_commands import (
+    handle_allclear,
+    handle_approve_decision,
+    handle_bake,
+    handle_blockade,
+    handle_confirmations,
+    handle_diagnose,
+    handle_emergency,
+    handle_free,
+    handle_git,
+    handle_help,
+    handle_job,
+    handle_reject_decision,
+    handle_resume,
+    handle_spass,
+    handle_status,
+)
+from gnom_hub.core.security.showbox_validator import sanitize_showboxes
+from gnom_hub.db import add_chat_message, get_active_project, get_all_agents, get_chat_history
+from gnom_hub.soul import soul_instance
+
+from .chat_helpers import _handle_sys, _parse
+
 router = APIRouter()
 class ChatMsg(BaseModel): content: str; sender: str = "user"
 def handle_bs(q): return {"status": "dispatched", "asked": dispatch(q, target=None, sender="user"), "mode": "brainstorm"}
@@ -13,9 +35,10 @@ def handle_worker(q):
 def handle_workflow(q):
     """@@workflow <Aufgabe> — Erstellt einen Capability-basierten Workflow."""
     import logging
+
     from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
-    from gnom_hub.db.connection import get_db_connection
     from gnom_hub.chat.chat_commands import _post_chat
+    from gnom_hub.db.connection import get_db_connection
     q = q.strip()
     if not q:
         return {"status": "error", "message": "Bitte gib eine Aufgabe an: @@workflow <Aufgabe>"}
@@ -91,7 +114,9 @@ def post_chat(msg: ChatMsg):
             return {"status": "blocked", "msg": f"Prompt-Injection blockiert: {reason}", "message": reason}
 
     if msg.sender == "user" and "@merken" in msg.content.lower():
-        import re, uuid
+        import re
+        import uuid
+
         from gnom_hub.db.soul_repo import save_soul_fact_smart
 
         add_chat_message(get_active_project(), "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
@@ -130,7 +155,7 @@ def post_chat(msg: ChatMsg):
                 return r
 
     q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt; ags = get_all_agents()
-    a = next((x for x in ags if x.get("name", "").lower() == (s_name or "").lower()), None)
+    next((x for x in ags if x.get("name", "").lower() == (s_name or "").lower()), None)
     # ZWC wird nur bei Datei-Writes und wichtigen Aktionen hinzugefuegt (action_write.py),
     # nicht bei jeder Chat-Nachricht — vermeidet 74% ZWC-Pollution
     # Layer-Enforcement: Agenten dürfen nicht in <SHOWBOX:user> schreiben
@@ -158,6 +183,7 @@ def post_chat(msg: ChatMsg):
         if sbox_match:
             try:
                 import json as _json
+
                 from gnom_hub.db import save_showbox_presentation, set_active_showbox
                 # Bei ARROW-Format ist group(2) das JSON OHNE äußere {}-Klammern
                 if sbox_match.re is _ARROW_SHOWBOX_RE.pattern and sbox_match.re == _ARROW_SHOWBOX_RE.pattern:

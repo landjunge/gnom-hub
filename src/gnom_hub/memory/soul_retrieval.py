@@ -1,7 +1,8 @@
+from gnom_hub.core.constants import SMR_TOP_K_DEFAULT
 from gnom_hub.db.connection import get_db_conn
 from gnom_hub.memory.embeddings import get_embedder
 from gnom_hub.memory.smr.smr_retrieve import retrieve_similar_sync
-from gnom_hub.core.constants import SMR_TOP_K_DEFAULT
+
 
 def retrieve_relevant_facts(query: str, agent_name: str = None, top_k: int = 5) -> list:
     q_clean = query.strip()

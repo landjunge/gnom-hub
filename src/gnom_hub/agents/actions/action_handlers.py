@@ -1,10 +1,13 @@
 # action_handlers.py — Dispatcher für alle Action-Tags
-import re; from .action_write import handle_write, handle_read
-from .action_exec import handle_shell, handle_crawl, handle_showbox
-from .action_video import handle_screen_record, handle_video_merge, handle_video_edit
-from gnom_hub.core.security.gatekeeper import verify_write, verify_cmd
+import re
+
+from gnom_hub.core.security.gatekeeper import verify_cmd, verify_write
+
 from .action_browser import handle_browser
 from .action_desktop import handle_desktop
+from .action_exec import handle_crawl, handle_shell, handle_showbox
+from .action_video import handle_screen_record, handle_video_edit, handle_video_merge
+from .action_write import handle_read, handle_write
 
 
 # ── Context-Offload Helpers (recovert aus experimental/tencentdb-agent-memory) ──
@@ -25,8 +28,10 @@ def _maybe_offload_diff(before: str, after: str, tool_name: str, agent_name: str
         return
     try:
         from gnom_hub.memory.offload import (
-            get_offloader as _get_offloader,
             OffloadConfig as _OffCfg,
+        )
+        from gnom_hub.memory.offload import (
+            get_offloader as _get_offloader,
         )
         _ocfg = _OffCfg(
             enabled=True,
@@ -60,8 +65,9 @@ def _handle_offload_recall(ans: str) -> str:
         return ""
 
     def _candidate_session_ids() -> list:
-        from gnom_hub.core.config import Config as _Cfg
         from pathlib import Path as _P
+
+        from gnom_hub.core.config import Config as _Cfg
         candidates: list[str] = ["default"]
         try:
             _data_root = _P(_Cfg.OFFLOAD_DATA_DIR)
@@ -191,7 +197,7 @@ def process_actions(ans, agent, perms, bs_mode, wd):
             sh_ms.append(m)
         else:
             _audit_security(agent, perms, "run", cmd, "denied")
-            ans = ans.replace(m.group(0), f"[Gatekeeper: Befehlsausführung verweigert.]")
+            ans = ans.replace(m.group(0), "[Gatekeeper: Befehlsausführung verweigert.]")
     for m in re.finditer(r"\[DESKTOP:\s*(.*?)\]", ans, re.DOTALL):
         desktop_ms.append(m)
     # ── SecurityAG-Audit: [CRAWL:] pre-dispatch (Refactor-Schritt 4) ────────
@@ -211,7 +217,7 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     # ── Permission-Tag-Extraktion (SecurityAG Kernrolle 1+2) ──────────────
     # Tag-Formate: [GRANT_PERM: agent=X path=Y ...], [REVOKE_PERM: ...], [LIST_PERMS: agent=X]
     # Handler in action_exec.py — Permission-Check passiert dort (db_write erforderlich).
-    from .action_exec import handle_grant_perm, handle_revoke_perm, handle_list_perms
+    from .action_exec import handle_grant_perm, handle_list_perms, handle_revoke_perm
     grant_ms = list(re.finditer(r"\[GRANT_PERM:\s*([^\]]+)\]", ans))
     revoke_ms = list(re.finditer(r"\[REVOKE_PERM:\s*([^\]]+)\]", ans))
     list_ms = list(re.finditer(r"\[LIST_PERMS:\s*([^\]]+)\]", ans))
@@ -265,7 +271,7 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     # Permission-Check für SHOWBOX liegt in handle_showbox() selbst (analog
     # zu handle_crawl). Hier nur der SecurityAG-Audit-Hook. Bei
     # "showbox_write" oder "godmode" in perms audit, sonst "denied".
-    for full, idx, payload in show_ms:
+    for _full, idx, _payload in show_ms:
         pres_name = (idx or "<anonymous>").strip()
         if "showbox_write" in perms or "godmode" in perms:
             _audit_security(agent, perms, "showbox", pres_name, "allowed")

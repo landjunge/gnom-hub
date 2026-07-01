@@ -1,8 +1,8 @@
-import sqlite3
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
-from gnom_hub.core.config import Config
+
 from gnom_hub.core.logger import get_logger
 
 logger = get_logger("db")
@@ -231,7 +231,7 @@ def _seed_agents(conn):
     """Initialisiert die 8 Standard-Agenten direkt in der übergebenen Verbindung."""
     from gnom_hub.soul import soul_instance
     try:
-        for k, v in soul_instance.get_definitions().items():
+        for _k, v in soul_instance.get_definitions().items():
             conn.execute("""
                 INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, active_job, last_seen)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

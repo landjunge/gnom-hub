@@ -31,10 +31,9 @@ from .preset_schema import (
     TemplatesConfig,
     ToolsConfig,
     WebhooksConfig,
-    WorkflowsConfig,
     WorkersConfig,
+    WorkflowsConfig,
 )
-
 
 # Dateiname (ohne .json) → Pydantic-Klasse
 _FILE_TO_MODEL: dict[str, type] = {

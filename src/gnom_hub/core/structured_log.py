@@ -1,5 +1,8 @@
 # structured_log.py — Structured JSON & DB logging with trace tracking
-import json, uuid, contextvars
+import contextvars
+import json
+import uuid
+
 from gnom_hub.db import log_audit_event
 
 trace_var = contextvars.ContextVar("trace_id", default=None)

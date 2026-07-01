@@ -44,13 +44,11 @@ that's out of scope for this port. It is purely the disk + canvas layer.
 from __future__ import annotations
 
 import logging
-import os
 import re
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -202,8 +200,8 @@ class ContextOffloader:
         self,
         tool_name: str,
         content: str,
-        summary: Optional[str] = None,
-    ) -> Optional[OffloadEntry]:
+        summary: str | None = None,
+    ) -> OffloadEntry | None:
         """Record a tool output; return the new entry (or ``None``).
 
         Returns ``None`` when offload is disabled (cheap fast-path so
@@ -288,12 +286,12 @@ class ContextOffloader:
 # ── Module-level session registry ────────────────────────────────────────────
 
 _session_offloaders: dict[str, ContextOffloader] = {}
-_registry_lock_path: Optional[Path] = None  # placeholder for future thread-lock
+_registry_lock_path: Path | None = None  # placeholder for future thread-lock
 
 
 def get_offloader(
     session_id: str,
-    config: Optional[OffloadConfig] = None,
+    config: OffloadConfig | None = None,
 ) -> ContextOffloader:
     """Get or create the per-session :class:`ContextOffloader`.
 

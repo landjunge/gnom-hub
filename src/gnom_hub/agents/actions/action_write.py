@@ -1,7 +1,10 @@
 # action_write.py — [WRITE:] und [READ:] Handler
 # Git wurde 2026-06-15 komplett entfernt — Agenten schreiben Files ohne Auto-Commit.
-import os, re
+import os
+import re
+
 from gnom_hub.core.security.path_validator import _safe
+
 
 def seal_content(content: str) -> str:
     return content.strip()
@@ -88,7 +91,7 @@ def handle_read(answer, matches, wd, perms=None):
             r = f"[Fehler: Datei {fname} nicht gefunden]"
         else:
             try:
-                with open(p, "r", encoding="utf-8", errors="ignore") as f:
+                with open(p, encoding="utf-8", errors="ignore") as f:
                     r = f"[Hat {fname} gelesen:\n{f.read()[:2000]}\n...]"
             except Exception as e:
                 r = f"[Fehler beim Lesen von {fname}: {e}]"

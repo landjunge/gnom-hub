@@ -1,9 +1,9 @@
 # smr_math.py
 import math
 import re
-from typing import List
 
-def tokenize(text: str) -> List[str]:
+
+def tokenize(text: str) -> list[str]:
     if not text: return []
     return re.findall(r'\w+', text.lower())
 

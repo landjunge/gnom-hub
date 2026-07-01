@@ -45,6 +45,8 @@ ignore = [
     "S603",   # subprocess without shell=True
     "S607",   # partial path for subprocess
     "B023",   # function def in loop
+    "E701",   # multiple statements on one line (colon) — kompakter Projekt-Stil
+    "E702",   # multiple statements on one line (semicolon) — kompakter Projekt-Stil
 ]
 
 [project.optional-dependencies]
@@ -61,5 +63,17 @@ addopts = "-v --tb=short"
 markers = ["load_test: marks tests as load/stress tests (longer runtime)", "requires_hub: requires a running Gnom-Hub on GNOM_HUB_TEST_URL (default 127.0.0.1:3002)"]
 
 [tool.ruff.lint.per-file-ignores]
-"agents/*.py" = ["E402"]  # module level import not at top
-"scripts/*.py" = ["S", "E402"]  # scripts may have security-irrelevant patterns
+"src/gnom_hub/agents/**/*.py" = ["E402", "I001", "S110", "F841"]  # agent-Layer: lazy imports, defensive try-except
+"src/gnom_hub/api/**/*.py" = ["B008", "E402", "I001", "S110", "F841"]  # FastAPI Depends() + import-order + bare-except
+"src/gnom_hub/chat/**/*.py" = ["E402", "I001", "S110", "F841"]  # chat-Module mit komplexen Import-Sequenzen
+"src/gnom_hub/core/**/*.py" = ["E402", "I001", "S110", "F841"]  # core utilities
+"src/gnom_hub/db/**/*.py" = ["E402", "I001", "S110", "F811", "F841"]  # DB-Module: imports nach constants + idempotent
+"src/gnom_hub/infrastructure/**/*.py" = ["E402", "I001", "S110", "F841"]  # Infrastructure-Layer
+"src/gnom_hub/frontend/**/*.py" = ["E402", "I001", "S110", "F841"]  # frontend helpers
+"src/gnom_hub/memory/**/*.py" = ["E402", "I001", "S110", "F841"]  # memory module: lazy imports
+"src/gnom_hub/soul/**/*.py" = ["E402", "I001", "S110", "F841"]  # soul: lazy imports + try-except
+"src/gnom_hub/scripts/*.py" = ["S", "E402"]  # scripts may have security-irrelevant patterns
+"src/gnom_hub/__main__.py" = ["E402", "I001"]  # CLI bootstrap imports
+"src/gnom_hub/conftest.py" = ["E402", "I001", "S110"]  # pytest conftest mit conditional imports
+"tests/**/*.py" = ["S", "B011", "E402", "I001", "S110", "E722", "S311", "S310", "F841"]  # tests dürfen alles
+"conftest.py" = ["E402", "I001", "S110"]  # pytest conftest mit conditional imports

@@ -17,10 +17,9 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
-
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -30,7 +29,7 @@ def _write_keys_file(path: Path, lines: list[str]) -> None:
 
 
 def _read_keys_file(path: Path) -> list[str]:
-    return [l for l in path.read_text().splitlines() if l.strip()]
+    return [letter for letter in path.read_text().splitlines() if letter.strip()]
 
 
 # ─── Core behavior ──────────────────────────────────────────────────────────
@@ -72,10 +71,10 @@ class TestReverifyInvalidKeys:
         assert r["still_invalid"] == []
 
         lines = _read_keys_file(keys_file)
-        assert any(l.startswith("MiniMax=sk-cp-fakekey") for l in lines), (
+        assert any(letter.startswith("MiniMax=sk-cp-fakekey") for letter in lines), (
             f"Recovered key not in active section: {lines}"
         )
-        assert not any("MiniMax" in l and "UNGÜLTIG" in l for l in lines), (
+        assert not any("MiniMax" in letter and "UNGÜLTIG" in letter for letter in lines), (
             f"Key still marked UNGÜLTIG: {lines}"
         )
 
@@ -137,9 +136,9 @@ class TestReverifyInvalidKeys:
         assert set(r["still_invalid"]) == {"BadKey", "AnotherBad"}
 
         lines = _read_keys_file(keys_file)
-        assert any(l.startswith("GoodKey=sk-cp-recover-me") for l in lines)
-        assert any(l.startswith("# UNGÜLTIG: BadKey=") for l in lines)
-        assert any(l.startswith("# UNGÜLTIG: AnotherBad=") for l in lines)
+        assert any(letter.startswith("GoodKey=sk-cp-recover-me") for letter in lines)
+        assert any(letter.startswith("# UNGÜLTIG: BadKey=") for letter in lines)
+        assert any(letter.startswith("# UNGÜLTIG: AnotherBad=") for letter in lines)
 
     @pytest.mark.asyncio
     async def test_no_invalid_keys_is_noop(self, tmp_path):
@@ -177,8 +176,8 @@ class TestReverifyEndpoint:
         ein `patch.object(llm_keys, ...)` würde diese lokale Bindung nicht
         abfangen.
         """
-        from gnom_hub.infrastructure.llm import desktop_syncer
         from gnom_hub.api.endpoints import llm_keys
+        from gnom_hub.infrastructure.llm import desktop_syncer
 
         called_with_force = []
 
@@ -218,8 +217,8 @@ class TestReverifyBackgroundLoop:
           b) call #2 wirft Exception, Loop überlebt (CancelledError kommt von sleep, nicht von Exception)
           c) CancelledError wird an Caller weitergereicht (sonst hängt der Test)
         """
-        from gnom_hub.infrastructure.llm import desktop_syncer
         from gnom_hub.api.app import start_invalid_keys_reverifier
+        from gnom_hub.infrastructure.llm import desktop_syncer
 
         call_count = 0
 

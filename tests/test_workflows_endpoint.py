@@ -20,15 +20,10 @@ korrespondierenden Test hier.
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
-import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-
 
 # ── Schema-Helper (für Test-Setup + Frontend-Schema-Validierung) ────────────
 
@@ -141,6 +136,7 @@ def client(full_db):
     # TestClient muss innerhalb des Patches erzeugt werden, damit die
     # Connection-Patches wirksam sind.
     from fastapi.testclient import TestClient
+
     from gnom_hub.api.app import app
     return TestClient(app)
 

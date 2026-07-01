@@ -5,11 +5,13 @@ hatte keinen Code-Pfad der je hinein schrieb. SecurityAG's Kernrolle
 "Verzeichnisse/Dateien freigeben" war damit funktionslos.
 """
 import pytest
-from gnom_hub.db import (
-    grant_permission, revoke_permission, check_permission,
-    list_permissions_for_agent, VALID_RESOURCE_TYPES,
-)
 
+from gnom_hub.db import (
+    check_permission,
+    grant_permission,
+    list_permissions_for_agent,
+    revoke_permission,
+)
 
 # ── DB-Layer Tests ──────────────────────────────────────────────────────
 
@@ -21,22 +23,21 @@ class TestPermissionsRepo:
         monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
         from gnom_hub.core.config import Config
         Config.DB_PATH = str(tmp_path / "test.db")
-        from gnom_hub.db.connection import get_db_conn
         from gnom_hub.db.schema import create_tables
         create_tables()
         grant_permission(
             resource_type="directory",
-            resource_path="/tmp/foo",
+            resource_path="/tmp/foo",  # noqa: S108 — Test-Fixture.
             granted_to="CoderAG",
             reason="test",
         )
-        assert check_permission("CoderAG", "/tmp/foo") is True
+        assert check_permission("CoderAG", "/tmp/foo") is True  # noqa: S108 — Test-Fixture.
 
     def test_grant_invalid_type_raises(self):
         with pytest.raises(ValueError, match="resource_type"):
             grant_permission(
                 resource_type="invalid",
-                resource_path="/tmp/foo",
+                resource_path="/tmp/foo",  # noqa: S108 — Test-Fixture.
                 granted_to="CoderAG",
             )
 
@@ -52,7 +53,6 @@ class TestPermissionsRepo:
         monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
         from gnom_hub.core.config import Config
         Config.DB_PATH = str(tmp_path / "test.db")
-        from gnom_hub.db.connection import get_db_conn
         from gnom_hub.db.schema import create_tables
         create_tables()
         grant_permission("file", "/x.py", "CoderAG", reason="first")
@@ -65,7 +65,6 @@ class TestPermissionsRepo:
         monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
         from gnom_hub.core.config import Config
         Config.DB_PATH = str(tmp_path / "test.db")
-        from gnom_hub.db.connection import get_db_conn
         from gnom_hub.db.schema import create_tables
         create_tables()
         grant_permission("directory", "/y", "WriterAG")
@@ -78,7 +77,6 @@ class TestPermissionsRepo:
         monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
         from gnom_hub.core.config import Config
         Config.DB_PATH = str(tmp_path / "test.db")
-        from gnom_hub.db.connection import get_db_conn
         from gnom_hub.db.schema import create_tables
         create_tables()
         grant_permission("directory", "/shared", "all", reason="global")
@@ -89,7 +87,6 @@ class TestPermissionsRepo:
         monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
         from gnom_hub.core.config import Config
         Config.DB_PATH = str(tmp_path / "test.db")
-        from gnom_hub.db.connection import get_db_conn
         from gnom_hub.db.schema import create_tables
         create_tables()
         # Setze expires_at in Vergangenheit
@@ -111,17 +108,17 @@ class TestGrantPermAction:
         ans = "[GRANT_PERM: type=directory agent=CoderAG path=/tmp/test_grant reason=unit-test]"
         agent = {"name": "SecurityAG", "role": "security"}
         perms = ["read", "write", "run", "godmode", "db_write"]
-        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")
+        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")  # noqa: S108 — Test-Fixture.
         assert "Permission granted" in result
         assert "CoderAG" in result
-        assert "/tmp/test_grant" in result
+        assert "/tmp/test_grant" in result  # noqa: S108 — Test-Fixture.
 
     def test_grant_perm_from_non_securityag_denied(self):
         from gnom_hub.agents.actions import action_handlers
         ans = "[GRANT_PERM: agent=CoderAG path=/tmp/x]"
         agent = {"name": "CoderAG", "role": "coder"}
         perms = ["read", "write", "run"]
-        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")
+        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")  # noqa: S108 — Test-Fixture.
         assert "keine DB_WRITE-Berechtigung" in result
 
     def test_grant_perm_missing_args_denied(self):
@@ -129,7 +126,7 @@ class TestGrantPermAction:
         ans = "[GRANT_PERM: agent=CoderAG]"  # path missing
         agent = {"name": "SecurityAG", "role": "security"}
         perms = ["read", "db_write"]
-        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")
+        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")  # noqa: S108 — Test-Fixture.
         assert "fehlt" in result
 
     def test_revoke_perm_from_securityag(self):
@@ -138,10 +135,10 @@ class TestGrantPermAction:
         ans1 = "[GRANT_PERM: agent=WriterAG path=/tmp/x_revoke]"
         agent = {"name": "SecurityAG", "role": "security"}
         perms = ["read", "db_write"]
-        action_handlers.process_actions(ans1, agent, perms, bs_mode=False, wd="/tmp")
+        action_handlers.process_actions(ans1, agent, perms, bs_mode=False, wd="/tmp")  # noqa: S108 — Test-Fixture.
         # Then revoke
         ans2 = "[REVOKE_PERM: agent=WriterAG path=/tmp/x_revoke]"
-        result = action_handlers.process_actions(ans2, agent, perms, bs_mode=False, wd="/tmp")
+        result = action_handlers.process_actions(ans2, agent, perms, bs_mode=False, wd="/tmp")  # noqa: S108 — Test-Fixture.
         assert "revoked" in result.lower() or "deaktiviert" in result.lower()
 
     def test_list_perms_returns_empty_or_grants(self):
@@ -149,6 +146,6 @@ class TestGrantPermAction:
         ans = "[LIST_PERMS: agent=NoSuchAgent]"
         agent = {"name": "SecurityAG", "role": "security"}
         perms = ["read", "db_write"]
-        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")
+        result = action_handlers.process_actions(ans, agent, perms, bs_mode=False, wd="/tmp")  # noqa: S108 — Test-Fixture.
         assert "Permissions for NoSuchAgent" in result
         assert "keine aktiven" in result

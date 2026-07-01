@@ -40,9 +40,7 @@ SoulAG/torch-Import in der Fixture-Zeit verbraucht. Das Sentinelpatch
 ist die verlässliche Methode.
 """
 
-import time
 import pytest
-
 
 SENTINEL_SOUL_ZWC = "SENTINEL_SOUL_ZWC_TOUCHED"
 

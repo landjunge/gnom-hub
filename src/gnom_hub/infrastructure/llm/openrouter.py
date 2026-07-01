@@ -1,5 +1,10 @@
-import httpx; import asyncio; from typing import Optional
-from gnom_hub.core.config import Config; from gnom_hub.core.exceptions import LLMProviderError
+import asyncio
+
+import httpx
+
+from gnom_hub.core.config import Config
+from gnom_hub.core.exceptions import LLMProviderError
+
 
 class OpenRouterClient:
     """Einfacher und stabiler OpenRouter Client."""
@@ -7,7 +12,7 @@ class OpenRouterClient:
         self.api_key, self.base_url = Config.OPENROUTER_API_KEY, "https://openrouter.ai/api/v1"
         if not self.api_key: raise LLMProviderError("OPENROUTER_API_KEY ist nicht gesetzt")
 
-    async def _test_model(self, model: str, prompt: str, timeout: float = 30.0) -> Optional[str]:
+    async def _test_model(self, model: str, prompt: str, timeout: float = 30.0) -> str | None:
         """Testet ein einzelnes Modell und gibt die Antwort zurück, wenn es funktioniert, andernfalls None."""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -28,7 +33,7 @@ class OpenRouterClient:
                 print(f"❌ Fehlgeschlagen mit {model}: {e}")
         return None
 
-    async def ask(self, prompt: str, model: Optional[str] = None) -> str:
+    async def ask(self, prompt: str, model: str | None = None) -> str:
         from gnom_hub.db.state_repo import SQLiteStateRepository
         repo = SQLiteStateRepository()
 
@@ -88,7 +93,7 @@ class OpenRouterClient:
         first_successful_ans = None
         succeeded_model = None
 
-        for m, res in zip(remaining_models, results):
+        for m, res in zip(remaining_models, results, strict=False):
             if res is not None:
                 newly_working.append(m)
                 if first_successful_ans is None:

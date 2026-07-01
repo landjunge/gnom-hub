@@ -2,11 +2,12 @@
 # HTTP-Endpoint für Showbox-Button-Presets.
 # Frontend (showbox-buttons.js) ruft dies beim Showbox-Open ab.
 from fastapi import APIRouter
+
 from gnom_hub.showbox.button_presets import (
-    categories,
-    get_preset,
     all_buttons,
+    categories,
     get_buttons_for_context,
+    get_preset,
     to_frontend_buttons,
 )
 

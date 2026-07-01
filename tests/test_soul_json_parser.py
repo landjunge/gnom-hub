@@ -4,7 +4,6 @@ Schließt den Bug wo LLM-Outputs mit trailing Content ("Extra data: line N")
 als Parse-Fehler behandelt wurden und SoulAG scheinbar nicht antwortete.
 raw_decode() toleriert nachgestellte prose / Kommentare.
 """
-import pytest
 from gnom_hub.soul.soul import _parse_json_value
 
 

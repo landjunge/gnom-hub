@@ -1,8 +1,10 @@
-from abc import ABC, abstractmethod
 import json
 import logging
+from abc import ABC, abstractmethod
 from typing import Any
+
 from .connection import get_db_conn
+
 
 class StateRepository(ABC):
     @abstractmethod

@@ -1,7 +1,10 @@
 import logging
+
+from gnom_hub.agents.explainability.eo_wrap import wrap_error, wrap_response
 from gnom_hub.db.state_repo import SQLiteStateRepository
-from .router_call import _try_keys, _call
-from gnom_hub.agents.explainability.eo_wrap import wrap_response, wrap_error
+
+from .router_call import _call, _try_keys
+
 
 def _try(pvd, mdl, key, msgs, n):
     try: return _call(pvd, mdl, key, msgs, n)

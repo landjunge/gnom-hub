@@ -6,12 +6,11 @@
 # 4. Stuck-Pattern (Agent erkennt selbst dass er nicht weiterkommt)
 #
 # Erkenntnisse werden an GeneralAG kommuniziert, der dann reagieren kann.
-import re
-import time
 import logging
+import re
 import threading
+import time
 from collections import defaultdict, deque
-from typing import Optional
 
 _log = logging.getLogger(__name__)
 

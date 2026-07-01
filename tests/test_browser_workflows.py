@@ -12,13 +12,12 @@ Workflows:
 5. Blockade-Resolution (User klickt Solve-Blockade-Button)
 6. Multi-Browser-Smoke (gleicher Test in chromium/firefox/webkit)
 """
-import os
-import time
-import tempfile
 import json
-import pytest
+import os
 from pathlib import Path
-from playwright.sync_api import sync_playwright, expect, Page, Browser
+
+import pytest
+from playwright.sync_api import Page, sync_playwright
 
 HUB_URL = "http://127.0.0.1:3002"
 KEYS_FILE = os.path.expanduser("~/Desktop/api_keys.txt")
@@ -36,7 +35,7 @@ def _open_hub_with_llm(page: Page) -> None:
 
 def test_01_key_import_via_filepicker(page: Page, test_dir: Path) -> None:
     """User-Workflow: Klickt 📁 File → wählt api_keys.txt → Keys werden importiert."""
-    print(f"\n1. Key-Import via File-Picker")
+    print("\n1. Key-Import via File-Picker")
     _open_hub_with_llm(page)
     page.screenshot(path=test_dir / "01_before_import.png", full_page=True)
 
@@ -56,10 +55,10 @@ def test_01_key_import_via_filepicker(page: Page, test_dir: Path) -> None:
 
 def test_02_autoroute_balanced(page: Page, test_dir: Path) -> None:
     """E2E: Klick 'Balanced' → DB-Config wird tatsächlich beim LLM-Call genutzt."""
-    print(f"\n2. Auto-Route: Balanced-Mode (E2E)")
+    print("\n2. Auto-Route: Balanced-Mode (E2E)")
     _open_hub_with_llm(page)
 
-    state_before = page.request.get(f"{HUB_URL}/api/llm/agents").json()
+    page.request.get(f"{HUB_URL}/api/llm/agents").json()
 
     balanced = page.locator(".llm-mode-btn:has-text('Balanced')").first
     balanced.click()
@@ -97,7 +96,7 @@ def test_02_autoroute_balanced(page: Page, test_dir: Path) -> None:
                 assert called_provider == new_provider, (
                     f"MISMATCH: DB sagt {new_provider}, Call ging an {called_provider}"
                 )
-                print(f"   ✓ Provider-Call matched DB")
+                print("   ✓ Provider-Call matched DB")
             else:
                 status = page.locator("#llm-status")
                 status_text = status.inner_text() if status.count() > 0 else ""
@@ -110,7 +109,7 @@ def test_02_autoroute_balanced(page: Page, test_dir: Path) -> None:
 
 def test_03_header_save_preserves_keys(page: Page, test_dir: Path) -> None:
     """User-Workflow: Klickt Header-Save → DB-Keys bleiben erhalten."""
-    print(f"\n3. Header-Save bewahrt DB-Keys")
+    print("\n3. Header-Save bewahrt DB-Keys")
     _open_hub_with_llm(page)
 
     # State vorher: DB-Keys zählen via Backend
@@ -140,7 +139,7 @@ def test_03_header_save_preserves_keys(page: Page, test_dir: Path) -> None:
 
 def test_04_soulag_speak_via_console(page: Page, test_dir: Path) -> None:
     """User-Workflow: SoulAG spricht via JavaScript-Konsole."""
-    print(f"\n4. SoulAG TTS via Console")
+    print("\n4. SoulAG TTS via Console")
     _open_hub_with_llm(page)
 
     # SoulAG speak via JS-Konsole (simuliert das was SoulAG intern tut)
@@ -171,7 +170,7 @@ def test_04_soulag_speak_via_console(page: Page, test_dir: Path) -> None:
 ))
 def test_05_blockade_resolution_workflow(page: Page, test_dir: Path) -> None:
     """User-Workflow: User blockt eine Aktion → löst sie via UI."""
-    print(f"\n5. Blockade-Resolution (UI-Pfad)")
+    print("\n5. Blockade-Resolution (UI-Pfad)")
     _open_hub_with_llm(page)
 
     # Zur Blockaden-Seite
@@ -209,7 +208,7 @@ def run_browser_workflow(browser_type: str = "chromium") -> None:
             test_03_header_save_preserves_keys(page, test_dir)
             test_04_soulag_speak_via_console(page, test_dir)
             test_05_blockade_resolution_workflow(page, test_dir)
-        except Exception as e:
+        except Exception:
             page.screenshot(path=test_dir / "ERROR.png", full_page=True)
             raise
         finally:
