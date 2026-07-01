@@ -8,9 +8,10 @@ import uuid
 from datetime import datetime
 
 from gnom_hub.db import add_chat_message, get_active_project
-from gnom_hub.db.soul_repo import save_soul_fact_smart
+from gnom_hub.db.soul_repo import save_soul_fact_smart  # Dedup-Engine bleibt (User-Mandat)
 from gnom_hub.infrastructure.router.router import ask_router
-from gnom_hub.soul.memory_layers import get_cache, query_memory, save_fact_all_layers
+from gnom_hub.memory_tkg.adapter import retrieve_relevant, store_memory
+from gnom_hub.soul.memory_layers import get_cache  # Layer-1 Cache-Warmup
 
 _log = logging.getLogger("soul")
 
@@ -311,7 +312,7 @@ class SoulAG:
                     del self._recent_facts_cache[oldest]
 
                 agent_name = "SoulAG" if target.lower() == "all" else target
-                save_fact_all_layers(k, v, p, agent_name)
+                store_memory(f"{k}: {v}", importance={"high": 0.9, "medium": 0.6, "low": 0.3}.get(p, 0.5))
                 saved += 1
                 _log.debug("[Soul] Saved: %s [%s -> %s]", k, p, agent_name)
 
@@ -453,7 +454,7 @@ class SoulAG:
             except Exception:
                 pass
 
-        # Zusätzlich: Immer User-Top-Level-Aufgaben (high priority) injizieren
+        # User-Top-Level-Aufgaben (high priority) injizieren — bestehende Logik erhalten
         _user_facts = []
         try:
             from gnom_hub.db.connection import get_db_conn
@@ -464,7 +465,7 @@ class SoulAG:
                 _user_facts = [f"{r['key']}: {r['value']}" for r in _rows]
         except Exception:
             pass
-        facts = query_memory(msg, agent_name=agent_name or "all", top_k=top_k)
+        facts = retrieve_relevant(msg, top_k=top_k)
         # User high-priority facts immer an erste Stelle
         if _user_facts:
             facts = _user_facts + [f for f in facts if f not in _user_facts]

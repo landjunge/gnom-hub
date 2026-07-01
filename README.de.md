@@ -138,6 +138,17 @@ Embeddings nutzen **FAISS** (wenn torch + faiss verfügbar) mit **TF-IDF** als d
 
 ---
 
+## 🧬 Temporal Knowledge Graph (TKG) — Phase 1 Migration
+
+Phase 1 führt eine graph-basierte Speicher-Schicht ein, die den bestehenden geschichteten SQLite-Speicher ergänzt. Ein **Temporal Knowledge Graph (TKG)** speichert Fakten und Entitäten als Knoten, mit bitemporalen Relationen als Kanten und Embedding-basierter Ähnlichkeitssuche.
+
+- **Backend:** [KuzuDB](https://kuzudb.com/) (embedded, rein lokal, keine Cloud) für Produktion; In-Memory-Backend für Tests. Auswahl via `MEMORY_BACKEND` in `.env`.
+- **Adapter:** ein schlankes `memory_tkg.adapter`-Modul stellt `store_memory`, `retrieve_relevant`, `get_recent_facts`, `add_mention` und `save_soul_fact_smart` bereit — 1:1 zur Legacy-API, damit Callsites schrittweise migrieren können.
+- **Migrations-Status:** `SoulAG` und `ContextManager.add_fact` laufen auf dem neuen Adapter. `save_soul_fact_smart` bleibt für Jaccard-Dedup-Callsites erhalten; das neue `has_similar_fact` (Cosine ≥ 0.85) ersetzt es, sobald der Embedder stabil läuft.
+- **Tests:** `tests/test_memory_tkg.py` — 10 Tests, parametrisiert über beide Backends.
+
+---
+
 ## 👥 Agenten-Übersicht
 
 | Agent | Rolle | Verantwortlichkeit |

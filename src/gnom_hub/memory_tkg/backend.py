@@ -1,4 +1,4 @@
-"""MemoryBackend Protocol + Factory (v4 simplified, MENTIONS-aware)."""
+"""MemoryBackend Protocol + Factory + Embedding-Helper (v4 simplified, MENTIONS-aware)."""
 from __future__ import annotations
 
 import logging
@@ -9,6 +9,22 @@ from typing import Protocol, runtime_checkable
 import numpy as np
 
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation
+
+_log = logging.getLogger(__name__)
+
+
+def get_text_embedding(text: str) -> np.ndarray | None:
+    """Embedding-Generierung mit klarem Fehler-Verhalten.
+
+    Returns np.ndarray on success, None wenn Embedder nicht verfügbar.
+    Bei Fail wird ein Warning geloggt — kein stilles Fallback.
+    """
+    try:
+        from gnom_hub.memory.embeddings import get_embedding
+        return np.asarray(get_embedding(text), dtype=np.float32)
+    except Exception as e:  # noqa: BLE001
+        _log.warning("get_text_embedding failed (embedder unavailable?): %s", e)
+        return None
 
 
 @runtime_checkable
@@ -29,6 +45,7 @@ class MemoryBackend(Protocol):
     def find_facts_mentioning(self, entity_id: str) -> list[Fact]: ...
     def find_relations(self, from_id: str, predicate: str | None = None) -> list[Relation]: ...
     def find_facts_valid_at(self, at_time: float) -> list[Fact]: ...
+    def has_similar_fact(self, text: str, threshold: float = 0.85) -> bool: ...
 
     # Meta
     def count(self) -> int: ...

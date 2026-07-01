@@ -3,7 +3,8 @@ import hashlib
 import logging
 from typing import Literal
 
-from gnom_hub.db import add_to_soul_memory, get_db_conn
+from gnom_hub.db import get_db_conn
+from gnom_hub.memory_tkg.adapter import store_memory
 from gnom_hub.db.soul_repo import save_soul_fact_smart
 
 # Priority values for eviction sorting (lower value gets evicted first)
@@ -12,6 +13,14 @@ PRIORITY_VALUES = {
     "medium": 2,
     "high": 3,
     "critical": 4
+}
+
+# Priority → importance mapping for TKG-Adapter (float 0.0–1.0)
+PRIORITY_IMPORTANCE = {
+    "low": 0.3,
+    "medium": 0.6,
+    "high": 0.75,
+    "critical": 0.9,
 }
 
 def count_tokens(text: str) -> int:
@@ -120,4 +129,4 @@ class ContextBudget:
 
         # Smart-Engine hat inserted (result == dedup_key) oder war nicht verfügbar
         # → normaler UUID-Insert für kompatibilität mit altem Code
-        add_to_soul_memory(tagged, priority=priority, agent="SoulAG")
+        store_memory(tagged, importance=PRIORITY_IMPORTANCE[priority])

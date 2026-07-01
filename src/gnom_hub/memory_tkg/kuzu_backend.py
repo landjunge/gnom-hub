@@ -130,6 +130,18 @@ class KuzuDBBackend:
             "MATCH (f:Fact) WHERE f.valid_at <= $t AND (f.invalid_at IS NULL OR f.invalid_at > $t) "
             "RETURN f.id, f.text, f.embedding, f.importance, f.valid_at, f.invalid_at",
             {"t": t}, self._f)
+    def has_similar_fact(self, text: str, threshold: float = 0.85) -> bool:
+        from gnom_hub.memory_tkg.backend import get_text_embedding
+        emb = get_text_embedding(text)
+        if emb is None:
+            return False
+        return self._q1(
+            "MATCH (f:Fact) WHERE f.embedding IS NOT NULL "
+            "AND array_cosine_similarity(f.embedding, $embedding) >= $threshold "
+            "RETURN count(f) > 0",
+            {"embedding": emb.tolist(), "threshold": float(threshold)},
+            lambda r: bool(r[0]),
+        ) or False
     def count(self) -> int:
         return self.conn.execute("MATCH (n) RETURN count(n)").get_next()[0]
     def close(self) -> None:

@@ -59,6 +59,17 @@ class InMemoryBackend:
         return [f for f in self._facts.values()
                 if f.valid_at <= t and (f.invalid_at is None or f.invalid_at > t)]
 
+    def has_similar_fact(self, text: str, threshold: float = 0.85) -> bool:
+        from gnom_hub.memory_tkg.backend import get_text_embedding
+        emb = get_text_embedding(text)
+        if emb is None:
+            return False
+        return any(
+            self._cosine(emb, f.embedding) >= threshold
+            for f in self._facts.values()
+            if f.embedding is not None
+        )
+
     def count(self) -> int:
         return len(self._entities) + len(self._facts)
 
