@@ -106,3 +106,4 @@ tests/golden/
 *.mov
 *.mp4
 30
+config/routing.txt.bak-*

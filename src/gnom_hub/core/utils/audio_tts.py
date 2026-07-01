@@ -16,7 +16,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from gnom_hub.core.config import DATA_DIR
 
@@ -69,7 +69,7 @@ def _cache_key(provider: str, text: str, voice_id: str) -> str:
     return f"{provider}:{voice_id}:{text}"
 
 
-def _cache_get(key: str) -> Path | None:
+def _cache_get(key: str) -> Optional[Path]:
     entry = _TTS_CACHE.get(key)
     if not entry:
         return None
@@ -103,7 +103,7 @@ def _cache_purge_expired() -> int:
 
 # ─── Provider-Backends ───────────────────────────────────────────────────────
 
-def _tts_elevenlabs(text: str, voice_id: str) -> Path | None:
+def _tts_elevenlabs(text: str, voice_id: str) -> Optional[Path]:
     """Bestehender ElevenLabs-Pfad (unverändertes Verhalten)."""
     if not ELEVEN_KEY:
         return None
@@ -122,8 +122,8 @@ def _tts_elevenlabs(text: str, voice_id: str) -> Path | None:
     return out
 
 
-def _tts_openai_compat(base_url: str, api_key: str, model: str, text: str, voice: str) -> Path | None:
-    """OpenAI-kompatibles /v1/audio/speech (OpenAI, MiniMax, kompatible)."""
+def _tts_openai_compat(base_url: str, api_key: str, model: str, text: str, voice: str) -> Optional[Path]:
+    """OpenAI-kompatibles /v1/audio/speech (OpenAI, andere OpenAI-kompatible)."""
     import requests
     r = requests.post(
         f"{base_url.rstrip('/')}/audio/speech",
@@ -139,6 +139,51 @@ def _tts_openai_compat(base_url: str, api_key: str, model: str, text: str, voice
     return out
 
 
+def _tts_minimax(api_key: str, model: str, text: str, voice: str) -> Optional[Path]:
+    """MiniMax TTS via /v1/text_to_speech (NICHT OpenAI-kompatibel).
+
+    MiniMax-Spezifika:
+      - Endpoint: POST /v1/text_to_speech (nicht /v1/audio/speech → 404)
+      - Body-Felder: ``text`` statt ``input``, ``voice_id`` statt ``voice``
+      - Modelle: speech-01, speech-02-hd etc. (NICHT tts-1)
+      - Audio-Setting-Block ist Pflicht für Format/Sample-Rate
+
+    Rate-Limit-Antwort (status_code 1002) wird als None behandelt → Caller
+    fällt auf web_speech zurück (kein Retrying, das verschlimmert nur).
+    """
+    import requests
+    try:
+        r = requests.post(
+            "https://api.minimax.io/v1/text_to_speech",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model or "speech-01",
+                "text": text,
+                "voice_id": voice or "alloy",
+                "audio_setting": {"sample_rate": 32000, "bitrate": 128000, "format": "mp3"},
+            },
+            timeout=20,
+        )
+    except requests.RequestException as e:
+        _log.warning("TTS MiniMax exception: %s", e)
+        return None
+
+    if r.status_code != 200:
+        _log.info("TTS MiniMax → HTTP %s: %s", r.status_code, r.text[:200] if r.text else "(no body)")
+        return None
+    # MiniMax sendet bei Fehler JSON ({"base_resp": ...}) mit Status 200 — prüfen.
+    if not r.content or r.content[:1] in (b"{", b"["):
+        try:
+            err = r.json().get("base_resp", {})
+            _log.info("TTS MiniMax → API-Error %s: %s", err.get("status_code"), err.get("status_msg"))
+        except Exception:
+            _log.info("TTS MiniMax → kein Audio-Body, len=%d", len(r.content))
+        return None
+    out = AUDIO_DIR / f"tts_mm_{hash(text + model + voice) & 0xFFFFFFFF}.mp3"
+    out.write_bytes(r.content)
+    return out
+
+
 # ─── Public API ──────────────────────────────────────────────────────────────
 
 def _strip_zero_width(text: str) -> str:
@@ -147,7 +192,7 @@ def _strip_zero_width(text: str) -> str:
     return text
 
 
-def tts(text: str, voice_id: str = "") -> Path | None:
+def tts(text: str, voice_id: str = "") -> Optional[Path]:
     """Provider-dispatchable TTS → MP3-Pfad. None = Caller fällt auf Web Speech.
 
     Reihenfolge:
@@ -172,17 +217,16 @@ def tts(text: str, voice_id: str = "") -> Path | None:
     if cached:
         return cached
 
-    out: Path | None = None
+    out: Optional[Path] = None
 
     # ── 1. Provider-spezifischer Pfad ────────────────────────────────────────
     if provider == "minimax":
         key = _resolve_key_for_provider("minimax")
         if key:
             try:
-                out = _tts_openai_compat(
-                    "https://api.minimax.io/v1",
+                out = _tts_minimax(
                     key,
-                    model="tts-1",
+                    model=model,
                     text=text,
                     voice=voice or "alloy",
                 )
@@ -242,7 +286,7 @@ def cache_stats() -> dict:
 def cache_clear() -> int:
     """Leert den gesamten Cache. Returns Anzahl gelöschter Einträge."""
     count = len(_TTS_CACHE)
-    for _k, (_, path) in list(_TTS_CACHE.items()):
+    for k, (_, path) in list(_TTS_CACHE.items()):
         try:
             if path and path.exists():
                 path.unlink()

@@ -231,12 +231,18 @@ def post_chat(msg: ChatMsg):
         asked = [n for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS] if dispatch(q, target=n, sender=msg.sender)]
         return {"status": "dispatched", "asked": asked, "target": None, "mode": "research"}
     if not cmd and not tgt:
-        # User-Chat ohne @target: BROADCAST an alle online/busy Agents.
-        # User bestimmt selbst wer antwortet — keine Default-Einschränkung mehr.
-        # User-Mandat 2026-06-28 12:03: "ich möchte selber bestimmen an wen die nachrichten gehen".
-        # Status-Filter: online+busy (laufende Jobs), nicht offline/quarantined.
-        asked = [n for n in [x["name"] for x in ags if x.get("status") in ("online", "busy")] if dispatch(msg.content, target=n, sender=msg.sender)]
-        return {"status": "broadcast", "asked": asked, "target": None, "mode": "chat"}
+        # User-Chat ohne @target: Default-Routing an SoulAG (Sovereign/Orchestrator).
+        # Vorher: Broadcast an ALLE online+busy Agents → Message-Storm.
+        #   Queues liefen dauerhaft auf 100/100 Backpressure, Chat wurde unbenutzbar,
+        #   User-Nachrichten wurden verschluckt. (Logs: 'Backpressure für SoulAG: 100 pending')
+        # Fix 2026-06-29: SoulAG entscheidet intern welche Worker beteiligt werden —
+        # User behält @Agent-Mentions für explizite Direkt-Ansprache.
+        soulag = next((x for x in ags if x["name"].lower() == "soulag"), None)
+        asked: list[str] = []
+        if soulag and soulag.get("status") in ("online", "busy"):
+            if dispatch(msg.content, target="soulag", sender=msg.sender):
+                asked.append("SoulAG")
+        return {"status": "dispatched", "asked": asked, "target": "soulag", "mode": "chat"}
     return {"status": "dispatched", "asked": dispatch(q, target=tgt, sender=msg.sender), "target": tgt, "mode": "brainstorm" if cmd == "bs" else "chat"}
 @router.get("/api/chat")
 def get_chat(limit: int = 50):
