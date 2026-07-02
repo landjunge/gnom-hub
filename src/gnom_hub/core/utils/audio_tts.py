@@ -261,6 +261,21 @@ def tts(text: str, voice_id: str = "") -> Optional[Path]:
             _log.warning("TTS ElevenLabs exception: %s", e)
 
     if out is None:
+        # Diagnostik: warum ist KEIN Provider durchgekommen? Caller (api/audio/tts)
+        # braucht diese Info, um ehrlich zu fallen statt silent zu failen.
+        minimax_key_set = bool(_resolve_key_for_provider("minimax"))
+        openai_key_set = bool(_resolve_key_for_provider("openai"))
+        _log.error(
+            "TTS no provider delivered audio — provider=%r model=%r "
+            "minimax_key_set=%s openai_key_set=%s elevenlabs_key_set=%s "
+            "text_len=%d",
+            provider or "(none)",
+            model,
+            minimax_key_set,
+            openai_key_set,
+            bool(ELEVEN_KEY),
+            len(text),
+        )
         return None
 
     _cache_put(cache_k, out)

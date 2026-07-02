@@ -4,10 +4,11 @@
 > *8 Agenten · Symbolischer Kurzzeitspeicher · Geschichteter Langzeitspeicher · Null Cloud-Abhängigkeit.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-660_passed-blue.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-526_passed_+_25_skipped-blue.svg)](#-tests)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#-agenten-übersicht)
 [![Speicher](https://img.shields.io/badge/Speicher-Geschichtet_+_Offload-brightgreen.svg)](#-speicher-architektur)
+[![Showbox](https://img.shields.io/badge/Showbox-3--Layer_+_Buttons-ff69b4.svg)](#-showbox--output-layer-mit-klickbaren-buttons)
 [![Backups](https://img.shields.io/badge/Backups-Unveränderlich-orange.svg)](#)
 
 🇬🇧 **[English (README.md)](README.md)** • 🇩🇪 **Deutsch**
@@ -19,6 +20,36 @@
 Gnom-Hub ist ein **lokales Multi-Agenten-Backend** mit Web-UI. Acht spezialisierte Agenten (4 Worker + 4 System) arbeiten über einen zentralen FastAPI-Server zusammen. Alles läuft auf `localhost`, persistiert in SQLite, und hat **keine Cloud-Abhängigkeit** für den Core-Betrieb.
 
 **Kernidee:** die Agenten ertrinken nicht in ihrer eigenen Tool-Output-Historie. Gnom-Hub übernimmt ein Konzept aus der [TencentDB Agent Memory](docs/tencentdb-comparison.md)-Forschung: ein **symbolischer Kurzzeitspeicher** (Mermaid-Canvas + node_id Drill-Down) komprimiert lange Tool-Outputs in kompakte Symbole, und ein **geschichteter Langzeitspeicher** hält häufig genutztes Wissen (L0 Konversation → L3 Persona) griffbereit.
+
+---
+
+## 🎯 Was kannst du mit Gnom-Hub bauen?
+
+Out-of-the-box, ohne weiteres Setup nach `python3 install.py`:
+
+- 🧑‍💻 **Coding-Pipeline** — `CoderAG` schreibt den PR, `EditorAG` poliert, `WriterAG` dokumentiert
+- 🎨 **Landing-Page aus README** — interaktive Demo-Seite mit allen 8 Agent-Cards ([`docs/golden-tests.md`](docs/golden-tests.md))
+- 🎥 **Demo-Video** — Playwright + TTS + Screencapture als Marketing-Material
+- 🔬 **Brainstorm-Session** — `@@bs <Frage>` triggert Multi-Agent-Decomposition in Sub-Tasks
+- 📊 **TKG Memory-Inspector** — Live-Visualisierung des Wissensgraphen in der Agent-Inspector-Sidebar
+- 🐝 **War-Room** — Live-Koordination zwischen mehreren Agenten im gleichen Chat-Thread
+- 🔊 **Voice-In / Voice-Out** — TTS-Provider-Chain (MiniMax → OpenAI → ElevenLabs) mit Browser-Fallback
+- 🛡️ **Self-Healing** — `WatchdogAG` startet hängende Agenten neu, recovered failed tasks automatisch
+
+Die **8 Agent-Cards** die du in der Landing-Page siehst sind exakt die Agenten die im Hub laufen:
+
+| Card | Typ | Rolle |
+|------|-----|-------|
+| **SoulAG** | System | Orchestrator + TKG-Fakt-Extraktor (stiller Beobachter) |
+| **GeneralAG** | System | Dirigent für direkten User-Chat, Multi-Cap-Fallback |
+| **WatchdogAG** | System | Self-Healing, Heartbeat, Stuck-Task-Recovery |
+| **SecurityAG** | System | Pfad/Shell-Permissions, Write-Audit |
+| **CoderAG** | Worker | Code-Generierung, `[WRITE:]`-Actions, Refactoring |
+| **WriterAG** | Worker | Lange Texte, Blog-Posts, Doku |
+| **EditorAG** | Worker | Korrekturlesen, Style-Cleanup, Formatierung |
+| **ResearcherAG** | Worker | Web-Suche, GitHub-Recherche, Fact-Gathering |
+
+Die Runtime-Konsole zeigt alle 8 Cards mit Live-`status` + `last_seen`. Der Hub startet nicht sauber ohne dass alle 8 heartbeat'en.
 
 ---
 
@@ -42,6 +73,24 @@ curl http://localhost:3002/api/health
 ```
 
 **Browser:** `http://localhost:3002` — Single-Page-App mit Chat, Agent-Dashboards, Showbox (Präsentations-Layer).
+
+---
+
+## 🧭 Routing & Orchestrierung
+
+Jede User-Message landet beim **deterministischen Capability-Resolver** in `src/gnom_hub/agents/swarm/capability_resolver.py` (557 LOC). Er klassifiziert nach Capability-Keyword (DE + EN) und dispatcht:
+
+| Capability | Ziel | Trigger |
+|---|---|---|
+| `chat` / direkte User-Message | `GeneralAG` (Default seit 2026-07-02) | User tippt in Chat |
+| `coding`, `bash`, `refactor` | `CoderAG` | Mention `@CoderAG` oder Keyword |
+| `writing`, `blog`, `docs` | `WriterAG` | Mention `@WriterAG` oder Keyword |
+| `editing`, `proofread` | `EditorAG` | Mention `@EditorAG` oder Keyword |
+| `web_research`, `github_recherche` | `ResearcherAG` | `@@research`, `@@github` |
+| `permissions`, `grant`, `revoke` | `SecurityAG` | Admin-Request |
+| `stale`, `failed`, `recover` | `WatchdogAG` | Auto-routed von der Engine |
+
+**SoulAG** bleibt stiller Beobachter — sie extrahiert TKG-Fakten aus jeder Message, antwortet aber nicht mehr direkt auf User-Chat (würde leere Replies produzieren). Die Retry-Chain `GeneralAG → SoulAG` aktiviert sich wenn GeneralAG keine Capability hat (ehrlicher "no agent" Status, kein vorgetäuschter "completed"-Toast).
 
 ---
 
@@ -135,6 +184,36 @@ graph LR
 ```
 
 Embeddings nutzen **FAISS** (wenn torch + faiss verfügbar) mit **TF-IDF** als deterministischem CPU-Fallback (keine GPU nötig).
+
+---
+
+## 🎭 Showbox — Output-Layer mit klickbaren Buttons
+
+Showbox ist das zentrale Runtime-Output-Medium. Statt toter Text-Antworten bekommen User ein **3-Layer-System** mit klickbaren Slides die echte Aktionen auslösen:
+
+- **System-Layer** — Hub-interne Status (Routing-Entscheidungen, Audit-Events)
+- **Worker-Layer** — Agent-generierte Slides aus `CoderAG`, `WriterAG`, `EditorAG`
+- **User-Layer** — Persistente Präsentationen im User-Workspace
+
+**Mechanik:** Inline-`<button action="...">`-Tags in Agent-Responses werden von `extract_inline_buttons()` in `src/gnom_hub/db/showbox_repo.py` in das `buttons[]` JSON-Feld extrahiert. Das Frontend (`src/gnom_hub/frontend/showbox-buttons.js:extractInlineButtons`) rendert sie als klickbares Grid das `POST /api/chat {target, content}` triggert.
+
+```
+POST /api/showbox/presentations              # Slide speichern
+GET  /api/themes                             # aktive Themes + Slides
+PUT  /api/showbox/{id}/buttons               # Button-Layout updaten
+```
+
+**Beispiel-Agent-Output:**
+
+```html
+<showbox theme="code_review" title="PR #42">
+  <slide title="Diff-Übersicht">3 Files · +127 −42</slide>
+  <button action="approve" target="coderag">✓ Approve & Merge</button>
+  <button action="request_changes">⚠ Request Changes</button>
+</showbox>
+```
+
+**Buttons sind nicht optional** — jede Showbox die mit `<button>`-Tags gespeichert wird MUSS durch `buttons[]` round-trippen. Das ist ein Spec-tragendes Detail (siehe `db/showbox_repo.py:extract_inline_buttons`).
 
 ---
 
@@ -239,6 +318,200 @@ Der **Bootstrap-Modus** macht das System resilient: Legacy-DBs ohne `schema_migr
 
 ---
 
+
+
+## 🕸️ Speicher-Visualisierung (TKG-Inspector)
+
+Das TKG ist über die Memory-Endpoints in `src/gnom_hub/api/endpoints/memory_search.py` + `memory_crud.py` inspizierbar und wird im Agent-Inspector des Dashboards als Mermaid-Graph gerendert:
+
+```
+GET  /api/memory/search?q=<text>          # Cosine-Similarity-Suche über Fakten
+POST /api/memory                          # Fakt für einen Agenten anhängen
+GET  /api/agents/{a_id}/memory            # letzte 100 Messages eines Agenten
+GET  /api/agents/{a_id}/memory/count      # Gesamtanzahl Messages
+PUT  /api/memory/{m_id}                   # Content eines Fakts aktualisieren
+DELETE /api/memory/{m_id}                 # einzelnen Fakt löschen
+DELETE /api/agents/{a_id}/memory          # gesamten Speicher eines Agenten leeren
+POST /api/soul/save                       # Smart-Dedup-Save in soul_memory.db
+GET  /api/soul/all/{agent_name}           # Fakten für Agent (inkl. system)
+```
+
+Ein TKG-Knoten trägt **bitemporale** Gültigkeit — `valid_at` (Fakt gilt ab) und `invalid_at` (null = noch gültig):
+
+```mermaid
+graph LR
+    F["📝 Fact<br/><i>user bevorzugt dark mode</i><br/>valid_at: 2026-05-01<br/>invalid_at: null"]:::fact
+    E["👤 Entity<br/>name: 'landjunge'<br/>type: 'user'"]:::entity
+    F -.->|MENTIONS<br/>confidence: 0.92| E
+    F -->|RELATES_TO<br/>predicate: 'prefers'| F2["📝 Fact<br/>'nutzt MiniMax M3'<br/>valid_at: 2026-06-15"]:::fact
+    classDef fact fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px
+    classDef entity fill:#2d5a3d,stroke:#1d3d28,stroke-width:1.5px,color:#fdfaf2
+```
+
+Die Agent-Inspector-Sidebar (`src/gnom_hub/frontend/worker_sidebar.js:411`) rendert das Mermaid-SVG und lässt den User auf einen Knoten klicken, um `text` und bitemporale Timestamps zu sehen.
+
+---
+
+## 🧩 Workflow-Engine
+
+Workflows sind First-Class-Objekte: eine Kette von `task`s mit `depends_on`-Edges, dispatcht via Capability-Resolution. Endpoints in `src/gnom_hub/api/endpoints/workflows.py` (217 Zeilen), Engine in `src/gnom_hub/agents/swarm/workflow_engine.py` (518 Zeilen):
+
+```
+POST /api/workflows                       # Workflow erstellen + starten
+GET  /api/workflows                       # alle Workflows listen
+GET  /api/workflows/{workflow_id}         # Detail-View: Workflow + Tasks
+```
+
+**Beispiel — 3-Task-Workflow mit Dependency-Chain:**
+
+```bash
+curl -X POST http://localhost:3002/api/workflows \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "research-and-write",
+    "tasks": [
+      {"task_id": "research", "capability": "web_research",
+       "input_template": "Recherche: {topic}", "depends_on": []},
+      {"task_id": "outline",  "capability": "writing",
+       "input_template": "Outline für: {research}", "depends_on": ["research"]},
+      {"task_id": "draft",    "capability": "writing",
+       "input_template": "Artikel aus {outline} (Quelle: {research})",
+       "depends_on": ["outline"]}
+    ]
+  }'
+```
+
+Tasks mit `depends_on` werden erst dispatcht, wenn **alle** ihre Dependency-Tasks `completed` sind. Die Interpolation `{task_id}` (und `{task_id:field}` für nested JSON) injiziert das vorherige Task-Result in den `input_template` des nächsten Tasks.
+
+---
+
+## 💡 Brainstorm-Modus
+
+Trigger mit `@@bs <Frage>` im Chat. **GeneralAG** ist der alleinige Koordinator: analysiert, zerlegt, und dispatcht Sub-Tasks an die passenden Worker via `dispatch()` in `src/gnom_hub/chat/brainstorm/brainstorm.py`:
+
+```
+User:   @@bs Wie können wir die Onboarding-Zeit halbieren?
+                                       ↓
+GeneralAG:  Analysiert → zerlegt in 3 Subtasks
+                                       ↓
+   @ResearcherAG → "Recherche: aktuelle Onboarding-Patterns in SaaS"
+   @CoderAG      → "Bau einen 2-Schritt-Wizard mit Progress-Indicator"
+   @WriterAG     → "Schreibe einen 200-Word Onboarding-Email-Teaser"
+                                       ↓
+GeneralAG:  Sammelt Worker-Results, fasst zusammen in <SHOWBOX:1>
+```
+
+`@@bs` injiziert einen `[BRAINSTORM-AUFTRAG]`-System-Prompt der GeneralAG sagt, **selbst keine Inhalte zu schreiben**, sondern via `@WorkerAG → Task`-Zeilen zuzuweisen. Die Worker-Chain wird als `war-room/brainstorm`-Messages gepostet und via `get_chat_history()` zurück-aggregiert.
+
+`@@workflow` ist ein Geschwister-Trigger der die Capability-Chain explizit in der `workflows`-Tabelle festhält (siehe 🧩 oben) statt Free-Form-Dispatch.
+
+---
+
+## 🔊 Audio-Pipeline (TTS / STT)
+
+Voice-In und Voice-Out via `src/gnom_hub/api/endpoints/audio.py` (52 Zeilen) und den Engines in `src/gnom_hub/core/utils/audio_{tts,stt}.py`:
+
+```
+POST /api/audio/tts                       # Text → MP3 (audio/mpeg)
+POST /api/audio/stt                       # Audio-Upload → transkribierter Text
+```
+
+**TTS — Provider-Fallback-Chain** (gelesen aus `llm_service_tts` im State):
+
+| Provider | Endpoint | Wann |
+|----------|----------|------|
+| `minimax` | `api.minimax.io/v1/audio/speech` (OpenAI-kompatibel) | Default wenn `minimax` aktiver TTS-Service ist |
+| `openai-tts` | `api.openai.com/v1/audio/speech` | Wenn `openai-tts` aktiv ist |
+| `elevenlabs` | `api.elevenlabs.io/v1/text-to-speech/{voice_id}` | Fallback / wenn `ELEVENLABS_API_KEY` gesetzt ist |
+
+1-Minuten-Cache pro `(provider + voice + text)` blockiert Spammy-Re-Calls. Wenn **kein Provider** liefern kann, gibt der Endpoint JSON `{"fallback":"speech_synthesis", "text": "..."}` zurück, so dass das Frontend auf Browser Web Speech API umschaltet.
+
+**STT — Local-First, Cloud-Fallback:**
+
+| Pfad | Engine | Wann |
+|------|--------|------|
+| Lokal | `faster-whisper` (`tiny`, `int8`) | Immer zuerst; nutzt `get_language()` für Zielsprache |
+| Cloud | OpenAI `whisper-1` | Wenn lokal scheitert UND `OPENAI_API_KEY` gesetzt ist |
+| Frontend | Browser Web Speech | Wenn beide scheitern → `{"text":"", "fallback":"web_speech"}` |
+
+Agent-Voices werden per Call aufgelöst: hat der Request `agent_id`, wird die `voice_id` des Agenten aus der DB geholt und an den TTS-Provider übergeben.
+
+---
+
+## 🐝 Swarm-Kommunikation
+
+Agenten dispatchen via `src/gnom_hub/agents/swarm/swarm_comms.py` (919 Zeilen, `MAX_DEPTH=15`, `MAX_CONCURRENT=8`, `MAX_QUEUE_DEPTH=100`) aneinander. Jede Inter-Agent-Message ist eine Zeile in `agent_messages` mit `pending → processing → completed`-Lifecycle und Event-basiertem Wakeup (kein Polling).
+
+**Dispatch-Entry-Point:**
+
+```python
+from gnom_hub.agents.swarm.swarm_comms import dispatch_mention, ack_message, nack_message
+
+# Nachricht an einen Agenten senden
+dispatch_mention(
+    sender="CoderAG",
+    text="@EditorAG bitte code-review für PR #42",
+    context_id="default",
+    db_path=str(DB_PATH),
+    current_depth=0,
+)
+
+# Bei Annahme
+ack_message(msg_id=42, db_path=str(DB_PATH))
+
+# Bei Fehler (3 Retries mit exponentiellem Backoff: 3s, 6s, 12s)
+nack_message(msg_id=42, db_path=str(DB_PATH), reason="timeout")
+```
+
+**`@@research`-Broadcast** — `src/gnom_hub/api/endpoints/chat_legacy.py:230` broadcastet an alle `online | busy` Worker außer dem System-Trio `(soulag, generalag, watchdogag)`:
+
+```python
+# chat_legacy.py — handle_research()
+worker_targets = [
+    a for a in active_agents
+    if a["name"].lower() not in {"soulag", "generalag", "watchdogag"}
+    and a["status"] in {"online", "busy"}
+]
+for a in worker_targets:
+    dispatch_mention("user", f"@@research {q}", project, str(DB_PATH), 0,
+                     target_agent=a["name"])
+```
+
+**Self-Healing:** `recover_stuck_messages(db_path, timeout=300.0)` (Zeile 733) läuft periodisch — jede Message die > 5 Min in `processing` hängt wird re-queued für Retry, gekappt bei `RETRY_MAX = 3`.
+
+---
+
+## 📂 Workspace-Konzept
+
+Der Agent-Workspace liegt in `~/gnom-Workspace/<active-project>/` — **port-unabhängig**, so dass Files Instanz-Wechsel überleben (z.B. heute auf Port 3002, morgen auf 3003 zum Testen). Verwaltet von `src/gnom_hub/api/endpoints/workspace.py` (158 Zeilen):
+
+```
+GET  /api/workspace                       # Dateien im aktiven Projekt listen
+GET  /api/workspace/{filename}            # Datei lesen (UTF-8)
+GET  /api/workspace/{filename}/serve      # als HTML rendern
+GET  /api/workspace/{filename}/raw        # als Attachment downloaden
+POST /api/workspace/{filename}/run        # .py-Datei ausführen (15s Timeout)
+GET  /api/workspace/config                # aktueller Workspace-Pfad + Default
+PUT  /api/workspace/config                # Workspace ändern (validiert: absolut, nicht /etc|/usr|...)
+POST /api/workspace/config/reset          # auf ~/gnom-Workspace Default zurücksetzen
+GET  /api/project                         # Name des aktuell aktiven Projekts
+```
+
+**Pfad-Validierung:** `_safe_path()` (workspace.py:27) blockt Traversal-Attacken — `(workspace / filename).resolve()` muss mit `workspace.resolve()` starten. Der PUT-Config-Handler blockt zusätzlich System-Prefixes (`/etc`, `/usr`, `/var`, `/proc`, `/sys`, `/boot`, `/lib`, `/sbin`, `/bin`, `/private/etc`, `/private/var`).
+
+**Workspace vs `~/.gnom-hub/`:**
+
+| | `~/gnom-Workspace/<project>/` | `~/.gnom-hub/data/` |
+|---|---|---|
+| Zweck | Agent-Outputs (HTML, Code, Videos) | SQLite-DBs + PID-Files + Audio-Cache |
+| Port | **UNABHÄNGIG** — gleicher Pfad auf jedem Port | Port-abhängig (`~/.gnom-hub-3003/` etc.) |
+| Backups | User-Verantwortung (eigene Projekt-Arbeit) | Immutable Backup, nie gelöscht |
+| Mutabilität | Agenten erstellen/editieren frei | Hub-managed; Offload-Dir auto-pruned |
+
+Aktives Projekt liegt in `state["active_project"]` und wird via `SQLiteStateRepository.get_active_project()` aufgelöst. Projekt-Wechsel via API tauscht den Workspace-Root ohne Hub-Neustart.
+
+---
+
 ## 🧪 Tests
 
 ```bash
@@ -257,6 +530,8 @@ curl http://localhost:3002/api/agents
 - `tests/test_offload.py` — 14 Tests: Mermaid-Canvas, node_id-Resolution, Path-Traversal-Defense, Atomic-Writes
 - `tests/test_routing.py` — 21 Tests: deterministische Capability-Resolution, Fallback-Chains, Deutsch/Englisch-Keywords
 - `tests/test_security_suite.py` — Permission-Grants, denied Writes, Godmode-Audit
+
+**Aktive Test-Statistik:** 526 passed + 25 skipped. Pre-existing Failures (`numpy 2.x`, `FAISS ABI`, `/private/var` Pfad-Validierung, `data/presets/default/` fehlt, `security_permissions`-Schema fehlt, `security injection-validator` per Mandat disabled) sind auf `master` dokumentiert und nicht Teil dieser Phase. Drift-Log in [`docs/FEATURE_INVENTORY.md`](docs/FEATURE_INVENTORY.md).
 
 ---
 

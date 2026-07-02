@@ -21,25 +21,32 @@ def _parse(t):
 def _handle_sys(q, m):
     if m == "proj":
         q_str = (q or "").strip()
-        parts = q_str.split(None, 1)
+        parts = q_str.split(None, 2)
         if parts and parts[0].lower() in ("delete", "remove"):
+            # ── SCHUTZ 2026-07-02: Projekt-Löschung braucht explizite DELETE-Bestätigung
+            # Verhindert versehentliches Löschen. Tippe "@project delete <name> DELETE".
+            confirm = parts[2].strip() if len(parts) > 2 else ""
+            if confirm != "DELETE":
+                target_hint = parts[1].strip() if len(parts) > 1 else "<name>"
+                _post_chat("System", f"⚠️  Projekt-Löschung blockiert. Tippe `@project delete {target_hint} DELETE` um Projekt '{target_hint}' wirklich zu löschen. (Schutz gegen versehentliches Löschen, 2026-07-02)")
+                return {"status": "needs_confirmation", "hint": f"@project delete {target_hint} DELETE"}
             import os
             import shutil
 
             from gnom_hub.core.config import Config
             from gnom_hub.db import delete_project_completely, get_active_project
-            
+
             target_proj = parts[1].strip() if len(parts) > 1 else ""
             if not target_proj or target_proj.lower() == "current":
                 target_proj = get_active_project()
-                
+
             if target_proj.lower() == "default":
                 _post_chat("System", "Das 'default' Projekt kann nicht gelöscht werden.")
                 return {"status": "error"}
-                
+
             # Complete DB cleanup
             delete_project_completely(target_proj)
-            
+
             # Workspace directory cleanup
             wd = os.path.join(str(Config.workspace_dir()), target_proj)
             if os.path.exists(wd):
@@ -47,7 +54,7 @@ def _handle_sys(q, m):
                     shutil.rmtree(wd)
                 except Exception as e:
                     print(f"Error removing project dir: {e}")
-                    
+
             # Switch back to default if current project was deleted
             current = get_active_project()
             if current.lower() == target_proj.lower():

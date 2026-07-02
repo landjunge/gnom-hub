@@ -765,7 +765,7 @@ function renderChatMessageHTML(m, overrideContent) {
 async function refreshChat() {
   const el = document.getElementById('chat-display');
   if (!el) return;
-  const msgs = await api('GET', '/chat?limit=20');
+  const msgs = await api('GET', '/chat?limit=200');
 
   const dataStr = JSON.stringify(msgs || []);
   if (window._lastChatData === dataStr) return;
@@ -1113,31 +1113,53 @@ async function speak(text, agentId = '') {
     if (window.hasElevenLabs) {
       try {
         const r = await fetch(`${API}/audio/tts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, agent_id: a }) });
-        if (r.ok && r.headers.get('content-type')?.includes('audio')) {
-          const url = URL.createObjectURL(await r.blob());
-          const audio = new Audio(url);
-          window.currentAudio = audio;
-          await new Promise(ok => {
-            let resolved = false;
-            const done = () => {
-              if (!resolved) {
-                resolved = true;
-                if (window.currentAudio === audio) window.currentAudio = null;
-                clearTimeout(timeoutId);
-                URL.revokeObjectURL(url);
-                ok();
+        if (!r.ok) {
+          console.warn("TTS endpoint returned status", r.status, "→ fallback to browser synthesis");
+        } else {
+          const contentType = r.headers.get('content-type') || '';
+          let audioUrl = '';
+          if (contentType.includes('audio')) {
+            audioUrl = URL.createObjectURL(await r.blob());
+          } else if (contentType.includes('json')) {
+            // Server liefert expliziten Fallback (kein Provider verfügbar).
+            try {
+              const payload = await r.json();
+              if (payload && payload.audio_url) {
+                audioUrl = payload.audio_url;
+              } else {
+                console.info("TTS endpoint fallback:", payload?.fallback || 'speech_synthesis', payload?.reason || '');
               }
-            };
-            audio.onended = done;
-            audio.onerror = done;
-            audio.onstop = done;
-            const timeoutId = setTimeout(done, 15000);
-            audio.play().catch(err => {
-              console.error("ElevenLabs audio play failed:", err);
-              done();
+            } catch (parseErr) {
+              console.warn("TTS endpoint returned non-JSON non-audio body, falling back:", parseErr);
+            }
+          } else {
+            console.warn("TTS endpoint returned unknown content-type:", contentType);
+          }
+          if (audioUrl) {
+            const audio = new Audio(audioUrl);
+            window.currentAudio = audio;
+            await new Promise(ok => {
+              let resolved = false;
+              const done = () => {
+                if (!resolved) {
+                  resolved = true;
+                  if (window.currentAudio === audio) window.currentAudio = null;
+                  clearTimeout(timeoutId);
+                  if (audioUrl.startsWith('blob:')) URL.revokeObjectURL(audioUrl);
+                  ok();
+                }
+              };
+              audio.onended = done;
+              audio.onerror = done;
+              audio.onstop = done;
+              const timeoutId = setTimeout(done, 15000);
+              audio.play().catch(err => {
+                console.error("ElevenLabs audio play failed:", err);
+                done();
+              });
             });
-          });
-          elevenLabsSuccess = true;
+            elevenLabsSuccess = true;
+          }
         }
       } catch (e) {
         console.warn("ElevenLabs TTS failed, falling back to browser synthesis:", e);

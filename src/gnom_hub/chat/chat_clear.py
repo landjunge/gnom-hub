@@ -41,7 +41,14 @@ def handle_clear(q=""):
         from gnom_hub.chat.chat_commands import _post_chat; _post_chat("System", "Alle externen Agenten gelöscht. System-Infrastruktur bleibt intakt.")
         return {"status": "agents_cleared"}
     from gnom_hub.db import get_active_project; p = get_active_project()
-    if q == "@projekt":
+    if q == "@projekt" or q.startswith("@projekt "):
+        # ── SCHUTZ 2026-07-02: Workspace-Wipe braucht explizite DELETE-Bestätigung
+        # Verhindert versehentliches Leeren wenn User (oder LLM) "clear @projekt"
+        # ohne zweite Bedeutung tippt. Tippe stattdessen "clear @projekt DELETE".
+        from gnom_hub.chat.chat_commands import _post_chat
+        if q.strip() != "@projekt DELETE":
+            _post_chat("System", "⚠️  Workspace-Wipe blockiert. Tippe `clear @projekt DELETE` um den Workspace von Projekt '" + p + "' wirklich zu leeren. (Schutz gegen versehentliches Löschen, 2026-07-02)")
+            return {"status": "needs_confirmation", "hint": "clear @projekt DELETE"}
         from gnom_hub.db import clear_project_chat; clear_project_chat(p)
         import os; import shutil; from gnom_hub.core.config import Config; wd = os.path.join(str(Config.workspace_dir()), p)
         # Path traversal protection
@@ -55,7 +62,7 @@ def handle_clear(q=""):
             fp = os.path.join(wd, f)
             if os.path.isfile(fp): os.unlink(fp)
             elif os.path.isdir(fp): shutil.rmtree(fp)
-        from gnom_hub.chat.chat_commands import _post_chat; _post_chat("System", f"Projekt '{p}' komplett geleert.")
+        _post_chat("System", f"Projekt '{p}' komplett geleert.")
         return {"status": "project_cleared"}
     if q == "chat" or q.startswith("chat "):
         parts = q.split(); from gnom_hub.chat.chat_commands import _post_chat

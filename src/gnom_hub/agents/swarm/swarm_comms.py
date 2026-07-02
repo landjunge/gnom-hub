@@ -316,9 +316,14 @@ def dispatch_mention(
     current_depth: int = 0,
     parent_msg_id: int | None = None,
     priority: str | int | None = None,
+    target_agent: str | None = None,
 ) -> list[str]:
     """
-    Parst @Mentions und legt Nachrichten in die persistente Queue.
+    Legt Nachrichten in die persistente Queue.
+
+    - Mit ``target_agent``: dispatcht direkt an diesen Agenten (kein @Mention-Parsing).
+    - Ohne ``target_agent``: parst @Mentions aus ``text`` und dispatcht an alle.
+
     Gibt Liste der angesprochenen Agenten zurück (für Logging).
     """
     if current_depth >= MAX_DEPTH:
@@ -330,7 +335,10 @@ def dispatch_mention(
 
     # Strip <think>...</think> block to prevent mentions inside thoughts from triggering dispatches
     clean_text = re.sub(r'<think>[\s\S]*?</think>', '', text)
-    mentions = re.findall(r'@(\w+)', clean_text)
+    if target_agent:
+        mentions = [target_agent]
+    else:
+        mentions = re.findall(r'@(\w+)', clean_text)
     if not mentions:
         return []
 

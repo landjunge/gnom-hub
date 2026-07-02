@@ -106,23 +106,32 @@ def test_soulag_responds_to_simple_greeting() -> None:
     Genau der wd-Bug (NameError) hätte hier gefailt: SoulAG würde nach
     3 Retries in den Dead-Letter-Queue gehen, und die Response wäre
     eine System-Message mit 'Agent SoulAG gescheitert an: ...'.
+
+    User-Mandat 2026-07-02 (Bug 3 Fix): Default-Routing ist GeneralAG,
+    SoulAG ist Fallback. Test akzeptiert beide als gültige Annahme.
     """
     marker = f"__e2e_test_{int(time.time())}__"
     user_msg = f"Sag einfach 'ping {marker}' und nichts weiter."
     result = _post_chat(user_msg)
     assert result.get("status") == "dispatched", f"Dispatch failed: {result}"
-    assert "SoulAG" in result.get("asked", []), f"Nicht an SoulAG dispatched: {result}"
+    # Default-Routing GeneralAG (User-Mandat 2026-07-02), SoulAG als Fallback.
+    asked = result.get("asked", [])
+    assert any(a in asked for a in ("GeneralAG", "SoulAG")), (
+        f"Neither GeneralAG nor SoulAG in asked: {result}"
+    )
 
-    response = _wait_for_response(marker=marker, sender="SoulAG", timeout=RESPONSE_WAIT_S)
+    # Akzeptiere Antwort von GeneralAG (default) oder SoulAG (fallback).
+    response_sender = "GeneralAG" if "GeneralAG" in asked else "SoulAG"
+    response = _wait_for_response(marker=marker, sender=response_sender, timeout=RESPONSE_WAIT_S)
     assert response is not None, (
-        f"SoulAG hat in {RESPONSE_WAIT_S}s nicht geantwortet. "
+        f"{response_sender} hat in {RESPONSE_WAIT_S}s nicht geantwortet. "
         f"Letzte 10 Chat-Messages checken mit /api/chat?limit=10"
     )
     assert "Dead-Letter" not in response.get("content", ""), (
-        f"SoulAG ging in Dead-Letter (Bug wie wd-NameError):\n{response.get('content', '')}"
+        f"{response_sender} ging in Dead-Letter (Bug wie wd-NameError):\n{response.get('content', '')}"
     )
     assert marker in response.get("content", ""), (
-        f"Marker '{marker}' nicht in SoulAG-Response:\n{response.get('content', '')[:200]}"
+        f"Marker '{marker}' nicht in {response_sender}-Response:\n{response.get('content', '')[:200]}"
     )
 
 

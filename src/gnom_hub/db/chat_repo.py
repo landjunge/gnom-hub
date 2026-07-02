@@ -294,14 +294,23 @@ def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, co
         _logger.error(f"[DB] Failed to add chat message: {e}")
         return None
 
-def get_chat_history(project: str = "default", limit: int = 30):
-    """Lädt die letzten X Nachrichten eines Projekts aus der chat-Tabelle."""
+def get_chat_history(project: str = "default", limit: int = 200):
+    """Lädt die letzten X Nachrichten eines Projekts aus der chat-Tabelle.
+
+    Bug-Fix 2026-07-02 (Bug 1): Default-Limit von 30 auf 200 erhöht.
+    Hintergrund: In busy-Sessions produzieren 8 Agents ~500+ msgs/h
+    (GeneralAG ~82, CoderAG ~75, WriterAG ~64, etc.). Mit limit=30/20
+    fielen User-Messages nach ~15 min Wartezeit aus dem DESC-Fenster
+    und erschienen nicht mehr im Chat-Frontend. 200 deckt eine typische
+    30-45-min-Session ab. Sortierung bleibt DESC (neueste zuerst),
+    Frontend sortiert auf ASC um.
+    """
     try:
         with get_db_conn() as conn:
             rows = conn.execute("""
-                SELECT * FROM chat 
-                WHERE project = ? 
-                ORDER BY timestamp DESC 
+                SELECT * FROM chat
+                WHERE project = ?
+                ORDER BY timestamp DESC
                 LIMIT ?
             """, (project, limit)).fetchall()
             return [_legacy_row_to_msg(r) for r in rows]

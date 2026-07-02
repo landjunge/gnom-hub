@@ -228,25 +228,42 @@ def post_chat(msg: ChatMsg):
     if cmd in CMDS: return CMDS[cmd](q)
     _SYS = ("soulag", "generalag", "watchdogag")
     if cmd == "research":
-        asked = [n for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS] if dispatch(q, target=n, sender=msg.sender)]
+        asked = [n for n in [x["name"] for x in ags if x.get("status") in ("online", "busy") and x["name"].lower() not in _SYS] if dispatch(q, target=n, sender=msg.sender)]
         return {"status": "dispatched", "asked": asked, "target": None, "mode": "research"}
     if not cmd and not tgt:
-        # User-Chat ohne @target: Default-Routing an GeneralAG (Dirigent).
-        # Vorher: SoulAG-Default → *still* auf Direkt-Fragen, weil SoulAG-Mandat
-        #   "stiller Beobachter + DB-Writer" ist. GeneralAG antwortet dem User
-        #   und delegiert an Worker wenn nötig.
-        # User-Mandat 2026-07-02: GeneralAG als Default-Empfänger.
-        # SoulAG bleibt im Hintergrund als stiller Beobachter + Fakten-Extraktor.
-        # Re-enable: alte SoulAG-Default-Route (siehe git log).
-        generalag = next((x for x in ags if x["name"].lower() == "generalag"), None)
+        # User-Chat ohne @target: Default-Routing mit Retry-Kette.
+        # User-Mandat 2026-07-02: GeneralAG als Default-Empfänger (Dirigent).
+        # Bug-Fix 2026-07-02 (Bug 3): GeneralAG leidet unter LLM-Flake
+        # (MiniMax 429/Timeout) — `dispatch()` queue't zwar die Nachricht,
+        # aber GeneralAG antwortet eventuell nicht. Fallback auf SoulAG
+        # (Observer/Writer) sorgt dafür, dass die User-Message nicht in
+        # der Leere landet. ehrlicher Status-Code: `dispatched` nur wenn
+        # wenigstens 1 Agent wirklich angenommen hat, sonst `failed`.
         asked: list[str] = []
+        fallback_used: str | None = None
+        generalag = next((x for x in ags if x["name"].lower() == "generalag"), None)
         if generalag and generalag.get("status") in ("online", "busy"):
             if dispatch(msg.content, target="generalag", sender=msg.sender):
                 asked.append("GeneralAG")
-        return {"status": "dispatched", "asked": asked, "target": "generalag", "mode": "chat"}
+        if not asked:
+            # GeneralAG hat nicht angenommen (offline oder dispatch-Fehler).
+            # Fallback auf SoulAG — ist immer online (Observer + DB-Writer).
+            soulag = next((x for x in ags if x["name"].lower() == "soulag"), None)
+            if soulag and soulag.get("status") in ("online", "busy"):
+                if dispatch(msg.content, target="soulag", sender=msg.sender):
+                    asked.append("SoulAG")
+                    fallback_used = "soulag"
+        # Ehrlicher Status — kein Lügen-Toast mehr wenn weder GeneralAG
+        # noch SoulAG angenommen haben (z.B. komplett Hub-down).
+        return {
+            "status": "dispatched" if asked else "failed",
+            "asked": asked,
+            "target": "generalag" if not fallback_used else fallback_used,
+            "mode": "chat",
+        }
     return {"status": "dispatched", "asked": dispatch(q, target=tgt, sender=msg.sender), "target": tgt, "mode": "brainstorm" if cmd == "bs" else "chat"}
 @router.get("/api/chat")
-def get_chat(limit: int = 50):
+def get_chat(limit: int = 200):
     rm = get_chat_history(get_active_project(), limit)
     for m in rm:
         if "content" in m: m["content"] = sanitize_showboxes(m["content"])
