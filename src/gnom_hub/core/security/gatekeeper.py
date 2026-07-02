@@ -63,7 +63,11 @@ def check_blockade_rules(agent_name: str, action_type: str, detail: str) -> str:
     Prüft die Benutzerregeln gegen eine Aktion.
     Gibt zurück: 'allow', 'block' oder '' (keine Regel matcht).
     Konsumiert allow_once-Regeln.
+
+    DISABLED 2026-07-02 per User-Mandat: Gatekeeper pausiert, keine Blockaden.
+    Re-enable: diese zwei Zeilen entfernen.
     """
+    return ""
     rules = _get_rules()
     if not rules:
         return ""

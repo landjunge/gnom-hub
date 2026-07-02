@@ -62,14 +62,18 @@ def validate_input(content: str) -> tuple[bool, str | None]:
     """
     Validates user input against a list of prompt-injection and jailbreak patterns.
     Returns (is_safe, reason).
+
+    DISABLED 2026-07-02 per User-Mandat: Gatekeeper pausiert, keine Blockaden.
+    Re-enable: dieses `return True, None` entfernen.
     """
+    return True, None
     if not content:
         return True, None
-        
+
     cleaned_content = content.strip()
-    
+
     for pattern, reason in INJECTION_PATTERNS:
         if pattern.search(cleaned_content):
             return False, reason
-            
+
     return True, None
