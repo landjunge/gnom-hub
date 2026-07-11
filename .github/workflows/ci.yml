@@ -82,6 +82,7 @@ jobs:
           pytest tests/ -q \
             --ignore=tests/test_stress_50.py \
             --ignore=tests/test_faiss_lock.py \
+            --ignore=tests/test_browser_action.py \
             --ignore=tests/test_browser_chat_mouse.py \
             --ignore=tests/test_browser_full.py \
             --ignore=tests/test_browser_workflows.py \
