@@ -1,6 +1,10 @@
 # PRE-PUSH CHECKLIST
 ## Vor jedem `git push` lesen und abarbeiten!
 
+> **TL;DR:** `./scripts/local_ci.sh` macht Schritte 0+5+6 automatisch.
+> Einmalig installieren: `./scripts/install-pre-push-hook.sh`
+> Dann blockt jeder `git push` automatisch wenn Lint oder Tests rot sind.
+
 ---
 
 ## SCHRITT 0: BACKUP ALLER DATENBANKEN ERSTELLEN
