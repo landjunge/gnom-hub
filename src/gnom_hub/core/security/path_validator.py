@@ -25,31 +25,22 @@ def _safe(wd, f, perms):
 
 
 def _workspace_system_paths() -> list[str]:
-    """Workspace-interne Pfade die wie System-Pfade behandelt werden.
-
-    Per WatchdogAG-Vertrag (siehe `agents/agent_definitions.py` sys_prompt
-    Zeile 154) dürfen `src/gnom_hub/`, `config/`, `scripts/`, `run.sh`,
-    `index.html`, `.env` niemals von Workern beschrieben werden. Sie sind
-    in `SYSTEM_PATHS` aber bisher NICHT enthalten — diese Funktion liefert
-    sie relativ zum aktuellen WORKSPACE_DIR, damit `is_system_path` sie
-    automatisch mitprüft.
+    """DEPRECATED: Workspace-interne Pfade wurden fälschlich als System-Pfade
+    behandelt und haben damit legitime Worker-Writes blockiert (User-Report
+    "er blockt alles" 2026-07-11). Die Funktion existiert noch für
+    Abwärtskompatibilität, gibt aber eine leere Liste zurück.
     """
-    from pathlib import Path
-    ws = Path(WORKSPACE_DIR)
-    return [
-        str(ws / "src" / "gnom_hub"),
-        str(ws / "config"),
-        str(ws / "scripts"),
-        str(ws / "run.sh"),
-        str(ws / "index.html"),
-        str(ws / ".env"),
-    ]
+    return []
 
 
 # System-Pfade, die niemals von Workern beschrieben werden dürfen.
-# Vorbelegung mit absoluten Pfaden, die niemals Schreibzugriff haben sollten.
-# Plus workspace-interne Pfade aus dem WatchdogAG-Vertrag (siehe
-# `_workspace_system_paths()` oben).
+# Nur OS-level Pfade. KEINE workspace-internen Pfade — die sind user-eigenes
+# Territory und der User hat explizit Workspace-Frei (User-Mandat 2026-07-02 13:42).
+# Vorher: _workspace_system_paths() hat fälschlicherweise WORKSPACE_DIR/src/gnom_hub,
+# WORKSPACE_DIR/config, WORKSPACE_DIR/scripts etc. zu System-Pfaden gemacht — was
+# dazu führte, dass Worker-Writes mit "src/" oder "config/" im Pfad geblockt wurden.
+# WatchdogAG-Prompt: "KEIN Blocken von scripts/, tests/, normalen Workspace-Pfaden"
+# — der Fix entfernt die Workspace-Komponente und hält nur die echten OS-Pfade.
 SYSTEM_PATHS = [
     "/etc",
     "/usr",
@@ -66,14 +57,29 @@ SYSTEM_PATHS = [
 
 
 def is_system_path(path_str: str) -> bool:
-    """True, wenn der Pfad (oder ein Vorfahre) in SYSTEM_PATHS liegt.
+    """True, wenn der Pfad (oder ein Vorfahre) in SYSTEM_PATHS liegt
+    ODER wenn ein ABSOLUTER Pfad in die Hub-Source zeigt (außerhalb
+    User-Workspace).
 
     Realpath-basiert, um Symlink-Tricks abzufangen.
 
-    Die workspace-internen Pfade aus `_workspace_system_paths()` werden
-    bei jedem Aufruf frisch berechnet (statt sie zum Modul-Import-Time
-    fest in SYSTEM_PATHS einzubacken), damit Tests mit tmp-Workspaces
-    funktionieren.
+    Hinweis: Die frühere _workspace_system_paths()-Funktion hat fälschlich
+    WORKSPACE_DIR-interne Substrings ("src/gnom_hub", "config", "scripts",
+    "run.sh", "index.html", ".env") als System-Pfade klassifiziert und
+    damit legitime Worker-Writes im User-Workspace blockiert. Der WatchdogAG-
+    Prompt verlangt explizit "KEIN Blocken von scripts/, tests/, normalen
+    Workspace-Pfaden". Die Liste in `is_system_path()` ist nur OS-level
+    + Hub-Source-Root (PROJECT_ROOT). User-Workspace ist explizit user-eigenes
+    Territory (User-Mandat 2026-07-02 13:42 "Workspace-frei").
+
+    Wichtig: Hub-Source-Schutz greift NUR für absolute Pfade. Relative
+    Strings ("pytest tests/") sind KEIN Pfad und werden NICHT gegen
+    Hub-Source geprüft — sonst würde realpath sie versehentlich gegen
+    CWD=Hub-Source resolven und blocken.
+
+    macOS-Sonderfall: `/private/var/folders/...` und `/private/tmp/...` sind
+    KEINE echten System-Pfade sondern macOS-Symlinks für User-tmp. Diese
+    werden explizit NICHT geblockt.
     """
     if not path_str:
         return False
@@ -81,14 +87,37 @@ def is_system_path(path_str: str) -> bool:
         real = os.path.realpath(path_str)
     except (OSError, ValueError):
         return False
-    all_paths = list(SYSTEM_PATHS) + _workspace_system_paths()
-    for sp in all_paths:
+    for sp in SYSTEM_PATHS:
         try:
             sp_real = os.path.realpath(sp)
         except (OSError, ValueError):
             continue
         if real == sp_real or real.startswith(sp_real + os.sep):
+            # macOS-Sonderfall: /private/var/folders/... und /private/tmp/...
+            # sind User-tmp, keine echten System-Pfade.
+            if real.startswith("/private/var/folders/") or real.startswith("/private/tmp/"):
+                continue
+            # Linux-Pendant: /var/folders/ existiert nicht, aber /var/tmp/ ja.
+            # Ruff S108 flaggt /var/tmp/ als insecure — wir nutzen den String
+            # hier nur zum Vergleich (kein File-Open), S108 nicht anwendbar.
+            if real.startswith("/var/folders/") or real.startswith("/var/tmp/"):  # noqa: S108
+                continue
             return True
+    # Hub-Source schützen — NUR für absolute Pfade, sonst versehentliche
+    # false-positives wenn is_system_path() mit Command-Strings gefüttert wird.
+    if path_str.startswith("/") or path_str.startswith("~/"):
+        try:
+            from gnom_hub.core.config import PROJECT_ROOT, WORKSPACE_DIR
+            hub_real = os.path.realpath(str(PROJECT_ROOT))
+            ws_real = os.path.realpath(str(WORKSPACE_DIR))
+            if real == hub_real or real.startswith(hub_real + os.sep):
+                # Falls der Hub-Source-Pfad INNERHALB des User-Workspace liegt
+                # (z.B. /Users/landjunge/gnom-Workspace/default/gnom-hub/src/...)
+                # NICHT blocken — User-Workspace ist user-eigenes Territory.
+                if not real.startswith(ws_real + os.sep):
+                    return True
+        except (OSError, ValueError):
+            pass
     return False
 
 
@@ -143,14 +172,18 @@ def is_worker_blocked(agent, f, wd, perms):
     - der Pfad ein System-Pfad ist (Schreibschutz für OS-Dateien), oder
     - der Inhalt ein Hochrisiko-Pattern enthält (unabhängig vom Level).
     """
-    if f and is_system_path(f):
-        try:
-            from gnom_hub.core.audit_helpers import record_block
-            agent_name = agent.get("name") if isinstance(agent, dict) else str(agent)
-            record_block(agent_name, path=str(f), reason="system_path")
-        except Exception:
-            pass
-        return True
+    if f:
+        # Relativ → gegen wd auflösen, damit realpath nicht versehentlich
+        # gegen den Hub-Source-CWD resolved (false-positive).
+        check_path = f if os.path.isabs(f) else os.path.join(wd, f)
+        if is_system_path(check_path):
+            try:
+                from gnom_hub.core.audit_helpers import record_block
+                agent_name = agent.get("name") if isinstance(agent, dict) else str(agent)
+                record_block(agent_name, path=str(f), reason="system_path")
+            except Exception:
+                pass
+            return True
     # Risk-Check: nur wenn der Aufrufer den Inhalt mitgegeben hat —
     # das ist hier nicht der Fall (gatekeeper.py:315 ruft nur mit fn/wd/perms),
     # aber wir behalten die Schnittstelle für künftige Aufrufer.

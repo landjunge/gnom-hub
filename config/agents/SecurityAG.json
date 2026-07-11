@@ -21,11 +21,28 @@
     "write",
     "run",
     "godmode",
-    "showbox_write"
+    "showbox_write",
+    "crawl",
+    "web_search",
+    "browser",
+    "image",
+    "video",
+    "audio",
+    "evolve",
+    "@job",
+    "code",
+    "shell",
+    "db_write",
+    "grant_perm"
   ],
   "allowed_contexts": [
     "active_rules",
-    "workspace_summary"
+    "workspace_summary",
+    "agent_states",
+    "showbox_state",
+    "audit_log",
+    "blockade_rules",
+    "capability_cache"
   ],
-  "notes": "SecurityAG v9.0 — Rechte-Manager + Worker-Supporter. godmode für Notfall-Reparaturen (mit Backup-Pflicht). Worker-Direkt-Kanal umgesetzt. KEIN soul_memory/Schreiben, KEIN TKG, KEIN Delegieren."
+  "notes": "SecurityAG v9.1 — Lane-Wächter mit VOLLER WERKZEUGKASTEN (User-Mandat 2026-07-11 19:44 'alle tools alle rechte und godmode'). Lane-Wächter ohne Werkzeuge ist zahnlos — er MUSS selbst prüfen, browsen, crawlen, images analysieren können um Lane-Verletzungen zu erkennen. godmode für Notfall-Reparaturen (mit Backup-Pflicht via scripts/backup_all_dbs.sh). Worker-Direkt-Kanal: Workers reden mit dir, du setzt jede Anfrage SOFORT um. KEIN soul_memory/Schreiben (exklusiv SoulAG), KEIN Delegieren (GeneralAG macht), KEIN TKG-Schreiben."
 }

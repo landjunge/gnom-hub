@@ -398,6 +398,9 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
 
         # rm: nur bei gefaehrlichen Zielen blocken
         if exec_name == "rm":
+            from gnom_hub.core.config import WORKSPACE_DIR, PROJECT_ROOT
+            ws_real = os.path.realpath(str(WORKSPACE_DIR))
+            hub_real = os.path.realpath(str(PROJECT_ROOT))
             dangerous_roots = {"/", os.path.expanduser("~")}
             system_prefixes = ("/etc", "/usr", "/bin", "/sbin", "/var", "/boot",
                                "/proc", "/sys", "/lib", "/private/etc", "/private/var")
@@ -405,9 +408,23 @@ def is_command_safe_and_whitelisted(cmd: str, agent: dict = None):
                 if arg.startswith("-"):
                     continue
                 resolved = os.path.realpath(os.path.expanduser(arg))
+                # User-Workspace ist User-Territorium — KEIN Block dort
+                # (User-Mandat 2026-07-02 13:42 'Workspace-frei')
+                if resolved == ws_real or resolved.startswith(ws_real + os.sep):
+                    continue
+                # Hub-Source schützen (außerhalb Workspace)
+                if resolved == hub_real or resolved.startswith(hub_real + os.sep):
+                    return False, "high", f"rm auf Hub-Source '{resolved}' ist nicht erlaubt."
                 if resolved in dangerous_roots:
                     return False, "high", f"rm auf '{resolved}' ist nicht erlaubt."
                 if resolved.startswith(system_prefixes):
+                    # macOS-Sonderfall: /private/var/folders/... und /private/tmp/...
+                    # sind User-tmp, keine echten System-Pfade.
+                    if resolved.startswith("/private/var/folders/") or resolved.startswith("/private/tmp/"):
+                        continue
+                    # Linux-Pendant /var/tmp/ — nur String-Vergleich, kein File-Open.
+                    if resolved.startswith("/var/folders/") or resolved.startswith("/var/tmp/"):  # noqa: S108
+                        continue
                     return False, "high", f"rm auf Systempfad '{resolved}' ist nicht erlaubt."
                 if any(sp in resolved for sp in ["src/gnom_hub", "run.sh", ".env"]):
                     return False, "high", f"rm auf Systemdatei '{arg}' ist nicht erlaubt."

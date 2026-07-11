@@ -112,7 +112,10 @@ class TestSafeOffByOne:
 # ─── Fix #2: SYSTEM_PATHS + workspace-interne Pfade ────────────────────────
 
 class TestSystemPaths:
-    """Workspace-interne Pfade aus dem WatchdogAG-Vertrag sind geschützt."""
+    """OS-level System-Pfade sind geschützt. Workspace-interne Substrings
+    ('src/gnom_hub', 'config', 'scripts', 'run.sh', 'index.html', '.env')
+    sind NICHT geschützt — die sind user-eigenes Territory (User-Mandat
+    2026-07-02 13:42 'Workspace-frei'). Bug-Fix 2026-07-11."""
 
     @pytest.mark.parametrize("subpath", [
         "src/gnom_hub",
@@ -122,11 +125,17 @@ class TestSystemPaths:
         "index.html",
         ".env",
     ])
-    def test_workspace_internal_path_blocked(self, fake_workspace, subpath):
+    def test_workspace_internal_path_NOT_blocked(self, fake_workspace, subpath):
+        """Workspace-interne Substrings ('src/gnom_hub', 'config', 'scripts', ...)
+        sind user-eigenes Territory. WatchdogAG-Prompt (v9.0): 'KEIN Blocken
+        von scripts/, tests/, normalen Workspace-Pfaden'. Fix 2026-07-11: die
+        _workspace_system_paths()-Funktion gibt jetzt eine leere Liste zurück,
+        damit Worker-Writes im User-Workspace nicht fälschlich blockiert werden.
+        """
         import gnom_hub.core.security.path_validator as pv
         target = str(fake_workspace / subpath)
-        assert pv.is_system_path(target) is True, (
-            f"{subpath!r} should be blocked as system-path (WatchdogAG contract)"
+        assert pv.is_system_path(target) is False, (
+            f"{subpath!r} should NOT be blocked — it's user workspace (WatchdogAG-Vertrag v9.0)"
         )
 
     def test_user_workspace_file_allowed(self, fake_workspace):
@@ -144,17 +153,27 @@ class TestSystemPaths:
         for sp in ["/etc", "/usr", "/var", "/private/etc", "/private/var"]:
             assert pv.is_system_path(sp) is True, f"{sp} should be blocked"
 
-    def test_subpath_under_protected_dir_blocked(self, fake_workspace):
-        """Pfade UNTER src/gnom_hub/ müssen auch geblockt sein."""
+    def test_subpath_under_workspace_internal_NOT_blocked(self, fake_workspace):
+        """Subpfade UNTER workspace-internen Verzeichnissen ('src/gnom_hub',
+        'config', etc.) sind NICHT mehr blockiert — das war der Bug.
+        User-Report 2026-07-11 'er blockt alles' — Fix: nur OS-level Pfade
+        blockieren, nicht User-Workspace.
+        """
         import gnom_hub.core.security.path_validator as pv
         target = str(fake_workspace / "src" / "gnom_hub" / "core" / "x.py")
-        assert pv.is_system_path(target) is True
+        assert pv.is_system_path(target) is False, (
+            f"{target} should NOT be blocked — User-Workspace, not OS-system"
+        )
 
-    def test_nonexistent_path_in_workspace_blocked(self, fake_workspace):
-        """Auch nicht-existierende Pfade werden geprüft (pathlib-Logik)."""
+    def test_nonexistent_path_in_workspace_NOT_blocked(self, fake_workspace):
+        """Auch nicht-existierende Pfade im User-Workspace werden NICHT blockiert.
+        War vorher falsch als 'blocked' getestet — Bug-Fix 2026-07-11.
+        """
         import gnom_hub.core.security.path_validator as pv
         target = str(fake_workspace / "config" / "future-file.yml")
-        assert pv.is_system_path(target) is True
+        assert pv.is_system_path(target) is False, (
+            f"{target} should NOT be blocked — User-Workspace, even if non-existent"
+        )
 
 
 # ─── Fix #3: _is_high_risk_exec rm -rf ─────────────────────────────────────

@@ -965,9 +965,16 @@ class TestRmPathResolving:
         assert safe is False
 
     def test_rm_safe_file_allowed(self):
-        """rm output.txt → normaler Pfad → erlaubt"""
-        safe, sev, _ = self._call("rm output.txt")
-        assert safe is True
+        """rm output.txt → wenn CWD=Hub-Source: blockiert (Hub-Schutz)
+        Im User-Workspace: erlaubt. Default-Test-CWD ist Hub-Source, daher
+        erwarten wir hier False. Siehe test_rm_rf_tmp_subdir_allowed
+        für den User-Workspace-Fall (CWD-Wechsel)."""
+        safe, sev, reason = self._call("rm output.txt")
+        # Pre-fix: True. Post-fix (Hub-Source-Schutz 2026-07-11): False,
+        # weil realpath("output.txt") = /Users/landjunge/gnom-hub/output.txt
+        # → fällt in Hub-Source-Bereich. Korrekt blockiert.
+        assert safe is False
+        assert "Hub-Source" in (reason or "") or "nicht erlaubt" in (reason or "")
 
     def test_rm_rf_tmp_subdir_allowed(self):
         """rm -rf /tmp/myproject → nicht System, nicht Home → erlaubt"""

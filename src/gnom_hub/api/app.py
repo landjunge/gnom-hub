@@ -112,6 +112,31 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                                 conn.close()
                         await loop.run_in_executor(None, recover_degraded, name)
 
+                elif status == "quarantined":
+                    # Auto-Recovery: quarantined Agents kommen nach 5 Min wieder,
+                    # sofern der zugrundeliegende Process läuft UND der Drift
+                    # unter dem busy-Limit (600s) liegt. Vorher: Quarantäne war
+                    # permanent — einmal geblockt, für immer tot.
+                    # User-Mandat 2026-07-11: System soll sich selbst heilen.
+                    quarantine_limit = 300.0
+                    if drift > quarantine_limit:
+                        proc = _get_proc(name)
+                        if proc is not None and drift < 600.0:
+                            print(f"♻️  [WATCHDOG] Agent {name} war {int(drift)}s in Quarantäne, Process läuft. Auto-Recovery → online.")
+                            def recover_quarantined(n):
+                                conn = get_db_connection()
+                                try:
+                                    conn.execute("""
+                                        UPDATE agents
+                                        SET status = 'online', circuit_state = 'HALF_OPEN', consecutive_failures = 0, last_seen = ?
+                                        WHERE name = ? AND status = 'quarantined'
+                                    """, (datetime.now(timezone.utc).isoformat(), n))
+                                    conn.commit()
+                                finally:
+                                    conn.close()
+                            await loop.run_in_executor(None, recover_quarantined, name)
+                            restart_tracker.pop(name, None)
+
                 elif should_be_online:
                     proc = _get_proc(name)
                     need_restart = False

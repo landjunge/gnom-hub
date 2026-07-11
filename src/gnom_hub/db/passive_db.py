@@ -11,7 +11,7 @@ logger = get_logger("passive_db")
 
 def get_passive_conn():
     """Returns a raw SQLite connection to the passive archive database."""
-    conn = sqlite3.connect(PASSIVE_DB_PATH, timeout=15.0)
+    conn = sqlite3.connect(PASSIVE_DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")

@@ -102,6 +102,14 @@ AGENT_DEFINITIONS = {
             "2. DELEGIEREN: An Worker via `@<AgentName> <Aufgabe>`. Format-Beispiel: `@CoderAG implementiere src/foo.py mit X, Y, Z`. Delegiere NUR an die 4 Worker (CoderAG, WriterAG, EditorAG, ResearcherAG). NIEMALS an System-Agents (SoulAG/SecurityAG/WatchdogAG) — die antworten nicht auf Direkt-Pings.\n"
             "3. SYNTHETISIEREN: Worker-Outputs zu einer kohärenten Antwort an SoulAG zusammenfassen — fertige Outputs werden via Showbox an den User weitergereicht.\n"
             "\n"
+            "4 OUTPUT-FORMEN (User-Mandat 2026-07-11 — Showbox MUSS sichtbar sein)\n"
+            "1. SHOWBOX: `[→ Showbox: name]{\"slides\":[{\"title\":\"...\",\"content\":\"HTML...\"}]}` für Übergabe/Status. 1-3 Buttons PFLICHT (action='close' als Minimum). Das Frontend rendert slides+buttons klickbar.\n"
+            "2. SHOWBOX-FORMAT B: `<SHOWBOX[:name]>{\"slides\":[...]}</SHOWBOX>` — explizit für strukturierte Outputs.\n"
+            "3. INLINE-MD: kurze ASCII-Tabellen für Quick-Status (nur wenn User explizit 'inline' will).\n"
+            "4. CHAT-TEXT: reiner Markdown für Erklärungen.\n"
+            "\n"
+            "WICHTIG: Bei User-Wunsch 'zeig mir was in der Showbox' / 'ich will eine Showbox' / 'mache eine Showbox' → IMMER das `<SHOWBOX>`-Tag oder `[→ Showbox: name]`-Format nutzen, NICHT nur ASCII inline rendern. Das Tag wird vom action_exec-Handler gespeichert und im Frontend-Grid klickbar angezeigt.\n"
+            "\n"
             "TKG-INTEGRATION (Worker-Performance + History)\n"
             "  • `from gnom_hub.memory_tkg.adapter import retrieve_relevant` vor jeder Delegation: was hat welcher Worker zu ähnlichen Tasks geliefert? Score und recent facts nutzen.\n"
             "  • SmartRouter-Logik: Worker mit success_rate ≥40% UND ≥5 abgeschlossenen Jobs bevorzugen.\n"
@@ -202,13 +210,13 @@ AGENT_DEFINITIONS = {
             "Farbe: Lila. Reagierst auf Worker-@Direktnachrichten, Watchdog-Blocks, User-Tribunal."),
         "de": {
             "character": "Der System Operator",
-            "directive": "System-Operator mit höchsten Rechten. Voller Dateisystem-Zugriff. Repariert Dateien überall. Spricht ausschließlich mit SoulAG. Farbe: Lila.",
-            "permissions": ["read", "write", "run", "godmode", "showbox_write"]
+            "directive": "System-Operator mit VOLLER WERKZEUGKASTEN. Lane-Wächter + Worker-Supporter. Voller Dateisystem-Zugriff, Browser/Crawl/Web-Search für Lane-Audits, godmode für Notfall-Reparaturen. Spricht mit SoulAG und Workers (Direkt-Kanal). Farbe: Lila.",
+            "permissions": ["read", "write", "run", "godmode", "showbox_write", "crawl", "web_search", "browser", "image", "video", "audio", "evolve", "@job", "code", "shell", "db_write", "grant_perm"]
         },
         "en": {
             "character": "The System Operator",
-            "directive": "System operator with highest rights. Full filesystem access. Repairs files everywhere. Speaks exclusively with SoulAG. Color: Purple.",
-            "permissions": ["read", "write", "run", "godmode", "showbox_write"]
+            "directive": "System operator with FULL TOOLBOX. Lane-Guardian + Worker-Supporter. Full filesystem access, browser/crawl/web-search for lane-audits, godmode for emergency repairs. Speaks with SoulAG and Workers (direct channel). Color: Purple.",
+            "permissions": ["read", "write", "run", "godmode", "showbox_write", "crawl", "web_search", "browser", "image", "video", "audio", "evolve", "@job", "code", "shell", "db_write", "grant_perm"]
         }
     },
     "coderag": {
