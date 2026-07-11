@@ -1,14 +1,12 @@
 # 🧠 Gnom-Hub
 
-> **The local-first multi-agent forge.**
-> *8 Agents · Symbolic Short-Term Memory · Layered Long-Term Memory · Zero cloud dependency.*
+> *Local-first multi-agent backend. 8 agents, 3 memory layers, 6 SQLite databases, zero cloud dependency.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-752_passed,_51_pre--existing-blue.svg)](#-tests)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#-agent-roster)
-[![Memory](https://img.shields.io/badge/Memory-Tiered_+_Offload-brightgreen.svg)](#-memory-architecture)
-[![Backups](https://img.shields.io/badge/Backups-Immutable-orange.svg)](#)
+[![Memory](https://img.shields.io/badge/Memory-3_Layers_(Symbolic+Tiered+TKG)-brightgreen.svg)](#-memory-architecture)
+[![Tests](https://img.shields.io/badge/Tests-496_passed_(CI),_51_pre--existing-yellow.svg)](#-tests)
 
 🇬🇧 **English** • 🇩🇪 **[Deutsch (README.de.md)](README.de.md)**
 
@@ -16,9 +14,9 @@
 
 ## What is Gnom-Hub?
 
-Gnom-Hub is a **local-first multi-agent backend** with a web UI. Eight specialized agents (4 workers + 4 system agents) collaborate on user tasks via a central FastAPI server. Everything runs on `localhost`, persists in SQLite, and has **no cloud dependency** for the core operation.
+Gnom-Hub is a FastAPI backend that runs 8 specialized agents on `localhost`. The agents share a SQLite-backed memory (3 layers) and a graph-based knowledge layer (TKG) for structured retrieval. Everything is local — no cloud calls in the core path.
 
-**Key property:** the agents don't drown in their own tool-output history. Gnom-Hub borrows a page from the [TencentDB Agent Memory](docs/tencentdb-comparison.md) research: a **symbolic short-term memory** (Mermaid canvas + node_id drill-down) compresses long tool outputs into compact symbols, and a **layered long-term memory** keeps frequently-used knowledge (L0 conversation → L3 persona) within easy reach.
+The agents don't drown in their own tool-output history. Long bash results, search hits, and file contents are offloaded to disk; the agent's context keeps only a Mermaid canvas with `node_id` references for drill-down.
 
 ---
 
@@ -57,17 +55,20 @@ curl http://localhost:3002/api/health
 │  ├─ chat         ├─ llm_agents    ├─ showbox                │
 │  ├─ llm_keys     ├─ llm_models    ├─ audio (TTS, STT)       │
 │  ├─ agents       ├─ state         ├─ workflows              │
-│  └─ ...          (offload wired in via action_handlers)     │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│  8 Agents (src/gnom_hub/agents)                             │
-│  Worker:  CoderAG · WriterAG · EditorAG · ResearcherAG       │
-│  System:  SoulAG · GeneralAG · SecurityAG · WatchdogAG      │
-│  Routing: deterministic capability resolver (557 LOC)       │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
+│  ├─ memory/kpis  └─ ...          (offload wired via actions)│
+└────────┬─────────────────────────────────────────┬─────────┘
+         │                                         │
+┌────────▼──────────────────────┐    ┌─────────────▼──────────┐
+│  8 Runtime Agents              │    │  Memory (3 layers)     │
+│  Worker: CoderAG · WriterAG ·  │    │  1. Symbolic Short-Term│
+│          EditorAG · ResearcherAG│    │  2. Tiered Long-Term   │
+│  System: SoulAG · GeneralAG ·  │    │     (3-tier SQLite)    │
+│          SecurityAG · WatchdogAG│    │  3. TKG (graph + vector│
+│  Routing: deterministic        │    │     + symbolic, RRF)   │
+│  capability resolver (557 LOC) │    │                        │
+└────────┬───────────────────────┘    └────────────┬───────────┘
+         │                                         │
+┌────────▼─────────────────────────────────────────────────────┐
 │  LLM Router (provider-fallback chain)                       │
 │  MiniMax → OpenAI-Compat → DeepSeek → Ollama (local)        │
 │  + Key-Reconciler from ~/Desktop/api_keys.txt               │
@@ -76,9 +77,9 @@ curl http://localhost:3002/api/health
 
 ---
 
-## 🧠 Memory Architecture (TencentDB-inspired)
+## 🧠 Memory Architecture
 
-Two complementary memory layers, both **local-only**:
+Three memory layers, all **local-only**:
 
 ### 1. Symbolic Short-Term Memory (Context-Offload)
 
@@ -136,13 +137,15 @@ graph LR
 
 Embeddings use **FAISS** (when torch + faiss available) with **TF-IDF** as a deterministic CPU fallback (no GPU required).
 
+### 3. Temporal Knowledge Graph (TKG) — graph + vector + symbolic
+
+The two SQLite-based layers above are flat: a query finds facts by similarity to a known pattern, but cannot follow a relation. The TKG adds a graph layer with proper bitemporal relations. The full data model, retrieval pipeline, and benchmark are in the [TKG section below](#-temporal-knowledge-graph-tkg). Live endpoint: `GET /api/memory/kpis` reads from it.
+
 ---
 
 ## 🧬 Temporal Knowledge Graph (TKG)
 
-The TKG is a separate memory layer that sits next to the 3-layer SQLite memory above. It is **not a replacement** — it is a graph-structured layer that the agents can ask structured questions of. If the agent's question is "what facts mention `FAISS` and relate to anything with `numpy<2` broken?" the TKG can answer that in one query. The flat SQLite memory cannot.
-
-This is also the memory the hub uses for the **memory-kpis** endpoint (`GET /api/memory/kpis`) and the replay-harness (`scripts/tkg_retrieval_demo.py`).
+Code: `src/gnom_hub/memory_tkg/`. Backed by [KuzuDB](https://kuzudb.com/) (embedded) for production, in-memory backend for tests. Selected via `MEMORY_BACKEND` in `.env`.
 
 ### Data model
 
@@ -329,6 +332,8 @@ pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_r
 | **EditorAG** | Polish worker | Proofreading, style cleanup, formatting |
 | **ResearcherAG** | Research worker | Web search, GitHub research, fact gathering |
 
+Five additional TKG-domain role configs live in `config/agents/` (MemoryArchitect, GraphEngineer, CuratorAgent, RetrievalEngineer, PerfArchitect) but are not registered as runtime agents — they are invoked through their Python classes (`CuratorAgent.curate(...)`, `RetrievalEngine.query(...)`, etc.) by code that wants the TKG behaviour, not through the Hub's orchestrator.
+
 ---
 
 ## 🗄️ Database Architecture
@@ -409,21 +414,26 @@ The **bootstrap mode** is what makes the system resilient: legacy DBs without `s
 ## 🧪 Tests
 
 ```bash
-# Full suite (660+ passing, pre-existing numpy/FAISS failures ignored)
+# Full suite (730 passed, 54 pre-existing failures ignored — FAISS, /Users, etc.)
 python3 -m pytest tests/ --ignore=tests/test_faiss_lock.py
 
-# Just the new tencentdb-agent-memory tests (35 tests)
-python3 -m pytest tests/test_offload.py tests/test_routing.py
+# Same sequence GitHub CI runs (496 passed, 7 skipped):
+./scripts/local_ci.sh
+# (install as pre-push hook: ./scripts/install-pre-push-hook.sh)
+
+# Just the TKG tests (52 passed, canary included):
+pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_repository.py tests/test_tkg_brain_correctness.py
 
 # Smoke against running hub
 curl http://localhost:3002/api/health
 curl http://localhost:3002/api/agents
+curl http://localhost:3002/api/memory/kpis
 ```
 
-**Test coverage highlights:**
-- `tests/test_offload.py` — 14 tests: Mermaid canvas, node_id resolution, path-traversal defense, atomic writes
-- `tests/test_routing.py` — 21 tests: deterministic capability resolution, fallback chains, German/English keywords
-- `tests/test_security_suite.py` — permission grants, denied writes, godmode audit
+**Test counts (real, last run 2026-07-11):**
+- Full suite (FAISS skipped): **730 passed, 23 skipped, 54 failed** (fails are pre-existing: Mac-only paths, missing sentence-transformers, golden-prompt outdated)
+- CI sequence (with full ignore list): **496 passed, 7 skipped, 0 failed**
+- TKG only: **52 passed, 0 failed** (4 files: test_memory_tkg, test_memory_tkg_phase2, test_kpi_repository, test_tkg_brain_correctness)
 
 ---
 
