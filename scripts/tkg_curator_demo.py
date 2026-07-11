@@ -10,13 +10,11 @@ import tempfile
 import time
 from pathlib import Path
 
-import numpy as np
-
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from gnom_hub.memory_tkg.curator_agent import CuratorAgent
 from gnom_hub.memory_tkg.kuzu_backend import KuzuDBBackend
-from gnom_hub.memory_tkg.models import Entity, Fact, Relation
+from gnom_hub.memory_tkg.models import Entity
 
 
 def main():

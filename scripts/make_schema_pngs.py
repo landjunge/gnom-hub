@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Erzeugt 3 Schema-Diagramme der Gnom-Hub Agenten-Kommunikation."""
 import matplotlib
+
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 import os
+
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 OUT = "docs/schemas"
 os.makedirs(OUT, exist_ok=True)
@@ -71,6 +73,7 @@ ax.set_title("Gnom-Hub: Agenten-Kommunikation — High-Level",
 
 # 8 Agenten im Kreis um den Hub (Mitte)
 import math
+
 cx, cy, R = 8.0, 5.5, 2.6
 agent_pos = {}
 for i, (name, sub) in enumerate(AGENTS):

@@ -11,28 +11,23 @@ from __future__ import annotations
 
 import re
 import time
-from unittest.mock import patch
 
 import numpy as np
 import pytest
 
-from gnom_hub.memory_tkg.backend import get_text_embedding
 from gnom_hub.memory_tkg.in_memory_backend import InMemoryBackend
 from gnom_hub.memory_tkg.kuzu_backend import KuzuDBBackend
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation
 from gnom_hub.memory_tkg.reranker import (
-    DEFAULT_WEIGHTS,
     HeuristicReranker,
     ScoredFact,
 )
 from gnom_hub.memory_tkg.retrieval_engine import (
-    CACHE_TIME_BUCKET_SEC,
     RRF_K,
     RetrievalEngine,
     RetrievalResult,
 )
 from gnom_hub.memory_tkg.subgraph_serializer import (
-    merge_subgraph,
     to_mermaid,
     to_mermaid_safe,
 )
@@ -206,7 +201,7 @@ def test_retrieval_engine_basic(backend, emb_384, fake_emb):
         assert 0.0 <= sf.score <= 1.0
         assert isinstance(sf.fact, Fact)
     # Ranking: absteigend
-    for a, b in zip(r.facts, r.facts[1:]):
+    for a, b in zip(r.facts, r.facts[1:], strict=False):
         assert a.score >= b.score
     # Latency plausibel (< 5s für ein 6-Fact-Seed mit KuzuDB-Overhead)
     assert r.latency_ms < 5000.0

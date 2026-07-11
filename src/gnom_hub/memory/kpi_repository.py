@@ -20,11 +20,10 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 ABGroup = Literal["control", "treatment"]
 
@@ -46,10 +45,10 @@ class KpiRecord:
     """
     name: str
     value: float
-    agent: Optional[str] = None
+    agent: str | None = None
     timestamp: float = 0.0
     ab_group: ABGroup = "control"
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
 
     def __post_init__(self):
         # Default-Timestamp: jetzt (UTC) — frozen, daher via object.__setattr__
@@ -127,8 +126,8 @@ class KpiRepository:
         self,
         kpi_name: str,
         window_hours: int = 24,
-        agent: Optional[str] = None,
-        ab_group: Optional[ABGroup] = None,
+        agent: str | None = None,
+        ab_group: ABGroup | None = None,
         limit: int = 10000,
     ) -> list[KpiRecord]:
         """Return KPI records filtered by name + window (+ optional agent + ab_group).
@@ -155,13 +154,14 @@ class KpiRepository:
             where.append("ab_group = ?")
             params.append(ab_group)
 
+        # SQL is safe: WHERE-Clauses sind hardcoded Strings, alle Werte via ? gebunden.
         sql = f"""
             SELECT name, agent, value, timestamp, ab_group, metadata
             FROM kpi_metrics
             WHERE {' AND '.join(where)}
             ORDER BY timestamp ASC
             LIMIT ?
-        """
+        """  # noqa: S608
         params.append(limit)
 
         out: list[KpiRecord] = []
@@ -182,7 +182,7 @@ class KpiRepository:
             ))
         return out
 
-    def latest(self, kpi_name: str, agent: Optional[str] = None) -> Optional[KpiRecord]:
+    def latest(self, kpi_name: str, agent: str | None = None) -> KpiRecord | None:
         """Letzten Record für einen KPI-Namen. Convenience-Methode."""
         with self._connect() as conn:
             if agent is None:
@@ -213,7 +213,7 @@ class KpiRepository:
             metadata=meta,
         )
 
-    def count(self, kpi_name: Optional[str] = None) -> int:
+    def count(self, kpi_name: str | None = None) -> int:
         """Anzahl Records (optional gefiltert nach Name). Nützlich für Tests."""
         with self._connect() as conn:
             if kpi_name is None:

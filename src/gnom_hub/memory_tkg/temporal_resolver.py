@@ -5,10 +5,8 @@ Phase 1 des TKG-Plans: erkennt "X war wahr → X ist jetzt falsch" und splittet 
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 from gnom_hub.memory_tkg.models import Fact, Relation
-
 
 # Predicate-Paare die "alt → neu" Konflikte signalisieren
 _CONTRADICTION_PREDICATES: list[tuple[str, str]] = [
@@ -74,7 +72,7 @@ def _subject_overlap(text_a: str, text_b: str) -> float:
 def resolve_temporal_conflicts(
     new_fact: Fact,
     existing_facts: list[Fact],
-    now: Optional[float] = None,
+    now: float | None = None,
 ) -> list[Fact]:
     """Bitemporal-Resolution: gibt Liste der Facts zurück die als invalid markiert werden müssen.
 
@@ -93,7 +91,7 @@ def find_obsolete_relations(
     subject_id: str,
     predicate: str,
     valid_relations: list[Relation],
-    now: Optional[float] = None,
+    now: float | None = None,
 ) -> list[Relation]:
     """Findet Relations die obsolet sind (gleicher subject+predicate, neuere Fact macht sie ungültig)."""
     if now is None:

@@ -2,8 +2,10 @@
 import argparse
 import asyncio
 import sys
+
 from gnom_hub.agents.agent_base import BaseAgent
 from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+
 
 async def main():
     parser = argparse.ArgumentParser(description="Run a Gnom-Hub agent.")

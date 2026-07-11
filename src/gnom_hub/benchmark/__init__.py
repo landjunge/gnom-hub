@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from gnom_hub.benchmark.replay_harness import (
     ReplayHarness,
-    ReplayResult,
     ReplayMessage,
+    ReplayResult,
 )
 
 __all__ = ["ReplayHarness", "ReplayResult", "ReplayMessage"]

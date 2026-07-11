@@ -17,14 +17,13 @@ Environment:
 """
 from __future__ import annotations
 
-import os
-
-import sys
-import subprocess
-import shutil
-import platform
-import socket
 import argparse
+import os
+import platform
+import shutil
+import socket
+import subprocess
+import sys
 from pathlib import Path
 
 REPO_DIR = Path(__file__).resolve().parent
@@ -190,10 +189,10 @@ def upgrade_dependencies(dry: bool) -> None:
     """Always upgrade so changes to pyproject.toml propagate."""
     pip = venv_pip()
     print(f"{C.bold('▸ Installing + upgrading dependencies')}")
-    print(f"  pip install --upgrade pip …")
+    print("  pip install --upgrade pip …")
     if not dry:
         subprocess.check_call([str(pip), "install", "--upgrade", "pip"])
-    print(f"  pip install -e .[dev] …")
+    print("  pip install -e .[dev] …")
     if not dry:
         subprocess.check_call([str(pip), "install", "-e", f"{REPO_DIR}[dev]"])
     print(f"  {C.green('Dependencies installed ✓')}")
@@ -245,7 +244,7 @@ def write_env_template(dry: bool) -> None:
 # ElevenLabs (TTS)
 # ELEVENLABS_API_KEY=sk_...
 """
-    print(f"  writing config/.env template …")
+    print("  writing config/.env template …")
     if not dry:
         env_file.write_text(template, encoding="utf-8")
     print(f"  {C.green('config/.env template written ✓')}")
@@ -343,7 +342,7 @@ def port_check() -> bool:
     if port_free(DEFAULT_PORT):
         print(f"  Port {DEFAULT_PORT}: {C.green('free')}")
         return True
-    print(f"  Port {DEFAULT_PORT}: {C.yellow(f'IN USE — kill the process or set GNOM_HUB_PORT=<other>')}")
+    print(f"  Port {DEFAULT_PORT}: {C.yellow('IN USE — kill the process or set GNOM_HUB_PORT=<other>')}")
     return False
 
 

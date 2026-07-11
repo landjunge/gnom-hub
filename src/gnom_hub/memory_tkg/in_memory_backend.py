@@ -1,6 +1,8 @@
 """In-Memory-Backend für Tests. Dicts + brute-force numpy Cosine."""
 from __future__ import annotations
+
 import numpy as np
+
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation
 
 

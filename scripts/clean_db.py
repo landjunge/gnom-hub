@@ -5,8 +5,9 @@ from pathlib import Path
 # Fix python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from gnom_hub.db.connection import get_db_connection
 from gnom_hub.core.config import DB_PATH
+from gnom_hub.db.connection import get_db_connection
+
 
 def clean_database():
     print(f"🧹 Bereinige Datenbank: {DB_PATH}")

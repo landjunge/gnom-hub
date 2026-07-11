@@ -1,5 +1,7 @@
 """Konfiguriert LLM-Modelle für alle aktiven Agenten."""
-import requests, os
+import os
+
+import requests
 
 HUB_PORT = os.environ.get("GNOM_HUB_PORT", "3002")
 

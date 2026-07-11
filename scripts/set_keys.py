@@ -1,6 +1,6 @@
-import requests
-import json
 import os
+
+import requests
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path="config/.env")

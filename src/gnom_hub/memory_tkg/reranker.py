@@ -21,7 +21,6 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -137,7 +136,7 @@ class HeuristicReranker:
     def __init__(
         self,
         weights: dict[str, float] | None = None,
-        now: Optional[float] = None,
+        now: float | None = None,
     ):
         if weights is None:
             self.weights = dict(DEFAULT_WEIGHTS)

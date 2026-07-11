@@ -1,10 +1,15 @@
 """Realistic bench v2: MENTIONS korrekt + hash-based embeddings."""
-import sys, time, shutil
+import shutil
+import sys
+import time
+
 sys.path.insert(0, 'src')
 import numpy as np
+
 from gnom_hub.memory_tkg.kuzu_backend import KuzuDBBackend
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention
 from gnom_hub.memory_tkg.retrieval_engine import RetrievalEngine
+
 
 def real_embed(text, dim=384):
     import hashlib
@@ -34,6 +39,7 @@ for topic, terms in TOPICS.items():
 
 # Generate 100 facts WITH MENTIONS
 import random
+
 random.seed(42)
 all_facts = []
 for i in range(100):
@@ -58,7 +64,7 @@ for i in range(100):
     if random.random() > 0.5:
         db.add_mention(Mention(fact_id=fid, entity_id=topic_to_eid[other], confidence=0.7))
 
-print(f"📊 DB seeded: 100 facts + mentions across 6 topics")
+print("📊 DB seeded: 100 facts + mentions across 6 topics")
 
 gold_queries = [
     ("KuzuDB backend performance", "KuzuDB"),

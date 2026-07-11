@@ -1,9 +1,12 @@
 """KuzuDB-Implementierung des MemoryBackend-Protocols."""
 from __future__ import annotations
+
 import time
 from pathlib import Path
-import numpy as np
+
 import kuzu
+import numpy as np
+
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation
 
 _SCHEMA = Path(__file__).parent / "graph_schema.cypher"
@@ -150,5 +153,5 @@ class KuzuDBBackend:
 
 def _split(cypher: str) -> list[str]:
     """Kommentar-Zeilen strippen, an ';' splitten."""
-    lines = [l for l in cypher.splitlines() if not l.strip().startswith("--")]
+    lines = [line for line in cypher.splitlines() if not line.strip().startswith("--")]
     return [s.strip() for s in "\n".join(lines).split(";") if s.strip()]

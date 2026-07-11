@@ -16,7 +16,7 @@ Konventionen:
 from __future__ import annotations
 
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation
 

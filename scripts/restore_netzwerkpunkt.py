@@ -4,7 +4,10 @@
 Credentials are loaded from environment variables or config/.env.
 Required env vars: FTP_HOST, FTP_USER, FTP_PASS
 """
-import ftplib, os, sys
+import ftplib
+import os
+import sys
+
 
 def _load_env():
     """Load credentials from config/.env if env vars are not set."""

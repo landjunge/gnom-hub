@@ -32,8 +32,6 @@ import numpy as np  # noqa: E402
 from gnom_hub.memory_tkg.in_memory_backend import InMemoryBackend  # noqa: E402
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation  # noqa: E402
 from gnom_hub.memory_tkg.retrieval_engine import RetrievalEngine  # noqa: E402
-from gnom_hub.memory_tkg.reranker import HeuristicReranker  # noqa: E402
-
 
 # ── Deterministic embedder (kein sentence-transformers nötig) ────────────────
 

@@ -21,18 +21,18 @@ Cache:
 from __future__ import annotations
 
 import hashlib
+import logging
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Any, Optional
-
-import numpy as np
+from typing import Any
 
 from gnom_hub.memory_tkg.backend import MemoryBackend, get_text_embedding
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation
 from gnom_hub.memory_tkg.reranker import HeuristicReranker, ScoredFact
 from gnom_hub.memory_tkg.subgraph_serializer import to_mermaid
 
+_log = logging.getLogger(__name__)
 
 # ── Konstanten ──────────────────────────────────────────────────────────────
 
@@ -79,9 +79,9 @@ class _LRUCache:
 
     def __init__(self, capacity: int = 1000):
         self._capacity = max(1, capacity)
-        self._data: "OrderedDict[str, RetrievalResult]" = OrderedDict()
+        self._data: OrderedDict[str, RetrievalResult] = OrderedDict()
 
-    def get(self, key: str) -> Optional[RetrievalResult]:
+    def get(self, key: str) -> RetrievalResult | None:
         if key not in self._data:
             return None
         # Move-to-end
@@ -306,8 +306,8 @@ class RetrievalEngine:
                         if m not in context_mentions:
                             context_mentions.append(m)
                             context_entities.setdefault(e.id, e)
-            except Exception:
-                pass
+            except Exception as e:  # noqa: BLE001
+                _log.debug("subgraph expansion skipped fact: %s", e)
 
         # 10. Mermaid-Subgraph
         mermaid = to_mermaid(
@@ -365,7 +365,7 @@ class RetrievalEngine:
         frontier_facts: list[str] = [f.id for f in seed_facts]
         frontier_entities: list[str] = [e.id for e in seed_entities]
 
-        for hop in range(max_hops):
+        for _hop in range(max_hops):
             next_fact_ids: set[str] = set()
             next_entity_ids: set[str] = set()
 

@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -89,9 +88,9 @@ def _parse_window(window: str) -> int:
 @router.get("/api/memory/kpis")
 def get_memory_kpis(
     window: str = Query("24h", description="Zeitfenster, z.B. '24h', '7d', '1w'"),
-    agent: Optional[str] = Query(None, description="Agent-Filter (z.B. 'coderag')"),
-    kpi: Optional[str] = Query(None, description="KPI-Name-Filter (z.B. 'avg_latency_ms')"),
-    ab_group: Optional[str] = Query(None, description="A/B-Group Override (control|treatment)"),
+    agent: str | None = Query(None, description="Agent-Filter (z.B. 'coderag')"),
+    kpi: str | None = Query(None, description="KPI-Name-Filter (z.B. 'avg_latency_ms')"),
+    ab_group: str | None = Query(None, description="A/B-Group Override (control|treatment)"),
 ):
     """Aggregierte KPI-Datapoints aus dem `kpi_metrics`-Repository.
 
@@ -174,7 +173,7 @@ def get_memory_kpis(
 # ── Internals ───────────────────────────────────────────────────────────────
 
 
-def _avg(values: list[float]) -> Optional[float]:
+def _avg(values: list[float]) -> float | None:
     return (sum(values) / len(values)) if values else None
 
 

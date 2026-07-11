@@ -5,10 +5,11 @@ Removes virtual environment, logs, caches, generated launchers, and optional use
 """
 
 import os
-import sys
-import shutil
 import platform
+import shutil
 import subprocess
+import sys
+
 
 class Colors:
     GREEN = '\033[0;32m' if platform.system() != 'Windows' else ''
@@ -179,7 +180,7 @@ def main():
                     except Exception:
                         pass
     else:
-        print(f"\n  Configuration and token files preserved in: config/")
+        print("\n  Configuration and token files preserved in: config/")
 
     print(f"\n{Colors.GREEN}═══════════════════════════════════════════════════════{Colors.RESET}")
     print(f"{Colors.BOLD}  ✅ Uninstallation completed successfully!{Colors.RESET}")

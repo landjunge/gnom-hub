@@ -150,7 +150,7 @@ def main() -> int:
     with patch.object(config_mod.Config, "DB_PATH", test_db), \
          patch.object(passive_mod, "PASSIVE_DB_PATH", passive_db):
         init_database()
-    print(f"[setup] Schema initialized in test DB")
+    print("[setup] Schema initialized in test DB")
 
     # 5) Run each fact through the smart-dedup writer
     inserted = merged = rejected = 0

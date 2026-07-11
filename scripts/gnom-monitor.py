@@ -1,4 +1,8 @@
-import requests, json, time, sys, os
+import os
+import time
+
+import requests
+
 PORT = os.environ.get("GNOM_HUB_PORT", "3002")
 BASE = f"http://127.0.0.1:{PORT}"
 log = open('/tmp/gnom-monitor.log', 'a')

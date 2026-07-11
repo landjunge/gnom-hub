@@ -27,14 +27,16 @@ Der Harness extrahiert alle User-Messages (sender="user") als Replay-Queries.
 from __future__ import annotations
 
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from gnom_hub.memory.kpi_repository import KpiRecord, KpiRepository
 from gnom_hub.memory_tkg.retrieval_engine import RetrievalEngine
 
+_log = logging.getLogger(__name__)
 
 # ── Datentypen ──────────────────────────────────────────────────────────────
 
@@ -150,8 +152,9 @@ class ReplayHarness:
             t0 = time.time()
             try:
                 rr = self.engine.query(query_text, k=5)
-            except Exception:
+            except Exception as e:  # noqa: BLE001
                 # Replay darf nicht crashen, einzelne Fehler werden ignoriert
+                _log.debug("replay query failed (skipped): %s", e)
                 continue
             dt_ms = (time.time() - t0) * 1000.0
             latencies.append(dt_ms)
@@ -248,8 +251,9 @@ class ReplayHarness:
                     content=str(m.get("content", "")),
                     timestamp=str(m.get("timestamp", "")),
                 ))
-            except Exception:
+            except Exception as e:  # noqa: BLE001
                 # Defensive: einzelne kaputte Messages überspringen
+                _log.debug("replay message parse failed (skipped): %s", e)
                 continue
         return out
 
@@ -296,8 +300,8 @@ class ReplayHarness:
                         return max(val, 1)
                     if isinstance(val, dict) and "facts" in val:
                         return max(int(val["facts"]), 1)
-                except Exception:
-                    pass
+                except Exception as e:  # noqa: BLE001
+                    _log.debug("count_facts probe %s failed: %s", meth, e)
         # Methode 2: Zugriff auf _facts (In-Memory-Backend-spezifisch)
         facts_dict = getattr(b, "_facts", None)
         if isinstance(facts_dict, dict) and facts_dict:

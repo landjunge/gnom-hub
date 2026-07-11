@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-import sqlite3
-import uuid
-import os
-from datetime import datetime, timezone
 import json
+import os
+import sqlite3
 import subprocess
+import uuid
+from datetime import datetime, timezone
 
 db_path = os.path.expanduser('~/.gnom-hub/data/gnomhub.db')
 

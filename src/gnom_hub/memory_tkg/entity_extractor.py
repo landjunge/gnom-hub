@@ -5,11 +5,12 @@ Heuristik-First (deterministisch), LLM-Fallback wenn Heuristik leer.
 """
 from __future__ import annotations
 
+import logging
 import re
-from typing import Optional
 
 from gnom_hub.memory_tkg.models import Entity
 
+_log = logging.getLogger(__name__)
 
 # ── Heuristik-Patterns (deterministisch, schnell) ──
 # Format: (regex, type, importance)
@@ -43,9 +44,9 @@ _STOPWORDS = {
     "IST", "SIND", "WIRD", "WURDE", "HAT", "HABEN", "SEIN", "WERDEN", "KANN", "MUSS", "SOLL",
     "AUCH", "NUR", "NOCH", "MEHR", "WENIGER", "DIESE", "DIESER", "JEDER", "JEDE", "ALLE",
     "WIR", "IHR", "SIE", "ICH", "DU", "ER", "THE", "AND", "FOR", "WITH", "THIS", "THAT",
-    "THE", "HAVE", "HAS", "HAD", "WILL", "WOULD", "COULD", "SHOULD", "BEEN", "BEING",
-    "DEM", "DEN", "DES", "EINER", "EINES", "EINE", "EINEM", "EINEN", "ZU", "AUF", "UEBER",
-    "UEBER", "DURCH", "OHNE", "MIT", "SEIT", "AUS", "BEI", "NACH", "VOR", "WIE", "WAS",
+    "HAVE", "HAS", "HAD", "WILL", "WOULD", "COULD", "SHOULD", "BEEN", "BEING",
+    "DEM", "DEN", "DES", "EINER", "EINES", "EINEM", "EINEN", "ZU", "AUF", "UEBER",
+    "DURCH", "OHNE", "SEIT", "BEI", "NACH", "VOR", "WIE", "WAS",
     # Verben / Adverbien / Funktionswörter
     "NUTZEN", "NUTZT", "JETZT", "STATT", "BESSER", "FIXTE", "GIBT", "MACHT", "MACHEN",
     "LAUFT", "LAEUFT", "SAGT", "GEHT", "KAM", "KOMMT", "STEHT", "SETZT", "LEGTE",
@@ -97,7 +98,7 @@ def extract_entities_heuristic(text: str) -> list[Entity]:
     return list(found.values())
 
 
-def extract_entities(text: str, llm_call: Optional[callable] = None) -> list[Entity]:
+def extract_entities(text: str, llm_call: callable | None = None) -> list[Entity]:
     """Extrahiert Entities. Heuristik first, LLM-Fallback wenn < 3 Treffer.
 
     Args:
@@ -118,9 +119,9 @@ def extract_entities(text: str, llm_call: Optional[callable] = None) -> list[Ent
             for e in llm_entities:
                 if e.name not in existing:
                     entities.append(e)
-        except Exception:
+        except Exception as e:  # noqa: BLE001
             # LLM fehlgeschlagen — heuristische Treffer reichen
-            pass
+            _log.debug("LLM entity extraction failed, using heuristic: %s", e)
 
     return [e for e in entities if e.importance >= 0.3]
 

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 from gnom_hub.memory_tkg.entity_extractor import extract_entities
 from gnom_hub.memory_tkg.kuzu_backend import KuzuDBBackend
@@ -29,7 +28,7 @@ class CuratorReport:
 class CuratorAgent:
     """Aktive LLM-driven Wissens-Kurierung: Texte → TKG."""
 
-    def __init__(self, backend: KuzuDBBackend, llm_call: Optional[callable] = None):
+    def __init__(self, backend: KuzuDBBackend, llm_call: callable | None = None):
         self.backend = backend
         self.llm_call = llm_call
         self._processed_count = 0

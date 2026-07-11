@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 import asyncio
-import os
-import subprocess
 import glob
-import shutil
-import urllib.request
 import json
+import os
+import shutil
+import subprocess
 import traceback
+import urllib.request
+
 from playwright.async_api import async_playwright
+
 
 # Terminate running browsers at the start to ensure clean state
 def kill_browsers():

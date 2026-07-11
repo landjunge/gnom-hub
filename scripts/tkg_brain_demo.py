@@ -267,7 +267,7 @@ def main():
 
     # HTML rendern
     output_path = "/Users/landjunge/gnom-Workspace/default/tkg_brain_demo.html"
-    print(f"\n📊 Rendering HTML...")
+    print("\n📊 Rendering HTML...")
     render_html(entities, facts, relations, mentions, query_result, output_path)
     print(f"✓ Done. Open: {output_path}")
 

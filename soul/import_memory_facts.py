@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Import memory_facts_*.json → soul_memory.db (SoulAG exclusive writer)."""
-import sqlite3
 import json
+import sqlite3
 import sys
 from pathlib import Path
 

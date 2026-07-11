@@ -7,9 +7,10 @@ from pathlib import Path
 # Fix python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from gnom_hub.core.config import RUN_DIR, DB_PATH
+from gnom_hub.core.config import DB_PATH, RUN_DIR
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.db.state_repo import SQLiteStateRepository
+
 
 def check_pid(pid):
     if not pid:
