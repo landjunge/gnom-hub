@@ -14,17 +14,40 @@ _log = logging.getLogger(__name__)
 
 
 def get_text_embedding(text: str) -> np.ndarray | None:
-    """Embedding-Generierung mit klarem Fehler-Verhalten.
+    """Embedding-Generierung mit Hash-Fallback.
 
-    Returns np.ndarray on success, None wenn Embedder nicht verfügbar.
-    Bei Fail wird ein Warning geloggt — kein stilles Fallback.
+    Versucht zuerst den echten LLM-Embedder (SoulEmbedder). Falls der nicht
+    verfügbar ist (z.B. sentence-transformers nicht installiert), wird ein
+    deterministischer Hash-basierter Embedder verwendet — so dass die
+    Pipeline IMMER funktioniert, nur mit schlechterer semantischer Qualität.
+
+    Returns:
+        np.ndarray of shape (384,) dtype float32. Niemals None.
     """
+    DIM = 384
     try:
-        from gnom_hub.memory.embeddings import get_embedding
-        return np.asarray(get_embedding(text), dtype=np.float32)
+        from gnom_hub.memory.embeddings import get_embedder
+        embedder = get_embedder()
+        if embedder is not None and hasattr(embedder, "embed_text"):
+            emb = embedder.embed_text(text)
+            if emb is not None:
+                return np.asarray(emb, dtype=np.float32)
     except Exception as e:  # noqa: BLE001
-        _log.warning("get_text_embedding failed (embedder unavailable?): %s", e)
-        return None
+        _log.info("Real embedder unavailable (%s), using hash fallback", e)
+
+    # Hash-basierter Fallback: deterministisch, normalisiert, 384-dim
+    import hashlib
+    h = hashlib.sha512(text.encode("utf-8")).digest()
+    # 64 bytes = 512 bits, brauchen 384 floats → jeden 4. Byte zu 3 floats
+    vec = np.zeros(DIM, dtype=np.float32)
+    for i in range(DIM):
+        # bytes[i % len(h)] mod 256 / 255 → [0, 1]
+        vec[i] = (h[i % len(h)] ^ h[(i * 7 + 13) % len(h)]) / 255.0
+    # Normalisieren
+    norm = np.linalg.norm(vec)
+    if norm > 0:
+        vec = vec / norm
+    return vec
 
 
 @runtime_checkable

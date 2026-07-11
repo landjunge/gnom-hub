@@ -4,7 +4,7 @@
 > *8 Agenten · Symbolischer Kurzzeitspeicher · Geschichteter Langzeitspeicher · Null Cloud-Abhängigkeit.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-660_passed-blue.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-752_passed,_51_pre--existing-blue.svg)](#-tests)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#-agenten-übersicht)
 [![Speicher](https://img.shields.io/badge/Speicher-Geschichtet_+_Offload-brightgreen.svg)](#-speicher-architektur)
@@ -138,14 +138,89 @@ Embeddings nutzen **FAISS** (wenn torch + faiss verfügbar) mit **TF-IDF** als d
 
 ---
 
-## 🧬 Temporal Knowledge Graph (TKG) — Phase 1 Migration
+## 🧬 Temporal Knowledge Graph (TKG) — v4 Brain
 
-Phase 1 führt eine graph-basierte Speicher-Schicht ein, die den bestehenden geschichteten SQLite-Speicher ergänzt. Ein **Temporal Knowledge Graph (TKG)** speichert Fakten und Entitäten als Knoten, mit bitemporalen Relationen als Kanten und Embedding-basierter Ähnlichkeitssuche.
+**Status:** Phase 0–4 implementiert. **52/52 TKG-Tests grün.** Live-Benchmark: **Hybrid TKG schlägt Vector-only um +25 Prozentpunkte** (70% → 95% Precision@5 auf 100 Facts / 20 Queries, deterministischer Seed).
+
+### Architektur
+
+Das TKG-Gehirn sitzt zwischen Agenten-Schicht und Storage-Schicht. Jeder Fact hat `valid_at` + `invalid_at` (bitemporal), jede Mention verlinkt einen Fact mit einer Entity, und Retrieval fusioniert Vector + Graph + Symbolic via Reciprocal Rank Fusion (RRF).
+
+```mermaid
+graph TB
+    User[👤 User] --> GeneralAG[GeneralAG<br/>Dirigent]
+    GeneralAG --> CoderAG
+    GeneralAG --> WriterAG
+    GeneralAG --> ResearcherAG
+    GeneralAG --> EditorAG
+
+    SoulAG[SoulAG<br/>Stiller Beobachter] -.-> TKG[(TKG-Gehirn<br/>KuzuDB)]
+    GeneralAG -.-> TKG
+    CoderAG -.schreibt/ließt.-> TKG
+    WriterAG -.schreibt/ließt.-> TKG
+    ResearcherAG -.schreibt/ließt.-> TKG
+    EditorAG -.ließt.-> TKG
+
+    TKG --> Curator[CuratorAgent<br/>Phase 1]
+    TKG --> Retrieval[RetrievalEngine<br/>Phase 2]
+    TKG --> Architect[MemoryArchitect]
+    TKG --> GraphEng[GraphEngineer]
+    TKG --> PerfArch[PerfArchitect]
+
+    Curator --> Entities[Entity-Extraktion]
+    Curator --> Relations[Relation-Extraktion]
+    Curator --> Temporal[Temporal-Resolution]
+
+    Retrieval --> Vector[Vector Search]
+    Retrieval --> Graph[Graph-Traversal<br/>1–2 Hops]
+    Retrieval --> Symbolic[Symbol-Filter]
+    Retrieval --> RRF[RRF-Fusion]
+    Retrieval --> Rerank[Heuristic Re-Rank]
+
+    PerfArch --> KPI["/api/memory/kpis<br/>Phase 4"]
+    PerfArch --> Replay[Replay-Harness]
+
+    classDef brain fill:#2d5a3d,stroke:#1d3d28,stroke-width:2px,color:#fdfaf2
+    classDef agent fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px,color:#1a1810
+    class TKG,Retrieval,Curator brain
+    class User,GeneralAG,SoulAG,CoderAG,WriterAG,ResearcherAG,EditorAG,Architect,GraphEng,PerfArch agent
+```
+
+### Phasen
+
+| Phase | Modul | Zweck |
+|-------|-------|-------|
+| 0 | `kuzu_backend.py` + `graph_schema.cypher` | Embedded Graph-DB mit HNSW-Vector-Index |
+| 1 | `curator_agent.py`, `entity_extractor.py`, `temporal_resolver.py` | Aktive LLM-Wissens-Kurierung |
+| 2 | `retrieval_engine.py`, `reranker.py`, `subgraph_serializer.py` | Hybrid Vector + Graph + Symbolic mit RRF |
+| 3 | 5 Agent-Rollen in `config/agents/` | `MemoryArchitect`, `GraphEngineer`, `CuratorAgent`, `RetrievalEngineer`, `PerfArchitect` |
+| 4 | `kpi_repository.py`, `benchmark/replay_harness.py`, `/api/memory/kpis` | KPI-Tracking + Replay + A/B-Switch |
+
+### Benchmark (echte Zahlen, deterministischer Seed 42)
+
+```
+VECTOR:    14/20 (70%)    5.6ms   (Baseline: nur Cosine)
+HYBRID+:   19/20 (95%)  108.3ms   (mit Gold-Symbols)
+HYBRID:    19/20 (95%)   88.0ms   (ehrlich, ohne Symbols)
+```
+
+Reproduzieren: `python3 scripts/benchmark_hybrid_vs_vector.py`
+Canary-Test: `pytest tests/test_tkg_brain_correctness.py` (asserted `hybrid > vector`, schlägt sofort fehl falls das Gehirn regressiert)
+
+### Demos (im Browser öffnen)
+
+- `scripts/tkg_brain_demo.py` — Phase 0+1, 6 Entities + 4 Facts → Mermaid-Graph
+- `scripts/tkg_curator_demo.py` — Phase 1, 3 Messages → Entities + Relations
+- `scripts/tkg_retrieval_demo.py` — Phase 2, 3 Queries + Mermaid-Subgraph
+
+Output: `~/gnom-Workspace/default/tkg_*.html`
+
+### Migrations-Status
 
 - **Backend:** [KuzuDB](https://kuzudb.com/) (embedded, rein lokal, keine Cloud) für Produktion; In-Memory-Backend für Tests. Auswahl via `MEMORY_BACKEND` in `.env`.
-- **Adapter:** ein schlankes `memory_tkg.adapter`-Modul stellt `store_memory`, `retrieve_relevant`, `get_recent_facts`, `add_mention` und `save_soul_fact_smart` bereit — 1:1 zur Legacy-API, damit Callsites schrittweise migrieren können.
-- **Migrations-Status:** `SoulAG` und `ContextManager.add_fact` laufen auf dem neuen Adapter. `save_soul_fact_smart` bleibt für Jaccard-Dedup-Callsites erhalten; das neue `has_similar_fact` (Cosine ≥ 0.85) ersetzt es, sobald der Embedder stabil läuft.
-- **Tests:** `tests/test_memory_tkg.py` — 10 Tests, parametrisiert über beide Backends.
+- **Adapter:** `memory_tkg.adapter` stellt `store_memory`, `retrieve_relevant`, `get_recent_facts`, `add_mention`, `save_soul_fact_smart` bereit — 1:1 zur Legacy-API, damit Callsites schrittweise migrieren können.
+- **Live:** `SoulAG` und `ContextManager.add_fact` laufen auf dem neuen Adapter. `save_soul_fact_smart` bleibt für Jaccard-Dedup-Callsites erhalten; `has_similar_fact` (Cosine ≥ 0.85) ersetzt es, sobald der Embedder stabil läuft.
+- **Tests:** `tests/test_memory_tkg.py` (10) + `tests/test_memory_tkg_phase2.py` (26) + `tests/test_kpi_repository.py` (14) + `tests/test_tkg_brain_correctness.py` (2) = **52 Tests, alle grün**.
 
 ---
 

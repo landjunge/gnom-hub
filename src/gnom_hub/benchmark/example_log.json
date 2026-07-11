@@ -1,0 +1,57 @@
+{
+  "name": "example_replay_session",
+  "description": "Synthetic 7-message chat log for ReplayHarness smoke test. Mimics real Gnom-Hub traffic: user queries, agent delegations, code tasks.",
+  "created_at": "2026-07-11T14:00:00Z",
+  "ab_group": "control",
+  "messages": [
+    {
+      "id": "m1",
+      "sender": "user",
+      "agent": "generalag",
+      "content": "@GeneralAG Analysiere die Performance des Hub-Servers und erstelle einen Report.",
+      "timestamp": "2026-07-11T14:00:00Z"
+    },
+    {
+      "id": "m2",
+      "sender": "generalag",
+      "agent": "generalag",
+      "content": "@user @CoderAG Ich delegiere an CoderAG. Bitte sammle Latency-Metriken der letzten Stunde.",
+      "timestamp": "2026-07-11T14:00:05Z"
+    },
+    {
+      "id": "m3",
+      "sender": "coderag",
+      "agent": "coderag",
+      "content": "Ich analysiere die Hub-Performance. FAISS-Lookups sind bei p95 <30ms, KuzuDB-HNSW-Vector-Index ebenfalls unter Budget.",
+      "timestamp": "2026-07-11T14:00:12Z"
+    },
+    {
+      "id": "m4",
+      "sender": "user",
+      "agent": "researcherag",
+      "content": "@ResearcherAG Was sind die Hauptunterschiede zwischen FAISS und KuzuDB-Vector-Index?",
+      "timestamp": "2026-07-11T14:00:20Z"
+    },
+    {
+      "id": "m5",
+      "sender": "researcherag",
+      "agent": "researcherag",
+      "content": "FAISS ist eine reine Vektor-Bibliothek (HNSW/PQ). KuzuDB integriert HNSW nativ in eine Graph-DB mit Cypher. Vorteil TKG: Traversal + Vector in einer Query.",
+      "timestamp": "2026-07-11T14:00:28Z"
+    },
+    {
+      "id": "m6",
+      "sender": "user",
+      "agent": "writerag",
+      "content": "@WriterAG Schreibe eine Zusammenfassung der Performance-Analyse für die Wissensbasis.",
+      "timestamp": "2026-07-11T14:00:35Z"
+    },
+    {
+      "id": "m7",
+      "sender": "writerag",
+      "agent": "writerag",
+      "content": "Zusammenfassung erstellt: Hub-Performance im Zielkorridor. FAISS-ABI-Bruch durch numpy-Pin mitigiert. KuzuDB-HNSW liefert konsistente Latency unter 30ms.",
+      "timestamp": "2026-07-11T14:00:42Z"
+    }
+  ]
+}
