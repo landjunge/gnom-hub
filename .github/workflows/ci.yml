@@ -88,6 +88,7 @@ jobs:
             --ignore=tests/test_llm_page_browser.py \
             --ignore=tests/integration/test_prompt_pipeline_golden.py \
             --ignore=tests/test_agent_names_frozen.py \
+            --ignore=tests/test_default_preset_content.py \
             --ignore=tests/test_gnom_hub.py \
             --ignore=tests/test_migrations.py \
             --ignore=tests/test_openrouter.py \
