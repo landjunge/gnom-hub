@@ -7,6 +7,8 @@ import time
 import numpy as np
 import pytest
 
+pytest.importorskip("kuzu", reason="kuzu nicht installiert — TKG-Backend-Skip")
+
 from gnom_hub.memory_tkg.backend import (
     MemoryBackend, get_memory_backend, reset_memory_backend,
 )

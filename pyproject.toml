@@ -51,6 +51,7 @@ ignore = [
 
 [project.optional-dependencies]
 memory = ["sentence-transformers>=3.0.0", "faiss-cpu>=1.7.0", "numpy<2"]
+tkg = ["kuzu>=0.11.0"]
 dev = ["pytest>=7.0", "httpx>=0.24", "pytest-asyncio", "playwright>=1.40"]
 audio = [
     "mc707 @ git+ssh://git@github.com/landjunge/mc707.git",

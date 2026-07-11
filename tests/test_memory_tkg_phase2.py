@@ -15,6 +15,8 @@ import time
 import numpy as np
 import pytest
 
+pytest.importorskip("kuzu", reason="kuzu nicht installiert — TKG-Backend-Skip")
+
 from gnom_hub.memory_tkg.in_memory_backend import InMemoryBackend
 from gnom_hub.memory_tkg.kuzu_backend import KuzuDBBackend
 from gnom_hub.memory_tkg.models import Entity, Fact, Mention, Relation
