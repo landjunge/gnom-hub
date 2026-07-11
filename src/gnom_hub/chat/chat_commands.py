@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
-from gnom_hub.chat.chat_commands_handlers import _post_chat, handle_job, handle_status
+from gnom_hub.chat.chat_commands_handlers import _post_chat, handle_job, handle_status  # noqa: F401  (re-exported for legacy import paths)
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
 from gnom_hub.db.state_repo import SQLiteStateRepository
 
