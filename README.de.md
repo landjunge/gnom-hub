@@ -4,7 +4,7 @@
 > *8 Agenten · Symbolischer Kurzzeitspeicher · Geschichteter Langzeitspeicher · Null Cloud-Abhängigkeit.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-752_passed,_51_pre--existing-blue.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-730_passed_(Vollsuite),_496_(CI),_54_pre--existing-yellow.svg)](#-tests)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#-agenten-übersicht)
 [![Speicher](https://img.shields.io/badge/Speicher-Geschichtet_+_Offload-brightgreen.svg)](#-speicher-architektur)
