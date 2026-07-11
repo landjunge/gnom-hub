@@ -19,7 +19,10 @@
 
 set -uo pipefail
 
-cd "$(dirname "$0")/.." || exit 3
+# Resolve symlinks: if invoked via .git/hooks/pre-push → scripts/local_ci.sh,
+# we want the real script's directory, not .git/hooks/.
+SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$0")"
+cd "$(dirname "$SCRIPT_PATH")/.." || exit 3
 
 VENV=".venv"
 PY="${VENV}/bin/python"
