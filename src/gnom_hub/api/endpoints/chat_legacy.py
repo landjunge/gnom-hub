@@ -167,40 +167,69 @@ def post_chat(msg: ChatMsg):
     _SHOWBOX_RE = _re.compile(r'<SHOWBOX(?::([a-zA-Z0-9_\-]+))?>([\s\S]*?)<\/SHOWBOX>', _re.I)
     _SHOWBOX_TOOL_RE = _re.compile(r'\[SHOWBOX(?::([a-zA-Z0-9_\-]+))?\]([\s\S]*?)\[\/SHOWBOX\]', _re.I)
     # → Showbox / -> Showbox Format (User-Mandat 2026-06-28 — Worker-Pflicht)
-    # Body = {...} JSON-Block. Wird vor <SHOWBOX>/[SHOWBOX] geprüft, weil dieser
-    # Stil von allen 8 Agent-Prompts explizit verlangt wird.
+    # Body = {...} JSON-Block OPTIONAL — ASCII-Box-Bodies (häufig ohne {}) müssen
+    # trotzdem persistiert werden. Bug 2026-07-04: vorher verlangte die Regex
+    # `]{...}` direkt nach `]` ohne Whitespace, ASCII-Boxes haben aber IMMER
+    # Newlines nach dem Header → Match schlug fehl, Header blieb im Chat als
+    # Plain-Text hängen. Fix: zweites Pattern _ARROW_SHOWBOX_PLAIN_RE für
+    # header-only Showbox. Beide Patterns werden in der unten stehenden
+    # Such-Reihenfolge durchprobiert. Wird vor <SHOWBOX>/[SHOWBOX] geprüft,
+    # weil dieser Stil von allen 8 Agent-Prompts explizit verlangt wird.
     _ARROW_SHOWBOX_RE = _re.compile(
         r'\[\s*(?:→|->)\s*[Ss]howbox:\s*([^\]\n]{1,40})\]\s*\{([\s\S]*?)\}\s*$',
         _re.MULTILINE,
     )
+    # Pattern B (Header-only / ASCII-Box): plain text nach Header. re.DOTALL
+    # damit mehrzeilige ASCII-Box-Bodies korrekt erfasst werden.
+    # Group(1): Name, Group(2): plain content (alles nach `]`)
+    _ARROW_SHOWBOX_PLAIN_RE = _re.compile(
+        r'\[\s*(?:→|->)\s*[Ss]howbox:\s*([^\]\n]{1,40})\]\s*(.*)',
+        _re.DOTALL,
+    )
     if msg.sender != "user":
-        # Suche in dieser Reihenfolge: <SHOWBOX>, [SHOWBOX], [→ Showbox]
+        # Suche in dieser Reihenfolge: <SHOWBOX>, [SHOWBOX], [→ Showbox] (mit Body)
+        # Beim ARROW-Format zuerst Body-Variante (mit {}) probieren, sonst
+        # Plain-Variante (ASCII-Box oder Plain-Text nach Header).
         sbox_match = (
             _SHOWBOX_RE.search(msg.content)
             or _SHOWBOX_TOOL_RE.search(msg.content)
             or _ARROW_SHOWBOX_RE.search(msg.content)
+            or _ARROW_SHOWBOX_PLAIN_RE.search(msg.content)
         )
         if sbox_match:
             try:
                 import json as _json
 
                 from gnom_hub.db import save_showbox_presentation, set_active_showbox
-                # Bei ARROW-Format ist group(2) das JSON OHNE äußere {}-Klammern
-                if sbox_match.re is _ARROW_SHOWBOX_RE.pattern and sbox_match.re == _ARROW_SHOWBOX_RE.pattern:
+                arrow_plain = (sbox_match.re.pattern == _ARROW_SHOWBOX_PLAIN_RE.pattern)
+                if arrow_plain:
+                    # Pattern B: keine {} — Plain-Text nach Header
+                    raw = (sbox_match.group(2) or "").strip()
+                    pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
+                    if raw:
+                        d = {"slides": [{"title": pres_name, "content": raw}]}
+                    else:
+                        # Header ohne Inhalt (Edge-Case) — als leere Slide speichern
+                        d = {"slides": [{"title": pres_name, "content": "(leer)"}]}
+                elif sbox_match.re.pattern == _ARROW_SHOWBOX_RE.pattern:
+                    # Pattern A: {} Body direkt nach Header — like before
                     raw_payload = "{" + sbox_match.group(2) + "}"
+                    raw = raw_payload
+                    pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
+                    try:
+                        d = _json.loads(raw)
+                    except Exception:
+                        d = {"slides": [raw]}
                 else:
+                    # Format <SHOWBOX> oder [SHOWBOX]
                     raw_payload = sbox_match.group(2).strip()
-                raw = raw_payload
-                try:
-                    d = _json.loads(raw)
-                except Exception:
-                    d = {"slides": [raw]}
+                    raw = raw_payload
+                    pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
+                    try:
+                        d = _json.loads(raw)
+                    except Exception:
+                        d = {"slides": [raw]}
                 slides = d.get("slides", [raw]) if isinstance(d, dict) else [raw]
-                # Bei ARROW-Format: Name aus group(1) statt group(1) des XML/Tool-Regex
-                if sbox_match.re.pattern == _ARROW_SHOWBOX_RE.pattern:
-                    pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
-                else:
-                    pres_name = (sbox_match.group(1) or f"Agent {msg.sender}").strip()
 
                 # Button-Extraktion aus <button action="..." label="...">...</button> HTML-Tags.
                 # Nutzt den geteilten Parser — gleiche Logik wie action_exec.py +
@@ -217,10 +246,22 @@ def post_chat(msg: ChatMsg):
 
                 save_showbox_presentation(pres_name, slides, sender=msg.sender, buttons=final_btns)
                 set_active_showbox(pres_name)
-                # Chat-Inhalt ohne SHOWBOX-Tag speichern — alle 3 Formate ersetzen
+                # Chat-Inhalt ohne SHOWBOX-Tag speichern — alle Formate ersetzen
                 msg.content = _SHOWBOX_RE.sub(f'[→ Showbox: {pres_name}]', msg.content).strip()
                 msg.content = _SHOWBOX_TOOL_RE.sub(f'[→ Showbox: {pres_name}]', msg.content).strip()
                 msg.content = _ARROW_SHOWBOX_RE.sub(f'[→ Showbox: {pres_name}]', msg.content).strip()
+                # Plain-Variante: ersten Header + Body ersetzen durch Showbox-Tag.
+                # Plain-Inhalt bleibt im Showbox-Body (nicht im Chat — User sieht Tag + Showbox-Tabelle).
+                if arrow_plain:
+                    first_match = _ARROW_SHOWBOX_PLAIN_RE.search(msg.content)
+                    if first_match:
+                        msg.content = (
+                            msg.content[:first_match.start()]
+                            + f'[→ Showbox: {pres_name}]'
+                            + msg.content[first_match.end():]
+                        ).strip()
+                    else:
+                        msg.content = f'[→ Showbox: {pres_name}]'
             except Exception:
                 pass
     add_chat_message(get_active_project(), msg.sender, "war-room", cmd or "chat", msg.content, {"type": cmd or "chat", "sender": msg.sender})
