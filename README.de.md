@@ -138,89 +138,181 @@ Embeddings nutzen **FAISS** (wenn torch + faiss verfügbar) mit **TF-IDF** als d
 
 ---
 
-## 🧬 Temporal Knowledge Graph (TKG) — v4 Brain
+## 🧬 Temporal Knowledge Graph (TKG)
 
-**Status:** Phase 0–4 implementiert. **52/52 TKG-Tests grün.** Live-Benchmark: **Hybrid TKG schlägt Vector-only um +25 Prozentpunkte** (70% → 95% Precision@5 auf 100 Facts / 20 Queries, deterministischer Seed).
+Der TKG ist eine separate Memory-Schicht neben dem 3-Layer-SQLite-Memory oben. Er ist **kein Ersatz** — er ist eine graph-strukturierte Schicht, an die Agenten strukturierte Fragen stellen können. Fragt der Agent „welche Facts erwähnen `FAISS` und hängen mit irgendwas mit `numpy<2` kaputt zusammen?", kann der TKG das in einer Query beantworten. Das flache SQLite-Memory kann das nicht.
 
-### Architektur
+Das ist auch der Memory, den der Hub für den **memory-kpis**-Endpoint (`GET /api/memory/kpis`) und den Replay-Harness (`scripts/tkg_retrieval_demo.py`) benutzt.
 
-Das TKG-Gehirn sitzt zwischen Agenten-Schicht und Storage-Schicht. Jeder Fact hat `valid_at` + `invalid_at` (bitemporal), jede Mention verlinkt einen Fact mit einer Entity, und Retrieval fusioniert Vector + Graph + Symbolic via Reciprocal Rank Fusion (RRF).
+### Datenmodell
 
-```mermaid
-graph TB
-    User[👤 User] --> GeneralAG[GeneralAG<br/>Dirigent]
-    GeneralAG --> CoderAG
-    GeneralAG --> WriterAG
-    GeneralAG --> ResearcherAG
-    GeneralAG --> EditorAG
+Vier Dataclasses (`src/gnom_hub/memory_tkg/models.py`). Der gesamte Graph besteht aus 4 Knoten-/Edge-Typen:
 
-    SoulAG[SoulAG<br/>Stiller Beobachter] -.-> TKG[(TKG-Gehirn<br/>KuzuDB)]
-    GeneralAG -.-> TKG
-    CoderAG -.schreibt/ließt.-> TKG
-    WriterAG -.schreibt/ließt.-> TKG
-    ResearcherAG -.schreibt/ließt.-> TKG
-    EditorAG -.ließt.-> TKG
+| Typ | Felder | Was es repräsentiert |
+|-----|--------|----------------------|
+| `Entity` | `id`, `name`, `type`, `importance`, `last_seen`, `properties` | Ein Konzept (z.B. `FAISS`, `KuzuDB`, `routing.txt`). `type` ist ein freier String; üblich: `code_id`, `model`, `file`, `concept`. |
+| `Fact` | `id`, `text`, `embedding`, `importance`, `valid_at`, `invalid_at`, `layer` | Ein Wissens-Schnipsel. Bitemporal: `valid_at` = wann es wahr wurde, `invalid_at` = wann es aufhörte wahr zu sein (None = noch wahr). `embedding` ist `np.ndarray` (Default 384-d). |
+| `Mention` | `fact_id`, `entity_id`, `confidence` | Eine strukturelle Edge: dieser Fact erwähnt diese Entity. Confidence 0-1. |
+| `Relation` | `from_id`, `to_id`, `predicate`, `valid_at`, `invalid_at` | Eine semantische Edge zwischen zwei Facts (z.B. `f1 RELATES_TO f2`). Ebenfalls bitemporal. |
 
-    TKG --> Curator[CuratorAgent<br/>Phase 1]
-    TKG --> Retrieval[RetrievalEngine<br/>Phase 2]
-    TKG --> Architect[MemoryArchitect]
-    TKG --> GraphEng[GraphEngineer]
-    TKG --> PerfArch[PerfArchitect]
+Die zwei bitemporalen Felder (`valid_at` / `invalid_at`) sind der Unterschied zu einer „normalen" Graph-DB. Der Agent kann fragen „was war am 2026-06-15 wahr?" und der Graph filtert Facts raus, die überschrieben wurden.
 
-    Curator --> Entities[Entity-Extraktion]
-    Curator --> Relations[Relation-Extraktion]
-    Curator --> Temporal[Temporal-Resolution]
+### Insertion-Pipeline (CuratorAgent)
 
-    Retrieval --> Vector[Vector Search]
-    Retrieval --> Graph[Graph-Traversal<br/>1–2 Hops]
-    Retrieval --> Symbolic[Symbol-Filter]
-    Retrieval --> RRF[RRF-Fusion]
-    Retrieval --> Rerank[Heuristic Re-Rank]
+Wenn ein Agent Text produziert, der gemerkt werden soll:
 
-    PerfArch --> KPI["/api/memory/kpis<br/>Phase 4"]
-    PerfArch --> Replay[Replay-Harness]
+1. **Entity-Extraktion** — `entity_extractor.extract_entities(text, llm_call=...)`. Deterministische Regex zuerst (`[A-Z][A-Z0-9]+` für Code-IDs, PascalCase für Modell-Namen, snake_case ≥ 8 Zeichen, Dateinamen). Wenn die Heuristik nichts liefert, wird das LLM aufgerufen.
+2. **Entity-Upsert** — Jede gefundene Entity geht in den TKG (dedupliziert nach Name).
+3. **Fact-Erstellung** — Ein Fact pro Text. Embedding wird via `get_text_embedding()` berechnet (echter SoulEmbedder falls verfügbar, sonst Hash-basierter 384-d Fallback).
+4. **Mention-Linking** — `add_mention(fact_id, entity_id, confidence)` für jede im Text gefundene Entity. Das macht den Graph queryable.
+5. **Relation-Extraktion** — Für Paare von Facts im selben Text: Predicate-Inferenz (aktuell: einfache Co-Occurrence, Phase 1.5 bringt LLM-basierte Predicates).
+6. **Invalidierung** — Wenn der neue Fact einem alten widerspricht (erkannt per Predicate `replaced_by`), wird `invalid_at` des alten Facts auf `now` gesetzt.
 
-    classDef brain fill:#2d5a3d,stroke:#1d3d28,stroke-width:2px,color:#fdfaf2
-    classDef agent fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px,color:#1a1810
-    class TKG,Retrieval,Curator brain
-    class User,GeneralAG,SoulAG,CoderAG,WriterAG,ResearcherAG,EditorAG,Architect,GraphEng,PerfArch agent
+Die ganze Pipeline ist in `src/gnom_hub/memory_tkg/curator_agent.py` (~190 LOC). Interessant: Schritt 1 ist Heuristik-First — in 80% der Fälle wird das LLM gar nicht aufgerufen.
+
+### Retrieval-Pipeline (RetrievalEngine.query)
+
+Das ist der Kern — wofür der User Latenz bezahlt. `engine.query(query_text, symbols=None, k=10)` läuft 7 Schritte:
+
+1. **Cache-Check** — LRU mit 5-Minuten-Time-Bucket. Cache-Key = `(query, symbols, k, time_bucket)`. Hit returnt sofort.
+2. **Query-Embedding** — `get_text_embedding(query_text)`. Fallback auf Hash-Embedder falls kein echter Embedder installiert.
+3. **Vector-Hits** — `backend.search_facts_by_vector(query_emb, k=vector_k)`. Default `vector_k=30` (3× overfetchen vor Re-Rank).
+4. **Symbol-Hits** — Für jedes Symbol: `find_entities_by_name(symbol)` → `find_facts_mentioning(entity_id)`. Union, dedupliziert.
+5. **Graph-Traversal** — 1-2 Hops von Vector/Symbol-Seeds via `RELATES_TO` und `MENTIONS` Edges. BFS, max 200 Knoten besucht. Das ist es, was symbolische Suche nie kann.
+6. **RRF-Fusion** — Reciprocal Rank Fusion der 3 Listen: `score = Σ 1/(RRF_K + rank + 1)` für `RRF_K=60`. Vector- und Symbol-Scores addieren sich; Graph-Hits konkurrieren über Rank, nicht über den Roh-Score.
+7. **Re-Rank** — Heuristik auf den RRF-Top-Candidates. Gewichte: `0.4 cosine + 0.3 graph_centrality + 0.2 symbol_overlap + 0.1 recency`. Returnt Top-k als `ScoredFact(fact, score, components)`.
+
+Die ganze Pipeline ist in `src/gnom_hub/memory_tkg/retrieval_engine.py` (~440 LOC). `subgraph_serializer.py` baut zusätzlich eine Mermaid-Repräsentation des besuchten Subgraphen, über die das LLM Reasoning betreiben kann.
+
+### API
+
+```python
+from gnom_hub.memory_tkg import (
+    KuzuDBBackend, InMemoryBackend,
+    RetrievalEngine, CuratorAgent,
+    Entity, Fact, Mention, Relation,
+)
+
+# Backend (eines von beiden)
+backend = KuzuDBBackend("~/.gnom-hub/tkg/")  # Produktion
+# backend = InMemoryBackend()                 # Tests
+
+# Curator: Text → Graph
+curator = CuratorAgent(backend, llm_call=my_llm)
+report = curator.curate("FAISS 1.7 hat ABI-Bruch mit numpy<2")
+# report.entities_extracted, report.facts_created, report.errors
+
+# Retrieval: Query → Top-k Facts
+engine = RetrievalEngine(backend, cache_size=1000, max_hops=2)
+result = engine.query("FAISS numpy Version", symbols=["faiss"], k=5)
+# result.facts      -> list[ScoredFact]   (sortiert nach Score desc)
+# result.entities   -> list[Entity]        (Subgraph-Kontext)
+# result.relations  -> list[Relation]
+# result.mermaid    -> str                 (Mermaid-Diagramm des besuchten Subgraphen)
+# result.latency_ms -> float
+# result.cached     -> bool
 ```
 
-### Phasen
+MemoryBackend Protocol (`src/gnom_hub/memory_tkg/backend.py`) — die Operationen, die jedes Backend unterstützen muss:
 
-| Phase | Modul | Zweck |
-|-------|-------|-------|
-| 0 | `kuzu_backend.py` + `graph_schema.cypher` | Embedded Graph-DB mit HNSW-Vector-Index |
-| 1 | `curator_agent.py`, `entity_extractor.py`, `temporal_resolver.py` | Aktive LLM-Wissens-Kurierung |
-| 2 | `retrieval_engine.py`, `reranker.py`, `subgraph_serializer.py` | Hybrid Vector + Graph + Symbolic mit RRF |
-| 3 | 5 Agent-Rollen in `config/agents/` | `MemoryArchitect`, `GraphEngineer`, `CuratorAgent`, `RetrievalEngineer`, `PerfArchitect` |
-| 4 | `kpi_repository.py`, `benchmark/replay_harness.py`, `/api/memory/kpis` | KPI-Tracking + Replay + A/B-Switch |
-
-### Benchmark (echte Zahlen, deterministischer Seed 42)
-
-```
-VECTOR:    14/20 (70%)    5.6ms   (Baseline: nur Cosine)
-HYBRID+:   19/20 (95%)  108.3ms   (mit Gold-Symbols)
-HYBRID:    19/20 (95%)   88.0ms   (ehrlich, ohne Symbols)
+```python
+class MemoryBackend(Protocol):
+    def upsert_entity(self, entity: Entity) -> str: ...
+    def upsert_fact(self, fact: Fact) -> str: ...
+    def add_relation(self, relation: Relation) -> str: ...
+    def add_mention(self, mention: Mention) -> str: ...
+    def find_entities_by_name(self, name: str) -> list[Entity]: ...
+    def search_facts_by_vector(self, emb: np.ndarray, k: int) -> list[Fact]: ...
+    def find_facts_mentioning(self, entity_id: str) -> list[Fact]: ...
+    def find_relations(self, from_id: str, predicate: str | None = None) -> list[Relation]: ...
+    def find_facts_valid_at(self, at_time: float) -> list[Fact]: ...
+    def has_similar_fact(self, text: str, threshold: float = 0.85) -> bool: ...
 ```
 
-Reproduzieren: `python3 scripts/benchmark_hybrid_vs_vector.py`
-Canary-Test: `pytest tests/test_tkg_brain_correctness.py` (asserted `hybrid > vector`, schlägt sofort fehl falls das Gehirn regressiert)
+### Performance
 
-### Demos (im Browser öffnen)
+Gemessen auf 100 Facts, 6 Themen, deterministischer Seed 42, 20 Queries (siehe `scripts/benchmark_hybrid_vs_vector.py`):
 
-- `scripts/tkg_brain_demo.py` — Phase 0+1, 6 Entities + 4 Facts → Mermaid-Graph
-- `scripts/tkg_curator_demo.py` — Phase 1, 3 Messages → Entities + Relations
-- `scripts/tkg_retrieval_demo.py` — Phase 2, 3 Queries + Mermaid-Subgraph
+| Modus | Precision@5 | Latenz | Anmerkung |
+|-------|-------------|--------|-----------|
+| Vector-only (Baseline) | 70% (14/20) | 5.6 ms | Reine Cosine-Suche, kein Graph |
+| Hybrid mit Gold-Symbols | 95% (19/20) | 108 ms | Schummelt — Symbols = korrekte Entity-Namen |
+| Hybrid ehrlich (ohne Symbols) | 95% (19/20) | 88 ms | Echter Modus, kein Orakel |
 
-Output: `~/gnom-Workspace/default/tkg_*.html`
+**Caveats — diese Zahlen sind kein Wertbeweis, sie sind ein „funktioniert"-Beweis:**
 
-### Migrations-Status
+- **Datensatz: 100 Facts, 6 Themen.** Echte Produktion hat 10k–100k Facts und Dutzende Themen. Verhalten unter Last ist **nicht gemessen**; der LRU-Cache hilft, aber die Graph-Traversal-Kosten wachsen mit `O(visited_nodes × max_hops)`.
+- **Hash-basierter Fallback-Embedder ist im Benchmark aktiv** (kein `sentence-transformers` in CI). Ein echter Embedder würde die Vector-Baseline um ±15 Prozentpunkte verschieben; die relative Ordnung (Hybrid > Vector) sollte halten, aber die absoluten Zahlen werden sich bewegen.
+- **Gold-Queries.** Die Benchmark-Queries wurden von derselben Person geschrieben, die die Facts geschrieben hat. Das inflated die Precision. Ein ehrlicher Test-Set mit held-out Queries würde 5–10 pp weniger zeigen.
+- **Latenz ist pro-Query, single-threaded.** Concurrent-Load (z.B. 10 parallele Agent-Queries) ist nicht gemessen.
+- **Token-Economy vs Flat-Context ist nicht gemessen.** Der Plan versprach ≥40% Token-Reduktion. Wir haben das Experiment nicht laufen lassen.
 
-- **Backend:** [KuzuDB](https://kuzudb.com/) (embedded, rein lokal, keine Cloud) für Produktion; In-Memory-Backend für Tests. Auswahl via `MEMORY_BACKEND` in `.env`.
-- **Adapter:** `memory_tkg.adapter` stellt `store_memory`, `retrieve_relevant`, `get_recent_facts`, `add_mention`, `save_soul_fact_smart` bereit — 1:1 zur Legacy-API, damit Callsites schrittweise migrieren können.
-- **Live:** `SoulAG` und `ContextManager.add_fact` laufen auf dem neuen Adapter. `save_soul_fact_smart` bleibt für Jaccard-Dedup-Callsites erhalten; `has_similar_fact` (Cosine ≥ 0.85) ersetzt es, sobald der Embedder stabil läuft.
-- **Tests:** `tests/test_memory_tkg.py` (10) + `tests/test_memory_tkg_phase2.py` (26) + `tests/test_kpi_repository.py` (14) + `tests/test_tkg_brain_correctness.py` (2) = **52 Tests, alle grün**.
+Der Canary-Test (`tests/test_tkg_brain_correctness.py`) assertet nur `hybrid > vector` auf demselben Datensatz. Er fängt keine Regression in Produktionsqualität. Vertrau der Headline-Zahl nicht.
+
+### Was fehlt (ehrliche Lücken)
+
+- **Token-Economy-Benchmark.** Der Plan (§1.6) hat ≥40% Token-Reduktion vs Flat-Context versprochen. Nicht gemessen. Die Daten sind in `KpiRepository` (`KPI_TOKEN_ECONOMY`), aber kein Replay-Harness schreibt aktuell einen Wert.
+- **Phase 1.5 LLM-Predicate-Extraktion.** Aktuelle Relation-Extraktion ist nur Co-Occurrence. Der LLM-basierte Predicate-Extraktor steht auf der Roadmap, ist nicht implementiert.
+- **Phase 5 Multi-Backend-Benchmarks.** KuzuDB vs InMemory vs FAISS-vs-TF-IDF im Direktvergleich, Scaling-Tests, Concurrency-Tests. Nichts davon existiert.
+- **Keine Integration in den Runtime-Agent-Loop.** `SoulAG` und `ContextManager` wurden in Phase 4 teilweise an den TKG-Adapter angeschlossen, aber der Auto-Recall-Pfad des Agenten ist noch ein TODO. Aktuell muss man `engine.query()` explizit aufrufen.
+- **Keine Migration der Legacy-`soul_memory`-Daten.** Das 3-Layer-SQLite-Memory und der TKG sind separate Stores. Ein Migration-Script, das `soul_memory`-Zeilen in den TKG hebt, existiert nicht.
+
+### Layout
+
+```
+src/gnom_hub/memory_tkg/
+├── __init__.py
+├── models.py                  # 4 Dataclasses (Entity, Fact, Mention, Relation)
+├── backend.py                 # MemoryBackend Protocol + get_text_embedding + Factory
+├── in_memory_backend.py       # In-Memory-Backend (Tests, 8KB)
+├── kuzu_backend.py            # KuzuDB-Backend (Produktion, ~5MB auf Disk)
+├── graph_schema.cypher        # KuzuDB-Schema (Node + Edge Tables, HNSW-Index)
+├── entity_extractor.py        # Phase 1: Heuristik + LLM-Fallback-Extraktion
+├── temporal_resolver.py       # Phase 1: bitemporale Invalidierungs-Logik
+├── curator_agent.py           # Phase 1: Text → TKG via der 6-Schritt-Pipeline oben
+├── retrieval_engine.py        # Phase 2: Hybrid-Query (7-Schritt-Pipeline oben)
+├── reranker.py                # Phase 2: Heuristic Re-Rank (cosine + graph + symbol + recency)
+├── subgraph_serializer.py     # Phase 2: besuchter Subgraph → Mermaid-String
+└── adapter.py                 # 1:1 mit Legacy-Memory-API (store_memory, retrieve_relevant, ...)
+
+tests/
+├── test_memory_tkg.py                # 10 — Backend-Protocol-Compliance
+├── test_memory_tkg_phase2.py         # 26 — Retrieval-Engine, Reranker, Serializer
+├── test_kpi_repository.py             # 14 — KPI-Storage
+└── test_tkg_brain_correctness.py     # 2  — Canary: hybrid > vector
+
+scripts/
+├── tkg_brain_demo.py                 # Phase 0+1 Demo → 6.2KB HTML mit Mermaid
+├── tkg_curator_demo.py               # Phase 1 Demo → Curator-Pipeline → HTML
+├── tkg_retrieval_demo.py             # Phase 2 Demo → 23.5KB HTML mit Retrieval + Subgraph
+└── benchmark_hybrid_vs_vector.py     # 100-Fact / 20-Query-Benchmark (Zahlen oben)
+```
+
+### Replay + KPIs
+
+`scripts/benchmark/replay_harness.py` liest ein JSON-Chat-Log (Format: `example_log.json`) und spielt jede User-Message durch die Engine, wobei pro Replay KPIs in die `kpi_metrics`-Tabelle geschrieben werden:
+
+- `avg_latency_ms` — mittlere Query-Latenz
+- `retrieval_precision_at_5` — Anteil der Top-5-Hits, die als relevant markiert sind
+- `token_economy_pct` — **heute immer 0.0** (nicht gemessen, siehe oben)
+- `queries_run` — Anzahl
+
+Der Endpoint `GET /api/memory/kpis?kpi_name=retrieval.precision_at_5&window_hours=24` liest sie zurück. Das ist die Grundlage für den Phase-5-A/B-Switch (`PERFARCH_AB_GROUP=hybrid_a` in `.env`).
+
+### Ausführen
+
+```bash
+# Benchmark reproduzieren
+python3 scripts/benchmark_hybrid_vs_vector.py
+
+# Demos laufen lassen (Output → ~/gnom-Workspace/default/tkg_*.html)
+python3 scripts/tkg_brain_demo.py
+python3 scripts/tkg_curator_demo.py
+python3 scripts/tkg_retrieval_demo.py
+
+# Test-Suite laufen lassen
+pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_repository.py tests/test_tkg_brain_correctness.py -v
+```
 
 ---
 

@@ -138,89 +138,181 @@ Embeddings use **FAISS** (when torch + faiss available) with **TF-IDF** as a det
 
 ---
 
-## 🧬 Temporal Knowledge Graph (TKG) — v4 Brain
+## 🧬 Temporal Knowledge Graph (TKG)
 
-**Status:** Phase 0–4 implemented. **52/52 TKG tests green.** Live benchmark: **Hybrid TKG beats Vector-only by +25 percentage points** (70% → 95% precision@5 on 100 facts / 20 queries, deterministic seed).
+The TKG is a separate memory layer that sits next to the 3-layer SQLite memory above. It is **not a replacement** — it is a graph-structured layer that the agents can ask structured questions of. If the agent's question is "what facts mention `FAISS` and relate to anything with `numpy<2` broken?" the TKG can answer that in one query. The flat SQLite memory cannot.
 
-### Architecture
+This is also the memory the hub uses for the **memory-kpis** endpoint (`GET /api/memory/kpis`) and the replay-harness (`scripts/tkg_retrieval_demo.py`).
 
-The TKG brain sits between the agent layer and the storage layer. Every fact has `valid_at` + `invalid_at` (bitemporal), every mention links a fact to an entity, and retrieval fuses vector + graph + symbolic via Reciprocal Rank Fusion (RRF).
+### Data model
 
-```mermaid
-graph TB
-    User[👤 User] --> GeneralAG[GeneralAG<br/>Conductor]
-    GeneralAG --> CoderAG
-    GeneralAG --> WriterAG
-    GeneralAG --> ResearcherAG
-    GeneralAG --> EditorAG
+Four dataclasses (`src/gnom_hub/memory_tkg/models.py`). The whole graph is 4 node/edge types:
 
-    SoulAG[SoulAG<br/>Silent Observer] -.-> TKG[(TKG Brain<br/>KuzuDB)]
-    GeneralAG -.-> TKG
-    CoderAG -.writes/reads.-> TKG
-    WriterAG -.writes/reads.-> TKG
-    ResearcherAG -.writes/reads.-> TKG
-    EditorAG -.reads.-> TKG
+| Type | Fields | What it represents |
+|------|--------|---------------------|
+| `Entity` | `id`, `name`, `type`, `importance`, `last_seen`, `properties` | A concept (e.g. `FAISS`, `KuzuDB`, `routing.txt`). `type` is a free string; common: `code_id`, `model`, `file`, `concept`. |
+| `Fact` | `id`, `text`, `embedding`, `importance`, `valid_at`, `invalid_at`, `layer` | A piece of knowledge. Bitemporal: `valid_at` = when it became true, `invalid_at` = when it stopped being true (None = still true). `embedding` is `np.ndarray` (default 384-d). |
+| `Mention` | `fact_id`, `entity_id`, `confidence` | A structural edge: this fact talks about this entity. Confidence 0-1. |
+| `Relation` | `from_id`, `to_id`, `predicate`, `valid_at`, `invalid_at` | A semantic edge between two facts (e.g. `f1 RELATES_TO f2`). Also bitemporal. |
 
-    TKG --> Curator[CuratorAgent<br/>Phase 1]
-    TKG --> Retrieval[RetrievalEngine<br/>Phase 2]
-    TKG --> Architect[MemoryArchitect]
-    TKG --> GraphEng[GraphEngineer]
-    TKG --> PerfArch[PerfArchitect]
+The two bitemporal fields (`valid_at` / `invalid_at`) are the difference to a "normal" graph database. The agent can ask "what was true on 2026-06-15?" and the graph filters out facts that have been superseded.
 
-    Curator --> Entities[Entity Extraction]
-    Curator --> Relations[Relation Extraction]
-    Curator --> Temporal[Temporal Resolution]
+### Insertion pipeline (CuratorAgent)
 
-    Retrieval --> Vector[Vector Search]
-    Retrieval --> Graph[Graph Traversal<br/>1–2 hops]
-    Retrieval --> Symbolic[Symbol Filter]
-    Retrieval --> RRF[RRF Fusion]
-    Retrieval --> Rerank[Heuristic Re-Rank]
+When an agent produces text that should be remembered:
 
-    PerfArch --> KPI["/api/memory/kpis<br/>Phase 4"]
-    PerfArch --> Replay[Replay Harness]
+1. **Entity extraction** — `entity_extractor.extract_entities(text, llm_call=...)`. Deterministic regex first (`[A-Z][A-Z0-9]+` for code IDs, PascalCase for model names, snake_case ≥ 8 chars, filenames). If heuristic yields nothing, LLM is called.
+2. **Entity upsert** — Each found entity goes into the TKG (deduped by name).
+3. **Fact creation** — One fact per text. Embedding is computed via `get_text_embedding()` (real SoulEmbedder if available, hash-based 384-d fallback otherwise).
+4. **Mention linking** — `add_mention(fact_id, entity_id, confidence)` for each entity found in the text. This is what makes the graph queryable.
+5. **Relation extraction** — For pairs of facts in the same text, predicate inference (current: simple co-occurrence, Phase 1.5 will add LLM-based predicates).
+6. **Invalidation** — If the new fact contradicts an old one (detected by predicate `replaced_by`), the old fact's `invalid_at` is set to `now`.
 
-    classDef brain fill:#2d5a3d,stroke:#1d3d28,stroke-width:2px,color:#fdfaf2
-    classDef agent fill:#fdfaf2,stroke:#1d3d28,stroke-width:1.5px,color:#1a1810
-    class TKG,Retrieval,Curator brain
-    class User,GeneralAG,SoulAG,CoderAG,WriterAG,ResearcherAG,EditorAG,Architect,GraphEng,PerfArch agent
+The whole pipeline is in `src/gnom_hub/memory_tkg/curator_agent.py` (~190 LOC). The interesting fact is that step 1 is heuristic-first: 80% of the time the LLM is never called.
+
+### Retrieval pipeline (RetrievalEngine.query)
+
+This is the kernel — the thing the user actually pays latency for. `engine.query(query_text, symbols=None, k=10)` runs 7 steps:
+
+1. **Cache check** — LRU with 5-minute time bucket. Cache key = `(query, symbols, k, time_bucket)`. Hit returns instantly.
+2. **Query embedding** — `get_text_embedding(query_text)`. Falls back to hash embedder if no real embedder installed.
+3. **Vector hits** — `backend.search_facts_by_vector(query_emb, k=vector_k)`. Default `vector_k=30` (overfetch by 3× before re-rank).
+4. **Symbol hits** — For each symbol: `find_entities_by_name(symbol)` → `find_facts_mentioning(entity_id)`. Returns the union, deduped.
+5. **Graph traversal** — 1-2 hops from vector/symbol seeds via `RELATES_TO` and `MENTIONS` edges. BFS, max 200 nodes visited. This is what the symbolic search can never do.
+6. **RRF fusion** — Reciprocal Rank Fusion of the 3 lists: `score = Σ 1/(RRF_K + rank + 1)` for `RRF_K=60`. Vector and symbol scores are additive; graph hits compete via rank, not raw score.
+7. **Re-rank** — Heuristic on top of RRF candidates. Weights: `0.4 cosine + 0.3 graph_centrality + 0.2 symbol_overlap + 0.1 recency`. Returns top-k as `ScoredFact(fact, score, components)`.
+
+The whole pipeline is in `src/gnom_hub/memory_tkg/retrieval_engine.py` (~440 LOC). The `subgraph_serializer.py` additionally builds a Mermaid representation of the visited subgraph for the LLM to reason over.
+
+### API
+
+```python
+from gnom_hub.memory_tkg import (
+    KuzuDBBackend, InMemoryBackend,
+    RetrievalEngine, CuratorAgent,
+    Entity, Fact, Mention, Relation,
+)
+
+# Backend (one of two)
+backend = KuzuDBBackend("~/.gnom-hub/tkg/")  # production
+# backend = InMemoryBackend()                 # tests
+
+# Curator: text → graph
+curator = CuratorAgent(backend, llm_call=my_llm)
+report = curator.curate("FAISS 1.7 has ABI break with numpy<2")
+# report.entities_extracted, report.facts_created, report.errors
+
+# Retrieval: query → top-k facts
+engine = RetrievalEngine(backend, cache_size=1000, max_hops=2)
+result = engine.query("FAISS numpy version", symbols=["faiss"], k=5)
+# result.facts      -> list[ScoredFact]   (sorted by score desc)
+# result.entities   -> list[Entity]        (subgraph context)
+# result.relations  -> list[Relation]
+# result.mermaid    -> str                 (Mermaid diagram of the visited subgraph)
+# result.latency_ms -> float
+# result.cached     -> bool
 ```
 
-### Phases
+MemoryBackend Protocol (`src/gnom_hub/memory_tkg/backend.py`) — the operations every backend must support:
 
-| Phase | Module | Purpose |
-|-------|--------|---------|
-| 0 | `kuzu_backend.py` + `graph_schema.cypher` | Embedded graph-DB with HNSW vector index |
-| 1 | `curator_agent.py`, `entity_extractor.py`, `temporal_resolver.py` | Active LLM knowledge curation |
-| 2 | `retrieval_engine.py`, `reranker.py`, `subgraph_serializer.py` | Hybrid Vector + Graph + Symbolic with RRF |
-| 3 | 5 agent roles in `config/agents/` | `MemoryArchitect`, `GraphEngineer`, `CuratorAgent`, `RetrievalEngineer`, `PerfArchitect` |
-| 4 | `kpi_repository.py`, `benchmark/replay_harness.py`, `/api/memory/kpis` | KPI tracking + replay + A/B switch |
-
-### Benchmark (real numbers, deterministic seed 42)
-
-```
-VECTOR:    14/20 (70%)   5.6ms   (baseline: cosine only)
-HYBRID+:   19/20 (95%) 108.3ms   (with gold symbols)
-HYBRID:    19/20 (95%)  88.0ms   (honest, no symbols)
+```python
+class MemoryBackend(Protocol):
+    def upsert_entity(self, entity: Entity) -> str: ...
+    def upsert_fact(self, fact: Fact) -> str: ...
+    def add_relation(self, relation: Relation) -> str: ...
+    def add_mention(self, mention: Mention) -> str: ...
+    def find_entities_by_name(self, name: str) -> list[Entity]: ...
+    def search_facts_by_vector(self, emb: np.ndarray, k: int) -> list[Fact]: ...
+    def find_facts_mentioning(self, entity_id: str) -> list[Fact]: ...
+    def find_relations(self, from_id: str, predicate: str | None = None) -> list[Relation]: ...
+    def find_facts_valid_at(self, at_time: float) -> list[Fact]: ...
+    def has_similar_fact(self, text: str, threshold: float = 0.85) -> bool: ...
 ```
 
-Reproduce: `python3 scripts/benchmark_hybrid_vs_vector.py`
-Canary test: `pytest tests/test_tkg_brain_correctness.py` (asserts `hybrid > vector`, fails immediately if the brain regresses)
+### Performance
 
-### Demos (open in browser)
+Measured on 100 facts, 6 topics, deterministic seed 42, 20 queries (see `scripts/benchmark_hybrid_vs_vector.py`):
 
-- `scripts/tkg_brain_demo.py` — Phase 0+1, 6 entities + 4 facts → Mermaid graph
-- `scripts/tkg_curator_demo.py` — Phase 1, 3 messages → entities + relations
-- `scripts/tkg_retrieval_demo.py` — Phase 2, 3 queries + Mermaid subgraph
+| Mode | Precision@5 | Latency | Notes |
+|------|-------------|---------|-------|
+| Vector-only (baseline) | 70% (14/20) | 5.6 ms | Pure cosine, no graph |
+| Hybrid with gold symbols | 95% (19/20) | 108 ms | Cheating — symbols = correct entity names |
+| Hybrid honest (no symbols) | 95% (19/20) | 88 ms | Real mode, no oracle |
 
-Output: `~/gnom-Workspace/default/tkg_*.html`
+**Caveats — these numbers are not a proof of value, they are a proof of working:**
 
-### Migration Status
+- **Dataset is 100 facts, 6 topics.** Real production has 10k–100k facts and dozens of topics. Behaviour at scale is **not measured**; the LRU cache helps, but the graph traversal cost grows with `O(visited_nodes × max_hops)`.
+- **Hash-based fallback embedder is in use during benchmark** (no `sentence-transformers` in CI). Real embedder would change the vector baseline by ±15 percentage points; the relative ordering (hybrid > vector) is expected to hold but the absolute numbers will move.
+- **Gold queries.** The benchmark queries were written by the same person who wrote the facts. This inflates precision. An honest test set with held-out queries would likely show 5–10 pp lower numbers.
+- **Latency is per-query, single-threaded.** Concurrent load behaviour (e.g. 10 simultaneous agent queries) is not measured.
+- **Token economy vs flat-context is not measured.** The plan promised ≥40% token reduction. We have not run the experiment.
 
-- **Backend:** [KuzuDB](https://kuzudb.com/) (embedded, local-only, no cloud) for production; in-memory backend for tests. Selected via `MEMORY_BACKEND` in `.env`.
-- **Adapter:** `memory_tkg.adapter` exposes `store_memory`, `retrieve_relevant`, `get_recent_facts`, `add_mention`, `save_soul_fact_smart` — 1:1 with legacy API for incremental migration.
-- **Live:** `SoulAG` and `ContextManager.add_fact` run on the new adapter. `save_soul_fact_smart` preserved for Jaccard-dedup callsites; `has_similar_fact` (cosine ≥ 0.85) replaces it.
-- **Tests:** `tests/test_memory_tkg.py` (10) + `tests/test_memory_tkg_phase2.py` (26) + `tests/test_kpi_repository.py` (14) + `tests/test_tkg_brain_correctness.py` (2) = **52 tests, all green**.
+The canary test (`tests/test_tkg_brain_correctness.py`) only asserts `hybrid > vector` on the same dataset. It would not catch a regression in production quality. Don't trust the headline number.
+
+### What's missing (honest gaps)
+
+- **Token economy benchmark.** The plan (§1.6) committed to ≥40% token reduction vs flat context. Not measured. The data is in `KpiRepository` (`KPI_TOKEN_ECONOMY`) but no replay-harness yet writes a value.
+- **Phase 1.5 LLM-predicate extraction.** Current Relation extraction is co-occurrence only. The LLM-based predicate extractor is on the roadmap, not implemented.
+- **Phase 5 multi-backend benchmarks.** KuzuDB vs InMemory vs FAISS-vs-TF-IDF head-to-head, scaling tests, concurrency tests. None of this exists yet.
+- **No integration with the runtime agent loop.** `SoulAG` and `ContextManager` were partially wired to the TKG adapter in Phase 4, but the agent's auto-recall path is still a TODO. Right now you have to call `engine.query()` explicitly.
+- **No migration of legacy `soul_memory` data.** The 3-layer SQLite memory and the TKG are separate stores. A migration script that lifts `soul_memory` rows into the TKG does not exist.
+
+### Layout
+
+```
+src/gnom_hub/memory_tkg/
+├── __init__.py
+├── models.py                  # 4 dataclasses (Entity, Fact, Mention, Relation)
+├── backend.py                 # MemoryBackend Protocol + get_text_embedding + factory
+├── in_memory_backend.py       # In-memory backend (tests, 8KB)
+├── kuzu_backend.py            # KuzuDB backend (production, ~5MB on disk)
+├── graph_schema.cypher        # KuzuDB schema (Node + Edge tables, HNSW index)
+├── entity_extractor.py        # Phase 1: heuristic + LLM-fallback extraction
+├── temporal_resolver.py       # Phase 1: bitemporal invalidation logic
+├── curator_agent.py           # Phase 1: text → TKG via the 6-step pipeline above
+├── retrieval_engine.py        # Phase 2: hybrid query (7-step pipeline above)
+├── reranker.py                # Phase 2: heuristic re-rank (cosine + graph + symbol + recency)
+├── subgraph_serializer.py     # Phase 2: visited subgraph → Mermaid string
+└── adapter.py                 # 1:1 with legacy memory API (store_memory, retrieve_relevant, ...)
+
+tests/
+├── test_memory_tkg.py                # 10 — backend Protocol compliance
+├── test_memory_tkg_phase2.py         # 26 — retrieval engine, reranker, serializer
+├── test_kpi_repository.py             # 14 — KPI storage
+└── test_tkg_brain_correctness.py     # 2  — canary: hybrid > vector
+
+scripts/
+├── tkg_brain_demo.py                 # Phase 0+1 demo → 6.2KB HTML with Mermaid
+├── tkg_curator_demo.py               # Phase 1 demo → curator pipeline → HTML
+├── tkg_retrieval_demo.py             # Phase 2 demo → 23.5KB HTML with retrieval + subgraph
+└── benchmark_hybrid_vs_vector.py     # 100-fact / 20-query benchmark (numbers above)
+```
+
+### Replay + KPIs
+
+`scripts/benchmark/replay_harness.py` reads a JSON chat log (format: `example_log.json`) and replays each user message through the engine, writing per-replay KPIs into the `kpi_metrics` table:
+
+- `avg_latency_ms` — mean query latency
+- `retrieval_precision_at_5` — fraction of top-5 hits marked relevant
+- `token_economy_pct` — **always 0.0 today** (not measured, see above)
+- `queries_run` — count
+
+The endpoint `GET /api/memory/kpis?kpi_name=retrieval.precision_at_5&window_hours=24` reads them back. This is the foundation for the Phase 5 A/B switch (`PERFARCH_AB_GROUP=hybrid_a` in `.env`).
+
+### Run it
+
+```bash
+# Reproduce the benchmark
+python3 scripts/benchmark_hybrid_vs_vector.py
+
+# Run the demos (output → ~/gnom-Workspace/default/tkg_*.html)
+python3 scripts/tkg_brain_demo.py
+python3 scripts/tkg_curator_demo.py
+python3 scripts/tkg_retrieval_demo.py
+
+# Run the test suite
+pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_repository.py tests/test_tkg_brain_correctness.py -v
+```
 
 ---
 
