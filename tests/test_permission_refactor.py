@@ -147,10 +147,11 @@ class TestAllAgentsMatrix:
     @pytest.mark.parametrize("agent_key,expected_de,expected_en", [
         # showbox_write: in allen 8 Agents nach Refactor-Schritt 4 (Audit-Fix 2026-06-28).
         # ResearcherAG: write ergänzt damit [WRITE: research.md] Persistenz funktioniert.
-        # GeneralAG: general_memory als logischer Token (general_memory-DB Schreibrecht).
+        # SoulAG v8.0 mandate (2026-06-28): no godmode/run/evolve/crawl.
+        # read+write+showbox_write only. TKG-curation via store_memory().
         ("soulag",
-         ["read", "evolve", "crawl", "showbox_write"],
-         ["read", "evolve", "crawl", "showbox_write"]),
+         ["read", "write", "showbox_write"],
+         ["read", "write", "showbox_write"]),
         ("generalag",
          ["read", "@job", "general_memory", "showbox_write"],
          ["read", "@job", "general_memory", "showbox_write"]),
