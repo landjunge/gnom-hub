@@ -64,9 +64,20 @@ jobs:
           # ist DB-mocked (siehe tests/conftest.py).
           GNOM_CI: "1"
         run: |
-          # Stress-Test (test_stress_50) ist explizit ausgeschlossen —
-          # der braucht einen laufenden Gnom-Hub-Server.
-          pytest tests/ -q --ignore=tests/test_stress_50.py
+          # Ausgeschlossen:
+          #  - test_stress_50: braucht laufenden Gnom-Hub-Server
+          #  - test_faiss_lock: braucht sentence-transformers (~600 MB torch)
+          #  - test_browser_chat_mouse: schreibt nach /Users/<name>/... was
+          #    auf Linux-CI nicht funktioniert (Mac-only Pfad)
+          #  - test_browser_*: brauchen playwright + Browser-Binaries
+          #    (Browser-Tests werden lokal manuell ausgeführt)
+          pytest tests/ -q \
+            --ignore=tests/test_stress_50.py \
+            --ignore=tests/test_faiss_lock.py \
+            --ignore=tests/test_browser_chat_mouse.py \
+            --ignore=tests/test_browser_full.py \
+            --ignore=tests/test_browser_workflows.py \
+            --ignore=tests/test_llm_page_browser.py
 
       - name: Ruff format check
         run: |
