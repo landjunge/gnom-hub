@@ -30,10 +30,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Nur die Laufzeit-Deps, die das Modul wirklich importiert.
-          # sentence-transformers/faiss-CPU werden im CI weggelassen, weil
-          # sie auf Ubuntu-Linux x86_64 ziehen ~600 MB Torch mit — und in
-          # den Tests nicht direkt benötigt werden.
-          # kuzu (TKG-Backend) wird installiert weil die TKG-Tests es brauchen.
+          # sentence-transformers wird im CI weggelassen, weil
+          # es auf Ubuntu-Linux x86_64 ~600 MB Torch mitzieht — und in
+          # den Tests nicht direkt benötigt wird.
+          # kuzu (TKG-Backend), faiss-cpu (FAISS), playwright (Browser-Tests)
+          # werden installiert weil entsprechende Tests sie brauchen.
           python -m pip install \
             "fastapi>=0.100.0" \
             "uvicorn>=0.20.0" \
@@ -44,7 +45,9 @@ jobs:
             "httpx>=0.24.0" \
             "numpy<2" \
             "python-multipart" \
-            "kuzu>=0.11.0"
+            "kuzu>=0.11.0" \
+            "faiss-cpu>=1.7.0" \
+            "playwright>=1.40"
 
       - name: Install dev dependencies
         run: |
