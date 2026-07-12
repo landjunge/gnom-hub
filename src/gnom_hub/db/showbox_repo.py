@@ -222,8 +222,17 @@ def ensure_default_showbox() -> str:
         return ""
 
 
+STICKY_SHOWBOX_NAMES = ("gnom-hub-designs",)
+
+
 def set_active_showbox(name: str):
-    """Setzt den Namen der aktiven Showbox-Präsentation."""
+    """Setzt den Namen der aktiven Showbox-Präsentation.
+
+    Sticky-Logic: wenn die aktive Showbox eine protected Name ist (z.B.
+    'gnom-hub-designs'), wird sie nicht durch eine andere Showbox ersetzt.
+    User-Mandat 2026-07-12: User will die Designs-Showbox sehen, nicht
+    Worker-Output der die Showbox ständig überschreibt.
+    """
     try:
         if not name.startswith("Blockade:"):
             from gnom_hub.db.system_repo import get_state_value
@@ -231,6 +240,11 @@ def set_active_showbox(name: str):
             has_pending = any(d.get("status") == "pending" for d in pending.values())
             if has_pending:
                 logger.info(f"[DB] Override active showbox to '{name}' blocked: pending decision in progress.")
+                return
+            # Sticky-Check: protected Showbox nicht überschreiben
+            current_active = get_active_showbox()
+            if current_active in STICKY_SHOWBOX_NAMES and name not in STICKY_SHOWBOX_NAMES:
+                logger.info(f"[DB] Sticky active '{current_active}' protected — not overwriting with '{name}'")
                 return
         with get_db_conn() as conn:
             with conn:

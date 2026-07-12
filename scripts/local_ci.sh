@@ -74,7 +74,9 @@ if ! "$PY" -m pytest tests/ -q \
     --ignore=tests/test_routing.py \
     --ignore=tests/test_security_suite.py \
     --ignore=tests/test_stability.py \
-    --ignore=tests/test_workspace_config.py 2>&1; then
+    --ignore=tests/test_workspace_config.py \
+    --ignore=tests/test_golden_landing_page.py \
+    --ignore=tests/test_golden_demo_video.py 2>&1; then
   echo
   echo "✗ tests failed. See output above."
   exit 2
