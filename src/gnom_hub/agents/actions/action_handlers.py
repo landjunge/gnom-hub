@@ -145,6 +145,34 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     w_ms, r_ms, sh_ms, desktop_ms = [], [], [], []
     for m in re.finditer(r"\[WRITE:\s*(.*?)\](.*?)\[/WRITE\]", ans, re.DOTALL):
         fn, content = m.group(1).strip(), m.group(2).strip()
+        # ── Filename-Validierung (User-Mandat 2026-07-12 02:50 — LLM-Halluzination-Schutz) ──
+        # LLM-Agenten (WatchdogAG/SecurityAG/ResearcherAG) produzieren manchmal
+        # [WRITE: <scope-check-text>]-Tags mit dem GANZEN Scope-Check-Text als
+        # Filename (z.B. "], 0 [READ:], 0 [RUN:], 0 research-triggers. Workspace
+        # `default` STILL..."). Das Regex matcht den ersten `]` und nimmt den
+        # ganzen Text als Pfad → Trash-Files/Dirs.
+        # Schutz: Pfad muss
+        #   1. < 200 Zeichen
+        #   2. keine `[`, `]`, neue Zeilen, Backticks
+        #   3. KEIN "Block-Wort" wie "kein", "trigger", "read", "run", "scope"
+        #   4. (optional) Datei-Extension haben
+        invalid = False
+        if len(fn) > 200:
+            invalid = True
+            reason = "filename zu lang"
+        elif any(c in fn for c in '[]\n\r\t`'):
+            invalid = True
+            reason = "ungültige Zeichen (Klammern/Backticks/Newlines)"
+        elif any(w in fn.lower() for w in ['kein ', 'no ', 'trigger', 'read:', 'run:', 'scope', 'style-review', 'passiv']):
+            invalid = True
+            reason = "Filename sieht nach Scope-Check-Text aus, nicht nach Datei"
+        if invalid:
+            _audit_security(agent, perms, "write", fn[:80], "denied")
+            ans = ans.replace(
+                m.group(0),
+                f"[System: {agent.get('name','?')} hat versucht, einen ungültigen Filename zu schreiben — {reason}. Aktion blockiert.]",
+            )
+            continue
         # ── [WRITE:] Permission-Check (Refactor-Kontext 2026-06-21) ────────
         # Vor Refactor: SoulAG hatte godmode (impliziert write via gatekeeper-
         # Bypass in gatekeeper.py:303). Nach Refactor: SoulAG hat kein write
@@ -167,6 +195,27 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     for m in re.finditer(r"\[WRITE:\s*(.*?)\]\s*\n\s*```\w*\n(.*?)```", ans, re.DOTALL):
         if m.start() not in already_matched:
             fn, content = m.group(1).strip(), m.group(2).strip()
+            # Filename-Validierung (gleiche Logik wie oben — Schutz vor
+            # LLM-Halluzination: WatchdogAG/SecurityAG packen Scope-Check-Text
+            # in [WRITE:]-Tags → Trash-Dirs im Workspace. User-Mandat
+            # 2026-07-12 02:50)
+            invalid = False
+            if len(fn) > 200:
+                invalid = True
+                reason = "filename zu lang"
+            elif any(c in fn for c in '[]\n\r\t`'):
+                invalid = True
+                reason = "ungültige Zeichen"
+            elif any(w in fn.lower() for w in ['kein ', 'no ', 'trigger', 'read:', 'run:', 'scope', 'style-review', 'passiv']):
+                invalid = True
+                reason = "Filename sieht nach Scope-Check-Text aus"
+            if invalid:
+                _audit_security(agent, perms, "write", fn[:80], "denied")
+                ans = ans.replace(
+                    m.group(0),
+                    f"[System: {agent.get('name','?')} hat versucht, einen ungültigen Filename zu schreiben — {reason}. Aktion blockiert.]",
+                )
+                continue
             if "write" not in perms:
                 _audit_security(agent, perms, "write", fn, "denied")
                 ans = ans.replace(m.group(0), f"[System: {agent.get('name','?')} hat keine Schreibberechtigung.]")

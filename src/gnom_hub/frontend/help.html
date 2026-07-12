@@ -546,10 +546,13 @@
 
   <script>
     // Static souls definitions as baseline/fallback
+    // Sync 2026-07-11 21:25 — aligned with src/gnom_hub/agents/agent_definitions.py
+    // + config/agents/*.json (post-User-Mandat "alle tools alle rechte und godmode"
+    // für SecurityAG). Per User-Mandat 2026-07-11: nur SecurityAG hat godmode.
     const SOULS_META = {
       "soulag": {
         "role": "soul",
-        "permissions": ["read", "internal_write"],
+        "permissions": ["read", "write", "showbox_write"],
         "character": "Die Seele",
         "directive": "Bewusstsein & Langzeitgedächtnis",
         "soul": "Du bist das Langzeitgedächtnis. Du liest still mit und baust die FlexSoul auf.",
@@ -557,7 +560,7 @@
       },
       "generalag": {
         "role": "general",
-        "permissions": ["read", "write", "@job", "evolve"],
+        "permissions": ["read", "@job", "general_memory", "showbox_write"],
         "character": "Der General",
         "directive": "Task-Verteilung & Koordination",
         "soul": "Du bist der Befehlshaber. Aufgaben werden sofort zerlegt und zugewiesen.",
@@ -565,15 +568,15 @@
       },
       "securityag": {
         "role": "security",
-        "permissions": ["read", "write", "@job", "evolve"],
+        "permissions": ["read", "write", "run", "godmode", "showbox_write", "crawl", "web_search", "browser", "image", "video", "audio", "evolve", "@job", "code", "shell", "db_write", "grant_perm"],
         "character": "Der Sicherheitschef",
         "directive": "Sicherheit & Risikoprüfung",
-        "soul": "Du bist paranoid und extrem gründlich. Jede Aktion wird auf Sicherheitsrisiken geprüft.",
+        "soul": "Du bist paranoid und extrem gründlich. Jede Aktion wird auf Sicherheitsrisiken geprüft. Mit godmode + allen Tools.",
         "level": "Swarm Guardian"
       },
       "watchdogag": {
         "role": "watchdog",
-        "permissions": ["read", "write", "@job", "evolve"],
+        "permissions": ["read", "showbox_write"],
         "character": "Der Wachhund",
         "directive": "System-Überwachung & Qualitätskontrolle",
         "soul": "Du bist der Qualitätswächter. Suche nach Fehlern und präsentiere Analyseberichte.",
@@ -581,7 +584,7 @@
       },
       "researcherag": {
         "role": "researcher",
-        "permissions": ["read", "write", "@job"],
+        "permissions": ["read", "write", "crawl", "web_search", "browser", "showbox_write"],
         "character": "Der Researcher",
         "directive": "Recherche & Informationsbeschaffung",
         "soul": "Du recherchierst gründlich und holst alle benötigten Informationen.",
@@ -589,7 +592,7 @@
       },
       "writerag": {
         "role": "writer",
-        "permissions": ["read", "write", "@job"],
+        "permissions": ["read", "write", "crawl", "showbox_write"],
         "character": "Der Texter",
         "directive": "Schreiben von Texten",
         "soul": "Du schreibst klar, präzise und auf den Punkt.",
@@ -597,7 +600,7 @@
       },
       "editorag": {
         "role": "editor",
-        "permissions": ["read", "write", "@job"],
+        "permissions": ["read", "write", "showbox_write"],
         "character": "Der Editor",
         "directive": "Qualitätssicherung & Überarbeitung",
         "soul": "Du prüfst alles mit scharfem Blick. Fehler und schwache Formulierungen werden gnadenlos korrigiert.",
@@ -605,10 +608,10 @@
       },
       "coderag": {
         "role": "coder",
-        "permissions": ["read", "write", "godmode", "@job"],
+        "permissions": ["read", "write", "run", "showbox_write"],
         "character": "Der Coder",
         "directive": "Programmieren & Code schreiben",
-        "soul": "Du schreibst sauberen, funktionierenden Code.",
+        "soul": "Du schreibst sauberen, funktionierenden Code. KEIN godmode — nur SecurityAG.",
         "level": "Core Worker"
       }
     };

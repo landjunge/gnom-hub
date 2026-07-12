@@ -71,7 +71,21 @@ def _call(pvd, mdl, key, msgs, n):
             mdl = "deepseek-chat"
     h, urls = {"Content-Type": "application/json"}, {"openai": "https://api.openai.com/v1/chat/completions", "mistral": "https://api.mistral.ai/v1/chat/completions", "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "deepseek": "https://api.deepseek.com/chat/completions", "openrouter": "https://openrouter.ai/api/v1/chat/completions", "lokal": "http://127.0.0.1:11434/api/chat", "anthropic": "https://api.anthropic.com/v1/messages", "minimax": "https://api.minimax.io/v1/chat/completions"}
     url = urls.get(pvd, urls["openrouter"])
-    limit = {"generalag": 6000, "soulag": 6000, "securityag": 6000, "watchdogag": 6000, "coderag": 6000, "writerag": 6000, "researcherag": 6000, "editorag": 6000}.get(n.lower() if n else "", 6000)
+    # Token-Limits pro Agent. CoderAG/WriterAG/EditorAG brauchen mehr
+    # für komplexe Outputs (5+ HTML-Files, lange Showbox-Slides, Full-Text).
+    # Vorher: alle Agents 6000 → CoderAG hat 5 HTML-Designs mid-CSS
+    # abgeschnitten, File-Write-Handler fand kein [/WRITE:] close-tag,
+    # File wurde nicht geschrieben. User-Mandat 2026-07-11 20:57.
+    limit = {
+        "coderag": 32000,    # File-Generator: 5 HTML-Designs = ~25k chars
+        "writerag": 16000,   # Long-Form-Texte, Showbox-Slides
+        "editorag": 12000,   # Review-Memos, Showbox-Editorial
+        "generalag": 8000,   # Synthese, Delegation-Listen
+        "soulag": 6000,
+        "securityag": 6000,
+        "watchdogag": 6000,
+        "researcherag": 12000,  # Quellen-Listen, Findings
+    }.get(n.lower() if n else "", 6000)
     temp = None
     if n:
         try:

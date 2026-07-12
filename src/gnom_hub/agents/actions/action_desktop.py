@@ -25,7 +25,17 @@ def verify_desktop(agent, action, details) -> bool:
 def handle_desktop(ans, matches, agent, perms, wd) -> str:
     if not matches:
         return ans
-        
+    # Permission-Check (2026-07-11 — User-Mandat 21:24 "checke rechte überall"):
+    # Desktop-Control ist sehr riskant (Maus/Keyboard auf User-Maschine) — nur godmode.
+    if perms and "godmode" not in perms:
+        name = (agent or {}).get("name", "?")
+        for m in matches:
+            ans = ans.replace(
+                m.group(0),
+                f"[System: {name} hat keine DESKTOP-Berechtigung. Nur SecurityAG (godmode).]",
+            )
+        return ans
+
     try:
         import pyautogui
         # Disable pyautogui fail-safe or set safety margins

@@ -180,8 +180,11 @@ _DEFAULT_BUTTONS = [
 
 
 def ensure_default_showbox() -> str:
-    """Stellt sicher dass 'Gnom-Hub Live' mit 8 Buttons existiert und aktiv ist.
-    Wird beim Hub-Start aufgerufen. Gibt den Namen zurück."""
+    """Stellt sicher dass 'Gnom-Hub Live' mit 8 Buttons existiert.
+    Wird beim Hub-Start aufgerufen. Setzt es NUR als aktiv wenn noch KEIN
+    active_showbox gesetzt war (User-Mandat 2026-07-11 23:17 — vorher wurde
+    die User-Auswahl beim Hub-Start jedes Mal auf 'Gnom-Hub Live' zurückgesetzt).
+    Gibt den Namen zurück."""
     name = "Gnom-Hub Live"
     try:
         existing = get_showbox_presentation_by_name(name)
@@ -200,16 +203,20 @@ def ensure_default_showbox() -> str:
             save_showbox_presentation(name, [slide], sender="System", buttons=_DEFAULT_BUTTONS)
             logger.info(f"[SHOWBOX] Default '{name}' mit 8 Buttons erstellt.")
         active = get_active_showbox()
-        if active != name and not active.startswith("Blockade:"):
-            # Auch wenn Buttons fehlen, neu aktivieren
+        # Nur setzen wenn NOCH NIE ein active_showbox gesetzt war
+        # (state-Tabelle leer für active_showbox) oder aktiver Eintrag zeigt
+        # auf nicht-existente Showbox. NIEMALS User-Auswahl überschreiben.
+        if not active or not get_showbox_presentation_by_name(active):
             with get_db_conn() as conn:
                 with conn:
                     conn.execute(
                         "INSERT OR REPLACE INTO state (key, value) VALUES ('active_showbox', ?)",
                         (json.dumps(name),),
                     )
-            logger.info(f"[SHOWBOX] Default '{name}' als aktiv gesetzt (vorher: '{active}').")
-        return name
+            logger.info(f"[SHOWBOX] Default '{name}' als aktiv gesetzt (war: '{active}').")
+        else:
+            logger.info(f"[SHOWBOX] User-Auswahl beibehalten: '{active}'.")
+        return active or name
     except Exception as e:
         logger.error(f"[SHOWBOX] ensure_default_showbox failed: {e}")
         return ""

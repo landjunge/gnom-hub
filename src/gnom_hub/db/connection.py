@@ -30,11 +30,12 @@ def get_db_connection() -> sqlite3.Connection:
     Use get_db_conn() context manager for automatic cleanup.
     """
     db_path = str(Config.DB_PATH)
-    conn = sqlite3.connect(db_path, timeout=30.0)
+    conn = sqlite3.connect(db_path, timeout=60.0)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-20000")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=60000")
     conn.row_factory = sqlite3.Row
     return conn
 

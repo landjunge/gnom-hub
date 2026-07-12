@@ -114,14 +114,16 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
 
                 elif status == "quarantined":
                     # Auto-Recovery: quarantined Agents kommen nach 5 Min wieder,
-                    # sofern der zugrundeliegende Process läuft UND der Drift
-                    # unter dem busy-Limit (600s) liegt. Vorher: Quarantäne war
-                    # permanent — einmal geblockt, für immer tot.
+                    # sofern der zugrundeliegende Process läuft. Vorher: Quarantäne
+                    # war permanent (3 Restarts in 10 Min → für immer tot).
                     # User-Mandat 2026-07-11: System soll sich selbst heilen.
+                    # 2026-07-11 20:49 — Bug-Fix: drift < 600s entfernt. Wenn der
+                    # Process nach 5+ Min noch lebt, sofort recovern — kein oberes
+                    # Drift-Limit. Wenn der Process tot ist, hart restarten.
                     quarantine_limit = 300.0
                     if drift > quarantine_limit:
                         proc = _get_proc(name)
-                        if proc is not None and drift < 600.0:
+                        if proc is not None:
                             print(f"♻️  [WATCHDOG] Agent {name} war {int(drift)}s in Quarantäne, Process läuft. Auto-Recovery → online.")
                             def recover_quarantined(n):
                                 conn = get_db_connection()
@@ -136,6 +138,10 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                                     conn.close()
                             await loop.run_in_executor(None, recover_quarantined, name)
                             restart_tracker.pop(name, None)
+                        else:
+                            # Process tot — hart restarten, dann HALF_OPEN lassen
+                            print(f"♼ [WATCHDOG] Agent {name} quarantined, Process tot. Hart-Restart.")
+                            await loop.run_in_executor(None, restart_single_agent, name)
 
                 elif should_be_online:
                     proc = _get_proc(name)

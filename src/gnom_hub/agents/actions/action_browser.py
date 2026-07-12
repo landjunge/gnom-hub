@@ -20,6 +20,16 @@ DEFAULT_BROWSER_TIMEOUT = 120
 def handle_browser(ans, ms, agent, perms, wd) -> str:
     if not ms:
         return ans
+    # Permission-Check (2026-07-11 — User-Mandat 21:24 "checke rechte überall"):
+    # Browser-Scripts sind hochriskant — nur Agents mit 'browser' oder 'godmode'.
+    if perms and "browser" not in perms and "godmode" not in perms:
+        name = (agent or {}).get("name", "?")
+        for m in ms:
+            ans = ans.replace(
+                m.group(0),
+                f"[System: {name} hat keine BROWSER-Berechtigung. Nur SecurityAG (godmode) und ResearcherAG (browser).]",
+            )
+        return ans
     for m in ms:
         code = m.group(1).strip()
         if not verify_browser(agent, code, wd, perms):
