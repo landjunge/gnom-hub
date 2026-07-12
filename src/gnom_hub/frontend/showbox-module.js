@@ -864,29 +864,18 @@
     return slides;
   };
 
-  // Trigger: beim Mouseover auf eine Agent-Card springt die Showbox auf
-  // die passende Folie der Art-Show. Bei erneutem Trigger derselben Folie
-  // passiert nichts (idempotent).
+  // Trigger: beim Mouseover auf eine Agent-Card hart auf die gnom-hub-designs
+  // Showbox springen. NICHT auf active (überschreiben Agents laufend) und
+  // NICHT auf die alte hardcoded Art-Show. User-Mandat 2026-07-12.
+  const PRIMARY_SHOWBOX = 'gnom-hub-designs';
   window.triggerAgentArtShow = function (agentName) {
-    if (!agentName || typeof window.buildAgentArtShow !== 'function') return;
-    if (typeof window.__agentArtShowIndex !== 'number') return;
-    const KEY = (agentName || '').toLowerCase();
-    const order = ['soulag','watchdogag','generalag','securityag','writerag','coderag','researcherag','editorag'];
-    const idx = order.indexOf(KEY);
+    if (!agentName) return;
+    if (!Array.isArray(window.showboxPresentations)) return;
+    const idx = window.showboxPresentations.findIndex(p => p.name === PRIMARY_SHOWBOX);
     if (idx < 0) return;
-    // Folie ist idx+1 (0 = Intro), Index 1..8
-    const slideIdx = idx + 1;
     if (typeof switchLayer === 'function') switchLayer(LAYERS.USER);
     if (typeof window.triggerShowbox === 'function') {
-      window.triggerShowbox(window.__agentArtShowIndex, 'user');
-      // Auf richtige Slide springen
-      setTimeout(() => {
-        const pres = window.showboxPresentations && window.showboxPresentations[window.__agentArtShowIndex];
-        if (pres) {
-          pres.currentSlideIdx = slideIdx;
-          if (typeof window.renderLayerContent === 'function') window.renderLayerContent(LAYERS.USER);
-        }
-      }, 80);
+      window.triggerShowbox(idx, 'user');
     }
   };
 
