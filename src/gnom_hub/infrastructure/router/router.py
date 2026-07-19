@@ -47,43 +47,16 @@ def _build_sys(n, sys, agent_name):
         runtime_settings=runtime_settings,
     )
 
-def _has_provider_key(kdb: dict, provider: str) -> bool:
-    """True if any usable key exists for provider (Wave A: prefer paid)."""
-    if not isinstance(kdb, dict):
-        return False
-    p = provider.lower()
-    for k, v in kdb.items():
-        kl = str(k).lower()
-        if isinstance(v, dict):
-            key = v.get("key") or v.get("api_key") or ""
-            if not key or len(str(key)) < 8:
-                continue
-            if str(v.get("provider", "")).lower() == p:
-                return True
-            if p in kl:  # e.g. key id minimax_…
-                return True
-        elif isinstance(v, str) and len(v) > 8 and p in kl:
-            return True
-    return False
-
-
 def _resolve(pvd, mdl, kdb, n):
     """Build provider/model fallback chain.
 
-    Wave A: prefer stable/paid (MiniMax, then paid providers) before OpenRouter free.
-    Free rotation remains a fallback, not the default primary when a paid key exists.
+    Uses what is configured (routing.txt / UI / llm_agents). No forced MiniMax.
+    OpenRouter expands to free-model rotation; MiniMax only if provider is minimax.
     """
-    import os
-
     from gnom_hub.infrastructure.router.openrouter_free import openrouter_provider_candidates
 
-    prefer_paid = os.environ.get("GNOM_PREFER_PAID", "1").lower() not in ("0", "false", "no")
-
     if pvd == "auto":
-        cands = list(SmartRouter.resolve_stage_candidates(mdl, kdb, n))
-        if prefer_paid and _has_provider_key(kdb, "minimax"):
-            cands = [("minimax", "MiniMax-M3")] + cands
-        return _dedupe_cands(cands)
+        return SmartRouter.resolve_stage_candidates(mdl, kdb, n)
     if pvd == "lokal":
         return [("lokal", mdl)]
 
@@ -93,14 +66,6 @@ def _resolve(pvd, mdl, kdb, n):
         repo = None
 
     candidates: list[tuple[str, str]] = []
-    # Paid-first injection when routing still points at openrouter/free
-    paid_first = prefer_paid and (
-        pvd == "openrouter"
-        or (isinstance(mdl, str) and ("free" in mdl.lower() or mdl == "openrouter/free"))
-    )
-    if paid_first and _has_provider_key(kdb, "minimax"):
-        candidates.append(("minimax", "MiniMax-M3"))
-
     if pvd == "openrouter":
         candidates.extend(openrouter_provider_candidates(preferred=mdl, repo=repo))
     elif pvd == "minimax":
@@ -115,10 +80,7 @@ def _resolve(pvd, mdl, kdb, n):
 
     if ("lokal", "llama3") not in candidates:
         candidates.append(("lokal", "llama3"))
-    return _dedupe_cands(candidates)
-
-
-def _dedupe_cands(candidates: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    # de-dupe while preserving order
     seen: set[tuple[str, str]] = set()
     out: list[tuple[str, str]] = []
     for c in candidates:
