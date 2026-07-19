@@ -259,7 +259,7 @@ def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, co
     last_err = None
     # Short write + brief retries so user chat survives multi-writer storms
     # without blocking the hub for a full busy_timeout window.
-    for _attempt in range(3):
+    for _attempt in range(2):
         try:
             with get_db_conn() as conn:
                 with conn:
@@ -271,10 +271,10 @@ def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, co
             break
         except sqlite3.OperationalError as e:
             last_err = e
-            if "locked" not in str(e).lower() or _attempt == 2:
+            if "locked" not in str(e).lower() or _attempt == 1:
                 _logger.error(f"[DB] Failed to add chat message: {e}")
                 return None
-            time.sleep(0.08 * (2 ** _attempt))
+            time.sleep(0.12)
         except sqlite3.Error as e:
             _logger.error(f"[DB] Failed to add chat message: {e}")
             return None

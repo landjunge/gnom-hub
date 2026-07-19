@@ -336,7 +336,7 @@ def dispatch_mention(
 
     dispatched = []
     last_err = None
-    for _attempt in range(4):
+    for _attempt in range(2):
         conn = get_db_connection()
         try:
             # Online- UND Busy-Agenten laden (keine stille Verwerfung mehr!)
@@ -416,10 +416,10 @@ def dispatch_mention(
             break
         except sqlite3.OperationalError as e:
             last_err = e
-            if "locked" not in str(e).lower() or _attempt == 3:
+            if "locked" not in str(e).lower() or _attempt == 1:
                 logger.error("dispatch_mention failed: %s", e)
                 raise
-            time.sleep(0.08 * (2 ** _attempt))
+            time.sleep(0.15)
         finally:
             conn.close()
 
