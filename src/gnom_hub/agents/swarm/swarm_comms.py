@@ -337,96 +337,108 @@ def dispatch_mention(
     if not mentions:
         return []
 
-    dispatched = []
+    dispatched: list[str] = []
     last_err = None
-    for _attempt in range(2):
-        conn = get_db_connection()
+    from gnom_hub.db.db_lock import cross_process_write_lock
+
+    for _attempt in range(5):
+        conn = None
         try:
-            # Online- UND Busy-Agenten laden (keine stille Verwerfung mehr!)
-            rows = conn.execute(
-                "SELECT name, status FROM agents WHERE status IN ('online', 'busy', 'running')"
-            ).fetchall()
-            agent_map = {r["name"].lower(): r["name"] for r in rows}
-
-            offline_agents = {
-                r["name"].lower()
-                for r in conn.execute(
-                    "SELECT name FROM agents WHERE status NOT IN ('online', 'busy', 'running')"
+            with cross_process_write_lock(timeout_s=8.0):
+                conn = get_db_connection()
+                rows = conn.execute(
+                    "SELECT name, status FROM agents WHERE status IN ('online', 'busy', 'running')"
                 ).fetchall()
-            }
+                agent_map = {r["name"].lower(): r["name"] for r in rows}
 
-            for mention in set(mentions):  # Deduplizieren
-                tgt_lower = mention.lower()
+                offline_agents = {
+                    r["name"].lower()
+                    for r in conn.execute(
+                        "SELECT name FROM agents WHERE status NOT IN ('online', 'busy', 'running')"
+                    ).fetchall()
+                }
 
-                if tgt_lower == sender.lower():
-                    continue  # Kein Self-Dispatch
+                for mention in set(mentions):
+                    tgt_lower = mention.lower()
 
-                if tgt_lower in offline_agents:
-                    logger.info("Agent '%s' offline – Nachricht wird verworfen", mention)
-                    continue
+                    if tgt_lower == sender.lower():
+                        continue
 
-                if tgt_lower not in agent_map:
-                    logger.debug("Unbekannter Agent: @%s", mention)
-                    continue
+                    if tgt_lower in offline_agents:
+                        logger.info("Agent '%s' offline – Nachricht wird verworfen", mention)
+                        continue
 
-                tgt_name = agent_map[tgt_lower]
+                    if tgt_lower not in agent_map:
+                        logger.debug("Unbekannter Agent: @%s", mention)
+                        continue
 
-                is_critical = (isinstance(priority, str) and priority.lower() == "critical") or priority == 0
+                    tgt_name = agent_map[tgt_lower]
 
-                if not is_critical and not can_accept_message(tgt_name, conn):
-                    continue
+                    is_critical = (
+                        (isinstance(priority, str) and priority.lower() == "critical")
+                        or priority == 0
+                    )
 
-                if is_critical:
-                    prio_val = 0
-                else:
-                    active_count = conn.execute(
-                        "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
-                        (tgt_name,)
-                    ).fetchone()[0]
-                    prio_val = None
-                    if priority is not None:
-                        if isinstance(priority, str):
-                            prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
-                        elif isinstance(priority, int):
-                            prio_val = priority
-                    if prio_val is None:
-                        prio_val = 7 if active_count >= MAX_CONCURRENT else 5
+                    if not is_critical and not can_accept_message(tgt_name, conn):
+                        continue
 
-                # Nachricht persistent speichern
-                conn.execute("""
-                    INSERT INTO agent_messages
-                        (sender, recipient, payload, priority, created_at,
-                         deliver_after, context_id, depth, parent_msg_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    sender,
-                    tgt_name,
-                    json.dumps({"text": text, "mention": mention}),
-                    prio_val,
-                    time.time(),
-                    0.0,           # sofort zustellbar
-                    context_id,
-                    current_depth,
-                    parent_msg_id,
-                ))
-                conn.commit()
+                    if is_critical:
+                        prio_val = 0
+                    else:
+                        active_count = conn.execute(
+                            "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
+                            (tgt_name,),
+                        ).fetchone()[0]
+                        prio_val = None
+                        if priority is not None:
+                            if isinstance(priority, str):
+                                prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
+                            elif isinstance(priority, int):
+                                prio_val = priority
+                        if prio_val is None:
+                            prio_val = 7 if active_count >= MAX_CONCURRENT else 5
 
-                # Agenten aufwecken (falls er wartet)
-                notify_agent(tgt_name)
-                dispatched.append(tgt_name)
+                    conn.execute(
+                        """
+                        INSERT INTO agent_messages
+                            (sender, recipient, payload, priority, created_at,
+                             deliver_after, context_id, depth, parent_msg_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            sender,
+                            tgt_name,
+                            json.dumps({"text": text, "mention": mention}),
+                            prio_val,
+                            time.time(),
+                            0.0,
+                            context_id,
+                            current_depth,
+                            parent_msg_id,
+                        ),
+                    )
+                    conn.commit()
+                    notify_agent(tgt_name)
+                    dispatched.append(tgt_name)
 
             last_err = None
             break
         except sqlite3.OperationalError as e:
             last_err = e
-            if "locked" not in str(e).lower() or _attempt == 1:
+            if "locked" not in str(e).lower():
                 logger.error("dispatch_mention failed: %s", e)
                 raise
-            time.sleep(0.15)
+            # retry with backoff
+            time.sleep(0.12 * (_attempt + 1))
         finally:
-            conn.close()
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     if last_err is not None and not dispatched:
+        logger.error("dispatch_mention failed after retries: %s", last_err)
         raise last_err
     return dispatched
 
@@ -748,86 +760,117 @@ def dispatch_by_capability(
         conn.close()
 
 
-def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
+def recover_stuck_messages(db_path: str, timeout: float = 120.0) -> None:
     """
     Findet blockierte/abgestürzte Nachrichten und gibt sie wieder frei oder schiebt sie in die DLQ.
     Wave A: also auto-DLQ stale pending (storm leftovers).
+    Supervisor-Fix 2026-07: default timeout 120s (was 300s); chat notify on requeue/DLQ.
     """
-    conn = get_db_connection()
-    try:
-        now = time.time()
-        stuck_cutoff = now - timeout
-        # processing_since IS NULL: only treat as stuck if created_at is also old
-        # (prevents thrashing brand-new/buggy rows every recovery tick).
-        rows = conn.execute("""
-            SELECT id, retry_count, recipient, sender FROM agent_messages
-            WHERE status = 'processing'
-              AND (
-                    (processing_since IS NOT NULL AND processing_since <= ?)
-                 OR (processing_since IS NULL AND created_at <= ?)
-              )
-        """, (stuck_cutoff, stuck_cutoff)).fetchall()
+    from gnom_hub.db.db_lock import cross_process_write_lock
 
-        for row in rows:
-            msg_id = row["id"]
-            retries = row["retry_count"] + 1
-            recipient = row["recipient"]
+    chat_notes: list[str] = []
+    with cross_process_write_lock(timeout_s=10.0):
+        conn = get_db_connection()
+        try:
+            try:
+                conn.execute("PRAGMA busy_timeout=10000")
+            except Exception:
+                pass
+            now = time.time()
+            stuck_cutoff = now - timeout
+            rows = conn.execute("""
+                SELECT id, retry_count, recipient, sender, substr(payload,1,120) AS p
+                FROM agent_messages
+                WHERE status = 'processing'
+                  AND (
+                        (processing_since IS NOT NULL AND processing_since <= ?)
+                     OR (processing_since IS NULL AND created_at <= ?)
+                  )
+            """, (stuck_cutoff, stuck_cutoff)).fetchall()
 
-            if retries >= RETRY_MAX:
-                conn.execute(
-                    "UPDATE agent_messages SET status='dead_letter', retry_count=?, processing_since=NULL, completed_at=? WHERE id=?",
-                    (retries, time.time(), msg_id)
-                )
-                # Auch abhängige Messages kaskadieren (retry_count bleibt unverändert)
-                fail_dependent_messages(msg_id, f"parent_stuck_retries_{retries}", conn)
-                logger.error(
-                    "Nachricht %d (Ziel=%s) zu oft blockiert – Kaskade ausgelöst",
-                    msg_id, recipient
-                )
-            else:
-                backoff = RETRY_BACKOFF_BASE * (2 ** (retries - 1))
-                conn.execute("""
-                    UPDATE agent_messages
-                    SET status='pending', retry_count=?, deliver_after=?, processing_since=NULL
-                    WHERE id=?
-                """, (retries, now + backoff, msg_id))
+            for row in rows:
+                msg_id = row["id"]
+                retries = row["retry_count"] + 1
+                recipient = row["recipient"]
+                sender = row["sender"] or "?"
+
+                if retries >= RETRY_MAX:
+                    conn.execute(
+                        "UPDATE agent_messages SET status='dead_letter', retry_count=?, processing_since=NULL, completed_at=? WHERE id=?",
+                        (retries, time.time(), msg_id)
+                    )
+                    fail_dependent_messages(msg_id, f"parent_stuck_retries_{retries}", conn)
+                    logger.error(
+                        "Nachricht %d (Ziel=%s) zu oft blockiert – Kaskade ausgelöst",
+                        msg_id, recipient
+                    )
+                    chat_notes.append(
+                        f"⚠️ **Queue DLQ:** msg #{msg_id} {sender}→{recipient} "
+                        f"nach {retries} Retries stecken geblieben (> {int(timeout)}s processing)."
+                    )
+                else:
+                    backoff = RETRY_BACKOFF_BASE * (2 ** (retries - 1))
+                    conn.execute("""
+                        UPDATE agent_messages
+                        SET status='pending', retry_count=?, deliver_after=?, processing_since=NULL
+                        WHERE id=?
+                    """, (retries, now + backoff, msg_id))
+                    logger.warning(
+                        "Nachricht %d (Ziel=%s) blockiert. Retry %d/%d in %.0fs",
+                        msg_id, recipient, retries, RETRY_MAX, backoff
+                    )
+                    notify_agent(recipient)
+                    if retries >= 2:
+                        chat_notes.append(
+                            f"♻️ **Queue Retry:** msg #{msg_id} {sender}→{recipient} "
+                            f"Retry {retries}/{RETRY_MAX} (stuck > {int(timeout)}s)."
+                        )
+
+            # Wave A: pending older than STALE_PENDING_S → dead_letter
+            stale_pending = now - STALE_PENDING_S
+            n_stale = conn.execute("""
+                UPDATE agent_messages
+                SET status='dead_letter', completed_at=?, retry_count=retry_count
+                WHERE status='pending' AND created_at <= ? AND deliver_after <= ?
+            """, (now, stale_pending, now)).rowcount
+            if n_stale:
                 logger.warning(
-                    "Nachricht %d (Ziel=%s) blockiert. Retry %d/%d in %.0fs",
-                    msg_id, recipient, retries, RETRY_MAX, backoff
+                    "Auto-DLQ: %d stale pending messages (>%ss)", n_stale, int(STALE_PENDING_S)
                 )
-                notify_agent(recipient)
 
-        # Wave A: pending older than STALE_PENDING_S → dead_letter (no infinite storms)
-        stale_pending = now - STALE_PENDING_S
-        n_stale = conn.execute("""
-            UPDATE agent_messages
-            SET status='dead_letter', completed_at=?, retry_count=retry_count
-            WHERE status='pending' AND created_at <= ? AND deliver_after <= ?
-        """, (now, stale_pending, now)).rowcount
-        if n_stale:
-            logger.warning("Auto-DLQ: %d stale pending messages (>%ss)", n_stale, int(STALE_PENDING_S))
+            cap = MAX_QUEUE_DEPTH * 8
+            total_pending = conn.execute(
+                "SELECT COUNT(*) FROM agent_messages WHERE status='pending'"
+            ).fetchone()[0]
+            if total_pending > cap:
+                excess = total_pending - cap
+                conn.execute("""
+                    UPDATE agent_messages SET status='dead_letter', completed_at=?
+                    WHERE id IN (
+                        SELECT id FROM agent_messages
+                        WHERE status='pending'
+                        ORDER BY created_at ASC
+                        LIMIT ?
+                    )
+                """, (now, excess))
+                logger.warning("Auto-DLQ: %d excess pending over global cap %d", excess, cap)
 
-        # Cap total pending globally: if still over 8*MAX_QUEUE_DEPTH, DLQ oldest excess
-        cap = MAX_QUEUE_DEPTH * 8
-        total_pending = conn.execute(
-            "SELECT COUNT(*) FROM agent_messages WHERE status='pending'"
-        ).fetchone()[0]
-        if total_pending > cap:
-            excess = total_pending - cap
-            conn.execute("""
-                UPDATE agent_messages SET status='dead_letter', completed_at=?
-                WHERE id IN (
-                    SELECT id FROM agent_messages
-                    WHERE status='pending'
-                    ORDER BY created_at ASC
-                    LIMIT ?
+            conn.commit()
+        finally:
+            conn.close()
+
+    # Chat notify outside lock (best-effort)
+    if chat_notes:
+        try:
+            from gnom_hub.db import add_chat_message, get_active_project
+            proj = get_active_project() or "default"
+            for note in chat_notes[:5]:
+                add_chat_message(
+                    proj, "System", "system", "chat", note,
+                    {"type": "chat", "sender": "System", "queue_recovery": True},
                 )
-            """, (now, excess))
-            logger.warning("Auto-DLQ: %d excess pending over global cap %d", excess, cap)
-
-        conn.commit()
-    finally:
-        conn.close()
+        except Exception as e:
+            logger.debug("stuck-recovery chat notify failed: %s", e)
 
 
 def clear_queue(

@@ -75,7 +75,8 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
         try:
             loop = asyncio.get_running_loop()
             # 1. Stuck + stale-pending recovery (Wave A: STALE_PENDING auto-DLQ)
-            await loop.run_in_executor(None, recover_stuck_messages, str(db_path), 300.0)
+            # 120s stuck processing → requeue/DLQ + chat note (Supervisor-Fix)
+            await loop.run_in_executor(None, recover_stuck_messages, str(db_path), 120.0)
 
             # 2. Watchdog / heartbeats check
             agents = await loop.run_in_executor(None, get_all_agents)

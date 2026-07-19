@@ -38,7 +38,9 @@ def get_db_connection() -> sqlite3.Connection:
     # check_same_thread=False: agents/hub share threads; timeout+busy_timeout
     # absorb multi-writer contention (BEGIN IMMEDIATE / WAL).
     # Default 800ms: fail fast under contention so chat/register don't pin threads.
-    busy_ms = int(os.environ.get("GNOM_DB_BUSY_MS", "800"))
+    # 1500ms default (was 800): multi-agent dispatch still needs a little patience
+    # under WAL; keep env-overridable for fail-fast chat paths.
+    busy_ms = int(os.environ.get("GNOM_DB_BUSY_MS", "1500"))
     timeout_s = max(busy_ms / 1000.0, 0.2)
     conn = sqlite3.connect(db_path, timeout=timeout_s, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")

@@ -213,25 +213,31 @@ class SoulAG:
         try:
             _periodic_cleanup()
 
-            # ── TASK-FORMULIERUNG (PRIMARY, nur User-Messages) ──
-            if is_user:
+            # ── TASK-FORMULIERUNG (optional) ──
+            # Default OFF: GeneralAG is the only User-job orchestrator.
+            # Soul parallel dispatch caused lock storms + role-theft (Supervisor 2026-07).
+            # Enable only with SOUL_AUTO_DISPATCH=1.
+            import os as _os
+            auto_dispatch = _os.environ.get("SOUL_AUTO_DISPATCH", "0").strip() == "1"
+            if is_user and auto_dispatch:
                 task_prompt = (
                     f"User-Nachricht:\n\"\"\"\n{m}\n\"\"\"\n\n"
-                    "Du bist SoulAG — der Orchestrator.\n"
-                    "Analysiere: Was will der User WIRKLICH?\n"
-                    "Formuliere daraus 1-3 konkrete Tasks.\n"
+                    "Du bist SoulAG (Beobachter, NICHT der Chat-Orchestrator).\n"
+                    "Formuliere 0-2 optionale Follow-up-Tasks NUR wenn klar Workspace-Arbeit fehlt.\n"
+                    "GeneralAG orchestriert User-Jobs — du ergänzt höchstens, du ersetzt ihn nicht.\n"
                     "Für jeden Task: Beschreibung + Ziel-Agent (CoderAG/WriterAG/ResearcherAG/EditorAG).\n"
+                    "VERBOTEN im task-Text: IDs erfinden wie soul_…, task_…, (ID: …).\n"
                     "Antworte ALS REINES JSON-ARRAY:\n"
-                    '[\n  {"task": "Konkrete Task-Beschreibung", "agent": "CoderAG"}\n]\n'
-                    "Leeres Array [] wenn nichts zu tun ist."
+                    '[\n  {"task": "Konkrete Task-Beschreibung ohne ID", "agent": "CoderAG"}\n]\n'
+                    "Leeres Array [] wenn GeneralAG den Job schon abdeckt oder nichts zu tun ist."
                 )
                 try:
                     task_res = ask_router(
                         task_prompt,
                         sys=(
-                            "SoulAG Task-Orchestrator v7.0. "
-                            "Analysiere die wahre User-Absicht. "
-                            "Formuliere präzise, ausführbare Tasks. "
+                            "SoulAG optionaler Task-Helfer (nicht Primary-Orchestrator). "
+                            "Leeres Array ist der Default. "
+                            "Keine erfundenen soul_/task_-IDs im Text. "
                             "NUR JSON-Array ausgeben."
                         ),
                         agent_name="SoulAG"
@@ -242,16 +248,30 @@ class SoulAG:
                         tasks, _ = _parse_json_value(task_res, task_s)
                         if tasks is None:
                             tasks = []
-                        for t in tasks:
+                        # Cap parallel Soul fan-out
+                        for t in (tasks or [])[:2]:
                             task_desc = t.get("task", "").strip()
                             target = t.get("agent", "").strip()
+                            # Strip any LLM-invented ID noise
+                            import re as _re
+                            task_desc = _re.sub(
+                                r"\s*\(?\s*(ID|tracking_id)\s*[:=]\s*[\w\-]+\)?",
+                                "",
+                                task_desc,
+                                flags=_re.I,
+                            ).strip()
                             if task_desc and target:
                                 task_id = self._create_task(task_desc, m, target)
                                 if task_id:
                                     self._dispatch_task(task_id, target, task_desc)
-                                    _log.info("[Soul] Task erstellt + dispatcht: %s → %s", task_desc[:60], target)
+                                    _log.info(
+                                        "[Soul] Task erstellt + dispatcht (AUTO_DISPATCH=1): %s → %s",
+                                        task_desc[:60], target,
+                                    )
                 except Exception as ex:
                     _log.warning("[Soul] Task-Formulierung fehlgeschlagen: %s", ex)
+            elif is_user and not auto_dispatch:
+                _log.debug("[Soul] Auto-Dispatch aus (SOUL_AUTO_DISPATCH!=1) — nur Fakten")
 
             # ── FAKTEN-EXTRAKTION (SECONDARY) ──
             prompt = (
@@ -368,22 +388,26 @@ class SoulAG:
 
     def _nudge_loop(self):
         """
-        Prüft alle 60s ob Tasks stale sind (>5min open).
-        Nudged Agenten bis 3x, dann status='blocked' → SecurityAG.
+        Prüft ob Tasks stale sind. Default: nur wenn SOUL_AUTO_DISPATCH=1
+        (sonst unnötige Dispatch-Last + Locks). Stale nach 10 min, max 2 Nudges.
         """
         try:
+            import os as _os
+            if _os.environ.get("SOUL_AUTO_DISPATCH", "0").strip() != "1":
+                return
             from gnom_hub.db.connection import get_db_conn
             now = time.time()
-            stale_cutoff = now - 300  # 5 Minuten
+            stale_cutoff = now - 600  # 10 Minuten
 
             with get_db_conn() as conn:
                 stale = conn.execute("""
                     SELECT id, description, assigned_to, nudge_count
                     FROM soul_tasks
                     WHERE status = 'open'
-                      AND nudge_count < 3
+                      AND nudge_count < 2
                       AND (last_nudge_at IS NULL OR last_nudge_at < ?)
                     ORDER BY created_at ASC
+                    LIMIT 2
                 """, (stale_cutoff,)).fetchall()
 
                 for row in stale:
@@ -395,7 +419,6 @@ class SoulAG:
                         (nudge_count, now, task_id)
                     )
                     _log.info("[Soul] Nudge #%d für Task %s → %s", nudge_count, task_id[:12], agent)
-                    # dispatch_mention als Nudge
                     try:
                         from gnom_hub.agents.swarm.swarm_comms import dispatch_mention
                         from gnom_hub.core.config import DB_PATH
@@ -403,7 +426,10 @@ class SoulAG:
                         proj = get_active_project() or "default"
                         dispatch_mention(
                             sender="SoulAG",
-                            text=f"@{agent} NUDGE: Task noch offen — {row['description'][:100]} (ID: {task_id})",
+                            text=(
+                                f"@{agent} NUDGE: Task noch offen — {row['description'][:100]} "
+                                f"(tracking_id={task_id} — NOT a soul_memory path)"
+                            ),
                             context_id=proj,
                             db_path=str(DB_PATH),
                             current_depth=1,
@@ -412,11 +438,11 @@ class SoulAG:
                     except Exception as ex:
                         _log.warning("[Soul] Nudge-Dispatch fehlgeschlagen: %s", ex)
 
-                # Nach 3 Nudges → blocked + SecurityAG benachrichtigen
+                # Nach 2 Nudges → blocked + SecurityAG benachrichtigen
                 blocked = conn.execute("""
                     SELECT id, description, assigned_to
                     FROM soul_tasks
-                    WHERE status = 'open' AND nudge_count >= 3
+                    WHERE status = 'open' AND nudge_count >= 2
                 """).fetchall()
 
                 for row in blocked:

@@ -66,7 +66,7 @@ def _maybe_recover_stuck():
     try:
         from gnom_hub.agents.swarm.swarm_comms import recover_stuck_messages
         from gnom_hub.core.config import DB_PATH
-        recover_stuck_messages(str(DB_PATH), timeout=300.0)
+        recover_stuck_messages(str(DB_PATH), timeout=120.0)
     except Exception as e:
         logging.getLogger(__name__).error("recover_stuck_messages fehlgeschlagen: %s", e)
 
