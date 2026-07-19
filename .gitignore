@@ -12,6 +12,11 @@ dist/
 venv/
 env/
 
+# Node (frontend TS gradual build)
+node_modules/
+src/gnom_hub/frontend/ts/dist-check/
+src/gnom_hub/frontend/ts/dist-test/
+
 # OS
 .DS_Store
 Thumbs.db

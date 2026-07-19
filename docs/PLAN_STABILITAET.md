@@ -162,7 +162,7 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 | Item | Status |
 |------|--------|
 | TKG tiefer in den Agent-Loop (auto-recall + auto-curate) | ✅ `builder._inject_tkg_recall` + `router.ask_router` übergibt User-Message; `extract_facts_from_text` → TKG; Flags `TKG_AUTO_RECALL` / `TKG_AUTO_CURATE` |
-| Frontend TypeScript / Rewrite | offen |
+| Frontend TypeScript (graduell) | ✅ Slice-1: `frontend/ts/` → `gnom-ts.js` (`window.GnomTS`); agentColor + mentions + typed api client; `scripts/build_frontend_ts.sh` |
 | Externe Queue/DB | offen |
 | Weitere Infra-Optionen | nur auf expliziten Wunsch |
 

@@ -790,7 +790,11 @@ async function loadActivePreset() {
 }
 
 // ── Colors ──
+// Prefer GnomTS (TypeScript layer, S5) when loaded; keep JS fallback identical.
 function agentColor(name) {
+  if (window.GnomTS && typeof window.GnomTS.agentColor === 'function') {
+    return window.GnomTS.agentColor(name);
+  }
   if (!name) return '#00E5FF';
   const n = name.toLowerCase();
   if (KNOWN_COLORS[n]) return KNOWN_COLORS[n];

@@ -401,6 +401,15 @@ async function sendChat() {
   if (handleChatCommands(msg, ta)) return;
   ta.value = '';
 
+  // S5: multi-@ preview via GnomTS (backend still uses only= for fanout control)
+  try {
+    if (window.GnomTS && typeof window.GnomTS.isMultiMention === 'function'
+        && window.GnomTS.isMultiMention(msg)) {
+      const names = window.GnomTS.extractMentions(msg).join(', ');
+      toast('🎯 Multi-@ → ' + names + ' (targeted only=)', 'info');
+    }
+  } catch (_e) { /* non-fatal */ }
+
   document.getElementById('ac-dropdown')?.classList.remove('show');
   const res = await api('POST', '/chat', { content: msg });
   if (res) {
