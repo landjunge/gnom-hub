@@ -58,8 +58,8 @@
 2. Connection-Hygiene / verbleibende Lock-Hotspots  
 3. Queue kann wieder volllaufen (Spam)  
 4. Free-LLM liefert oft Müll → NACK hilft, UX bleibt schwach  
-5. Halb tote Pfade / ignorierte Tests  
-6. Doppelte `run_agent`-PIDs wenn Start-Skript mehrfach läuft  
+5. Halb tote Pfade / ignorierte Tests (CI-Ignore bewusst; schrumpfen nur mit Aufwand)  
+6. ~~Doppelte `run_agent`-PIDs~~ → `start_agents.sh` hard-kill + PID-Files + Count (S4.2)
 
 
 ---
@@ -147,12 +147,12 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 
 **Ziel:** Weniger Fallstricke, kein Feature-Zuwachs.
 
-| # | Arbeit | Done when |
-|---|--------|-----------|
-| S4.1 | Tote Chat-Pfade mergen/löschen | ein Chat-Pfad |
-| S4.2 | Ein Agent-Startstil überall | kein agents.*AG-Doppelstart |
-| S4.3 | CI-Ignore-Liste schrumpfen (nur echte Live-Tests draußen) | weniger blinde Flecken |
-| S4.4 | ARCHITECTURE.md = Default GeneralAG | Doku = Code |
+| # | Arbeit | Done when | Stand 2026-07-19 |
+|---|--------|-----------|------------------|
+| S4.1 | Tote Chat-Pfade mergen/löschen | ein Chat-Pfad | ✅ Live = `chat_legacy` only; `chat.py` DEAD not mounted |
+| S4.2 | Ein Agent-Startstil überall | kein agents.*AG-Doppelstart | ✅ nur `agents.run_agent`; `start_agents.sh` kill+PID; `start_gnom_hub` startet Agents |
+| S4.3 | CI-Ignore-Liste schrumpfen (nur echte Live-Tests draußen) | weniger blinde Flecken | ⏸ bewusst belassen (Browser/Preset-data/Stress) |
+| S4.4 | ARCHITECTURE.md = Default GeneralAG | Doku = Code | ✅ §5 Chat-Flow korrigiert (war noch SoulAG-Default) |
 
 ---
 
@@ -197,11 +197,13 @@ Erwartung: `healthy: 8`, `pending` klein, Chat-Send &lt; 1 s.
 ## 7. Nächste konkrete Schritte (Reihenfolge)
 
 1. ~~**S0** README~~ ✅  
-2. ~~**S1** Chat-Latenz unter Last~~ ✅ (siehe Tabelle; p95 ≪ 300 ms)  
+2. ~~**S1** Chat-Latenz unter Last~~ ✅  
 3. ~~**S2.4/S2.5** hub-claim + @@queue~~ ✅  
-4. **S2.1–S2.2** Queue-Limits + NACK unter Free-LLM weiter im Live-Betrieb absichern  
-5. **S4** Tote Chat-Pfade / Startstil (Watchdog-Restart = `run_agent`) / ARCHITECTURE (GeneralAG schon)  
-6. Quarantäne-Recovery ✅ (Commit `b810741`); Claim-HTTP-Timeout Agent ≥ Claim-Wartezeit
+4. ~~**S2.1–S2.3** Limits/NACK/Fanout~~ ✅ (Code + Supervisor R10 STRICT)  
+5. ~~**S4.1/S4.2/S4.4** Chat-Pfad / Startstil / ARCHITECTURE~~ ✅  
+6. **S3** Provider-Qualität im Alltag (User-Routing) — kein Code-Zwang  
+7. **S4.3** CI-Ignore nur bei Bedarf schrumpfen  
+8. Quarantäne-Recovery ✅; Claim-Timeout Agent ≥ Hub-Wartezeit  
 
 ---
 
@@ -223,8 +225,9 @@ Erwartung: `healthy: 8`, `pending` klein, Chat-Send &lt; 1 s.
 Gnom-Hub Arbeitsplan: docs/PLAN_STABILITAET.md
 User-Priorität: schnell + fehlerfrei, nur Vorhandenes fixen.
 Local-first nativ. KEIN Docker, KEINE Sandbox, KEIN erzwungener Provider.
-Funktionen größtenteils schon im Code. Nächste Arbeit: S1 Chat/Locks, S2 Queue,
-dann Doku-Drift README. Keine Wave-B-Broker/Migration ohne expliziten User-Auftrag.
+S0–S2 und S4.1/S4.2/S4.4 weitgehend erledigt (2026-07-19).
+Nächste Arbeit: S3 Provider-Qualität im Alltag; S4.3 CI-Ignore nur mit Aufwand.
+Keine Wave-B-Broker/Migration/Docker ohne expliziten User-Auftrag.
 ```
 
 ---

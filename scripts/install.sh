@@ -130,8 +130,9 @@ done
 sleep 1
 python3 -m gnom_hub > logs/logs_hub.txt 2>&1 &
 sleep 2
-for ag in generalAG soulAG researcherAG writerAG editorAG coderAG; do
-    python3 -u -m agents.\${ag} > logs/logs_\${ag}.txt 2>&1 &
+# Single launch style only (PLAN S4.2) — all 8 agents via run_agent
+for ag in generalag soulag securityag watchdogag researcherag writerag editorag coderag; do
+    python3 -u -m agents.run_agent --name \${ag} > logs/logs_\${ag}.txt 2>&1 &
 done
 open "http://127.0.0.1:3002"
 wait

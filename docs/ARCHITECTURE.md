@@ -120,21 +120,23 @@ implizit aus den genannten Quellen zusammengesetzt.
 
 ## 5. Chat-Flow
 
-**Entry-Point:** `src/gnom_hub/api/endpoints/chat_legacy.py:75`
-(`POST /api/chat`)
+**Entry-Point (live):** `src/gnom_hub/api/endpoints/chat_legacy.py`
+(`POST /api/chat`). Modul `api/endpoints/chat.py` ist **tot / nicht gemountet**.
 
-**Dispatch-Logik:**
+**Dispatch-Logik (Ist 2026-07):**
 
-1. User schickt Chat ohne `@<agent>` → geht zu **SoulAG**
-   (`chat_legacy.py:171-175`)
-2. User schickt Chat mit `@<agent>` → direkter Override zum genannten
-   Agent
-3. SoulAG analysiert Anfrage → delegiert ggf. an Worker (WriterAG /
-   CoderAG / ResearcherAG / EditorAG) oder System-Agent (GeneralAG /
-   WatchdogAG / SecurityAG)
+1. User-Chat ohne `@target` → **nur GeneralAG** (`dispatch(..., target="generalag")`).
+2. User-Chat mit `@Agent` → gezielter Dispatch an diesen Agenten.
+3. Nested `@Worker`-Zeilen im **Plan-Text** sind Anweisungen für GeneralAG —
+   sie erzeugen **keinen** user→Worker-Fanout (`dispatch_mention(..., only=[…])`).
+4. GeneralAG antwortet und/oder schreibt atomare Delegationen
+   (`@CoderAG …` je Queue-Zeile, multi-@ Slices in `swarm_comms`).
+5. SoulAG beobachtet / Memory — **kein** Default-Chat-Eingang;
+   `SOUL_AUTO_DISPATCH` Default **0** (keine automatischen Worker-Tasks von Soul).
 
-**Helper-Funktion für Dispatch:**
-`chat_legacy.py:132-176` (komplette Dispatch-Logik)
+**Queue:** `GNOM_QUEUE_MODE=hub` — Claim/Ack/Nack über den Hub.
+**Workspace-Pfade:** relativ zu `~/gnom-Workspace/<projekt>/`;
+Doppelprefix `gnom-Workspace/default/…` wird in `path_validator` normalisiert.
 
 ---
 

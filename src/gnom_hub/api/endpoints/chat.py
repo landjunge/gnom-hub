@@ -1,11 +1,12 @@
 """DEAD / NOT MOUNTED — do not use for product chat.
 
-Live chat API is ``chat_legacy``:
+Live chat API is ``chat_legacy`` only:
   POST /api/chat, GET /api/chat, GET /api/chat/stream
-(see ``api/endpoints/router.py`` include list).
+(see ``api/endpoints/router.py`` include list — ``chat.router`` is not included).
 
-This module is an old brainstorm/orchestrator stub (prefix ``/chat``) and is
-intentionally not registered. Kept only until S4 cleanup removes callers/tests.
+PLAN S4.1: single product chat path = ``chat_legacy``. This module is a leftover
+brainstorm stub (prefix ``/chat``) kept so old imports do not crash; it is not
+registered on the FastAPI app.
 """
 
 from uuid import UUID

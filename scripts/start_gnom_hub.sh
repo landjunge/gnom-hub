@@ -105,5 +105,13 @@ elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$URL" 2>/dev/null || true
 fi
 
+# 8 Agents — single launch style (PLAN S4.2); kills duplicates first
+if [ -x "$REPO_DIR/scripts/start_agents.sh" ]; then
+    bash "$REPO_DIR/scripts/start_agents.sh" || true
+elif [ -f "$REPO_DIR/scripts/start_agents.sh" ]; then
+    bash "$REPO_DIR/scripts/start_agents.sh" || true
+fi
+
 echo "🚀 Gnom-Hub läuft auf $URL (PID $HUB_PID)"
+echo "   Agents: bash scripts/start_agents.sh (wird beim Start bereits aufgerufen)"
 echo "   Stop: ./stop_gnom_hub.sh"
