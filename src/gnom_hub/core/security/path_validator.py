@@ -4,24 +4,72 @@ import re as _re
 from gnom_hub.core.config import WORKSPACE_DIR
 
 
-def _safe(wd, f, perms):
-    """Prüft ob ein Pfad im erlaubten Bereich liegt.
+def _in_workspace(path_real: str) -> bool:
+    """True wenn path_real im (oder gleich) WORKSPACE_DIR liegt (realpath).
 
-    Bei `perms=False` wird der Pfad gegen den Workspace-Root
-    (realpath, symlink-aufgelöst) geprüft — Flucht aus dem
-    Workspace wird geblockt (gibt None zurück).
-
-    Bei `perms=True` darf der Pfad außerhalb des Workspace liegen
-    (Caller hat das Recht dazu autorisiert).
+    off-by-one-Schutz: Sibling-Dirs wie ``<workspace>-evil/`` matchen nicht.
     """
-    if not perms:
-        p = os.path.realpath(os.path.join(wd, f)) if not os.path.isabs(f) else os.path.realpath(f)
+    try:
         ws_real = os.path.realpath(str(WORKSPACE_DIR))
-        # off-by-one Schutz: Sibling-Dirs wie "<workspace>-evil/" müssen
-        # geblockt werden. startswith ohne Trenner würde das durchlassen.
-        return p if p == ws_real or p.startswith(ws_real + os.sep) else None
-    p = os.path.realpath(f) if os.path.isabs(f) else os.path.realpath(os.path.join(wd, f))
-    return p
+    except (OSError, ValueError):
+        return False
+    return path_real == ws_real or path_real.startswith(ws_real + os.sep)
+
+
+def _has_godmode(perms) -> bool:
+    """True bei legacy ``perms=True`` oder Token ``godmode`` in der Liste."""
+    if perms is True:
+        return True
+    if isinstance(perms, (list, tuple, set)):
+        return "godmode" in perms
+    return False
+
+
+def _resolve_target(wd, f: str) -> str:
+    """Resolve relative/absolute path to realpath (expanduser)."""
+    raw = os.path.expanduser(f) if isinstance(f, str) else f
+    if os.path.isabs(raw):
+        return os.path.realpath(raw)
+    return os.path.realpath(os.path.join(wd, raw))
+
+
+def _safe(wd, f, perms, agent_name: str | None = None):
+    """Prüft ob ein Pfad im erlaubten Bereich liegt. Gibt realpath oder None.
+
+    Erlaubt wenn (in dieser Reihenfolge):
+    1. Pfad liegt im User-Workspace (Workspace-frei, Mandat 2026-07-02)
+    2. ``godmode`` in perms (SecurityAG-Notfall) bzw. legacy ``perms=True``
+    3. SecurityAG-Grant: ``check_permission(agent_name, path)`` —
+       Directory-Grants matchen per Prefix, File-Grants exakt
+
+    Sonst: None (außerhalb Workspace ohne Grant).
+
+    Früher: jede non-empty Permission-Liste erlaubte Escape aus dem Workspace
+    (truthy-bool-Bug). Jetzt: nur godmode oder explizite Freigabe.
+    """
+    try:
+        p = _resolve_target(wd, f)
+    except (OSError, ValueError, TypeError):
+        return None
+
+    if _in_workspace(p):
+        return p
+
+    if _has_godmode(perms):
+        return p
+
+    # SecurityAG-Grant für diesen Agenten (outside workspace)
+    if agent_name:
+        try:
+            from gnom_hub.db.permissions_repo import check_permission
+            if check_permission(agent_name, p) or check_permission(agent_name, f):
+                return p
+        except Exception:
+            # DB down → fail closed for outside-workspace paths
+            pass
+
+    # Legacy: perms=False / empty / no grant → block outside workspace
+    return None
 
 
 def _workspace_system_paths() -> list[str]:

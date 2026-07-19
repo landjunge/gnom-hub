@@ -1,5 +1,6 @@
 # showbox_repo.py — Showbox presentation database operations
 import json
+import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -242,10 +243,14 @@ def set_active_showbox(name: str):
                 logger.info(f"[DB] Override active showbox to '{name}' blocked: pending decision in progress.")
                 return
             # Sticky-Check: protected Showbox nicht überschreiben
+            # Override per ENV GNOM_HUB_DISABLE_STICKY=1 (User-Mandat 2026-07-12 04:50 — Showbox soll
+            # bei Worker-Output sichtbar werden, nicht durch Sticky geblockt bleiben).
             current_active = get_active_showbox()
             if current_active in STICKY_SHOWBOX_NAMES and name not in STICKY_SHOWBOX_NAMES:
-                logger.info(f"[DB] Sticky active '{current_active}' protected — not overwriting with '{name}'")
-                return
+                if not os.getenv("GNOM_HUB_DISABLE_STICKY"):
+                    logger.info(f"[DB] Sticky active '{current_active}' protected — not overwriting with '{name}'")
+                    return
+                logger.info(f"[DB] Sticky override via GNOM_HUB_DISABLE_STICKY=1: '{current_active}' → '{name}'")
         with get_db_conn() as conn:
             with conn:
                 conn.execute("INSERT OR REPLACE INTO state (key, value) VALUES ('active_showbox', ?)", (json.dumps(name.strip()),))

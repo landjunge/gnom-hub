@@ -10,13 +10,14 @@ def seal_content(content: str) -> str:
     return content.strip()
 
 def handle_write(answer, matches, agent, perms, bs_mode, wd):
+    agent_name = (agent or {}).get("name") if isinstance(agent, dict) else None
     for m in matches:
         fname, content = m.group(1).strip(), m.group(2).strip()
         content = re.sub(r"^```\w*\n", "", re.sub(r"\n```$", "", content).strip())
         if "write" not in perms: r = f"[System: {agent['name']} hat keine WRITE-Berechtigung.]"
         else:
-            fpath = _safe(wd, fname, perms)
-            if not fpath: r = f"[System: Pfad '{fname}' blockiert — außerhalb des Workspace.]"
+            fpath = _safe(wd, fname, perms, agent_name=agent_name)
+            if not fpath: r = f"[System: Pfad '{fname}' blockiert — außerhalb des Workspace (kein Grant / kein godmode).]"
             else:
                 try:
                     os.makedirs(os.path.dirname(fpath), exist_ok=True)
@@ -28,7 +29,7 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                         counter = 1
                         while True:
                             new_name = f"{base_name}{counter}{ext}"
-                            new_fpath = _safe(wd, new_name, perms)
+                            new_fpath = _safe(wd, new_name, perms, agent_name=agent_name)
                             if new_fpath and not os.path.exists(new_fpath):
                                 fpath = new_fpath
                                 fname = os.path.basename(fpath)
@@ -73,9 +74,14 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
         answer = answer.replace(m.group(0), r)
     return answer
 
-def handle_read(answer, matches, wd, perms=None):
+def handle_read(answer, matches, wd, perms=None, agent=None):
+    agent_name = None
+    if isinstance(agent, dict):
+        agent_name = agent.get("name")
+    elif isinstance(agent, str):
+        agent_name = agent
     for m in matches:
-        fname = m.group(1).strip(); p = _safe(wd, fname, perms or [])
+        fname = m.group(1).strip(); p = _safe(wd, fname, perms or [], agent_name=agent_name)
         if not p:
             r = f"[System: Pfad '{fname}' blockiert.]"
         elif os.path.isdir(p):

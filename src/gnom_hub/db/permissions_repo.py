@@ -4,11 +4,11 @@ Implementiert die zwei Kernrollen aus SecurityAG-Identity v7.3:
 - Rolle 1: "Verzeichnisse freigeben" → grant_permission()
 - Rolle 2: "Dateien freigeben"      → grant_permission() mit type='file'
 
-Vor diesem Modul war security_permissions eine Phantom-Tabelle
-(siehe securityag.md §1 Top-3 #2): Schema definiert, aber kein
-Code-Pfad schrieb je hinein. SecurityAG's Kernrolle war damit
-funktionslos.
+Enforcement (ab 2026-07): path_validator._safe ruft check_permission()
+für Pfade außerhalb des User-Workspace auf. Directory-Grants matchen
+per Prefix (realpath); File-Grants exakt.
 """
+import os
 import time
 
 from gnom_hub.db.connection import get_db_conn
@@ -86,9 +86,24 @@ def check_permission(granted_to: str, resource_path: str) -> bool:
 
     granted_to='all' matcht jeden Agenten (Wildcard-Freigabe).
     Abgelaufene Freigaben (expires_at in Vergangenheit) zählen als inaktiv.
+
+    Match-Regeln (realpath, Symlink-sicher):
+    - file / tool: exakter Pfad-Match (resource_path == grant)
+    - directory: Grant-Pfad ist Prefix des Ziels (inkl. exakt der Dir selbst)
+    - zusätzlich: exakter String-Match auf resource_path (Rückwärtskompat
+      zu älteren Tests und Grants ohne realpath-Normalisierung)
     """
+    if not granted_to or not resource_path:
+        return False
+    # Canonical form for path comparison; keep raw for legacy exact match.
+    try:
+        target_real = os.path.realpath(os.path.expanduser(resource_path))
+    except (OSError, ValueError):
+        target_real = resource_path
+
     with get_db_conn() as conn:
         cur = conn.cursor()
+        # Fast path: exact string match (legacy + tool grants)
         cur.execute(
             "SELECT 1 FROM security_permissions "
             "WHERE granted_to IN (?, 'all') "
@@ -97,7 +112,34 @@ def check_permission(granted_to: str, resource_path: str) -> bool:
             "LIMIT 1",
             (granted_to, resource_path),
         )
-        return cur.fetchone() is not None
+        if cur.fetchone() is not None:
+            return True
+
+        # Directory prefix + realpath exact for file grants
+        cur.execute(
+            "SELECT resource_type, resource_path FROM security_permissions "
+            "WHERE granted_to IN (?, 'all') AND is_active=1 "
+            "AND (expires_at IS NULL OR expires_at > datetime('now'))",
+            (granted_to,),
+        )
+        for rtype, gpath in cur.fetchall():
+            if not gpath:
+                continue
+            try:
+                g_real = os.path.realpath(os.path.expanduser(gpath))
+            except (OSError, ValueError):
+                g_real = gpath
+            if rtype == "directory":
+                if target_real == g_real or target_real.startswith(g_real + os.sep):
+                    return True
+            elif rtype in ("file", "tool"):
+                if target_real == g_real:
+                    return True
+            else:
+                # Unbekannter type: nur exact realpath
+                if target_real == g_real:
+                    return True
+        return False
 
 
 def list_permissions_for_agent(granted_to: str) -> list[dict]:

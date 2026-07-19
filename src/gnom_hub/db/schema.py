@@ -115,6 +115,24 @@ CREATE TABLE IF NOT EXISTS capabilities (
     is_active INTEGER DEFAULT 1
 );
 
+-- SecurityAG Grants: Verzeichnisse/Dateien/Tools freigeben (Writer: permissions_repo).
+-- Enforcement: path_validator._safe + check_permission (directory = Prefix-Match).
+CREATE TABLE IF NOT EXISTS security_permissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resource_type TEXT NOT NULL,   -- 'directory' | 'file' | 'tool'
+    resource_path TEXT NOT NULL,
+    granted_to TEXT NOT NULL,       -- Agent-Name oder 'all'
+    granted_by TEXT NOT NULL,       -- 'SecurityAG' | 'User' | …
+    reason TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    expires_at TEXT,               -- NULL = nie
+    is_active INTEGER DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_sec_perm_agent_active
+    ON security_permissions(granted_to, is_active);
+CREATE INDEX IF NOT EXISTS idx_sec_perm_path
+    ON security_permissions(resource_path);
+
 CREATE TABLE IF NOT EXISTS showbox_presentations (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
@@ -320,6 +338,32 @@ def init_database() -> None:
                 # Dynamic migration: buttons column on showbox_presentations
                 try:
                     conn.execute("ALTER TABLE showbox_presentations ADD COLUMN buttons TEXT DEFAULT '[]'")
+                except sqlite3.OperationalError:
+                    pass
+
+                # security_permissions (SecurityAG grants — was missing from older SCHEMA_SQL)
+                try:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS security_permissions (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            resource_type TEXT NOT NULL,
+                            resource_path TEXT NOT NULL,
+                            granted_to TEXT NOT NULL,
+                            granted_by TEXT NOT NULL,
+                            reason TEXT DEFAULT '',
+                            created_at TEXT NOT NULL,
+                            expires_at TEXT,
+                            is_active INTEGER DEFAULT 1
+                        )
+                    """)
+                    conn.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_sec_perm_agent_active "
+                        "ON security_permissions(granted_to, is_active)"
+                    )
+                    conn.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_sec_perm_path "
+                        "ON security_permissions(resource_path)"
+                    )
                 except sqlite3.OperationalError:
                     pass
                 

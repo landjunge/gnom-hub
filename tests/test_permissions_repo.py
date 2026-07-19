@@ -3,7 +3,11 @@
 Schließt die Phantom-Tabelle: security_permissions war im Schema definiert aber
 hatte keinen Code-Pfad der je hinein schrieb. SecurityAG's Kernrolle
 "Verzeichnisse/Dateien freigeben" war damit funktionslos.
+
+Enforcement: path_validator._safe + check_permission (directory Prefix-Match).
 """
+import os
+
 import pytest
 
 from gnom_hub.db import (
@@ -95,6 +99,107 @@ class TestPermissionsRepo:
             expires_at="2020-01-01T00:00:00Z",
         )
         assert check_permission("CoderAG", "/old") is False
+
+    def test_directory_grant_matches_child_path(self, tmp_path, monkeypatch):
+        """Directory-Grant auf /proj erlaubt /proj/src/foo.py (Prefix-Match)."""
+        monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
+        from gnom_hub.core.config import Config
+        Config.DB_PATH = str(tmp_path / "test.db")
+        from gnom_hub.db.schema import create_tables
+        create_tables()
+        root = tmp_path / "proj"
+        child = root / "src" / "foo.py"
+        root.mkdir()
+        (root / "src").mkdir()
+        child.write_text("x")
+        grant_permission("directory", str(root), "CoderAG", reason="prefix-test")
+        assert check_permission("CoderAG", str(child)) is True
+        assert check_permission("CoderAG", str(root)) is True
+        # Sibling außerhalb des Grants
+        other = tmp_path / "other" / "x.py"
+        other.parent.mkdir()
+        other.write_text("y")
+        assert check_permission("CoderAG", str(other)) is False
+
+
+# ── _safe Enforcement ───────────────────────────────────────────────────
+
+
+class TestSafeGrantEnforcement:
+    """path_validator._safe + security_permissions: outside-workspace nur mit Grant/godmode."""
+
+    def test_outside_workspace_blocked_without_grant(self, tmp_path, monkeypatch):
+        ws = tmp_path / "workspace"
+        ws.mkdir()
+        outside = tmp_path / "outside" / "secret.py"
+        outside.parent.mkdir()
+        outside.write_text("nope")
+
+        import gnom_hub.core.config as cfg
+        import gnom_hub.core.security.path_validator as pv
+        monkeypatch.setattr(cfg, "WORKSPACE_DIR", ws)
+        monkeypatch.setattr(pv, "WORKSPACE_DIR", ws)
+
+        # Non-empty write perms — früher truthy-Bug, jetzt blocken
+        result = pv._safe(str(ws), str(outside), perms=["read", "write"], agent_name="CoderAG")
+        assert result is None
+
+    def test_outside_workspace_allowed_with_grant(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
+        from gnom_hub.core.config import Config
+        Config.DB_PATH = str(tmp_path / "test.db")
+        from gnom_hub.db.schema import create_tables
+        create_tables()
+
+        ws = tmp_path / "workspace"
+        ws.mkdir()
+        outside_dir = tmp_path / "allowed"
+        outside_dir.mkdir()
+        target = outside_dir / "app.py"
+        target.write_text("ok")
+        grant_permission("directory", str(outside_dir), "CoderAG", reason="enforcement-test")
+
+        import gnom_hub.core.config as cfg
+        import gnom_hub.core.security.path_validator as pv
+        monkeypatch.setattr(cfg, "WORKSPACE_DIR", ws)
+        monkeypatch.setattr(pv, "WORKSPACE_DIR", ws)
+
+        result = pv._safe(str(ws), str(target), perms=["read", "write"], agent_name="CoderAG")
+        assert result is not None
+        assert os.path.realpath(result) == os.path.realpath(str(target))
+
+    def test_godmode_allows_outside_without_grant(self, tmp_path, monkeypatch):
+        ws = tmp_path / "workspace"
+        ws.mkdir()
+        outside = tmp_path / "sec" / "x.py"
+        outside.parent.mkdir()
+        outside.write_text("sec")
+
+        import gnom_hub.core.config as cfg
+        import gnom_hub.core.security.path_validator as pv
+        monkeypatch.setattr(cfg, "WORKSPACE_DIR", ws)
+        monkeypatch.setattr(pv, "WORKSPACE_DIR", ws)
+
+        result = pv._safe(
+            str(ws), str(outside),
+            perms=["read", "write", "run", "godmode"],
+            agent_name="SecurityAG",
+        )
+        assert result is not None
+
+    def test_workspace_still_free_without_grant(self, tmp_path, monkeypatch):
+        ws = tmp_path / "workspace"
+        ws.mkdir()
+        target = ws / "notes.md"
+        target.write_text("ok")
+
+        import gnom_hub.core.config as cfg
+        import gnom_hub.core.security.path_validator as pv
+        monkeypatch.setattr(cfg, "WORKSPACE_DIR", ws)
+        monkeypatch.setattr(pv, "WORKSPACE_DIR", ws)
+
+        result = pv._safe(str(ws), "notes.md", perms=["read", "write"], agent_name="CoderAG")
+        assert result is not None
 
 
 # ── Action-Handler Tests ────────────────────────────────────────────────

@@ -49,6 +49,11 @@ startup_log.txt
 *.swo
 *~
 
+# Editor/session backup leftovers (never commit)
+*.bak
+*.bak-*
+**/*.bak-*
+
 # Database & Archives
 *.db
 *.zip

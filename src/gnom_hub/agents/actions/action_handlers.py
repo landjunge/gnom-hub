@@ -259,22 +259,10 @@ def process_actions(ans, agent, perms, bs_mode, wd):
             _audit_security(agent, perms, "crawl", url, "allowed")
         else:
             _audit_security(agent, perms, "crawl", url, "denied")
-    ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)
-    ans = handle_read(ans, r_ms, wd, perms)
-    ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
-    ans = handle_crawl(ans, crawl_matches_pre, agent, perms)
-    # ── Permission-Tag-Extraktion (SecurityAG Kernrolle 1+2) ──────────────
-    # Tag-Formate: [GRANT_PERM: agent=X path=Y ...], [REVOKE_PERM: ...], [LIST_PERMS: agent=X]
-    # Handler in action_exec.py — Permission-Check passiert dort (db_write erforderlich).
-    from .action_exec import handle_grant_perm, handle_list_perms, handle_revoke_perm
-    grant_ms = list(re.finditer(r"\[GRANT_PERM:\s*([^\]]+)\]", ans))
-    revoke_ms = list(re.finditer(r"\[REVOKE_PERM:\s*([^\]]+)\]", ans))
-    list_ms = list(re.finditer(r"\[LIST_PERMS:\s*([^\]]+)\]", ans))
-    ans = handle_grant_perm(ans, grant_ms, agent, perms)
-    ans = handle_revoke_perm(ans, revoke_ms, agent, perms)
-    ans = handle_list_perms(ans, list_ms, agent, perms)
-
-    # ── Showbox-Tag-Extraktion ─────────────────────────────────────────────
+    # ── Showbox-Tag-Extraktion (FIX C 2026-07-12: VOR handle_write verschoben) ─
+    # Vorher lief handle_write zuerst → wenn [WRITE: <bad-filename>] Müll
+    # produziert, wurde die Showbox nie persistiert. Nachher: Showbox wird
+    # IMMER zuerst gespeichert, dann erst handle_write ausgeführt.
     # Akzeptierte Tag-Formate (alle in EINER Liste, damit handle_showbox
     # die Reihenfolge der Agent-Ausgabe beibehält):
     #   1. <SHOWBOX[:name]>...</SHOWBOX>            — explizit
@@ -299,14 +287,38 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     # → Showbox / -> Showbox Format mit {json}-Body (PFLICHTFORMAT für Worker)
     # Body ist ein {...} JSON-Block; wir erlauben beliebige whitespace + newlines
     # zwischen Tag und Body. Group 1 = name, Group 2 = JSON-Payload.
+    # WICHTIG (Fix A, 2026-07-12): KEIN `$`-Anchor mehr — wenn das LLM nach dem
+    # `}` noch was auf der gleichen Zeile schreibt ("Done ✓", "Datei gespeichert")
+    # schlug der Match fehl und die Showbox wurde nicht persistiert. Reihenfolge
+    # ist nicht greedy → erstes `}` matched, alles dahinter wird ignoriert.
     for arrow in ("→", "->", "→", "->"):
         for m in re.finditer(
-            rf"\[\s*{re.escape(arrow)}\s*[Ss]howbox:\s*([^\]\n]{{1,40}})\]\s*\{{([\s\S]*?)\}}\s*$",
+            rf"\[\s*{re.escape(arrow)}\s*[Ss]howbox:\s*([^\]\n]{{1,40}})\]\s*\{{([\s\S]*?)\}}",
             ans,
-            re.MULTILINE,
         ):
             name = m.group(1).strip()
             payload = "{" + m.group(2) + "}"
+            show_ms.append((m.group(0), name, payload))
+    # → Showbox / -> Showbox Plain-Body-Pattern (Fix A, 2026-07-12) — analog zu
+    # chat_legacy.py:_ARROW_SHOWBOX_PLAIN_RE. Header-only / ASCII-Box ohne
+    # {...}-Body wird auch geparst (Plain-Text nach Header als Content).
+    for arrow in ("→", "->", "→", "->"):
+        for m in re.finditer(
+            rf"\[\s*{re.escape(arrow)}\s*[Ss]howbox:\s*([^\]\n]{{1,40}})\]\s*(.*)",
+            ans,
+            re.DOTALL,
+        ):
+            name = m.group(1).strip()
+            raw = m.group(2).strip()
+            if not raw:
+                # Header ohne Inhalt (Edge-Case) — als leere Slide speichern
+                payload = ""
+            elif raw.startswith("{"):
+                # Schon JSON-Body → nicht doppelt wrappen
+                payload = raw
+            else:
+                # Plain-Text-Body (ASCII-Box) → als einzelner Slide wrappen
+                payload = raw
             show_ms.append((m.group(0), name, payload))
     # Entferne Duplikate (gleicher Match kann über mehrere Regex-Pfade matchen)
     seen = set()
@@ -327,6 +339,20 @@ def process_actions(ans, agent, perms, bs_mode, wd):
         else:
             _audit_security(agent, perms, "showbox", pres_name, "denied")
     ans = handle_showbox(ans, show_ms, agent=agent, perms=perms)
+    ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)
+    ans = handle_read(ans, r_ms, wd, perms, agent=agent)
+    ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
+    ans = handle_crawl(ans, crawl_matches_pre, agent, perms)
+    # ── Permission-Tag-Extraktion (SecurityAG Kernrolle 1+2) ──────────────
+    # Tag-Formate: [GRANT_PERM: agent=X path=Y ...], [REVOKE_PERM: ...], [LIST_PERMS: agent=X]
+    # Handler in action_exec.py — Permission-Check passiert dort (db_write erforderlich).
+    from .action_exec import handle_grant_perm, handle_list_perms, handle_revoke_perm
+    grant_ms = list(re.finditer(r"\[GRANT_PERM:\s*([^\]]+)\]", ans))
+    revoke_ms = list(re.finditer(r"\[REVOKE_PERM:\s*([^\]]+)\]", ans))
+    list_ms = list(re.finditer(r"\[LIST_PERMS:\s*([^\]]+)\]", ans))
+    ans = handle_grant_perm(ans, grant_ms, agent, perms)
+    ans = handle_revoke_perm(ans, revoke_ms, agent, perms)
+    ans = handle_list_perms(ans, list_ms, agent, perms)
     ans = handle_desktop(ans, desktop_ms, agent, perms, wd)
     # ── Video-Tools ──
     sr_ms = list(re.finditer(r"\[VIDEO:SCREEN:\s*(.*?)\]", ans, re.DOTALL))

@@ -296,7 +296,8 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
     Risikobasierte Prüfung vor Schreibaktionen.
     - Benutzerregeln (whitelist/block) haben Vorfahrt
     - Workspace-Dateien → Auto-Approve
-    - System-Dateien (src/gnom_hub, config/, .env, ...) → Hard Block
+    - Außerhalb Workspace: nur godmode oder security_permissions-Grant
+    - System-Dateien (/etc, Hub-Source, …) → Hard Block
     - Hochriskante Code-Patterns → Hard Block
     - Mittelriskante Code-Patterns → Warning (log + allow)
     """
@@ -314,6 +315,20 @@ def verify_write(agent, fn, content, wd, perms) -> bool:
     if is_worker_blocked(agent, fn, wd, perms):
         log_blockade(name, "WRITE", fn, f"System-Pfad blockiert: {fn}", "blocked", "PathValidator")
         return False
+
+    # Außerhalb Workspace: Grant oder godmode nötig (enforced auch in _safe;
+    # hier früh ablehnen damit process_actions Gatekeeper-Meldung zeigt).
+    try:
+        from gnom_hub.core.security.path_validator import _safe
+        if _safe(wd, fn, perms, agent_name=name) is None:
+            log_blockade(
+                name, "WRITE", fn,
+                f"Außerhalb Workspace ohne Grant: {fn}",
+                "blocked", "PathValidator",
+            )
+            return False
+    except Exception:
+        pass
 
     sev = is_security_block(agent, fn, content, wd, perms)
     if sev == "high":
