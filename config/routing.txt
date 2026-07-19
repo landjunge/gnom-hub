@@ -3,20 +3,15 @@
 # =====================================================================
 # Format: agent_name = provider | model
 #
-# Kette pro Request: Provider → OpenRouter Free Models → Ollama (lokal)
-#
-# MiniMax = multimodal primary. Ein einziger sk-cp-… Key deckt
-#   Text + Vision + Image + Audio/TTS + Video + Music ab.
-#   Provider-Caps siehe src/gnom_hub/core/provider_registry.py &
-#   src/gnom_hub/infrastructure/llm/providers.py.
+# Alle Agents → OpenRouter FREE (openrouter/free = Auto-Free-Router).
+# Fallback: Config.OPENROUTER_FREE_MODELS → Ollama lokal.
 # =====================================================================
 
-# --- Alle auf MiniMax M3 (multimodal primary) ---
-coderag = minimax | MiniMax-M3
-securityag = minimax | MiniMax-M3
-researcherag = minimax | MiniMax-M3
-generalag = minimax | MiniMax-M3
-soulag = minimax | MiniMax-M3
-writerag = minimax | MiniMax-M3
-editorag = minimax | MiniMax-M3
-watchdogag = minimax | MiniMax-M3
+coderag = openrouter | openrouter/free
+securityag = openrouter | openrouter/free
+researcherag = openrouter | openrouter/free
+generalag = openrouter | openrouter/free
+soulag = openrouter | openrouter/free
+writerag = openrouter | openrouter/free
+editorag = openrouter | openrouter/free
+watchdogag = openrouter | openrouter/free
