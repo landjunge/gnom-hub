@@ -497,39 +497,98 @@ var GnomTS = (() => {
   }
 
   // src/chat_response.ts
+  function detailOf(res) {
+    var _a, _b;
+    const d = (_b = (_a = res.msg) != null ? _a : res.message) != null ? _b : res.error;
+    return d != null ? String(d).trim() : "";
+  }
+  function askedList(res) {
+    const a = res.asked;
+    if (Array.isArray(a)) return a.map(String).filter(Boolean);
+    if (typeof a === "string" && a.trim()) return [a.trim()];
+    return [];
+  }
   function formatChatResponseToast(res) {
     if (!res) {
       return { message: "Hub unreachable", type: "error" };
     }
-    if (res.status === "role_set") {
+    const status = String(res.status || "").toLowerCase();
+    const detail = detailOf(res);
+    if (status === "blocked") {
+      return {
+        message: `\u{1F6A8} ${detail || "Prompt blockiert"}`,
+        type: "error"
+      };
+    }
+    if (status === "error" || res.error && !status) {
+      return {
+        message: `\u26A0\uFE0F ${detail || String(res.error || "Fehler")}`,
+        type: "error"
+      };
+    }
+    if (status === "role_set") {
       return {
         message: `\u{1F451} ${res.agent || "?"} \u2192 ${res.role || "?"}`,
         type: "success"
       };
     }
-    if (res.status === "idea_saved") {
+    if (status === "idea_saved") {
       return { message: "\u{1F4A1} Idea saved", type: "success" };
     }
-    if (res.status === "job_created") {
-      const task = (res.task || "").substring(0, 60);
+    if (status === "job_created") {
+      const task = (res.task || "").toString().substring(0, 60);
+      const who = res.general || "?";
       return {
-        message: `\u{1F4CB} Job \u2192 ${res.general || "?"}: ${task}`,
+        message: task ? `\u{1F4CB} Job \u2192 ${who}: ${task}` : `\u{1F4CB} Job erstellt \u2192 ${who}`,
         type: "success"
       };
     }
-    if (res.msg) {
-      return { message: `\u26A0\uFE0F ${res.msg}`, type: "error" };
-    }
-    if (res.status === "cleared") {
+    if (status === "cleared" || status === "agents_cleared" || status === "project_cleared") {
       return { message: "\u{1F5D1} Chat cleared", type: "success" };
     }
-    if (res.status === "agents" && Array.isArray(res.agents)) {
-      const list = res.agents.map((a) => `${a.name || "?"}(${a.role || "?"})`).join(", ");
-      return { message: `\u{1F4CA} ${list}`, type: "info" };
+    if (status === "saved") {
+      if (detail) {
+        const soft = /busy|wartet|gespeichert/i.test(detail);
+        return {
+          message: soft ? `\u{1F4BE} ${detail}` : `\u{1F4BE} ${detail}`,
+          type: soft ? "info" : "success"
+        };
+      }
+      return { message: "\u{1F4BE} Gespeichert", type: "success" };
     }
-    const target = res.target ? `\u2192 ${res.target}` : `\u2192 ${(res.asked || []).join(", ") || "nobody"}`;
-    const icon = res.mode === "brainstorm" ? "\u{1F9E0}" : res.mode === "research" ? "\u{1F50D}" : "\u{1F4AC}";
-    return { message: `${icon} ${target}`, type: "success" };
+    if (status === "workflow_started") {
+      const steps = res.steps != null ? String(res.steps) : "?";
+      const id = typeof res.workflow_id === "string" ? res.workflow_id.slice(0, 8) : "";
+      return {
+        message: id ? `\u{1F504} Workflow gestartet (${steps} Steps, ${id}\u2026)` : `\u{1F504} Workflow gestartet (${steps} Steps)`,
+        type: "success"
+      };
+    }
+    if (status === "ok") {
+      return {
+        message: detail ? `\u2705 ${detail}` : "\u2705 OK",
+        type: "success"
+      };
+    }
+    if (status === "agents" || Array.isArray(res.agents) && !status && !res.mode) {
+      const list = (res.agents || []).map((a) => {
+        const st = a.st ? `/${a.st}` : "";
+        return `${a.name || "?"}(${a.role || "?"}${st})`;
+      }).join(", ");
+      return { message: `\u{1F4CA} ${list || "(keine Agenten)"}`, type: "info" };
+    }
+    const asked = askedList(res);
+    if (status === "dispatched" || status === "chat" || asked.length > 0 || res.target || res.mode) {
+      const target = res.target ? `\u2192 ${res.target}` : `\u2192 ${asked.join(", ") || "nobody"}`;
+      const icon = res.mode === "brainstorm" ? "\u{1F9E0}" : res.mode === "research" ? "\u{1F50D}" : res.mode === "worker" ? "\u{1F477}" : "\u{1F4AC}";
+      if (status === "dispatched" || asked.length || res.target || res.mode) {
+        return { message: `${icon} ${target}`, type: "success" };
+      }
+    }
+    if (detail) {
+      return { message: `\u2139\uFE0F ${detail}`, type: "info" };
+    }
+    return { message: "\u{1F4AC} OK", type: "success" };
   }
 
   // src/chat_content.ts
@@ -606,7 +665,7 @@ var GnomTS = (() => {
 
   // src/index.ts
   var GnomTS = {
-    version: "0.3.0",
+    version: "0.3.1",
     FROZEN_AGENTS,
     SYSTEM_AGENTS,
     WORKER_AGENTS,

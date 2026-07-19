@@ -175,6 +175,27 @@ test('formatChatResponseToast', () => {
   assert.equal(api.formatChatResponseToast(null).type, 'error');
   assert.match(api.formatChatResponseToast({ status: 'role_set', agent: 'A', role: 'r' }).message, /👑/);
   assert.match(api.formatChatResponseToast({ mode: 'brainstorm', asked: ['CoderAG'] }).message, /🧠/);
+  // status:error uses message field (backend shape) — must be error, not fake success
+  const err = api.formatChatResponseToast({ status: 'error', message: 'Empty content' });
+  assert.equal(err.type, 'error');
+  assert.match(err.message, /Empty content/);
+  // saved + msg = soft info (DB busy path), not hard error
+  const soft = api.formatChatResponseToast({
+    status: 'saved',
+    msg: 'Nachricht gespeichert, Dispatch wartet (DB busy)',
+  });
+  assert.equal(soft.type, 'info');
+  // @@status legacy: agents array without status
+  const st = api.formatChatResponseToast({
+    agents: [{ name: 'CoderAG', role: 'coder', st: 'online' }],
+  });
+  assert.equal(st.type, 'info');
+  assert.match(st.message, /CoderAG/);
+  // merken success
+  const mer = api.formatChatResponseToast({ status: 'saved', message: 'my fact' });
+  assert.equal(mer.type, 'success');
+  // blocked
+  assert.equal(api.formatChatResponseToast({ status: 'blocked', msg: 'injection' }).type, 'error');
 });
 
 test('extractThoughtsAndClean + speech helpers', () => {

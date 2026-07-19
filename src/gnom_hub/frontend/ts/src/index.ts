@@ -101,7 +101,7 @@ export {
 };
 
 const GnomTS = {
-  version: "0.3.0",
+  version: "0.3.1",
   FROZEN_AGENTS,
   SYSTEM_AGENTS,
   WORKER_AGENTS,

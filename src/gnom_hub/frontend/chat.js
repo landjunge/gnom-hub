@@ -517,25 +517,34 @@ async function sendChat() {
   }
 
   document.getElementById('ac-dropdown')?.classList.remove('show');
-  const res = await api('POST', '/chat', { content: msg });
+  // api() throws on network/HTTP errors (GnomTS apiRequest) — must catch
+  let res = null;
+  try {
+    res = await api('POST', '/chat', { content: msg });
+  } catch (e) {
+    const em = (e && e.message) ? String(e.message) : 'Hub unreachable';
+    toast('⚠️ ' + em.slice(0, 160), 'error');
+    return;
+  }
   if (window.GnomTS && typeof window.GnomTS.formatChatResponseToast === 'function') {
     const t = window.GnomTS.formatChatResponseToast(res);
     toast(t.message, t.type);
-    if (res) {
-      refreshChat();
-      if (typeof loadAgents === 'function') loadAgents();
-      updateProjectIndicator();
-    }
+    refreshChat();
+    if (typeof loadAgents === 'function') loadAgents();
+    updateProjectIndicator();
     return;
   }
   if (res) {
     if (res.status === 'role_set') toast(`👑 ${res.agent} → ${res.role}`, 'success');
     else if (res.status === 'idea_saved') toast('💡 Idea saved', 'success');
     else if (res.status === 'job_created') toast(`📋 Job → ${res.general}: ${res.task?.substring(0, 60)}`, 'success');
+    else if (res.status === 'error' || res.status === 'blocked') toast(`⚠️ ${res.msg || res.message || 'Fehler'}`, 'error');
+    else if (res.status === 'saved') toast(res.msg || res.message ? `💾 ${res.msg || res.message}` : '💾 Gespeichert', res.msg ? 'info' : 'success');
     else if (res.msg) toast(`⚠️ ${res.msg}`, 'error');
     else if (res.status === 'cleared') toast('🗑 Chat cleared', 'success');
-    else if (res.status === 'agents') toast(`📊 ${res.agents.map(a => a.name + '(' + a.role + ')').join(', ')}`, 'info');
-    else {
+    else if (res.status === 'agents' || (Array.isArray(res.agents) && !res.mode)) {
+      toast(`📊 ${res.agents.map(a => a.name + '(' + a.role + ')').join(', ')}`, 'info');
+    } else {
       const target = res.target ? `→ ${res.target}` : `→ ${(res.asked || []).join(', ') || 'nobody'}`;
       toast(`${res.mode === 'brainstorm' ? '🧠' : res.mode === 'research' ? '🔍' : '💬'} ${target}`, 'success');
     }
@@ -934,7 +943,13 @@ if (typeof window !== 'undefined') {
 async function refreshChat() {
   const el = document.getElementById('chat-display');
   if (!el) return;
-  const msgs = await api('GET', '/chat?limit=20');
+  let msgs;
+  try {
+    msgs = await api('GET', '/chat?limit=20');
+  } catch (e) {
+    console.error('refreshChat failed:', e);
+    return;
+  }
 
   const dataStr = JSON.stringify(msgs || []);
   if (window._lastChatData === dataStr) return;
