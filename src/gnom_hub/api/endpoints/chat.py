@@ -1,3 +1,13 @@
+"""DEAD / NOT MOUNTED — do not use for product chat.
+
+Live chat API is ``chat_legacy``:
+  POST /api/chat, GET /api/chat, GET /api/chat/stream
+(see ``api/endpoints/router.py`` include list).
+
+This module is an old brainstorm/orchestrator stub (prefix ``/chat``) and is
+intentionally not registered. Kept only until S4 cleanup removes callers/tests.
+"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
