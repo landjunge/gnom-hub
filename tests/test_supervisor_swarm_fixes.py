@@ -83,3 +83,16 @@ def test_flock_helper_works():
     with cross_process_write_lock(timeout_s=1.0):
         x = 1
     assert x == 1
+
+
+def test_slice_text_for_mention_isolates_agents():
+    from gnom_hub.agents.swarm.swarm_comms import _slice_text_for_mention
+    text = (
+        "@ResearcherAG Lies README.\n"
+        "@CoderAG Baue v1.html aus README.\n"
+        "@WriterAG Baue overview.html\n"
+    )
+    c = _slice_text_for_mention(text, "CoderAG")
+    assert "Baue v1" in c
+    assert "@ResearcherAG" not in c
+    assert "@WriterAG" not in c

@@ -311,6 +311,34 @@ def notify_agent(agent_name: str) -> None:
         evt.set()
 
 
+def _slice_text_for_mention(text: str, mention: str) -> str:
+    """Focus multi-@ blasts so each worker only gets *their* task slice.
+
+    GeneralAG often writes one big plan with @ResearcherAG … @CoderAG … and
+    previously every worker received the full plan → wait-for-each-other stalls
+    (SUPERVISOR-R2). Prefer the segment starting at @Agent until the next @Agent.
+    """
+    clean = text or ""
+    matches = list(re.finditer(r"@(\w+)", clean))
+    if not matches:
+        return clean
+    mention_l = mention.lower()
+    for i, m in enumerate(matches):
+        if m.group(1).lower() != mention_l:
+            continue
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(clean)
+        slice_ = clean[start:end].strip()
+        # Drop other @mentions that might remain at edges
+        if len(slice_) >= 20:
+            return slice_
+    # Fallback: single-line containing @mention
+    for line in clean.splitlines():
+        if re.search(rf"@{re.escape(mention)}\b", line, re.I):
+            return line.strip()
+    return clean
+
+
 def dispatch_mention(
     sender: str,
     text: str,
@@ -398,6 +426,7 @@ def dispatch_mention(
                         if prio_val is None:
                             prio_val = 7 if active_count >= MAX_CONCURRENT else 5
 
+                    agent_text = _slice_text_for_mention(clean_text, mention)
                     conn.execute(
                         """
                         INSERT INTO agent_messages
@@ -408,7 +437,7 @@ def dispatch_mention(
                         (
                             sender,
                             tgt_name,
-                            json.dumps({"text": text, "mention": mention}),
+                            json.dumps({"text": agent_text, "mention": mention}),
                             prio_val,
                             time.time(),
                             0.0,
