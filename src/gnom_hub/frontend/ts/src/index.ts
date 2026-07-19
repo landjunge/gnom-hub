@@ -34,6 +34,7 @@ import {
   formatQueueLine,
   formatLeases,
   formatLastError,
+  formatLlmLine,
   formatStatsPanel,
 } from "./stats";
 import { escapeHtml } from "./security";
@@ -82,6 +83,7 @@ export {
   formatQueueLine,
   formatLeases,
   formatLastError,
+  formatLlmLine,
   formatStatsPanel,
   escapeHtml,
   CHAT_HISTORY_KEY,
@@ -101,7 +103,7 @@ export {
 };
 
 const GnomTS = {
-  version: "0.3.1",
+  version: "0.3.2",
   FROZEN_AGENTS,
   SYSTEM_AGENTS,
   WORKER_AGENTS,
@@ -127,6 +129,7 @@ const GnomTS = {
   formatQueueLine,
   formatLeases,
   formatLastError,
+  formatLlmLine,
   formatStatsPanel,
   escapeHtml,
   CHAT_HISTORY_KEY,

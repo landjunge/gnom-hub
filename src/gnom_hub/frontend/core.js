@@ -860,6 +860,11 @@ async function updateStats() {
       document.getElementById('s-lasterr').textContent = panel.lastErr;
       document.getElementById('s-lasterr').title = panel.lastErrTitle;
     }
+    const elLlm = document.getElementById('s-llm');
+    if (elLlm) {
+      elLlm.textContent = panel.llm || '—';
+      elLlm.title = panel.llmTitle || '';
+    }
     return;
   }
 
@@ -894,6 +899,19 @@ async function updateStats() {
       document.getElementById('s-lasterr').title = JSON.stringify(e);
     } else {
       document.getElementById('s-lasterr').textContent = '—';
+    }
+  }
+  const elLlm = document.getElementById('s-llm');
+  if (elLlm) {
+    if (window.GnomTS && typeof window.GnomTS.formatLlmLine === 'function') {
+      const llmFmt = window.GnomTS.formatLlmLine(s.llm);
+      elLlm.textContent = llmFmt.text;
+      elLlm.title = llmFmt.title;
+    } else if (s.llm && s.llm.summary) {
+      elLlm.textContent = s.llm.summary;
+      elLlm.title = JSON.stringify(s.llm.agents || {}, null, 0);
+    } else {
+      elLlm.textContent = '—';
     }
   }
 }

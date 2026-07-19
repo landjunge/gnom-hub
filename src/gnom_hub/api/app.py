@@ -13,20 +13,34 @@ from gnom_hub.infrastructure.process.process_manager import kill_background_agen
 
 
 async def start_openrouter_updater():
+    """Ping free models, cool down 404s, auto-repair dead agent primaries.
+
+    Runs once shortly after startup, then every 30 minutes. Was disabled under
+    an old MiniMax-only mandate — free OpenRouter routing needs this probe.
+    """
     import asyncio
+    # let hub finish boot / keys load
+    await asyncio.sleep(8)
     while True:
         try:
             from gnom_hub.api.endpoints.llm_models import check_and_update_models
-            print("Running scheduled free-model check (OpenRouter + OpenCode-Zen)...")
-            await check_and_update_models()
-            print("Scheduled model check complete.")
+            print("Running free-model probe (OpenRouter)…")
+            result = await check_and_update_models()
+            if isinstance(result, dict):
+                print(
+                    f"Model probe: working={len(result.get('working') or [])} "
+                    f"failed={len(result.get('failed') or [])} "
+                    f"repaired={result.get('repaired_agents') or []} "
+                    f"active={result.get('active_summary')!r}"
+                )
+            else:
+                print(f"Model probe complete ({len(result) if result else 0} models).")
         except asyncio.CancelledError:
             print("Model updater cancelled.")
             break
         except Exception as e:
             print(f"Error in background model updater: {e}")
-        # Stündlich aktualisieren
-        await asyncio.sleep(3600)
+        await asyncio.sleep(1800)  # 30 min
 
 
 async def start_invalid_keys_reverifier():
@@ -329,14 +343,15 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     from gnom_hub.core.config import DB_PATH
-    # User-Mandat 2026-06-28 06:34 — OpenRouter-Updater RAUS.
-    # (Vorher: updater_task = asyncio.create_task(start_openrouter_updater()))
-    # Wir nutzen NUR MiniMax, kein 401-Spam alle 60min.
+    # Free-model probe: detect permanent 404s (e.g. llama-3.3:free), repair
+    # llm_agents primaries, expose status in /api/stats → sidebar "LLM:".
+    updater_task = asyncio.create_task(start_openrouter_updater())
     recovery_task = asyncio.create_task(start_recovery_and_watchdog_loop(DB_PATH))
     reverify_task = asyncio.create_task(start_invalid_keys_reverifier())
 
     yield
 
+    updater_task.cancel()
     recovery_task.cancel()
     reverify_task.cancel()
     kill_background_agents()

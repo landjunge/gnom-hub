@@ -115,6 +115,20 @@ def get_system_stats():
                 }
     except Exception:
         pass
+
+    # Active LLM routing (for sidebar / ops panel)
+    llm = {
+        "summary": "—",
+        "agents": {},
+        "working": [],
+        "probe": {},
+    }
+    try:
+        from gnom_hub.api.endpoints.llm_models import get_active_llm_status
+        llm = get_active_llm_status()
+    except Exception:
+        pass
+
     return {
         "agents": len(ags),
         "sys_agents": sa,
@@ -127,4 +141,5 @@ def get_system_stats():
         "queue": queue,
         "leases": leases,
         "last_error": last_error,
+        "llm": llm,
     }

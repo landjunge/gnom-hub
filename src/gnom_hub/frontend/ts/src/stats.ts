@@ -14,6 +14,8 @@ export interface StatsPanelStrings {
   leasesTitle: string;
   lastErr: string;
   lastErrTitle: string;
+  llm: string;
+  llmTitle: string;
 }
 
 export interface QueueShape {
@@ -99,6 +101,51 @@ export function formatLastError(
   return { text: text || "—", title };
 }
 
+/** Sidebar LLM line: active routing + probe tooltip. */
+export function formatLlmLine(
+  llm: HubStats["llm"] | null | undefined,
+): { text: string; title: string } {
+  if (!llm || typeof llm !== "object") {
+    return { text: "—", title: "Kein LLM-Status (Probe noch nicht gelaufen?)" };
+  }
+  const text = (llm.summary || "—").trim() || "—";
+  const lines: string[] = ["Aktive Agent-LLMs:"];
+  const agents = llm.agents || {};
+  const names = Object.keys(agents).sort();
+  if (names.length) {
+    for (const n of names) {
+      const a = agents[n] || {};
+      lines.push(`  ${n}: ${a.provider || "?"} / ${a.model || "?"}`);
+    }
+  } else {
+    lines.push("  (keine llm_agents Map)");
+  }
+  const working = llm.working || [];
+  if (working.length) {
+    lines.push("", "Working free models:", "  " + working.slice(0, 8).join(", "));
+  }
+  const probe = llm.probe || {};
+  if (probe.ts_iso || probe.ts) {
+    lines.push("", `Letzter Probe: ${probe.ts_iso || probe.ts}`);
+  }
+  const failed = Array.isArray(probe.failed) ? probe.failed : [];
+  if (failed.length) {
+    lines.push(
+      "Failed:",
+      ...failed
+        .slice(0, 8)
+        .map((f) => `  ${f?.model || "?"} → ${f?.status ?? "?"}`),
+    );
+  }
+  const repaired = Array.isArray(probe.repaired_agents)
+    ? probe.repaired_agents
+    : [];
+  if (repaired.length) {
+    lines.push("Auto-repair: " + repaired.join(", "));
+  }
+  return { text, title: lines.join("\n") };
+}
+
 /** Full panel payload for core.js updateStats. */
 export function formatStatsPanel(
   stats: HubStats,
@@ -109,6 +156,7 @@ export function formatStatsPanel(
   const lastErr = (stats as HubStats & { last_error?: LastErrorShape }).last_error;
   const leaseFmt = formatLeases(leases);
   const errFmt = formatLastError(lastErr);
+  const llmFmt = formatLlmLine(stats.llm);
   return {
     agents: formatAgentsLine(stats, agentList),
     memory: stats.memory ?? 0,
@@ -118,5 +166,7 @@ export function formatStatsPanel(
     leasesTitle: leaseFmt.title,
     lastErr: errFmt.text,
     lastErrTitle: errFmt.title,
+    llm: llmFmt.text,
+    llmTitle: llmFmt.title,
   };
 }

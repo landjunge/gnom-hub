@@ -2826,6 +2826,10 @@
           <span style="font-weight: 100 !important;">Last err:</span>
           <span id="s-lasterr" style="font-weight: 100 !important; color: rgba(255,180,100,0.95); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span>
         </div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; font-weight: 100 !important; gap: 6px;" title="Active LLM routing (from llm_agents + last free-model probe)">
+          <span style="font-weight: 100 !important; flex-shrink: 0;">LLM:</span>
+          <span id="s-llm" style="font-weight: 100 !important; color: rgba(120,220,255,0.95); max-width: 130px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">—</span>
+        </div>
       </div>
 
       <!-- Sidebar-Placeholder 2 — 12px Atemraum (Worker-Sektion Tokens→Agents) -->
@@ -2910,8 +2914,8 @@
     </div>
   </div>
 
-  <script src="/static/gnom-ts.js?v=4"></script>
-  <script src="/static/core.js?v=25"></script>
+  <script src="/static/gnom-ts.js?v=5"></script>
+  <script src="/static/core.js?v=26"></script>
   <script src="/static/system_dashboard.js?v=23"></script>
   <script src="/static/worker_dashboard.js?v=23"></script>
   <script src="/static/worker_sidebar.js?v=23"></script>

@@ -55,15 +55,60 @@ async def check_opencode_zen_models():
     return working
 
 
-async def check_and_update_models():
-    """Fetches free OpenRouter models, pings a few, caches working slugs.
+def _repair_dead_agent_primaries(repo: SQLiteStateRepository, working: list[str]) -> list[str]:
+    """If an agent primary model is known-dead, repoint to first working free slug.
 
-    Runtime rotation (openrouter_free) still tries Config.OPENROUTER_FREE_MODELS
-    on every request; this background job keeps ``openrouter_working_models``
-    fresh so successful free models are preferred first.
+    Returns list of agent names that were repaired.
     """
+    if not working:
+        return []
+    preferred = working[0]
+    agents = repo.get_value("llm_agents") or {}
+    if not isinstance(agents, dict):
+        return []
+    repaired: list[str] = []
+    working_set = set(working)
+    for name, cfg in list(agents.items()):
+        if not isinstance(cfg, dict):
+            continue
+        pvd = (cfg.get("provider") or "").lower()
+        mdl = cfg.get("model") or ""
+        if pvd not in ("openrouter", "auto", ""):
+            continue
+        # openrouter/free is always allowed even if not yet in working list
+        if mdl in working_set or mdl == "openrouter/free":
+            continue
+        # dead primary (e.g. llama-3.3:free permanent 404)
+        agents[name] = {**cfg, "provider": "openrouter", "model": preferred}
+        repaired.append(str(name))
+    if repaired:
+        try:
+            repo.set_value("llm_agents", agents)
+            logging.getLogger(__name__).warning(
+                "LLM probe repaired dead primaries → %s for agents: %s",
+                preferred,
+                ", ".join(repaired),
+            )
+        except Exception as e:
+            logging.getLogger(__name__).error("repair llm_agents failed: %s", e)
+            return []
+    return repaired
+
+
+async def check_and_update_models():
+    """Ping free OpenRouter models, cache working, repair dead agent primaries.
+
+    Writes:
+      - openrouter_working_models
+      - openrouter_failed_models (via mark_model_failed)
+      - llm_probe_status  (for UI /api/stats)
+      - llm_agents        (only when primary is dead and a working free model exists)
+    """
+    log = logging.getLogger(__name__)
     repo = SQLiteStateRepository()
     or_working: list[str] = []
+    or_failed: list[dict] = []
+    probed: list[str] = []
 
     # ── 1. OpenRouter free models ──────────────────────────────────────
     keys = (repo.get_value("llm_keys") or {}).values()
@@ -86,14 +131,15 @@ async def check_and_update_models():
                             if mid not in free_ids:
                                 free_ids.append(mid)
         except Exception as e:
-            logging.getLogger(__name__).debug("openrouter model list fetch: %s", e)
+            log.debug("openrouter model list fetch: %s", e)
 
         # Prefer curated list first, then discovered free slugs (cap pings)
-        to_ping = []
+        to_ping: list[str] = []
         for mid in free_ids:
             if mid not in to_ping:
                 to_ping.append(mid)
         to_ping = to_ping[:12]
+        probed = list(to_ping)
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -116,8 +162,31 @@ async def check_and_update_models():
                     )
                     if r.status_code == 200:
                         or_working.append(model)
-                except Exception:
-                    pass
+                        try:
+                            from gnom_hub.infrastructure.router.openrouter_free import (
+                                mark_model_success,
+                            )
+                            mark_model_success(model, repo=repo)
+                        except Exception:
+                            pass
+                    else:
+                        or_failed.append({"model": model, "status": r.status_code})
+                        try:
+                            from gnom_hub.infrastructure.router.openrouter_free import (
+                                mark_model_failed,
+                            )
+                            mark_model_failed(model, repo=repo)
+                        except Exception:
+                            pass
+                except Exception as e:
+                    or_failed.append({"model": model, "status": 0, "error": str(e)[:80]})
+                    try:
+                        from gnom_hub.infrastructure.router.openrouter_free import (
+                            mark_model_failed,
+                        )
+                        mark_model_failed(model, repo=repo)
+                    except Exception:
+                        pass
                 if "pytest" not in sys.modules:
                     await asyncio.sleep(0.35)
 
@@ -125,17 +194,99 @@ async def check_and_update_models():
             try:
                 repo.set_value("openrouter_working_models", or_working)
             except Exception as e:
-                logging.getLogger(__name__).error("save openrouter_working_models: %s", e)
+                log.error("save openrouter_working_models: %s", e)
         else:
             # keep previous cache if all pings failed (rate limits)
             or_working = list(repo.get_value("openrouter_working_models") or []) or list(
                 Config.OPENROUTER_FREE_MODELS
             )
+    else:
+        log.warning("LLM probe skipped: no valid OpenRouter key")
 
     # ── 2. OpenCode-Zen models ──
     zen_working = await check_opencode_zen_models()
 
-    return or_working + zen_working
+    # ── 3. Auto-repair dead agent primaries ──
+    repaired = _repair_dead_agent_primaries(repo, or_working)
+
+    # ── 4. Persist probe status for UI ──
+    agents_map = repo.get_value("llm_agents") or {}
+    active_summary = _summarize_agent_llms(agents_map)
+    probe = {
+        "ts": time.time(),
+        "ts_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "probed": probed,
+        "working": list(or_working),
+        "failed": or_failed,
+        "repaired_agents": repaired,
+        "active_summary": active_summary,
+        "agents": {
+            str(k).lower(): {
+                "provider": (v or {}).get("provider") if isinstance(v, dict) else None,
+                "model": (v or {}).get("model") if isinstance(v, dict) else None,
+            }
+            for k, v in (agents_map.items() if isinstance(agents_map, dict) else [])
+        },
+    }
+    try:
+        repo.set_value("llm_probe_status", probe)
+    except Exception as e:
+        log.error("save llm_probe_status: %s", e)
+
+    log.info(
+        "LLM probe done: working=%d failed=%d repaired=%d summary=%s",
+        len(or_working),
+        len(or_failed),
+        len(repaired),
+        active_summary,
+    )
+    return {
+        "working": or_working + zen_working,
+        "failed": or_failed,
+        "repaired_agents": repaired,
+        "active_summary": active_summary,
+        "probe": probe,
+    }
+
+
+def _summarize_agent_llms(agents_map: dict) -> str:
+    """e.g. 'openrouter/free ×8' or 'openrouter/free ×6, tencent/hy3:free ×2'."""
+    if not isinstance(agents_map, dict) or not agents_map:
+        return "—"
+    counts: dict[str, int] = {}
+    for cfg in agents_map.values():
+        if not isinstance(cfg, dict):
+            continue
+        p = cfg.get("provider") or "?"
+        m = cfg.get("model") or "?"
+        # short model tail for display
+        short = m if len(m) <= 36 else ("…" + m[-32:])
+        key = f"{p}/{short}"
+        counts[key] = counts.get(key, 0) + 1
+    if not counts:
+        return "—"
+    parts = [f"{k} ×{n}" if n > 1 else k for k, n in sorted(counts.items(), key=lambda x: -x[1])]
+    return ", ".join(parts[:4])
+
+
+def get_active_llm_status() -> dict:
+    """Snapshot for /api/stats and UI — no network."""
+    repo = SQLiteStateRepository()
+    agents_map = repo.get_value("llm_agents") or {}
+    probe = repo.get_value("llm_probe_status") or {}
+    working = repo.get_value("openrouter_working_models") or list(Config.OPENROUTER_FREE_MODELS)
+    return {
+        "summary": _summarize_agent_llms(agents_map if isinstance(agents_map, dict) else {}),
+        "agents": {
+            str(k).lower(): {
+                "provider": (v or {}).get("provider") if isinstance(v, dict) else None,
+                "model": (v or {}).get("model") if isinstance(v, dict) else None,
+            }
+            for k, v in (agents_map.items() if isinstance(agents_map, dict) else [])
+        },
+        "working": working if isinstance(working, list) else [],
+        "probe": probe if isinstance(probe, dict) else {},
+    }
 
 
 _cached_available_models = None
@@ -337,6 +488,15 @@ async def get_available_models():
 
 @router.post("/api/llm/check_free_models")
 async def check_free_models_endpoint():
-    """Testet alle OpenRouter Free-Modelle und gibt die funktionierenden zurück."""
-    working = await check_and_update_models()
-    return working
+    """Testet Free-Modelle, repariert tote Primaries, speichert Probe-Status."""
+    result = await check_and_update_models()
+    # Back-compat: older callers expected a plain list
+    if isinstance(result, dict):
+        return result
+    return {"working": result}
+
+
+@router.get("/api/llm/active")
+async def get_active_llm_endpoint():
+    """Aktive Agent-LLMs + letzter Probe (ohne Netzwerk)."""
+    return get_active_llm_status()

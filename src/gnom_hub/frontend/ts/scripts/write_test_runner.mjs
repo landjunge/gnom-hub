@@ -108,6 +108,12 @@ test('formatStatsPanel matches core UI strings', () => {
       queue: { pending: 3, processing: 1, dead_letter: 0 },
       leases: [{ id: 9, recipient: 'CoderAG' }],
       last_error: { status: 500, recipient: 'WriterAG' },
+      llm: {
+        summary: 'openrouter/free ×8',
+        agents: { generalag: { provider: 'openrouter', model: 'openrouter/free' } },
+        working: ['openrouter/free'],
+        probe: { ts_iso: '2026-07-19T00:00:00Z', failed: [] },
+      },
     },
     [],
   );
@@ -116,6 +122,8 @@ test('formatStatsPanel matches core UI strings', () => {
   assert.equal(panel.queue, '3/1/0');
   assert.equal(panel.leases, '1 CoderAG');
   assert.equal(panel.lastErr, '500 WriterAG');
+  assert.equal(panel.llm, 'openrouter/free ×8');
+  assert.match(panel.llmTitle, /generalag/);
 });
 
 test('apiRequest uses baseUrl + path', async () => {

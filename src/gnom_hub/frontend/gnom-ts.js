@@ -44,6 +44,7 @@ var GnomTS = (() => {
     formatChatResponseToast: () => formatChatResponseToast,
     formatLastError: () => formatLastError,
     formatLeases: () => formatLeases,
+    formatLlmLine: () => formatLlmLine,
     formatQueueLine: () => formatQueueLine,
     formatStatsPanel: () => formatStatsPanel,
     formatTokensLine: () => formatTokensLine,
@@ -369,6 +370,46 @@ var GnomTS = (() => {
     }
     return { text: text || "\u2014", title };
   }
+  function formatLlmLine(llm) {
+    if (!llm || typeof llm !== "object") {
+      return { text: "\u2014", title: "Kein LLM-Status (Probe noch nicht gelaufen?)" };
+    }
+    const text = (llm.summary || "\u2014").trim() || "\u2014";
+    const lines = ["Aktive Agent-LLMs:"];
+    const agents = llm.agents || {};
+    const names = Object.keys(agents).sort();
+    if (names.length) {
+      for (const n of names) {
+        const a = agents[n] || {};
+        lines.push(`  ${n}: ${a.provider || "?"} / ${a.model || "?"}`);
+      }
+    } else {
+      lines.push("  (keine llm_agents Map)");
+    }
+    const working = llm.working || [];
+    if (working.length) {
+      lines.push("", "Working free models:", "  " + working.slice(0, 8).join(", "));
+    }
+    const probe = llm.probe || {};
+    if (probe.ts_iso || probe.ts) {
+      lines.push("", `Letzter Probe: ${probe.ts_iso || probe.ts}`);
+    }
+    const failed = Array.isArray(probe.failed) ? probe.failed : [];
+    if (failed.length) {
+      lines.push(
+        "Failed:",
+        ...failed.slice(0, 8).map((f) => {
+          var _a;
+          return `  ${(f == null ? void 0 : f.model) || "?"} \u2192 ${(_a = f == null ? void 0 : f.status) != null ? _a : "?"}`;
+        })
+      );
+    }
+    const repaired = Array.isArray(probe.repaired_agents) ? probe.repaired_agents : [];
+    if (repaired.length) {
+      lines.push("Auto-repair: " + repaired.join(", "));
+    }
+    return { text, title: lines.join("\n") };
+  }
   function formatStatsPanel(stats, agentList = []) {
     var _a;
     const q = stats.queue;
@@ -376,6 +417,7 @@ var GnomTS = (() => {
     const lastErr = stats.last_error;
     const leaseFmt = formatLeases(leases);
     const errFmt = formatLastError(lastErr);
+    const llmFmt = formatLlmLine(stats.llm);
     return {
       agents: formatAgentsLine(stats, agentList),
       memory: (_a = stats.memory) != null ? _a : 0,
@@ -384,7 +426,9 @@ var GnomTS = (() => {
       leases: leaseFmt.text,
       leasesTitle: leaseFmt.title,
       lastErr: errFmt.text,
-      lastErrTitle: errFmt.title
+      lastErrTitle: errFmt.title,
+      llm: llmFmt.text,
+      llmTitle: llmFmt.title
     };
   }
 
@@ -665,7 +709,7 @@ var GnomTS = (() => {
 
   // src/index.ts
   var GnomTS = {
-    version: "0.3.1",
+    version: "0.3.2",
     FROZEN_AGENTS,
     SYSTEM_AGENTS,
     WORKER_AGENTS,
@@ -691,6 +735,7 @@ var GnomTS = (() => {
     formatQueueLine,
     formatLeases,
     formatLastError,
+    formatLlmLine,
     formatStatsPanel,
     escapeHtml,
     CHAT_HISTORY_KEY,

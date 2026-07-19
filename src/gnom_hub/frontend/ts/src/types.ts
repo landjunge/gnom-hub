@@ -37,6 +37,18 @@ export interface HubStats {
     recipient?: string;
     [key: string]: unknown;
   };
+  llm?: {
+    summary?: string;
+    agents?: Record<string, { provider?: string; model?: string }>;
+    working?: string[];
+    probe?: {
+      ts?: number;
+      ts_iso?: string;
+      failed?: Array<{ model?: string; status?: number }>;
+      repaired_agents?: string[];
+      [key: string]: unknown;
+    };
+  };
   [key: string]: unknown;
 }
 
