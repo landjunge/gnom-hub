@@ -4,16 +4,23 @@ import re as _re
 from gnom_hub.core.config import WORKSPACE_DIR
 
 
-def _in_workspace(path_real: str) -> bool:
-    """True wenn path_real im (oder gleich) WORKSPACE_DIR liegt (realpath).
+def _under_root(path_real: str, root) -> bool:
+    """True wenn path_real im (oder gleich) root liegt (realpath).
 
-    off-by-one-Schutz: Sibling-Dirs wie ``<workspace>-evil/`` matchen nicht.
+    off-by-one-Schutz: Sibling-Dirs wie ``<root>-evil/`` matchen nicht.
     """
-    try:
-        ws_real = os.path.realpath(str(WORKSPACE_DIR))
-    except (OSError, ValueError):
+    if not root:
         return False
-    return path_real == ws_real or path_real.startswith(ws_real + os.sep)
+    try:
+        root_real = os.path.realpath(str(root))
+    except (OSError, ValueError, TypeError):
+        return False
+    return path_real == root_real or path_real.startswith(root_real + os.sep)
+
+
+def _in_workspace(path_real: str) -> bool:
+    """True wenn path_real im (oder gleich) WORKSPACE_DIR liegt (realpath)."""
+    return _under_root(path_real, WORKSPACE_DIR)
 
 
 def _has_godmode(perms) -> bool:
@@ -37,28 +44,31 @@ def _safe(wd, f, perms, agent_name: str | None = None):
     """Prüft ob ein Pfad im erlaubten Bereich liegt. Gibt realpath oder None.
 
     Erlaubt wenn (in dieser Reihenfolge):
-    1. Pfad liegt im User-Workspace (Workspace-frei, Mandat 2026-07-02)
-    2. ``godmode`` in perms (SecurityAG-Notfall) bzw. legacy ``perms=True``
-    3. SecurityAG-Grant: ``check_permission(agent_name, path)`` —
+    1. Pfad liegt im User-Workspace (``WORKSPACE_DIR``, Mandat Workspace-frei)
+    2. Pfad liegt im Agent-Arbeitsverzeichnis ``wd`` (Projekt-Root; Hub setzt
+       das typisch auf ``~/gnom-Workspace/<project>`` — Tests nutzen tmp_path)
+    3. ``godmode`` in perms (SecurityAG-Notfall) bzw. legacy ``perms=True``
+    4. SecurityAG-Grant: ``check_permission(agent_name, path)`` —
        Directory-Grants matchen per Prefix, File-Grants exakt
 
-    Sonst: None (außerhalb Workspace ohne Grant).
+    Sonst: None (außerhalb erlaubter Roots ohne Grant).
 
     Früher: jede non-empty Permission-Liste erlaubte Escape aus dem Workspace
-    (truthy-bool-Bug). Jetzt: nur godmode oder explizite Freigabe.
+    (truthy-bool-Bug). Jetzt: nur godmode, Grant, oder explizite Roots.
     """
     try:
         p = _resolve_target(wd, f)
     except (OSError, ValueError, TypeError):
         return None
 
-    if _in_workspace(p):
+    # 1+2: erlaubte Schreib-Roots (Workspace global + aktuelles Agent-wd)
+    if _in_workspace(p) or _under_root(p, wd):
         return p
 
     if _has_godmode(perms):
         return p
 
-    # SecurityAG-Grant für diesen Agenten (outside workspace)
+    # SecurityAG-Grant für diesen Agenten (outside allowed roots)
     if agent_name:
         try:
             from gnom_hub.db.permissions_repo import check_permission
@@ -68,7 +78,6 @@ def _safe(wd, f, perms, agent_name: str | None = None):
             # DB down → fail closed for outside-workspace paths
             pass
 
-    # Legacy: perms=False / empty / no grant → block outside workspace
     return None
 
 

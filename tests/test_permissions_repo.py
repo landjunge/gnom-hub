@@ -140,9 +140,30 @@ class TestSafeGrantEnforcement:
         monkeypatch.setattr(cfg, "WORKSPACE_DIR", ws)
         monkeypatch.setattr(pv, "WORKSPACE_DIR", ws)
 
-        # Non-empty write perms — früher truthy-Bug, jetzt blocken
+        # Non-empty write perms — früher truthy-Bug, jetzt blocken.
+        # wd=ws (Agent-Root), Ziel außerhalb beider Roots → None.
         result = pv._safe(str(ws), str(outside), perms=["read", "write"], agent_name="CoderAG")
         assert result is None
+
+    def test_agent_wd_outside_global_workspace_still_allowed(self, tmp_path, monkeypatch):
+        """Relatives Write unter Agent-wd (Tests / Projekt-Root) ist erlaubt.
+
+        process_actions setzt wd auf das aktive Projekt (oder tmp_path in Tests).
+        Das muss auch greifen, wenn wd != WORKSPACE_DIR.
+        """
+        global_ws = tmp_path / "global_ws"
+        agent_wd = tmp_path / "agent_project"
+        global_ws.mkdir()
+        agent_wd.mkdir()
+
+        import gnom_hub.core.config as cfg
+        import gnom_hub.core.security.path_validator as pv
+        monkeypatch.setattr(cfg, "WORKSPACE_DIR", global_ws)
+        monkeypatch.setattr(pv, "WORKSPACE_DIR", global_ws)
+
+        result = pv._safe(str(agent_wd), "hello.txt", perms=["write"], agent_name="CoderAG")
+        assert result is not None
+        assert result.startswith(os.path.realpath(str(agent_wd)))
 
     def test_outside_workspace_allowed_with_grant(self, tmp_path, monkeypatch):
         monkeypatch.setenv("GNOM_HUB_DB", str(tmp_path / "test.db"))
