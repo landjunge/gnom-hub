@@ -237,8 +237,11 @@ class TestAllAgentsMatrix:
             assert cfg == de, f"{path.name}: {sorted(cfg)} != {sorted(de)}"
 
     def test_preset_permissions_json_matches_definitions(self):
+        """Local data/presets is gitignored — skip in CI when file is absent."""
         import json
         from pathlib import Path
+
+        import pytest
 
         from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
 
@@ -249,6 +252,8 @@ class TestAllAgentsMatrix:
             / "default"
             / "permissions.json"
         )
+        if not path.is_file():
+            pytest.skip("data/presets/default/permissions.json not in checkout (gitignored)")
         matrix = json.loads(path.read_text(encoding="utf-8"))["matrix"]
         for _key, defn in AGENT_DEFINITIONS.items():
             name = defn["name"]
