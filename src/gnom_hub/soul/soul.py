@@ -177,19 +177,13 @@ class SoulAG:
             threading.Thread(target=self._ex, args=(m, False), daemon=True).start()
 
     def _pulse_status(self):
-        try:
-            import os
+        """No-op pulse.
 
-            import requests
-            port = os.environ.get('GNOM_HUB_PORT', '3002')
-            requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=busy", timeout=2)
-            def _back():
-                import time; time.sleep(2)
-                try: requests.put(f"http://127.0.0.1:{port}/api/agents/SoulAG/status?status=online", timeout=2)
-                except: pass  # noqa: E722 — Best-Effort Status-Update, Hub läuft vielleicht noch nicht
-            threading.Thread(target=_back, daemon=True).start()
-        except:  # noqa: E722 — Best-Effort Status-Update, wir wollen SoulAG nicht crashen
-            pass
+        Previously: HTTP self-call or DB status writes on every user message.
+        That amplified SQLite lock storms and blocked chat. Status comes from
+        the agent process heartbeats instead.
+        """
+        return
 
     def _val(self, k: str, v: str) -> bool:
         k.lower()

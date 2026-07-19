@@ -335,85 +335,96 @@ def dispatch_mention(
         return []
 
     dispatched = []
-    conn = get_db_connection()
-
-    try:
-        # Online- UND Busy-Agenten laden (keine stille Verwerfung mehr!)
-        rows = conn.execute(
-            "SELECT name, status FROM agents WHERE status IN ('online', 'busy', 'running')"
-        ).fetchall()
-        agent_map = {r["name"].lower(): r["name"] for r in rows}
-
-        offline_agents = {
-            r["name"].lower()
-            for r in conn.execute(
-                "SELECT name FROM agents WHERE status NOT IN ('online', 'busy', 'running')"
+    last_err = None
+    for _attempt in range(4):
+        conn = get_db_connection()
+        try:
+            # Online- UND Busy-Agenten laden (keine stille Verwerfung mehr!)
+            rows = conn.execute(
+                "SELECT name, status FROM agents WHERE status IN ('online', 'busy', 'running')"
             ).fetchall()
-        }
+            agent_map = {r["name"].lower(): r["name"] for r in rows}
 
-        for mention in set(mentions):  # Deduplizieren
-            tgt_lower = mention.lower()
+            offline_agents = {
+                r["name"].lower()
+                for r in conn.execute(
+                    "SELECT name FROM agents WHERE status NOT IN ('online', 'busy', 'running')"
+                ).fetchall()
+            }
 
-            if tgt_lower == sender.lower():
-                continue  # Kein Self-Dispatch
+            for mention in set(mentions):  # Deduplizieren
+                tgt_lower = mention.lower()
 
-            if tgt_lower in offline_agents:
-                logger.info("Agent '%s' offline – Nachricht wird verworfen", mention)
-                continue
+                if tgt_lower == sender.lower():
+                    continue  # Kein Self-Dispatch
 
-            if tgt_lower not in agent_map:
-                logger.debug("Unbekannter Agent: @%s", mention)
-                continue
+                if tgt_lower in offline_agents:
+                    logger.info("Agent '%s' offline – Nachricht wird verworfen", mention)
+                    continue
 
-            tgt_name = agent_map[tgt_lower]
+                if tgt_lower not in agent_map:
+                    logger.debug("Unbekannter Agent: @%s", mention)
+                    continue
 
-            is_critical = (isinstance(priority, str) and priority.lower() == "critical") or priority == 0
+                tgt_name = agent_map[tgt_lower]
 
-            if not is_critical and not can_accept_message(tgt_name, conn):
-                continue
+                is_critical = (isinstance(priority, str) and priority.lower() == "critical") or priority == 0
 
-            if is_critical:
-                prio_val = 0
-            else:
-                active_count = conn.execute(
-                    "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
-                    (tgt_name,)
-                ).fetchone()[0]
-                prio_val = None
-                if priority is not None:
-                    if isinstance(priority, str):
-                        prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
-                    elif isinstance(priority, int):
-                        prio_val = priority
-                if prio_val is None:
-                    prio_val = 7 if active_count >= MAX_CONCURRENT else 5
+                if not is_critical and not can_accept_message(tgt_name, conn):
+                    continue
 
-            # Nachricht persistent speichern
-            conn.execute("""
-                INSERT INTO agent_messages
-                    (sender, recipient, payload, priority, created_at,
-                     deliver_after, context_id, depth, parent_msg_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                sender,
-                tgt_name,
-                json.dumps({"text": text, "mention": mention}),
-                prio_val,
-                time.time(),
-                0.0,           # sofort zustellbar
-                context_id,
-                current_depth,
-                parent_msg_id,
-            ))
-            conn.commit()
+                if is_critical:
+                    prio_val = 0
+                else:
+                    active_count = conn.execute(
+                        "SELECT COUNT(*) FROM agent_messages WHERE recipient = ? AND status = 'processing'",
+                        (tgt_name,)
+                    ).fetchone()[0]
+                    prio_val = None
+                    if priority is not None:
+                        if isinstance(priority, str):
+                            prio_val = PRIORITY_MAPPING.get(priority.lower(), 5)
+                        elif isinstance(priority, int):
+                            prio_val = priority
+                    if prio_val is None:
+                        prio_val = 7 if active_count >= MAX_CONCURRENT else 5
 
-            # Agenten aufwecken (falls er wartet)
-            notify_agent(tgt_name)
-            dispatched.append(tgt_name)
+                # Nachricht persistent speichern
+                conn.execute("""
+                    INSERT INTO agent_messages
+                        (sender, recipient, payload, priority, created_at,
+                         deliver_after, context_id, depth, parent_msg_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    sender,
+                    tgt_name,
+                    json.dumps({"text": text, "mention": mention}),
+                    prio_val,
+                    time.time(),
+                    0.0,           # sofort zustellbar
+                    context_id,
+                    current_depth,
+                    parent_msg_id,
+                ))
+                conn.commit()
 
-    finally:
-        conn.close()
+                # Agenten aufwecken (falls er wartet)
+                notify_agent(tgt_name)
+                dispatched.append(tgt_name)
 
+            last_err = None
+            break
+        except sqlite3.OperationalError as e:
+            last_err = e
+            if "locked" not in str(e).lower() or _attempt == 3:
+                logger.error("dispatch_mention failed: %s", e)
+                raise
+            time.sleep(0.08 * (2 ** _attempt))
+        finally:
+            conn.close()
+
+    if last_err is not None and not dispatched:
+        raise last_err
     return dispatched
 
 

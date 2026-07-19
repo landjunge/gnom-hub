@@ -97,20 +97,46 @@ def handle_workflow(q):
 CMDS = {"status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs, "resume": handle_resume, "approve_decision": handle_approve_decision, "reject_decision": handle_reject_decision, "bake": handle_bake, "emergency": handle_emergency, "notfall": handle_emergency, "diagnose": handle_diagnose, "confirmations": handle_confirmations, "spass": handle_spass, "worker": handle_worker, "workers": handle_worker, "blockade": handle_blockade, "blokade": handle_blockade, "workflow": handle_workflow, "help": handle_help, "hilfe": handle_help, "allclear000": handle_allclear}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
+    import logging
+    import sqlite3
+    _chat_log = logging.getLogger("gnom_hub.api.chat")
+
+    def _db_fail(step: str, err: Exception):
+        _chat_log.error("chat blocked at %s: %s", step, err)
+        try:
+            add_chat_message(
+                get_active_project(),
+                "System",
+                "system",
+                "chat",
+                f"⚠️ **Chat-Pfad:** DB busy ({step}). Bitte erneut senden.",
+                {"type": "chat", "sender": "System", "db_locked": True},
+            )
+        except Exception:
+            pass
+        return {
+            "status": "error",
+            "msg": f"Datenbank ausgelastet ({step}) — bitte in 1–2s erneut senden.",
+            "error": str(err)[:120],
+        }
+
     if msg.sender == "user":
         from gnom_hub.core.security.injection_validator import validate_input
         is_safe, reason = validate_input(msg.content)
         if not is_safe:
             proj = get_active_project()
-            add_chat_message(proj, "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
-            add_chat_message(
-                proj,
-                "SecurityAG",
-                "securityag",
-                "chat",
-                f"🚨 **Sicherheitswarnung:** Prompt-Injection-Muster erkannt und geblockt ({reason}).",
-                {"type": "chat", "sender": "SecurityAG", "security_threat": True}
-            )
+            try:
+                add_chat_message(proj, "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
+                add_chat_message(
+                    proj,
+                    "SecurityAG",
+                    "securityag",
+                    "chat",
+                    f"🚨 **Sicherheitswarnung:** Prompt-Injection-Muster erkannt und geblockt ({reason}).",
+                    {"type": "chat", "sender": "SecurityAG", "security_threat": True}
+                )
+            except sqlite3.Error as e:
+                return _db_fail("security_block", e)
             return {"status": "blocked", "msg": f"Prompt-Injection blockiert: {reason}", "message": reason}
 
     if msg.sender == "user" and "@merken" in msg.content.lower():
@@ -119,19 +145,28 @@ def post_chat(msg: ChatMsg):
 
         from gnom_hub.db.soul_repo import save_soul_fact_smart
 
-        add_chat_message(get_active_project(), "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
+        try:
+            add_chat_message(get_active_project(), "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
+        except sqlite3.Error as e:
+            return _db_fail("merken_save", e)
 
         cleaned_content = re.sub(r'(?i)\s*@merken\s*', ' ', msg.content).strip()
         if cleaned_content:
             fact_key = f"user_fact_{uuid.uuid4().hex[:8]}"
-            save_soul_fact_smart(fact_key, f"[source:user] {cleaned_content}", agent="SoulAG", priority="high")
-            add_chat_message(get_active_project(), "System", "soulag", "chat", f"💾 **Fakt gemerkt (hohe Priorität):** \"{cleaned_content}\"", {"type": "chat", "sender": "System"})
+            try:
+                save_soul_fact_smart(fact_key, f"[source:user] {cleaned_content}", agent="SoulAG", priority="high")
+                add_chat_message(get_active_project(), "System", "soulag", "chat", f"💾 **Fakt gemerkt (hohe Priorität):** \"{cleaned_content}\"", {"type": "chat", "sender": "System"})
+            except sqlite3.Error as e:
+                return _db_fail("merken_fact", e)
             return {"status": "saved", "message": cleaned_content}
         else:
             add_chat_message(get_active_project(), "System", "soulag", "chat", "⚠️ **@merken:** Bitte gib einen Text ein, den ich mir merken soll.", {"type": "chat", "sender": "System"})
             return {"status": "error", "message": "Empty content"}
 
-    soul_instance.on_message(msg.content, msg.sender)
+    try:
+        soul_instance.on_message(msg.content, msg.sender)
+    except Exception as e:
+        _chat_log.warning("soul on_message non-fatal: %s", e)
     
     # Intercept simple approvals/rejections of pending decisions
     if msg.sender == "user":
@@ -154,7 +189,11 @@ def post_chat(msg: ChatMsg):
                 add_chat_message(get_active_project(), "user", "war-room", "chat", msg.content, {"type": "chat", "sender": "user"})
                 return r
 
-    q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt; ags = get_all_agents()
+    q, tgt, cmd = _parse(msg.content); s_name = msg.sender if msg.sender != "user" else tgt
+    try:
+        ags = get_all_agents()
+    except sqlite3.Error as e:
+        return _db_fail("get_agents", e)
     next((x for x in ags if x.get("name", "").lower() == (s_name or "").lower()), None)
     # ZWC wird nur bei Datei-Writes und wichtigen Aktionen hinzugefuegt (action_write.py),
     # nicht bei jeder Chat-Nachricht — vermeidet 74% ZWC-Pollution
@@ -264,24 +303,52 @@ def post_chat(msg: ChatMsg):
                         msg.content = f'[→ Showbox: {pres_name}]'
             except Exception:
                 pass
-    add_chat_message(get_active_project(), msg.sender, "war-room", cmd or "chat", msg.content, {"type": cmd or "chat", "sender": msg.sender})
-    if msg.sender != "user": return {"status": "saved"}
-    if cmd in CMDS: return CMDS[cmd](q)
+    try:
+        add_chat_message(
+            get_active_project(), msg.sender, "war-room", cmd or "chat", msg.content,
+            {"type": cmd or "chat", "sender": msg.sender},
+        )
+    except sqlite3.Error as e:
+        return _db_fail("save_message", e)
+
+    if msg.sender != "user":
+        return {"status": "saved"}
+    if cmd in CMDS:
+        try:
+            return CMDS[cmd](q)
+        except sqlite3.OperationalError as e:
+            return _db_fail(f"cmd_{cmd}", e)
 
     def _notify_dispatch_fail(reason: str) -> None:
         """Prio-1: leerer Dispatch darf nicht still bleiben."""
-        add_chat_message(
-            get_active_project(),
-            "System",
-            "system",
-            "chat",
-            f"⚠️ **Dispatch fehlgeschlagen:** {reason}",
-            {"type": "chat", "sender": "System", "dispatch_failed": True},
-        )
+        try:
+            add_chat_message(
+                get_active_project(),
+                "System",
+                "system",
+                "chat",
+                f"⚠️ **Dispatch fehlgeschlagen:** {reason}",
+                {"type": "chat", "sender": "System", "dispatch_failed": True},
+            )
+        except Exception:
+            pass
+
+    def _safe_dispatch(*args, **kwargs):
+        try:
+            return dispatch(*args, **kwargs)
+        except sqlite3.OperationalError as e:
+            _chat_log.error("dispatch locked: %s", e)
+            return None  # signal failure without raising
 
     _SYS = ("soulag", "generalag", "watchdogag")
     if cmd == "research":
-        asked = [n for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS] if dispatch(q, target=n, sender=msg.sender)]
+        asked = []
+        for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS]:
+            r = _safe_dispatch(q, target=n, sender=msg.sender)
+            if r is None:
+                return _db_fail("dispatch_research", RuntimeError("database is locked"))
+            if r:
+                asked.append(n)
         if not asked:
             online = [x["name"] for x in ags if x.get("status") in ("online", "busy", "running")]
             _notify_dispatch_fail(
@@ -291,16 +358,20 @@ def post_chat(msg: ChatMsg):
         return {"status": "dispatched" if asked else "error", "asked": asked, "target": None, "mode": "research"}
     if not cmd and not tgt:
         # User-Chat ohne @target: Default-Routing an GeneralAG (Dirigent).
-        # Vorher: SoulAG-Default → *still* auf Direkt-Fragen, weil SoulAG-Mandat
-        #   "stiller Beobachter + DB-Writer" ist. GeneralAG antwortet dem User
-        #   und delegiert an Worker wenn nötig.
-        # User-Mandat 2026-07-02: GeneralAG als Default-Empfänger.
-        # SoulAG bleibt im Hintergrund als stiller Beobachter + Fakten-Extraktor.
-        # Re-enable: alte SoulAG-Default-Route (siehe git log).
         generalag = next((x for x in ags if x["name"].lower() == "generalag"), None)
         asked: list[str] = []
         if generalag and generalag.get("status") in ("online", "busy", "running"):
-            if dispatch(msg.content, target="generalag", sender=msg.sender):
+            r = _safe_dispatch(msg.content, target="generalag", sender=msg.sender)
+            if r is None:
+                # Message is already in chat; user can retry dispatch
+                return {
+                    "status": "saved",
+                    "asked": [],
+                    "target": "generalag",
+                    "mode": "chat",
+                    "msg": "Nachricht gespeichert, Dispatch wartet (DB busy) — Agent holt sie ggf. nach Reconnect.",
+                }
+            if r:
                 asked.append("GeneralAG")
         if not asked:
             if generalag is None:
@@ -319,7 +390,15 @@ def post_chat(msg: ChatMsg):
             "target": "generalag",
             "mode": "chat",
         }
-    asked = dispatch(q, target=tgt, sender=msg.sender)
+    asked = _safe_dispatch(q, target=tgt, sender=msg.sender)
+    if asked is None:
+        return {
+            "status": "saved",
+            "asked": [],
+            "target": tgt,
+            "mode": "brainstorm" if cmd == "bs" else "chat",
+            "msg": "Nachricht gespeichert, Dispatch wartet (DB busy).",
+        }
     if not asked and tgt:
         _notify_dispatch_fail(
             f"@{tgt} ist offline, unbekannt oder Queue voll. "

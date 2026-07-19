@@ -28,16 +28,23 @@ def get_db_connection() -> sqlite3.Connection:
 
     This is the single source of truth for DB connections in the entire project.
     Prefer :func:`get_db_conn` so connections are always closed (leak guard).
+
+    busy_timeout is intentionally short (5s). A 60s wait starved the hub
+    thread pool under multi-agent register storms and made chat POSTs hang
+    until the browser timed out with "Hub unreachable".
     """
+    import os
     db_path = str(Config.DB_PATH)
     # check_same_thread=False: agents/hub share threads; timeout+busy_timeout
     # absorb multi-writer contention (BEGIN IMMEDIATE / WAL).
-    conn = sqlite3.connect(db_path, timeout=60.0, check_same_thread=False)
+    busy_ms = int(os.environ.get("GNOM_DB_BUSY_MS", "5000"))
+    timeout_s = max(busy_ms / 1000.0, 1.0)
+    conn = sqlite3.connect(db_path, timeout=timeout_s, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-20000")
     conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA busy_timeout=60000")
+    conn.execute(f"PRAGMA busy_timeout={busy_ms}")
     conn.execute("PRAGMA temp_store=MEMORY")
     conn.row_factory = sqlite3.Row
     return conn

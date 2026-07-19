@@ -248,31 +248,44 @@ def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, co
     except Exception as filter_exc:
         _logger.debug(f"[DB] agent filter failed (passing through): {filter_exc}")
 
-    try:
-        with get_db_conn() as conn:
-            with conn:
-                msg_id = str(uuid.uuid4())
-                meta_val = metadata or {}
-                if isinstance(meta_val, str):
-                    try:
-                        meta_val = json.loads(meta_val)
-                    except Exception:
-                        meta_val = {}
-                conn.execute("""
-                    INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (msg_id, project, sender, agent_id, msg_type, content,
-                      datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                      json.dumps(meta_val)))
-                try:
-                    from gnom_hub.db.passive_db import archive_record
-                    archive_record("chat", sender, content, {"project": project, "agent_id": agent_id, "msg_type": msg_type})
-                except Exception as ex:
-                    _logger.warning(f"[DB] Passive archive message logging failed: {ex}")
-                return msg_id
-    except sqlite3.Error as e:
-        _logger.error(f"[DB] Failed to add chat message: {e}")
+    msg_id = str(uuid.uuid4())
+    meta_val = metadata or {}
+    if isinstance(meta_val, str):
+        try:
+            meta_val = json.loads(meta_val)
+        except Exception:
+            meta_val = {}
+    ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    last_err = None
+    # Short write + brief retries so user chat survives multi-writer storms
+    # without blocking the hub for a full busy_timeout window.
+    for _attempt in range(5):
+        try:
+            with get_db_conn() as conn:
+                with conn:
+                    conn.execute("""
+                        INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (msg_id, project, sender, agent_id, msg_type, content, ts, json.dumps(meta_val)))
+            last_err = None
+            break
+        except sqlite3.OperationalError as e:
+            last_err = e
+            if "locked" not in str(e).lower() or _attempt == 4:
+                _logger.error(f"[DB] Failed to add chat message: {e}")
+                return None
+            time.sleep(0.05 * (2 ** _attempt))
+        except sqlite3.Error as e:
+            _logger.error(f"[DB] Failed to add chat message: {e}")
+            return None
+    if last_err is not None:
         return None
+    try:
+        from gnom_hub.db.passive_db import archive_record
+        archive_record("chat", sender, content, {"project": project, "agent_id": agent_id, "msg_type": msg_type})
+    except Exception as ex:
+        _logger.warning(f"[DB] Passive archive message logging failed: {ex}")
+    return msg_id
 
 def get_chat_history(project: str = "default", limit: int = 30):
     """Lädt die letzten X Nachrichten eines Projekts aus der chat-Tabelle."""

@@ -134,8 +134,18 @@ class BaseAgent:
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
 
-        while not self._req("post", "/api/agents/register", {"name": self.n, "port": 0, "description": self.d, "status": "online", "capabilities": [self.t]}):
-            print(f"⚠️ {self.n}: Hub nicht erreichbar. Reconnect in 5s..."); await asyncio.sleep(5)
+        # Register: accept soft-OK dict (even on DB contention) so we don't spin-lock the hub
+        _reg_backoff = 3
+        while True:
+            r = self._req("post", "/api/agents/register", {
+                "name": self.n, "port": 0, "description": self.d,
+                "status": "online", "capabilities": [self.t],
+            })
+            if r is not None:
+                break
+            print(f"⚠️ {self.n}: Hub nicht erreichbar. Reconnect in {_reg_backoff}s...")
+            await asyncio.sleep(_reg_backoff)
+            _reg_backoff = min(_reg_backoff + 2, 20)
 
         print(f"🚀 {self.n} aktiv (Warteschlange)")
 

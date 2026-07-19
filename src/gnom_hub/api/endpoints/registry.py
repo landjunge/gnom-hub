@@ -1,62 +1,108 @@
+import logging
+import sqlite3
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from gnom_hub.agents.entities import Agent
-from gnom_hub.db.agent_repo import SQLiteAgentRepository
+from gnom_hub.db.connection import get_db_conn
 
 router = APIRouter()
+logger = logging.getLogger("gnom_hub.api.registry")
 
 class RegisterPayload(BaseModel):
     name: str
     port: int
     description: str = ""
 
+
+def _touch_agent(name: str, port: int = 0, description: str = "") -> dict:
+    """Lightweight online/last_seen update — avoids full INSERT OR REPLACE storms."""
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db_conn() as c:
+        cur = c.execute(
+            "UPDATE agents SET status='online', last_seen=?, port=COALESCE(NULLIF(?, 0), port), "
+            "description=CASE WHEN ?!='' THEN ? ELSE description END WHERE name=? OR lower(name)=lower(?)",
+            (now, port, description or "", description or "", name, name),
+        )
+        if cur.rowcount == 0:
+            # First-time register only
+            aid = str(uuid4())
+            c.execute(
+                "INSERT INTO agents (name, id, port, description, status, capabilities, role, active_job, last_seen) "
+                "VALUES (?, ?, ?, ?, 'online', '[]', 'normal', NULL, ?)",
+                (name, aid, port, description or str(port), now),
+            )
+            return {
+                "name": name, "id": aid, "port": port, "description": description,
+                "status": "online", "role": "normal", "last_seen": now,
+            }
+        row = c.execute(
+            "SELECT name, id, port, description, status, role, last_seen FROM agents "
+            "WHERE name=? OR lower(name)=lower(?) LIMIT 1",
+            (name, name),
+        ).fetchone()
+        if not row:
+            return {"name": name, "status": "online", "last_seen": now}
+        return {
+            "name": row["name"], "id": row["id"], "port": row["port"],
+            "description": row["description"], "status": row["status"],
+            "role": row["role"], "last_seen": row["last_seen"],
+        }
+
+
 @router.post("/api/agents/register")
 def register_agent(p: RegisterPayload):
-    import logging
-    logger = logging.getLogger("gnom_hub.api.registry")
-    logger.info(f"=== REGISTER REQUEST: name={p.name!r}, port={p.port} ===")
-    repo = SQLiteAgentRepository()
-    a = repo.get_by_name(p.name)
-    if a:
-        logger.info(f"Agent {p.name!r} found in DB. Role: {a.role!r}")
-        a.port, a.description, a.status, a.last_seen = p.port, p.description or str(p.port), "online", datetime.now(timezone.utc)
-    else:
-        logger.info(f"Agent {p.name!r} NOT found in DB. Creating new agent with role='normal'")
-        a = Agent(name=p.name, id=str(uuid4()), port=p.port, description=p.description or str(p.port), status="online", capabilities=[], role="normal", active_job=None, last_seen=datetime.now(timezone.utc))
+    """Register/heartbeat-style online mark. Never hard-fail the agent loop on DB lock."""
     try:
-        repo.save(a)
-        logger.info(f"Agent {p.name!r} saved successfully.")
+        return _touch_agent(p.name, p.port, p.description or str(p.port))
+    except sqlite3.OperationalError as e:
+        # Soft-OK: agent stays in reconnect loop less aggressively if hub is contending
+        logger.warning("register soft-fail %s: %s", p.name, e)
+        return {
+            "name": p.name, "port": p.port, "description": p.description,
+            "status": "online", "soft": True, "error": str(e)[:80],
+        }
     except Exception as e:
-        logger.error(f"Failed to save agent {p.name!r}: {e}")
-        raise
-    return a.__dict__
+        logger.error("Failed to register agent %r: %s", p.name, e)
+        return {
+            "name": p.name, "port": p.port, "status": "online", "soft": True, "error": str(e)[:80],
+        }
+
 
 @router.post("/api/agents/{a_id}/heartbeat")
 def heartbeat(a_id: str):
-    repo = SQLiteAgentRepository()
-    a = repo.get_by_id(a_id)
-    if not a:
-        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
-        key = a_id.lower()
-        if key in AGENT_DEFINITIONS:
-            defn = AGENT_DEFINITIONS[key]
-            a = Agent(
-                name=defn["name"],
-                id=str(uuid4()),
-                port=0,
-                description=defn["description"],
-                status="online",
-                capabilities=defn.get("capabilities", []),
-                role=defn["role"],
-                active_job=None,
-                last_seen=datetime.now(timezone.utc)
+    """Cheap last_seen touch — no full agent rewrite."""
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        with get_db_conn() as c:
+            cur = c.execute(
+                "UPDATE agents SET status='online', last_seen=? WHERE name=? OR id=? OR lower(name)=lower(?)",
+                (now, a_id, a_id, a_id),
             )
-            repo.save(a)
-        else:
-            return {"error": "not found"}
-    repo.update_status(a.name, "online")
-    return {"status": "online"}
+            if cur.rowcount == 0:
+                # Fallback: create from definitions if known
+                from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+                key = a_id.lower()
+                if key in AGENT_DEFINITIONS:
+                    defn = AGENT_DEFINITIONS[key]
+                    c.execute(
+                        "INSERT OR IGNORE INTO agents "
+                        "(name, id, port, description, status, capabilities, role, active_job, last_seen) "
+                        "VALUES (?, ?, 0, ?, 'online', ?, ?, NULL, ?)",
+                        (
+                            defn["name"], str(uuid4()), defn["description"],
+                            __import__("json").dumps(defn.get("capabilities", [])),
+                            defn["role"], now,
+                        ),
+                    )
+                    return {"status": "online"}
+                return {"error": "not found"}
+        return {"status": "online"}
+    except sqlite3.OperationalError as e:
+        logger.warning("heartbeat soft-fail %s: %s", a_id, e)
+        return {"status": "online", "soft": True}
+    except Exception as e:
+        logger.error("heartbeat failed %s: %s", a_id, e)
+        return {"status": "online", "soft": True}
