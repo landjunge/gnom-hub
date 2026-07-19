@@ -6,7 +6,8 @@
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-CI_local__ci.sh-yellow.svg)](#-tests)
 
-**Arbeitsplan (Stabilität zuerst):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)
+**Arbeitsplan (Stabilität zuerst):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)  
+**GitHub:** Default-Branch ist **`master`** (`main` zeigt denselben Stand).
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#-agenten-übersicht)
 [![Speicher](https://img.shields.io/badge/Speicher-Geschichtet_+_Offload-brightgreen.svg)](#-speicher-architektur)

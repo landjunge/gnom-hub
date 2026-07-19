@@ -8,7 +8,8 @@
 [![Memory](https://img.shields.io/badge/Memory-3_Layers_(Symbolic+Tiered+TKG)-brightgreen.svg)](#-memory-architecture)
 [![Tests](https://img.shields.io/badge/Tests-CI_local__ci.sh-yellow.svg)](#-tests)
 
-**Working plan (stability-first):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)
+**Working plan (stability-first):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)  
+**GitHub:** default branch is **`master`** (`main` tracks the same tip).
 
 🇬🇧 **English** • 🇩🇪 **[Deutsch (README.de.md)](README.de.md)**
 
