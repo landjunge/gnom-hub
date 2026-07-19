@@ -356,7 +356,19 @@ app.add_middleware(NoCacheStaticMiddleware)
 
 @app.get("/api/health")
 def api_health():
-    return {"status": "ok"}
+    """Hub liveness + optional agent health summary (honest process/queue)."""
+    out = {"status": "ok"}
+    try:
+        from gnom_hub.infrastructure.agent_health import collect_all_agent_health
+        snap = collect_all_agent_health()
+        out["agents"] = snap.get("summary", {})
+        # Overall degraded if agents are zombie/stale
+        if snap.get("status") in ("degraded", "down"):
+            out["status"] = snap["status"]
+            out["detail"] = "agent_health"
+    except Exception as e:
+        out["agents_error"] = str(e)[:120]
+    return out
 
 @app.get("/")
 def root():

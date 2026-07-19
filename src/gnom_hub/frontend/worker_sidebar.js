@@ -3,14 +3,22 @@
    ═══════════════════════════════════════════ */
 
 async function loadAgents() {
-  const res = await api('GET', '/agents');
+  // health=true: honest process/heartbeat/queue (Prio-3)
+  const res = await api('GET', '/agents?health=true');
   const newAgents = Array.isArray(res) ? res : (res?.agents || []);
   
-  // Check if any status changed
+  // Check if any status / health changed
   let changed = newAgents.length !== agents.length;
   if (!changed) {
     for (let i = 0; i < newAgents.length; i++) {
-      if (newAgents[i].status !== agents[i]?.status) { changed = true; break; }
+      const n = newAgents[i], o = agents[i];
+      if (n.status !== o?.status
+          || n.effective_status !== o?.effective_status
+          || n.process_alive !== o?.process_alive
+          || JSON.stringify(n.queue || {}) !== JSON.stringify(o?.queue || {})) {
+        changed = true;
+        break;
+      }
     }
   }
   
@@ -18,6 +26,30 @@ async function loadAgents() {
   window.agents = agents;
   if (changed && typeof renderAgentList === 'function') renderAgentList();
   if (typeof updateStats === 'function') updateStats();
+  if (typeof updateAgentHealthBanner === 'function') updateAgentHealthBanner(newAgents);
+}
+
+/** Compact banner when zombies/stale agents exist. */
+function updateAgentHealthBanner(list) {
+  const el = document.getElementById('agent-health-banner');
+  if (!el) return;
+  const bad = (list || []).filter(a =>
+    a.effective_status === 'zombie' || a.effective_status === 'stale' || a.healthy === false
+  );
+  if (!bad.length) {
+    el.style.display = 'none';
+    el.textContent = '';
+    return;
+  }
+  el.style.display = 'block';
+  el.textContent = '⚠️ Health: ' + bad.map(a => {
+    const q = a.queue || {};
+    const bits = [a.name, a.effective_status || a.status];
+    if (q.pending) bits.push(`p=${q.pending}`);
+    if (q.processing) bits.push(`proc=${q.processing}`);
+    if (q.dead_letter) bits.push(`dlq=${q.dead_letter}`);
+    return bits.join(' ');
+  }).join(' · ');
 }
 
 if (typeof _agentRefreshInterval === 'undefined') {
@@ -34,20 +66,31 @@ async function selectAgent(id) {
   const agent = agents.find(a => a.id === id);
   if (!agent) return;
 
-  const on = agent.status === 'online';
-  const isPaused = agent.status === 'paused';
+  const eff = agent.effective_status || agent.status;
+  const on = eff === 'online' || agent.status === 'online';
+  const isPaused = eff === 'paused' || agent.status === 'paused';
   const resumeBtn = isPaused ? `<button onclick="resumeAgent('${agent.id}')" style="background:#ffa500; color:#000; border:none; border-radius:4px; font-weight:bold; cursor:pointer; padding:4px 8px; box-shadow:0 0 10px rgba(255,165,0,0.5);">▶ Resume</button>` : '';
   const port = agent.port;
   const openUiBtn = port ? `<button onclick="openAgentUI('${agent.name}','${port}')">🖥 Open UI</button>` : '';
-  const nudgeBtn = on ? `<button onclick="doNudge('${agent.id}')">📢 Nudge</button>` : '';
+  const nudgeBtn = (on || eff === 'busy') ? `<button onclick="doNudge('${agent.id}')">📢 Nudge</button>` : '';
   const ls = agent.last_seen ? new Date(agent.last_seen).toLocaleString() : '–';
+  const q = agent.queue || {};
+  const hb = agent.health && agent.health.heartbeat_age_s != null
+    ? `${agent.health.heartbeat_age_s}s`
+    : '–';
 
   let statusDotClass = 'off';
   let statusLabel = 'Offline';
-  if (on) {
+  if (eff === 'zombie') {
+    statusDotClass = 'off';
+    statusLabel = 'Zombie (DB online, Prozess tot)';
+  } else if (eff === 'stale') {
+    statusDotClass = 'paused';
+    statusLabel = 'Stale (kein Heartbeat)';
+  } else if (on) {
     statusDotClass = 'on';
     statusLabel = 'Online';
-  } else if (agent.status === 'busy') {
+  } else if (eff === 'busy' || agent.status === 'busy') {
     statusDotClass = 'busy';
     statusLabel = 'Busy';
   } else if (isPaused) {
@@ -78,10 +121,13 @@ async function selectAgent(id) {
             <button class="btn-danger" onclick="deleteAgent('${agent.id}')">Delete</button>
           </div>
         </h2>
-        <div class="status-row" style="margin:0;">
+        <div class="status-row" style="margin:0; flex-wrap:wrap; gap:6px;">
           <span class="dot ${statusDotClass}"></span><span class="label">${statusLabel}</span>
           ${port ? `<span class="badge port">:${port}</span>` : ''}
-          <span class="label" style="margin-left: 10px;">Last seen: ${ls}</span>
+          <span class="label" style="margin-left: 6px;">Last seen: ${ls}</span>
+          <span class="label" style="margin-left: 6px;">HB: ${hb}</span>
+          <span class="label" style="margin-left: 6px;">Queue p/proc/dlq: ${q.pending||0}/${q.processing||0}/${q.dead_letter||0}</span>
+          <span class="label" style="margin-left: 6px;">Process: ${agent.process_alive ? 'alive' : 'dead'}</span>
         </div>
       </div>
     </div>

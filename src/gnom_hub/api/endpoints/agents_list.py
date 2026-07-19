@@ -1,7 +1,7 @@
 import json
 import os
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from gnom_hub.core.config import TOKENS_FILE
 from gnom_hub.db.agent_repo import SQLiteAgentRepository
@@ -9,13 +9,41 @@ from gnom_hub.db.agent_repo import SQLiteAgentRepository
 router = APIRouter(tags=["agents"])
 
 @router.get("/api/agents")
-def list_agents():
+def list_agents(health: bool = Query(False, description="Include honest health fields")):
     repo = SQLiteAgentRepository()
     ags = [dict(a.__dict__) for a in repo.get_all()]
     for a in ags:
         if a.get("active_job"): a["status"] = "busy"
         elif a.get("status") == "running": a["status"] = "online"
+        # UUID/datetime not JSON-serializable as-is in some paths
+        if hasattr(a.get("id"), "hex"):
+            a["id"] = str(a["id"])
+        if a.get("last_seen") is not None and hasattr(a["last_seen"], "isoformat"):
+            a["last_seen"] = a["last_seen"].isoformat()
+    if health:
+        try:
+            from gnom_hub.infrastructure.agent_health import collect_all_agent_health
+            snap = collect_all_agent_health()
+            by_name = {h["name"].lower(): h for h in snap.get("agents", [])}
+            for a in ags:
+                h = by_name.get((a.get("name") or "").lower())
+                if h:
+                    a["health"] = h
+                    a["effective_status"] = h["effective_status"]
+                    a["process_alive"] = h["process_alive"]
+                    a["queue"] = h["queue"]
+                    a["healthy"] = h["healthy"]
+        except Exception:
+            pass
     return ags
+
+
+@router.get("/api/agents/health")
+def agents_health():
+    """Honest health for all agents: process + heartbeat + queue."""
+    from gnom_hub.infrastructure.agent_health import collect_all_agent_health
+    return collect_all_agent_health()
+
 
 @router.get("/api/agents/search")
 def search_agents(q: str):

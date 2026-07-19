@@ -32,22 +32,32 @@ function renderAgentList(filter = '') {
     el.innerHTML = '<div class="empty">Keine Agenten.</div>';
   } else {
     const renderCard = (a) => {
-      const stClass = a.status === 'busy' ? 'busy' : (a.status === 'paused' ? 'paused' : (a.status === 'online' ? 'on' : 'off'));
+      const eff = a.effective_status || a.status;
+      const stClass = eff === 'busy' ? 'busy'
+        : (eff === 'paused' || eff === 'stale') ? 'paused'
+        : (eff === 'online') ? 'on'
+        : 'off';
       const isCore = coreNames.includes(a.name.toLowerCase());
       const role = a.role && a.role !== 'normal' && !isCore ? a.role : '';
       const roleIcon = role === 'general' ? ' 👑' : role === 'summarizer' ? ' 📋' : '';
       const c = agentColor(a.name);
       const dur = (2.5 + Math.random() * 2.0).toFixed(2);
       const dly = (-(Math.random() * 6.0)).toFixed(2);
+      const q = a.queue || {};
       
       let statusLabel = 'Offline';
-      if (a.status === 'busy') statusLabel = 'Beschäftigt (Busy) 🟡';
-      else if (a.status === 'paused') statusLabel = 'Pausiert 🟠';
-      else if (a.status === 'online') statusLabel = 'Online 🟢';
+      if (eff === 'zombie') statusLabel = 'Zombie 💀 (Prozess tot)';
+      else if (eff === 'stale') statusLabel = 'Stale 🟠 (kein Heartbeat)';
+      else if (eff === 'busy') statusLabel = 'Beschäftigt (Busy) 🟡';
+      else if (eff === 'paused') statusLabel = 'Pausiert 🟠';
+      else if (eff === 'online') statusLabel = 'Online 🟢';
       
       const meta = typeof window.getAgentMeta === 'function' ? window.getAgentMeta(a.name) : { name: a.name, desc: a.description };
       const displayName = meta.name;
       const displayDesc = meta.desc;
+      const qBadge = (q.pending || q.processing || q.dead_letter)
+        ? `<span class="badge" style="opacity:0.85">q ${q.pending||0}/${q.processing||0}/${q.dead_letter||0}</span>`
+        : '';
       
       const helpTitle = `${displayName} (${statusLabel})`;
       const helpText = typeof getAgentHelpText === 'function' ? getAgentHelpText(a.name, a.description) : (displayDesc || 'Ein Agent im Gnom-Hub.');
@@ -55,7 +65,8 @@ function renderAgentList(filter = '') {
       return `<div class="agent-card ${stClass} ${a.id === selectedId ? 'active' : ''}" id="card-${a.id}" onclick="handleWorkerClick('${a.id}')" ondblclick="handleWorkerDblClick('${a.id}', '${a.status}')" onmouseenter="if(window.triggerAgentArtShow) window.triggerAgentArtShow('${a.name}')" style="--agent-color:${c}; --dur:${dur}s; --delay:${dly}s;" data-help-title="${helpTitle.replace(/"/g, '&quot;')}" data-help="${helpText.replace(/"/g, '&quot;')}">
         <h3><span>${displayName}</span>${roleIcon}</h3>
         <div class="desc">${displayDesc || '–'}</div>
-        <div class="meta">${a.port ? `<span class="badge port">:${a.port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}</div>
+        <div class="meta" style="font-size:0.65rem;opacity:0.85">${statusLabel}</div>
+        <div class="meta">${a.port ? `<span class="badge port">:${a.port}</span>` : ''}${role ? `<span class="badge role ${role}">${role}</span>` : ''}${qBadge}</div>
       </div>`;
     };
     el.innerHTML = coreAgents.map(renderCard).join('');
