@@ -60,6 +60,9 @@ curl -s -X POST http://127.0.0.1:3002/api/chat \
 # In UI chat:
 #   @@queue stats
 #   @@queue clear          # pending/processing → DLQ (queue storm)
+
+# Daily check (health + 8 agents + queue not flooded):
+./scripts/ops_check.sh
 ```
 
 Queue claims go through the hub by default (`GNOM_QUEUE_MODE=hub`) so eight agents do not all `BEGIN IMMEDIATE` on SQLite. See [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md).

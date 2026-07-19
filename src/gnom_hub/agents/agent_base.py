@@ -365,7 +365,8 @@ class BaseAgent:
                     self._req("post", "/api/chat", {
                         "content": (
                             f"⚠️ **[{self.n}]** Antwort verworfen (Spam/Überlänge "
-                            f"{len(raw_content)} Zeichen). Nachricht #{msg['msg_id']} → NACK."
+                            f"{len(raw_content)} Zeichen). Nachricht #{msg['msg_id']} → NACK.\n"
+                            f"→ Nochmal senden oder anderes Modell in UI/`config/routing.txt` wählen."
                         ),
                         "sender": "System",
                     })
@@ -378,8 +379,9 @@ class BaseAgent:
                     self._req("post", "/api/chat", {
                         "content": (
                             f"⚠️ **[{self.n}]** Keine Antwort vom LLM (leerer Content). "
-                            f"Nachricht #{msg['msg_id']} — bitte erneut senden oder "
-                            f"Provider/Key prüfen."
+                            f"Nachricht #{msg['msg_id']} → NACK.\n"
+                            f"→ Nochmal senden · Provider/Key prüfen (UI LLM oder "
+                            f"`config/routing.txt`, optional `~/Desktop/api_keys.txt`)."
                         ),
                         "sender": "System",
                     })
@@ -388,10 +390,10 @@ class BaseAgent:
                     job_ok = False
                     self._req("post", "/api/chat", {
                         "content": (
-                            f"⚠️ **[{self.n}]** LLM-Router fehlgeschlagen.\n"
+                            f"⚠️ **[{self.n}]** LLM-Router fehlgeschlagen → NACK.\n"
                             f"{raw_content[:400]}\n"
-                            f"→ Keys/Routing prüfen (`config/routing.txt`, Desktop-Keys). "
-                            f"Nachricht #{msg['msg_id']}."
+                            f"→ Keys/Routing prüfen (`config/routing.txt`, UI, Desktop-Keys). "
+                            f"Nachricht #{msg['msg_id']} — danach erneut senden."
                         ),
                         "sender": "System",
                     })
@@ -409,7 +411,8 @@ class BaseAgent:
                         self._req("post", "/api/chat", {
                             "content": (
                                 f"⚠️ **[{self.n}]** Nur Think-Spam ohne Nutzinhalt "
-                                f"(msg #{msg['msg_id']}) → NACK, kein Dispatch."
+                                f"(msg #{msg['msg_id']}) → NACK.\n"
+                                f"→ Nochmal senden oder robusteres Modell in UI/`routing.txt`."
                             ),
                             "sender": "System",
                         })

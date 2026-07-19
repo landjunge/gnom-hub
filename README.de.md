@@ -61,6 +61,9 @@ curl -s -X POST http://127.0.0.1:3002/api/chat \
 # Im UI-Chat (Ops):
 #   @@queue stats
 #   @@queue clear          # pending/processing → DLQ (bei Queue-Storm)
+
+# Tages-Check (Health + 8 Agenten + Queue nicht geflutet):
+./scripts/ops_check.sh
 ```
 
 Queue-Claim läuft standardmäßig über den Hub (`GNOM_QUEUE_MODE=hub`): weniger SQLite-Writer-Konflikte von 8 Agenten-Prozessen. Details: [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md).

@@ -135,11 +135,12 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 
 **Ziel:** Weniger Müll-Antworten, ohne MiniMax zu erzwingen.
 
-| # | Arbeit | Done when |
-|---|--------|-----------|
-| S3.1 | Anti-Spam (Länge/Think-only) halten | Chat nicht mit 50k Tokens voll |
-| S3.2 | User wählt Provider in UI/`routing.txt` | Defaults nur dorthin schreiben, wo User es will |
-| S3.3 | System-Meldungen bei Fail klar | User weiß „nochmal senden / Key prüfen“ |
+| # | Arbeit | Done when | Stand 2026-07-19 |
+|---|--------|-----------|------------------|
+| S3.1 | Anti-Spam (Länge/Think-only) halten | Chat nicht mit 50k Tokens voll | ✅ MAX_RAW_ACCEPT + think-only NACK |
+| S3.2 | User wählt Provider in UI/`routing.txt` | Defaults nur dorthin schreiben, wo User es will | ✅ kein erzwungener Provider |
+| S3.3 | System-Meldungen bei Fail klar | User weiß „nochmal senden / Key prüfen“ | ✅ NACK-Texte mit Routing/Key-Hinweis |
+| S3.4 | Ops-Checkliste automatisiert | 1 Befehl | ✅ `scripts/ops_check.sh` |
 
 ---
 
@@ -181,16 +182,17 @@ Vor jedem PR/Commit fragen:
 ## 6. Betriebs-Checkliste (täglich / nach Restart)
 
 ```bash
-./scripts/start_gnom_hub.sh   # oder start_gnom_hub.sh im Root
+./scripts/start_gnom_hub.sh   # Hub + 8× agents.run_agent
+./scripts/ops_check.sh        # Health + 8 Agenten + Queue-Limit
 curl -s http://127.0.0.1:3002/api/health
-curl -s http://127.0.0.1:3002/api/stats   # queue pending/processing
+curl -s http://127.0.0.1:3002/api/stats
 
 # Im Chat:
 @@queue stats
 @@queue clear          # bei Storm
 ```
 
-Erwartung: `healthy: 8`, `pending` klein, Chat-Send &lt; 1 s.
+Erwartung: `healthy: 8`, `pending` klein, Chat-Send &lt; 1 s, `ops_check` Exit 0.
 
 ---
 
@@ -201,9 +203,10 @@ Erwartung: `healthy: 8`, `pending` klein, Chat-Send &lt; 1 s.
 3. ~~**S2.4/S2.5** hub-claim + @@queue~~ ✅  
 4. ~~**S2.1–S2.3** Limits/NACK/Fanout~~ ✅ (Code + Supervisor R10 STRICT)  
 5. ~~**S4.1/S4.2/S4.4** Chat-Pfad / Startstil / ARCHITECTURE~~ ✅  
-6. **S3** Provider-Qualität im Alltag (User-Routing) — kein Code-Zwang  
+6. ~~**S3** Fail-Meldungen + Anti-Spam + ops_check~~ ✅  
 7. **S4.3** CI-Ignore nur bei Bedarf schrumpfen  
 8. Quarantäne-Recovery ✅; Claim-Timeout Agent ≥ Hub-Wartezeit  
+9. Alltag: `./scripts/ops_check.sh` nach Restart
 
 ---
 
