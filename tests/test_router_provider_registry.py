@@ -387,10 +387,9 @@ class TestGetBestModel:
     def test_get_best_openrouter_model_no_dead_keywords(self):
         """Regression test: poolside/laguna/nemotron must not be required matches."""
         from gnom_hub.infrastructure.router.router_stage import SmartRouter
-        # A working-model list that does NOT contain any of the old dead
-        # names should still yield a sensible model for every role.
+        # Working list without retired free slugs (llama-3.3-70b:free is 404).
         working = [
-            "meta-llama/llama-3.3-70b-instruct:free",
+            "openrouter/free",
             "qwen/qwen3-coder:free",
             "arcee-ai/trinity-large-thinking:free",
             "google/gemma-3-27b-it:free",
@@ -400,17 +399,18 @@ class TestGetBestModel:
             mock_repo.get_value.return_value = working
             assert SmartRouter.get_best_openrouter_model("coder") == "qwen/qwen3-coder:free"
             assert SmartRouter.get_best_openrouter_model("researcher") == "arcee-ai/trinity-large-thinking:free"
-            # writer/editor no longer requires poolside
-            assert SmartRouter.get_best_openrouter_model("writer") == "meta-llama/llama-3.3-70b-instruct:free"
-            assert SmartRouter.get_best_openrouter_model("editor") == "meta-llama/llama-3.3-70b-instruct:free"
-            assert SmartRouter.get_best_openrouter_model("normal") == "meta-llama/llama-3.3-70b-instruct:free"
+            # writer/editor match gemma/llama keywords; gemma present here
+            assert SmartRouter.get_best_openrouter_model("writer") == "google/gemma-3-27b-it:free"
+            assert SmartRouter.get_best_openrouter_model("editor") == "google/gemma-3-27b-it:free"
+            # unknown role → first ordered free pool entry
+            assert SmartRouter.get_best_openrouter_model("normal") == "openrouter/free"
 
     def test_get_best_openrouter_model_unknown_role_falls_back(self):
         from gnom_hub.infrastructure.router.router_stage import SmartRouter
         with patch("gnom_hub.db.state_repo.SQLiteStateRepository") as MockRepo:
             mock_repo = MockRepo.return_value
-            mock_repo.get_value.return_value = ["meta-llama/llama-3.3-70b-instruct:free"]
-            assert SmartRouter.get_best_openrouter_model("spaceship-pilot") == "meta-llama/llama-3.3-70b-instruct:free"
+            mock_repo.get_value.return_value = ["openrouter/free"]
+            assert SmartRouter.get_best_openrouter_model("spaceship-pilot") == "openrouter/free"
 
 
 # ─── router_call._try_keys: key rotation on HTTP errors ─────────────────────

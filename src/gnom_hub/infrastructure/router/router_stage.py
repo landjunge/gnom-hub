@@ -62,7 +62,9 @@ class SmartRouter:
                 if any(k in ml for k in keywords):
                     return m
 
-        return working[0] if working else "meta-llama/llama-3.3-70b-instruct:free"
+        # llama-3.3-70b-instruct:free is permanently 404 (paid-only slug).
+        # Default free pool entry is openrouter/free.
+        return working[0] if working else "openrouter/free"
 
     # Curated, currently-shipped model names per stage. Kept conservative so we
     # never hand back a model that the providers have retired. New variants are
@@ -82,10 +84,11 @@ class SmartRouter:
             "llama-3.1-8b-instruct",
         ],
         # Free tier — OpenRouter free models + decent Ollama
+        # (llama-3.3-70b-instruct:free removed: permanent 404, paid-only)
         "stage_2": [
+            "openrouter/free",
+            "tencent/hy3:free",
             "qwen/qwen3-coder:free",
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "nousresearch/hermes-3-llama-3.1-405b:free",
             "google/gemma-3-27b-it:free",
             "openai/gpt-oss-120b:free",
             "arcee-ai/trinity-large-thinking:free",

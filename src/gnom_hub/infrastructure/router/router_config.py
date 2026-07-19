@@ -11,16 +11,18 @@ if _env.exists():
 OR_KEY = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENROUTER_KEY_FREE_1")
 DS_KEY = os.getenv("DEEPSEEK_API_KEY")
 
+# 2026-07: meta-llama/llama-3.3-70b-instruct:free is permanently 404 (paid-only).
+# Prefer openrouter/free + currently working free slugs first.
 AGENT_MODELS = {
-    "generalag":   ["meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free"],
-    "watchdogag":  ["meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free"],
-    "securityag":  ["meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free"],
-    "coderag":     ["qwen/qwen3-coder:free", "meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "google/gemma-4-31b-it:free"],
-    "researcherag":["arcee-ai/trinity-large-thinking:free", "meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "google/gemma-4-31b-it:free"],
-    "writerag":    ["minimax/minimax-m2.5:free", "meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "google/gemma-4-31b-it:free"],
-    "editorag":    ["minimax/minimax-m2.5:free", "meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "google/gemma-4-31b-it:free"],
+    "generalag":   ["openrouter/free", "tencent/hy3:free", "google/gemma-4-31b-it:free", "openai/gpt-oss-120b:free"],
+    "watchdogag":  ["openrouter/free", "tencent/hy3:free", "google/gemma-4-31b-it:free", "openai/gpt-oss-120b:free"],
+    "securityag":  ["openrouter/free", "tencent/hy3:free", "google/gemma-4-31b-it:free", "openai/gpt-oss-120b:free"],
+    "coderag":     ["openrouter/free", "tencent/hy3:free", "qwen/qwen3-coder:free", "google/gemma-4-31b-it:free"],
+    "researcherag":["openrouter/free", "tencent/hy3:free", "arcee-ai/trinity-large-thinking:free", "google/gemma-4-31b-it:free"],
+    "writerag":    ["openrouter/free", "tencent/hy3:free", "minimax/minimax-m2.5:free", "google/gemma-4-31b-it:free"],
+    "editorag":    ["openrouter/free", "tencent/hy3:free", "minimax/minimax-m2.5:free", "google/gemma-4-31b-it:free"],
 }
-DEFAULT_MODELS = ["meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free", "openai/gpt-oss-120b:free", "google/gemma-4-31b-it:free"]
+DEFAULT_MODELS = ["openrouter/free", "tencent/hy3:free", "google/gemma-4-31b-it:free", "openai/gpt-oss-120b:free"]
 
 def get_key_for(agent_name):
     return OR_KEY

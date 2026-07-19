@@ -153,14 +153,13 @@ class Config:
 
     # OpenRouter Free-Modelle (zentral verwaltet)
     OPENROUTER_FREE_MODELS = [
-        "openrouter/free",  # Auto-router über Free-Pool (stabil für Tests)
-        "tencent/hy3:free",
-        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
+        "openrouter/free",  # Auto-router über Free-Pool
+        "tencent/hy3:free",  # live-verified 2026-07
         "qwen/qwen3-coder:free",
         "openai/gpt-oss-20b:free",
         "meta-llama/llama-3.2-3b-instruct:free",
+        # NOTE: meta-llama/llama-3.3-70b-instruct:free is permanently 404 (paid-only)
+        # NOTE: nvidia/nemotron free slugs often 404/429 — deprioritized
     ]
 
 try:
