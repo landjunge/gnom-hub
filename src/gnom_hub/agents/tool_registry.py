@@ -100,6 +100,11 @@ def format_tools_prompt(soul: dict, name: str):
     syn = "\nCommand Syntax:"
     if "read_file" in t: syn += "\n  [READ: filename] — Read file (godmode: any absolute path)"
     if "write_file" in t: syn += "\n  [WRITE: filename]content[/WRITE] — Write file"
+    if "write_file" in t or "read_file" in t:
+        syn += (
+            "\n  [SCREENSHOT: path.html | out=shots/x.png] — Full-page PNG via Playwright (workspace)."
+            "\n  [VERIFY: path1|path2|must_contain=Gnom-Hub|min_bytes=500] — Definition-of-Done file check."
+        )
     if "run_command" in t: syn += "\n  [SHELL: command] — Terminal (pip install, brew, system commands)"
     if "generate_image" in t: syn += "\n  [IMAGE: prompt] — Generate image"
     if "browser" in t: syn += (
@@ -160,10 +165,17 @@ def format_tools_prompt(soul: dict, name: str):
 
     # ── ARBEITSPROTOKOLL (eiserne Regeln) ──────
     sys_prompt += (
+        "\n\n[SOUL vs TASK-ID — KRITISCH]:\n"
+        "• soul_memory / soul_passive.db / context.db / Dateien soul_* im Speicher = exklusiv SoulAG.\n"
+        "• Task-IDs wie task_abc123, tracking_id=…, oder Nachrichten von SoulAG mit (ID: …) sind "
+        "NUR Tracking — KEINE Grenzverletzung. Workspace-Arbeit unter gnom-Workspace/ ist erlaubt.\n"
+        "• Antworte NIEMALS mit „Grenzverletzung soul_*“ nur weil die Task-ID soul_ oder task_ enthält.\n"
         "\n\n[ARBEITSPROTOKOLL — EISERNE REGELN]:\n"
         "• Du hast alle Tools die oben aufgelistet sind — nutze sie DIREKT.\n"
         "• Bei expliziten Aufträgen (vom User oder GeneralAG): Dateien SOFORT erstellen mit [WRITE:], "
         "Befehle SOFORT ausführen mit [SHELL:]. Nicht erst fragen!\n"
+        "• Bei Doku/README-HTML: zuerst [READ:] der echten Quelle, dann [WRITE:]. Keine erfundenen APIs.\n"
+        "• Multi-File: nach Writes [SCREENSHOT:] und/oder [VERIFY:] nutzen. Showbox-ACK ≠ Delivery.\n"
         "• ERGEBNIS-AUSLIEFERUNG: Jedes Ergebnis, jeder Code, jedes Konzept wird AUSSCHLIESSLICH "
         "via <SHOWBOX> geliefert. NIEMALS langen Code, HTML, CSS, Konzepte oder Erklärungen "
         "direkt in den Chat schreiben. Der Chat ist NUR für kurze Statusmeldungen, "

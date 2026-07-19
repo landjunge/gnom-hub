@@ -6,6 +6,8 @@ from gnom_hub.core.security.gatekeeper import verify_cmd, verify_write
 from .action_browser import handle_browser
 from .action_desktop import handle_desktop
 from .action_exec import handle_crawl, handle_shell, handle_showbox
+from .action_screenshot import handle_screenshot
+from .action_verify import handle_verify
 from .action_video import handle_screen_record, handle_video_edit, handle_video_merge
 from .action_write import handle_read, handle_write
 
@@ -341,6 +343,13 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     ans = handle_showbox(ans, show_ms, agent=agent, perms=perms)
     ans = handle_write(ans, w_ms, agent, perms, bs_mode, wd)
     ans = handle_read(ans, r_ms, wd, perms, agent=agent)
+    # Screenshots after writes so HTML exists on disk
+    shot_ms = list(re.finditer(r"\[SCREENSHOT:\s*([^\]]+)\]", ans, re.IGNORECASE))
+    if shot_ms:
+        ans = handle_screenshot(ans, shot_ms, agent, perms, wd)
+    verify_ms = list(re.finditer(r"\[VERIFY:\s*([^\]]+)\]", ans, re.IGNORECASE))
+    if verify_ms:
+        ans = handle_verify(ans, verify_ms, agent, perms, wd)
     ans = handle_shell(ans, sh_ms, agent, perms, bs_mode, wd)
     ans = handle_crawl(ans, crawl_matches_pre, agent, perms)
     # ── Permission-Tag-Extraktion (SecurityAG Kernrolle 1+2) ──────────────

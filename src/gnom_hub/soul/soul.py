@@ -324,7 +324,9 @@ class SoulAG:
             import uuid
 
             from gnom_hub.db.connection import get_db_conn
-            task_id = f"soul_{uuid.uuid4().hex[:10]}"
+            # Prefix "task_" — NOT "soul_". Workers misread soul_* task IDs as
+            # exclusive SoulAG storage paths and refuse the job (Premium-Test 2026-07).
+            task_id = f"task_{uuid.uuid4().hex[:10]}"
             now = time.time()
             with get_db_conn() as conn:
                 conn.execute("""
@@ -346,7 +348,13 @@ class SoulAG:
             from gnom_hub.core.config import DB_PATH
             from gnom_hub.db import get_active_project
             proj = get_active_project() or "default"
-            text = f"@{target} Task: {description} (ID: {task_id})"
+            # Explicit: ID is tracking only — workspace files under gnom-Workspace
+            # are allowed. Never use soul_memory paths in the body.
+            text = (
+                f"@{target} Task: {description}\n"
+                f"(tracking_id={task_id} — NOT a soul_memory path; "
+                f"write/read only under gnom-Workspace or granted paths)"
+            )
             dispatch_mention(
                 sender="SoulAG",
                 text=text,
