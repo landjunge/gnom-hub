@@ -18,6 +18,90 @@ _WORKER_MENTION_RE = __import__("re").compile(
     r"@(CoderAG|WriterAG|EditorAG|ResearcherAG)\b",
     __import__("re").IGNORECASE,
 )
+_re_mod = __import__("re")
+
+
+def _user_wants_direct_reply(user_text: str) -> bool:
+    """True when the user wants a short direct answer, not worker fan-out."""
+    t = (user_text or "").strip()
+    if not t:
+        return False
+    # strip only= / leading @GeneralAG from hub dispatch
+    t = _re_mod.sub(r"(?i)^\s*only=\S+\s*", "", t)
+    t = _re_mod.sub(r"(?i)^\s*@GeneralAG\s*", "", t).strip()
+    if not t:
+        return False
+    low = t.lower()
+    # Explicit short-answer patterns
+    if _re_mod.search(
+        r"(?i)\b(sag nur|antworte (nur |mit )?(genau )?|nur ein wort|ein wort|pong|"
+        r"ja oder nein|yes or no)\b",
+        low,
+    ):
+        return True
+    # Very short messages without work verbs
+    words = low.split()
+    if len(words) <= 12 and len(t) <= 120:
+        if not _re_mod.search(
+            r"(?i)\b(schreib|code|implement|browser|öffne|recherche|datei|"
+            r"write|fix|debug|html|screenshot|https?://)\b",
+            low,
+        ):
+            return True
+    return False
+
+
+def _force_direct_from_user(user_text: str) -> str:
+    """Last-resort short answer extracted from the user instruction."""
+    t = (user_text or "").strip()
+    t = _re_mod.sub(r"(?i)^\s*only=\S+\s*", "", t)
+    t = _re_mod.sub(r"(?i)^\s*@GeneralAG\s*", "", t).strip()
+    m = _re_mod.search(
+        r"(?i)(?:sag nur|antworte(?:\s+mit)?(?:\s+genau)?(?:\s+einem\s+wort)?)\s*[:\-]?\s*(.+)$",
+        t,
+    )
+    if m:
+        ans = m.group(1).strip().strip("\"'«»")
+        if ans:
+            return ans[:120]
+    # bare short line
+    if len(t.split()) <= 8 and len(t) <= 80:
+        return t
+    return ""
+
+
+def _reply_is_mostly_delegation(reply: str) -> bool:
+    """True if reply is basically only @Worker lines (no real user answer)."""
+    body = _re_mod.sub(
+        r"<think>[\s\S]*?</think>",
+        "",
+        reply or "",
+        flags=_re_mod.IGNORECASE | _re_mod.DOTALL,
+    ).strip()
+    if not body:
+        return True
+    # Remove @Worker lines and see if anything substantial remains
+    without = _re_mod.sub(
+        r"(?im)^\s*@(CoderAG|WriterAG|EditorAG|ResearcherAG)\b.*$",
+        "",
+        body,
+    )
+    without = _re_mod.sub(r"@\w+", " ", without)
+    without = " ".join(without.split())
+    has_worker = bool(_WORKER_MENTION_RE.search(body))
+    if has_worker and len(without) < 40:
+        return True
+    if has_worker and _re_mod.search(
+        r"(?i)browser|grok\.ai|whitelist|screenshot|erreichbarkeit",
+        body,
+    ):
+        # long browser delegation without a clear short answer first
+        if not _re_mod.search(
+            r"(?i)^(ja|nein|ok|pong|fertig|hier|antwort)\b",
+            without[:80],
+        ):
+            return True
+    return False
 
 
 def _schedule_worker_reply_watch(agent_req, content: str, context_id: str) -> None:
@@ -532,6 +616,71 @@ class BaseAgent:
                         # Truncate chat post — never dump 50k tokens into war-room
                         if len(think_display) > MAX_REPLY:
                             think_display = think_display[:MAX_REPLY] + "\n… [gekürzt]"
+
+                        # ── GeneralAG: simple user asks must get a direct chat
+                        # reply, not only @CoderAG browser-loop spam (R-JA fix).
+                        if (
+                            job_ok
+                            and self.n.lower() == "generalag"
+                            and _user_wants_direct_reply(text)
+                            and _reply_is_mostly_delegation(think_display)
+                        ):
+                            try:
+                                cont = (
+                                    "SYSTEM-CONTINUE (einmalig): Der User will eine DIREKTE "
+                                    "kurze Chat-Antwort auf GENAU diese Nachricht:\n"
+                                    f"«{(text or '')[:500]}»\n\n"
+                                    "Deine vorherige Antwort war nur @Worker-Delegation "
+                                    "(Browser-Loop). Das ist FALSCH für diese Nachricht.\n"
+                                    "Antworte JETZT wörtlich/kurz im Chat. "
+                                    "KEIN @CoderAG, KEIN Browser, KEINE Showbox-Pflicht."
+                                )
+                                r2 = await _to_thread(
+                                    ask_router,
+                                    cont,
+                                    None,
+                                    agent_name=self.n,
+                                    depth=msg["depth"],
+                                    parent_msg_id=msg["msg_id"],
+                                )
+                                raw2 = (
+                                    (getattr(r2, "content", None) or "").strip()
+                                    if r2 is not None
+                                    else ""
+                                )
+                                if raw2 and not raw2.startswith("[ROUTER-FEHLER]"):
+                                    raw2_clean = _re.sub(
+                                        r"<think>[\s\S]*?</think>",
+                                        "",
+                                        raw2,
+                                        flags=_re.IGNORECASE | _re.DOTALL,
+                                    ).strip()
+                                    if raw2_clean and not _reply_is_mostly_delegation(raw2_clean):
+                                        think_display = raw2_clean[:MAX_REPLY]
+                                        raw_content = raw2
+                                        ctx_logger.info(
+                                            "GeneralAG direct-reply continue msg#%s",
+                                            msg["msg_id"],
+                                        )
+                                # still wrong after continue → last-resort extract
+                                if _reply_is_mostly_delegation(think_display):
+                                    forced = _force_direct_from_user(text)
+                                    if forced:
+                                        think_display = forced
+                                        ctx_logger.warning(
+                                            "GeneralAG forced direct reply msg#%s → %r",
+                                            msg["msg_id"],
+                                            forced[:40],
+                                        )
+                            except Exception as cont_exc:
+                                ctx_logger.warning(
+                                    "GeneralAG direct-reply continue failed: %s",
+                                    cont_exc,
+                                )
+                                forced = _force_direct_from_user(text)
+                                if forced:
+                                    think_display = forced
+
                         if not think_display.strip():
                             self._req("post", "/api/chat", {
                                 "content": (
@@ -544,7 +693,12 @@ class BaseAgent:
                         else:
                             self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
                             # Only GeneralAG may fan-out worker watches; workers never storm
-                            if self.n.lower() == "generalag" and job_ok:
+                            # Skip watch when user wanted a direct short answer (no fan-out)
+                            if (
+                                self.n.lower() == "generalag"
+                                and job_ok
+                                and not _user_wants_direct_reply(text)
+                            ):
                                 try:
                                     _schedule_worker_reply_watch(
                                         self._req, think_display, msg.get("context_id") or "default"

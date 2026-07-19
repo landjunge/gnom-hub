@@ -78,7 +78,14 @@ def _agent_message_filter(sender: str, content: str, msg_type: str) -> tuple[boo
         return _check_rate_limit(sender)
 
     # ── System-Agent Filter ──────────────────────────────────────────────
-    if len(content.strip()) < 5:
+    # BUG 2026-07-19: min length 5 dropped legitimate short answers
+    # ("JA", "OK", "Nein") from GeneralAG — user saw empty chat while
+    # queue/LLM reported success. Allow short non-empty replies for
+    # system agents; only drop truly empty / whitespace-only.
+    stripped = content.strip()
+    if not stripped:
+        return True, "stub:empty_or_too_short"
+    if len(stripped) < 5 and sender in WORKER_AGENT_NAMES:
         return True, "stub:empty_or_too_short"
 
     text_without_showbox = _SHOWBOX_TAG_STRIP_RE.sub("", content).strip()
@@ -234,6 +241,12 @@ def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, co
     try:
         is_filtered, filter_reason = _agent_message_filter(sender, content, msg_type)
         if is_filtered:
+            _logger.warning(
+                "[DB] chat message FILTERED sender=%s reason=%s content=%r",
+                sender,
+                filter_reason,
+                (content or "")[:120],
+            )
             try:
                 from gnom_hub.core.audit_helpers import record_cooldown
                 is_throttle = filter_reason.startswith("throttle")

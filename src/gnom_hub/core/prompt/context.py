@@ -141,17 +141,76 @@ def _get_workspace_summary(agent_name: str, cfg: dict) -> str:
     return f"[KONTEXT:workspace_summary]\n[WORKSPACE: {wd} | Dateien: {files}]"
 
 
-def _get_chat_history_tail(agent_name: str, cfg: dict) -> str:
-    """Letzte 20 Chat-Nachrichten (sender + content[:200]).
+def _is_noise_chat_line(sender: str, content: str) -> bool:
+    """Filter agent-to-agent / browser-loop spam that poisons the current task."""
+    c = (content or "").strip()
+    s = (sender or "").lower()
+    if not c:
+        return True
+    low = c.lower()
+    browserish = any(
+        k in low
+        for k in (
+            "browser",
+            "grok.ai",
+            "whitelist",
+            "http-status",
+            "screenshot",
+            "erreichbarkeit",
+            "system-browser",
+        )
+    )
+    # Agent→worker browser delegation loops
+    if s not in ("user", "you") and c.lstrip().startswith("@") and browserish:
+        return True
+    if "R21" in c and ("Browser" in c or "browser" in low):
+        return True
+    if c.startswith("⚠️") and "Auftrag erfasst" in c:
+        return True
+    return False
 
-    Quelle: agent_base.py:139-150 (alter Code).
+
+def _get_chat_history_tail(agent_name: str, cfg: dict) -> str:
+    """Letzte Chat-Nachrichten — kurz, gefiltert (kein Browser-Loop-Spam).
+
+    Früher: 20 ungekürzte Zeilen → Free-Modelle hängen an alten @CoderAG-Browser-
+    Tasks und ignorieren die aktuelle User-Nachricht („Sag nur: JA“).
     """
-    from gnom_hub.db import get_chat_history
-    history = get_chat_history(limit=20)
+    from gnom_hub.db import get_active_project, get_chat_history
+
+    limit = int(cfg.get("limit", 8) or 8)
+    limit = max(3, min(limit, 12))
+    try:
+        proj = get_active_project() or "default"
+    except Exception:
+        proj = "default"
+    history = get_chat_history(proj, limit=limit * 3)  # over-fetch then filter
     if not history:
         return ""
-    lines = [f"[{h.get('sender','?')}]: {h.get('content','')[:200]}" for h in reversed(history)]
-    return "[KONTEXT:chat_history_tail]\n=== CHAT-VERLAUF (letzte 20) ===\n" + "\n".join(lines)
+
+    # history is newest-first; reverse for chronological context
+    cleaned: list[str] = []
+    for h in reversed(history):
+        sender = str(h.get("sender") or "?")
+        content = str(h.get("content") or "")
+        if _is_noise_chat_line(sender, content):
+            continue
+        # collapse whitespace, hard cap
+        one = " ".join(content.split())
+        if len(one) > 160:
+            one = one[:160] + "…"
+        cleaned.append(f"[{sender}]: {one}")
+        if len(cleaned) >= limit:
+            break
+
+    if not cleaned:
+        return ""
+    return (
+        "[KONTEXT:chat_history_tail]\n"
+        "=== CHAT-VERLAUF (Hintergrund, NIEDRIGE Priorität) ===\n"
+        "Die AKTUELLE User-Nachricht im user-role schlägt diesen Verlauf.\n"
+        + "\n".join(cleaned)
+    )
 
 
 def _get_soul_facts(agent_name: str, cfg: dict) -> str:

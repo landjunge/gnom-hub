@@ -111,7 +111,22 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent
         # (Previously ``sys`` default "Du bist ein Assistent." was forwarded —
         # that never retrieved anything useful.)
         sys = _build_sys(n, p, agent_name)
-        msgs = [{"role": "system", "content": sys}, {"role": "user", "content": p}]
+        # Priority envelope: free models otherwise continue old browser loops
+        # from chat_history_tail and ignore the live user text.
+        user_payload = (
+            "=== AKTUELLE USER-NACHRICHT (HÖCHSTE PRIORITÄT) ===\n"
+            f"{p}\n"
+            "=== ENDE AKTUELLE NACHRICHT ===\n"
+            "Antworte AUSSCHLIESSLICH auf die aktuelle Nachricht oben.\n"
+            "Ältere Browser-/Worker-/Showbox-Themen im Kontext sind UNGÜLTIG, "
+            "wenn die aktuelle Nachricht etwas anderes verlangt.\n"
+            "Kurze Anweisungen (z.B. „Sag nur: JA“, ein Wort, Ja/Nein) → "
+            "direkt und wörtlich im Chat, OHNE @Worker-Delegation."
+        )
+        msgs = [
+            {"role": "system", "content": sys},
+            {"role": "user", "content": user_payload},
+        ]
         kdb, adb = get_state_value("llm_keys") or {}, get_state_value("llm_agents") or {}
         if isinstance(adb, dict) and "llm_agents" in adb and isinstance(adb["llm_agents"], dict):
             adb = adb["llm_agents"]
