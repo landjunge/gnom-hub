@@ -828,6 +828,28 @@ async function updateStats() {
       const tPay = s.tokens_pay ?? 0;
       document.getElementById('s-tokens').textContent = `Free: ${tFree} | Pay: ${tPay}`;
     }
+    // Ops panel: queue / leases / last error
+    if (document.getElementById('s-queue') && s.queue) {
+      const q = s.queue;
+      document.getElementById('s-queue').textContent =
+        `${q.pending || 0}/${q.processing || 0}/${q.dead_letter || 0}`;
+    }
+    if (document.getElementById('s-leases')) {
+      const n = (s.leases && s.leases.length) || 0;
+      const who = (s.leases || []).map(l => l.recipient).filter(Boolean).slice(0, 3).join(',');
+      document.getElementById('s-leases').textContent = n ? `${n}${who ? ' ' + who : ''}` : '0';
+      document.getElementById('s-leases').title = (s.leases || [])
+        .map(l => `#${l.id} ${l.recipient}`).join('\n') || 'no active leases';
+    }
+    if (document.getElementById('s-lasterr')) {
+      if (s.last_error) {
+        const e = s.last_error;
+        document.getElementById('s-lasterr').textContent = `${e.status} ${e.recipient || ''}`.trim();
+        document.getElementById('s-lasterr').title = JSON.stringify(e);
+      } else {
+        document.getElementById('s-lasterr').textContent = '—';
+      }
+    }
   }
 }
 

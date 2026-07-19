@@ -42,8 +42,8 @@ def handle_free(q):
     from gnom_hub.infrastructure.process.process_manager import AGENTS, restart_single_agent
     t = q.replace("@","").strip().lower()
     SQLiteAgentRepository().clear_jobs(t or None)
-    from gnom_hub.db.connection import get_db_connection
-    with get_db_connection() as conn:
+    from gnom_hub.db.connection import get_db_conn
+    with get_db_conn() as conn:
         with conn:
             if t:
                 conn.execute("UPDATE agent_messages SET status='done', completed_at=? WHERE recipient=? AND status IN ('pending','processing')", (time.time(), t))

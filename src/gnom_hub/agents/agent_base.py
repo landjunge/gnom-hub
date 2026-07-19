@@ -30,9 +30,9 @@ def _schedule_worker_reply_watch(agent_req, content: str, context_id: str) -> No
         import time as _time
         _time.sleep(WORKER_WATCH_SECONDS)
         try:
-            from gnom_hub.db.connection import get_db_connection
+            from gnom_hub.db.connection import get_db_conn
             stuck = []
-            with get_db_connection() as conn:
+            with get_db_conn() as conn:
                 for w in workers:
                     # Still pending/processing for this context?
                     row = conn.execute(
@@ -414,7 +414,17 @@ class BaseAgent:
                         except Exception as e:
                             logging.getLogger(__name__).debug("SoulAG-Observer fehlgeschlagen: %s", e)
 
-                await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))
+                # P0: empty / ROUTER-FEHLER must NACK (retry/backoff), never ACK done.
+                if job_ok:
+                    await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))
+                else:
+                    reason = raw_content[:200] if raw_content else "empty_llm_response"
+                    await _to_thread(
+                        nack_message, msg["msg_id"], str(DB_PATH), reason
+                    )
+                    ctx_logger.warning(
+                        "msg#%s nack (llm fail): %s", msg["msg_id"], reason[:80]
+                    )
 
                 self._req("post", "/api/swarm/complete", {
                     "context_id": msg["context_id"],

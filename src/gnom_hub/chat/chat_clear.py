@@ -3,11 +3,11 @@ def handle_clear(q=""):
     q = q.strip().lower()
     if q in ("db", "database", "all"):
         from gnom_hub.chat.chat_commands import _post_chat
-        from gnom_hub.db.connection import get_db_connection
+        from gnom_hub.db.connection import get_db_conn
         from gnom_hub.db.passive_db import get_passive_conn, init_passive_db
         try:
             # 1. Primary DB clean
-            with get_db_connection() as conn:
+            with get_db_conn() as conn:
                 with conn:
                     conn.execute("DELETE FROM chat")
                     conn.execute("DELETE FROM soul_memory")

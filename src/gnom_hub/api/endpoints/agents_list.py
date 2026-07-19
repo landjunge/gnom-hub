@@ -56,6 +56,7 @@ def get_agent(a_id: str):
 @router.get("/api/stats")
 def get_system_stats():
     from gnom_hub.db.chat_repo import SQLiteChatRepository
+    from gnom_hub.db.connection import get_db_conn
     from gnom_hub.db.state_repo import SQLiteStateRepository
     from gnom_hub.memory.smr.smr_stats import get_memory_stats
     from gnom_hub.soul import SOULS
@@ -66,4 +67,64 @@ def get_system_stats():
     cc = SQLiteChatRepository().count_messages()
     mem = get_memory_stats().get("total_facts", 0)
     tfb = SQLiteStateRepository().get_value("tokens", [{}])[0].get("total", 0) if SQLiteStateRepository().get_value("tokens") else 0
-    return {"agents": len(ags), "sys_agents": sa, "work_agents": len(ags) - sa, "memory": mem, "chat": cc, "tokens": d.get("total", tfb), "tokens_free": d.get("total_free", 0), "tokens_pay": d.get("total_pay", 0)}
+    # Ops panel: queue depth, leases, last error
+    queue = {"pending": 0, "processing": 0, "dead_letter": 0, "failed": 0}
+    leases = []
+    last_error = None
+    try:
+        with get_db_conn() as conn:
+            for row in conn.execute(
+                "SELECT status, COUNT(*) AS c FROM agent_messages "
+                "WHERE status IN ('pending','processing','dead_letter','failed') GROUP BY status"
+            ):
+                st = row["status"] if hasattr(row, "keys") else row[0]
+                cnt = row["c"] if hasattr(row, "keys") else row[1]
+                if st in queue:
+                    queue[st] = int(cnt)
+            for row in conn.execute(
+                """
+                SELECT id, recipient, sender, processing_since, created_at
+                FROM agent_messages
+                WHERE status = 'processing'
+                ORDER BY COALESCE(processing_since, created_at) ASC
+                LIMIT 8
+                """
+            ):
+                leases.append({
+                    "id": row["id"],
+                    "recipient": row["recipient"],
+                    "sender": row["sender"],
+                    "processing_since": row["processing_since"],
+                    "created_at": row["created_at"],
+                })
+            err = conn.execute(
+                """
+                SELECT id, recipient, status, completed_at
+                FROM agent_messages
+                WHERE status IN ('dead_letter', 'failed')
+                ORDER BY COALESCE(completed_at, 0) DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            if err:
+                last_error = {
+                    "id": err["id"],
+                    "recipient": err["recipient"],
+                    "status": err["status"],
+                    "completed_at": err["completed_at"],
+                }
+    except Exception:
+        pass
+    return {
+        "agents": len(ags),
+        "sys_agents": sa,
+        "work_agents": len(ags) - sa,
+        "memory": mem,
+        "chat": cc,
+        "tokens": d.get("total", tfb),
+        "tokens_free": d.get("total_free", 0),
+        "tokens_pay": d.get("total_pay", 0),
+        "queue": queue,
+        "leases": leases,
+        "last_error": last_error,
+    }

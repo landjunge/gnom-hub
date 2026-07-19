@@ -65,7 +65,7 @@ async function loadWorkspacePath() {
   const input = document.getElementById('workspace-path-input');
   const badge = document.getElementById('workspace-default-badge');
   if (!input) return;
-  const cfg = await api('GET', '/api/workspace/config');
+  const cfg = await api('GET', '/workspace/config');
   if (cfg && cfg.path) {
     input.value = cfg.path;
     input.placeholder = cfg.default || '~/gnom-Workspace';
@@ -93,7 +93,7 @@ window.saveWorkspacePath = async function() {
   }
   if (saveBtn) saveBtn.disabled = true;
   if (status) { status.style.color = 'var(--text-dim)'; status.textContent = 'Speichere…'; }
-  const res = await api('PUT', '/api/workspace/config', { path: newPath });
+  const res = await api('PUT', '/workspace/config', { path: newPath });
   if (saveBtn) saveBtn.disabled = false;
   if (res && res.ok) {
     if (status) {
@@ -118,7 +118,7 @@ window.saveWorkspacePath = async function() {
 window.resetWorkspacePath = async function() {
   const status = document.getElementById('workspace-config-status');
   if (status) { status.style.color = 'var(--text-dim)'; status.textContent = 'Setze zurück…'; }
-  const res = await api('POST', '/api/workspace/config/reset');
+  const res = await api('POST', '/workspace/config/reset');
   if (res && res.ok) {
     if (status) {
       status.style.color = 'var(--green)';

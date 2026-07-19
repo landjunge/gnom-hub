@@ -1,14 +1,14 @@
 # Gnom-Hub ARCHITECTURE
 
-> last_verified_against: a92ee3278fdb6544a50d8e0b0043d0068652062d
-> last_verified_date: 2026-06-22
-> status: active (verifiziert gegen src/ + routing.txt + CHANGELOG.md)
+> last_verified_against: master @ 2026-07-19
+> last_verified_date: 2026-07-19
+> status: active (teilweise verifiziert; siehe auch TECHNICAL_STATUS_REPORT_2026-07.md)
 > previous_snapshot: docs/archive/2026-06-19-initial-snapshot/ARCHITECTURE.md
 
 Diese Datei ist die **Source of Truth** für die Gnom-Hub-Architektur.
-Sie wurde am 2026-06-22 verifiziert (Commit `a92ee3278`). Bei Drift
-zwischen dieser Datei und dem Code gewinnt der Code — und diese Datei
-muss nachgezogen werden.
+Bei Drift zwischen dieser Datei und dem Code gewinnt der Code — und diese
+Datei muss nachgezogen werden. Detail-Status: `docs/TECHNICAL_STATUS_REPORT_2026-07.md`,
+Strategie: `docs/STRATEGY_PLAN_2026.md`.
 
 Quickstart + Marketing: `README.md` / `README.de.md`.
 
@@ -21,9 +21,9 @@ Namen, Farben und Avatare sind nicht verhandelbar.
 
 | Name         | Kategorie | Farbe     | Rolle in einem Satz                              | Definiert in                  |
 |--------------|-----------|-----------|--------------------------------------------------|-------------------------------|
-| SoulAG       | System    | #00e5ff   | Default-Entry-Point für User-Chats, verteilt     | `core/agent_names.py:15-27`   |
+| SoulAG       | System    | #00e5ff   | Stiller Beobachter, Memory/Fakten, Tribunal      | `core/agent_names.py:15-27`   |
 | WatchdogAG   | System    | #00e5ff   | Recovery + Health-Checks                         | `core/agent_names.py:15-27`   |
-| GeneralAG    | System    | #00e5ff   | Generische Admin-/Tool-Tasks                     | `core/agent_names.py:15-27`   |
+| GeneralAG    | System    | #00e5ff   | **Default-Entry** für User-Chats (Orchestrator)  | `core/agent_names.py:15-27`   |
 | SecurityAG   | System    | #00e5ff   | Permissions-/Role-Management                     | `core/agent_names.py:15-27`   |
 | WriterAG     | Worker    | #ffa500   | Texterstellung                                   | `core/agent_names.py:15-27`   |
 | CoderAG      | Worker    | #ffa500   | Code-Generierung / -Refactor                     | `core/agent_names.py:15-27`   |
@@ -39,17 +39,15 @@ Avatar-Mapping (z.B. SoulAG → showbox icon): `core/agent_names.py:43-52`.
 
 ## 2. Agent-Rollen im Detail
 
-### SoulAG — Entry-Point für User-Chats
-**Code-Pfad:** `src/gnom_hub/api/endpoints/chat_legacy.py:75`
-(`@router.post("/api/chat")`).
-Wenn der User-Call keinen `@<agent>`-Target enthält, geht der Chat
-**immer** zu SoulAG (`chat_legacy.py:171-175`). SoulAG entscheidet
-dann, ob die Anfrage an einen Worker (Writer/Coder/Researcher/Editor)
-oder einen System-Agent delegiert wird.
+### GeneralAG — Default-Entry für User-Chats (seit 2026-07)
+**Code-Pfad:** `src/gnom_hub/api/endpoints/chat_legacy.py` → `POST /api/chat`.
+Wenn der User-Call keinen `@<agent>`-Target enthält, geht der Chat an
+**GeneralAG** (Dirigent). GeneralAG antwortet und/oder delegiert an Worker
+(`@CoderAG`, `@WriterAG`, …).
 
-### GeneralAG — Admin-/Tool-Tasks
-Aufgerufen aus `src/gnom_hub/api/endpoints/admin_config.py:94` für
-Generierungs-/Config-Tasks die keinen spezialisierten Worker haben.
+### SoulAG — Stiller Beobachter + Memory
+Läuft im Hintergrund (Fakten-Extraktion, Nudge-Loop, Observation). Nicht
+mehr der Default-Chat-Empfänger.
 
 ### WatchdogAG — Recovery
 Zwei Recovery-Loops laufen parallel (siehe §7).

@@ -303,9 +303,9 @@ def _seed_showboxes(conn):
 
 def init_database() -> None:
     """Erstellt alle benötigten Tabellen und Indizes, und führt das Seeding durch."""
-    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.db.connection import get_db_conn
     try:
-        with get_db_connection() as conn:
+        with get_db_conn() as conn:
             with conn:
                 conn.executescript(SCHEMA_SQL)
                 

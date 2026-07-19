@@ -73,12 +73,22 @@ def register_agent(p: RegisterPayload):
 
 @router.post("/api/agents/{a_id}/heartbeat")
 def heartbeat(a_id: str):
-    """Cheap last_seen touch — no full agent rewrite."""
+    """Cheap last_seen touch — never overwrite busy/processing/running status."""
     try:
         now = datetime.now(timezone.utc).isoformat()
         with get_db_conn() as c:
+            # Keep busy/processing/running; only force online when idle/stale.
             cur = c.execute(
-                "UPDATE agents SET status='online', last_seen=? WHERE name=? OR id=? OR lower(name)=lower(?)",
+                """
+                UPDATE agents
+                SET last_seen = ?,
+                    status = CASE
+                        WHEN lower(COALESCE(status, '')) IN ('busy', 'processing', 'running')
+                        THEN status
+                        ELSE 'online'
+                    END
+                WHERE name=? OR id=? OR lower(name)=lower(?)
+                """,
                 (now, a_id, a_id, a_id),
             )
             if cur.rowcount == 0:
@@ -99,7 +109,11 @@ def heartbeat(a_id: str):
                     )
                     return {"status": "online"}
                 return {"error": "not found"}
-        return {"status": "online"}
+            row = c.execute(
+                "SELECT status FROM agents WHERE name=? OR id=? OR lower(name)=lower(?) LIMIT 1",
+                (a_id, a_id, a_id),
+            ).fetchone()
+            return {"status": (row["status"] if row else "online")}
     except sqlite3.OperationalError as e:
         logger.warning("heartbeat soft-fail %s: %s", a_id, e)
         return {"status": "online", "soft": True}

@@ -64,6 +64,38 @@ def test_recover_stuck_messages(isolated_db):
         conn.close()
 
 
+def test_recover_stuck_ignores_young_null_processing_since(isolated_db):
+    """processing_since IS NULL alone must not thrash brand-new rows."""
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO agents (name, id, port, description, status, capabilities, role, last_seen)
+            VALUES ('CoderAG', 'coder-uuid', 0, 'Coder Agent', 'online', '[]', 'normal', '2026-06-04T00:00:00Z')
+        """)
+        now = time.time()
+        conn.execute("""
+            INSERT INTO agent_messages
+                (sender, recipient, payload, priority, status, retry_count, created_at, deliver_after, processing_since, depth)
+            VALUES ('GeneralAG', 'CoderAG', ?, 5, 'processing', 0, ?, 0, NULL, 0)
+        """, (json.dumps({"text": "fresh null ps"}), now))
+        conn.commit()
+    finally:
+        conn.close()
+
+    from gnom_hub.core.config import DB_PATH
+    recover_stuck_messages(str(DB_PATH), timeout=300.0)
+
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT status, retry_count FROM agent_messages WHERE payload LIKE '%fresh null ps%'"
+        ).fetchone()
+        assert row["status"] == "processing"
+        assert row["retry_count"] == 0
+    finally:
+        conn.close()
+
+
 def test_backpressure_queue_limit(isolated_db):
     """Test that mentions are dropped when an agent's queue depth exceeds MAX_QUEUE_DEPTH."""
     conn = get_db_connection()
@@ -462,13 +494,18 @@ def seed_workflow_agents(conn):
     conn.commit()
 
 
-def test_linear_workflow_execution(isolated_db):
+def test_linear_workflow_execution(isolated_db, monkeypatch):
     """Test standard linear workflow A -> B."""
     import json
 
     from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
     from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
+    from gnom_hub.core.config import Config
     from gnom_hub.db.connection import get_db_connection
+
+    # Workflow tests assert explicit capabilities; deterministic routing
+    # (on in config/.env) remaps to "general" and breaks the fixture.
+    monkeypatch.setattr(Config, "ROUTING_DETERMINISTIC_MODE", False)
 
     conn = get_db_connection()
     try:
@@ -553,13 +590,16 @@ def test_linear_workflow_execution(isolated_db):
         conn.close()
 
 
-def test_parallel_workflow_execution(isolated_db):
+def test_parallel_workflow_execution(isolated_db, monkeypatch):
     """Test parallel workflow execution where A (runs on CoderAG), B (runs on SecurityAG) -> C (runs on CoderAG)."""
     import json
 
     from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
     from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
+    from gnom_hub.core.config import Config
     from gnom_hub.db.connection import get_db_connection
+
+    monkeypatch.setattr(Config, "ROUTING_DETERMINISTIC_MODE", False)
 
     conn = get_db_connection()
     try:
@@ -670,11 +710,14 @@ def test_parallel_workflow_execution(isolated_db):
         conn.close()
 
 
-def test_workflow_failure_handling(isolated_db):
+def test_workflow_failure_handling(isolated_db, monkeypatch):
     """Test that a failed task aborts the workflow."""
     from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
     from gnom_hub.api.endpoints.agents_status import SwarmCompletePayload, swarm_complete
+    from gnom_hub.core.config import Config
     from gnom_hub.db.connection import get_db_connection
+
+    monkeypatch.setattr(Config, "ROUTING_DETERMINISTIC_MODE", False)
 
     conn = get_db_connection()
     try:

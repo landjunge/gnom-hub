@@ -145,11 +145,11 @@ def build_agent_health_entry(
 
 def collect_all_agent_health() -> dict[str, Any]:
     """Snapshot for GET /api/agents/health and enriched /api/health."""
-    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.db.connection import get_db_conn
 
     now = time.time()
     agents_out: list[dict] = []
-    with get_db_connection() as conn:
+    with get_db_conn() as conn:
         rows = conn.execute(
             "SELECT name, status, last_seen FROM agents ORDER BY name"
         ).fetchall()

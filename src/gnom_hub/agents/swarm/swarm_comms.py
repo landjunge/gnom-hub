@@ -753,10 +753,16 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
     try:
         now = time.time()
         stuck_cutoff = now - timeout
+        # processing_since IS NULL: only treat as stuck if created_at is also old
+        # (prevents thrashing brand-new/buggy rows every recovery tick).
         rows = conn.execute("""
             SELECT id, retry_count, recipient, sender FROM agent_messages
-            WHERE status = 'processing' AND (processing_since <= ? OR processing_since IS NULL)
-        """, (stuck_cutoff,)).fetchall()
+            WHERE status = 'processing'
+              AND (
+                    (processing_since IS NOT NULL AND processing_since <= ?)
+                 OR (processing_since IS NULL AND created_at <= ?)
+              )
+        """, (stuck_cutoff, stuck_cutoff)).fetchall()
 
         for row in rows:
             msg_id = row["id"]
@@ -881,8 +887,8 @@ def dispatch_by_capability_with_resolution(
     # Wenn keine ``available_capabilities`` übergeben wurden, aus der DB laden.
     if available_capabilities is None:
         try:
-            from gnom_hub.db.connection import get_db_connection
-            with get_db_connection() as _conn:
+            from gnom_hub.db.connection import get_db_conn
+            with get_db_conn() as _conn:
                 _rows = _conn.execute(
                     "SELECT DISTINCT capability FROM agent_capabilities"
                 ).fetchall()

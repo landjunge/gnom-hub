@@ -762,6 +762,43 @@ function renderChatMessageHTML(m, overrideContent) {
     <div class="mem-content" id="msg-${mid}">${safe}</div></div>`;
 }
 
+// SSE chat stream (Phase-0): lowers need for aggressive polling
+window._chatSse = null;
+function startChatSSE() {
+  if (window._chatSse) return;
+  try {
+    const base = (typeof API === 'string' && API) ? API : '/api';
+    const url = base.replace(/\/$/, '') + '/chat/stream?limit=20';
+    const es = new EventSource(url);
+    window._chatSse = es;
+    es.addEventListener('chat', (ev) => {
+      try {
+        const data = JSON.parse(ev.data || '{}');
+        if (data.messages) {
+          // force refreshChat to re-render even if poll interval is high
+          window._lastChatData = null;
+          refreshChat();
+        }
+      } catch (e) { /* ignore parse */ }
+    });
+    es.onerror = () => {
+      try { es.close(); } catch (e) {}
+      window._chatSse = null;
+      // reconnect later
+      setTimeout(startChatSSE, 5000);
+    };
+  } catch (e) {
+    console.warn('chat SSE unavailable', e);
+  }
+}
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(startChatSSE, 800));
+  } else {
+    setTimeout(startChatSSE, 800);
+  }
+}
+
 async function refreshChat() {
   const el = document.getElementById('chat-display');
   if (!el) return;

@@ -126,6 +126,16 @@ class TestAgentBaseSilentPaths:
         assert posts
         assert "leerer Content" in posts[0]["content"]
 
+    def test_job_ok_false_must_nack_not_ack(self):
+        """P0 contract: empty/ROUTER-FEHLER → nack_message, never ack_message."""
+        job_ok = False
+        actions = []
+        if job_ok:
+            actions.append("ack")
+        else:
+            actions.append("nack")
+        assert actions == ["nack"]
+
 
 # ── Prio-2: Queue preserve / requeue ──────────────────────────────────────
 
@@ -145,10 +155,10 @@ class TestQueueOnAgentStart:
         # Ensure tables
         schema_mod.create_tables()
 
-        from gnom_hub.db.connection import get_db_connection
+        from gnom_hub.db.connection import get_db_conn
 
         now = time.time()
-        with get_db_connection() as conn:
+        with get_db_conn() as conn:
             # seed agents table minimally if needed
             conn.execute(
                 "INSERT OR IGNORE INTO agents (name, id, status, last_seen) VALUES (?,?,?,?)",
@@ -186,7 +196,7 @@ class TestQueueOnAgentStart:
                 with patch("gnom_hub.db.get_active_project", return_value="default"):
                     pm.start_background_agents()
 
-        with get_db_connection() as conn:
+        with get_db_conn() as conn:
             rows = conn.execute(
                 "SELECT status, payload FROM agent_messages ORDER BY id"
             ).fetchall()

@@ -9,7 +9,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from gnom_hub.db.connection import get_db_connection
+from gnom_hub.db.connection import get_db_conn
 from gnom_hub.memory.emb_cache import get_emb
 
 _models_cache = {}
@@ -50,7 +50,7 @@ class FaissEmbeddingHelper:
     def _create(self):
         with _get_index_lock(self.scope):
             try:
-                with get_db_connection() as conn:
+                with get_db_conn() as conn:
                     if self.scope == "global":
                         facts = conn.execute("SELECT id, key, value FROM soul_memory WHERE agent IS NULL OR LOWER(agent) NOT IN ('coderag', 'researcherag', 'writerag', 'editorag')").fetchall()
                     else:
@@ -77,7 +77,7 @@ class FaissEmbeddingHelper:
             res = []
             for idx in [i for i in indices[0] if 0 <= i < len(self.fact_ids)]:
                 try:
-                    with get_db_connection() as conn:
+                    with get_db_conn() as conn:
                         r = conn.execute("SELECT key, value FROM soul_memory WHERE id = ?", (self.fact_ids[idx],)).fetchone()
                         if r: res.append(f"{r[0]}: {r[1]}")
                 except Exception as e: logging.getLogger(__name__).error('Fehler in search (raw DB-Lookup): %s', e)
@@ -95,7 +95,7 @@ class FaissEmbeddingHelper:
 
         res_scored = []
         try:
-            with get_db_connection() as conn:
+            with get_db_conn() as conn:
                 conn.row_factory = sqlite3.Row
                 for dist, fact_id in candidates:
                     r = conn.execute("SELECT key, value, priority FROM soul_memory WHERE id = ?", (fact_id,)).fetchone()

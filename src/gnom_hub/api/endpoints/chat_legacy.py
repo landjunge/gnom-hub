@@ -416,3 +416,52 @@ def get_chat(limit: int = 50):
     for m in rm:
         if "content" in m: m["content"] = sanitize_showboxes(m["content"])
     return rm
+
+
+@router.get("/api/chat/stream")
+def stream_chat(limit: int = 30, after: str = ""):
+    """SSE stream of chat updates (Phase-0 prototype).
+
+    Clients may raise poll interval; events fire when the newest message
+    id/timestamp changes. Heartbeat every ~15s keeps proxies alive.
+    """
+    import json
+    import time as _time
+
+    from fastapi.responses import StreamingResponse
+
+    def _event_gen():
+        last_sig = after or ""
+        idle = 0
+        while True:
+            try:
+                msgs = get_chat_history(get_active_project(), limit)
+                for m in msgs:
+                    if "content" in m:
+                        m["content"] = sanitize_showboxes(m["content"])
+                # signature: newest first in get_chat_history
+                top = msgs[0] if msgs else {}
+                sig = f"{top.get('id', '')}|{top.get('timestamp', '')}|{len(msgs)}"
+                if sig != last_sig:
+                    last_sig = sig
+                    idle = 0
+                    payload = json.dumps({"messages": msgs, "sig": sig})
+                    yield f"event: chat\ndata: {payload}\n\n"
+                else:
+                    idle += 1
+                    if idle >= 5:
+                        idle = 0
+                        yield f"event: ping\ndata: {_time.time()}\n\n"
+            except Exception as ex:
+                yield f"event: error\ndata: {json.dumps({'error': str(ex)[:120]})}\n\n"
+            _time.sleep(3.0)
+
+    return StreamingResponse(
+        _event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
