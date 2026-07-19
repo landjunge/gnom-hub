@@ -282,7 +282,7 @@ The canary test (`tests/test_tkg_brain_correctness.py`) only asserts `hybrid > v
 - **Token economy benchmark.** The plan (§1.6) committed to ≥40% token reduction vs flat context. Not measured. The data is in `KpiRepository` (`KPI_TOKEN_ECONOMY`) but no replay-harness yet writes a value.
 - **Phase 1.5 LLM-predicate extraction.** Current Relation extraction is co-occurrence only. The LLM-based predicate extractor is on the roadmap, not implemented.
 - **Phase 5 multi-backend benchmarks.** KuzuDB vs InMemory vs FAISS-vs-TF-IDF head-to-head, scaling tests, concurrency tests. None of this exists yet.
-- **No integration with the runtime agent loop.** `SoulAG` and `ContextManager` were partially wired to the TKG adapter in Phase 4, but the agent's auto-recall path is still a TODO. Right now you have to call `engine.query()` explicitly.
+- **Auto-recall in the runtime agent loop (S5).** `ask_router` → `build_system_prompt` injects `[KONTEXT:tkg_recall]` from `retrieve_relevant(user_message)` before each LLM call. Toggle: `TKG_AUTO_RECALL` (default on). Auto-curate of thought facts into TKG: `TKG_AUTO_CURATE` (default on).
 - **No migration of legacy `soul_memory` data.** The 3-layer SQLite memory and the TKG are separate stores. A migration script that lifts `soul_memory` rows into the TKG does not exist.
 
 ### Layout

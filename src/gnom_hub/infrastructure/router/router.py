@@ -27,12 +27,15 @@ def _get_agent_role(agent_name_lower: str) -> str:
     except Exception:
         return ""
 
-def _build_sys(n, sys, agent_name):
+def _build_sys(n, message_text, agent_name):
     """Phase-2 SSOT-Delegation. Liest runtime-settings aus state und ruft
     den neuen core.prompt.builder. KEIN override-Pfad mehr.
-    
+
+    ``message_text`` is the current user/queue payload (not a system string).
+    The builder uses it for TKG auto-recall injection.
+
     Verarbeitung passiert vollständig im Builder (Post-Processing: Obedience,
-    Behavioral, Custom, Preset, Evolution-Rules).
+    Behavioral, Custom, Preset, Evolution-Rules + TKG recall).
     """
     from gnom_hub.core.prompt.builder import build_system_prompt as new_build
 
@@ -43,7 +46,7 @@ def _build_sys(n, sys, agent_name):
 
     return new_build(
         agent_name=agent_name or "Agent",
-        message_text=sys or "",
+        message_text=message_text or "",
         runtime_settings=runtime_settings,
     )
 
@@ -104,7 +107,10 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent
             
     try:
         n, t0 = (agent_name or "").lower(), time.time()
-        sys = _build_sys(n, sys, agent_name)
+        # Pass the user message into the builder so TKG auto-recall can fire.
+        # (Previously ``sys`` default "Du bist ein Assistent." was forwarded —
+        # that never retrieved anything useful.)
+        sys = _build_sys(n, p, agent_name)
         msgs = [{"role": "system", "content": sys}, {"role": "user", "content": p}]
         kdb, adb = get_state_value("llm_keys") or {}, get_state_value("llm_agents") or {}
         if isinstance(adb, dict) and "llm_agents" in adb and isinstance(adb["llm_agents"], dict):

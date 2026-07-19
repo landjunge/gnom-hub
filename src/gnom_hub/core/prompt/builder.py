@@ -47,6 +47,7 @@ logger = logging.getLogger(__name__)
 # importieren, obwohl die Definition in post_processing.py lebt.
 __all__ = [
     "build_system_prompt",
+    "_inject_tkg_recall",
     "_load_agent_config",
     "_apply_post_processing",
     "_get_obedience_instructions",
@@ -96,6 +97,67 @@ def _build_verhalten_block(cfg: dict) -> str:
 
 # ── Public API ─────────────────────────────────────────────────────────────
 
+def _inject_tkg_recall(base: str, agent_name: str, message_text: str) -> str:
+    """Inject TKG auto-recall facts for the current user message.
+
+    Wired into the real agent loop (ask_router → build_system_prompt).
+    Best-effort: any failure returns ``base`` unchanged. Empty / trivial
+    messages skip recall so golden/static prompt tests stay stable.
+    """
+    msg = (message_text or "").strip()
+    if len(msg) < 10:
+        return base
+    # Avoid treating the old default system string as a query
+    if msg in ("Du bist ein Assistent.", "You are an assistant."):
+        return base
+    try:
+        from gnom_hub.core.config import Config
+        if not getattr(Config, "TKG_AUTO_RECALL", True):
+            return base
+    except Exception:
+        pass
+
+    try:
+        top_k = 6
+        try:
+            from gnom_hub.core.constants import MEMORY_STRENGTH_MAP
+            from gnom_hub.db import get_state_value
+            settings = (get_state_value("agent_settings") or {}).get(
+                agent_name.lower(), {}
+            )
+            top_k = MEMORY_STRENGTH_MAP.get(
+                int(settings.get("memory_strength", 3)), 6
+            )
+        except Exception:
+            pass
+
+        from gnom_hub.memory_tkg.adapter import retrieve_relevant
+        facts = retrieve_relevant(msg, top_k=top_k)
+        if not facts:
+            return base
+
+        lines: list[str] = []
+        for f in facts:
+            s = str(f).strip().replace("\n", " ")
+            if not s:
+                continue
+            if len(s) > 400:
+                s = s[:400] + "…"
+            lines.append(f"- {s}")
+        if not lines:
+            return base
+
+        block = (
+            "[KONTEXT:tkg_recall]\n"
+            "=== RELEVANTE ERINNERUNGEN (TKG) ===\n"
+            + "\n".join(lines)
+        )
+        return base + "\n\n" + block
+    except Exception as e:
+        logger.debug("TKG auto-recall failed for %s: %s", agent_name, e)
+        return base
+
+
 def build_system_prompt(
     agent_name: str,
     message_text: str = "",
@@ -105,8 +167,7 @@ def build_system_prompt(
 
     Args:
         agent_name: one of the 8 frozen agent names (e.g. "GeneralAG")
-        message_text: optional, derzeit ungenutzt — Platzhalter für
-            zukünftige per-message Kontext-Anpassungen.
+        message_text: current user/queue message — used for TKG auto-recall.
         runtime_settings: optional dict mit Runtime-Settings aus dem
             State-Table. Wenn None, wird Post-Processing übersprungen.
             Typische Keys: obedience, personality, response_style,
@@ -154,6 +215,9 @@ def build_system_prompt(
     parts.append(f"⚠️ DU BIST {agent_name} UND NUR {agent_name}")
 
     base = "\n\n".join(parts)
+
+    # 7b. TKG auto-recall (per-message, all agents)
+    base = _inject_tkg_recall(base, agent_name, message_text)
 
     # 8. Post-Processing (nur wenn runtime_settings übergeben)
     if runtime_settings:

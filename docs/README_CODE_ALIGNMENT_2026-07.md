@@ -127,7 +127,7 @@
 | Key-Reconcile Desktop `api_keys.txt` | `key_reconciler` vorhanden | **OK** |
 | Offload + OFFLOAD_RECALL | `memory/offload`, `action_handlers` | **OK** (Code da) |
 | TKG Code + Tests + Benchmark-Scripts | `memory_tkg/`, tests, scripts | **OK** |
-| TKG auto-recall im Agent-Loop | README selbst: TODO; Code: kein `engine.query` in agent/soul Loop | **OK ehrlich / Lücke bleibt** |
+| TKG auto-recall im Agent-Loop | S5: `builder._inject_tkg_recall` + `ask_router` übergibt User-Message; Flags `TKG_AUTO_*` | **OK verdrahtet** |
 | Embeddings FAISS + TF-IDF Fallback | vorhanden (optional deps) | **OK** |
 | Python 3.10+ Badge | `requires-python >=3.9` | **leichter DRIFT** |
 | Tests 496 CI / 730 full (2026-07-11) | CI ~**537** passed (Juli 2026, ignore-list) | **VERALTET** |

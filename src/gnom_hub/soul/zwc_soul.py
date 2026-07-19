@@ -133,7 +133,8 @@ _THOUGHT_PATTERNS = [
 def extract_facts_from_text(text: str, agent_name: str) -> list:
     """
     Lokale, blockierungsfreie Fakt-Extraktion aus einem Denkprozess.
-    Pattern-basiert, kein LLM-Call. Speichert direkt in soul_memory.
+    Pattern-basiert, kein LLM-Call. Speichert in soul_memory und (S5)
+    parallel in den TKG wenn ``TKG_AUTO_CURATE`` aktiv ist.
     Gibt Liste der gespeicherten Keys zurück.
 
     Wird von agent_base.py nach jeder Agent-Antwort aufgerufen,
@@ -150,6 +151,20 @@ def extract_facts_from_text(text: str, agent_name: str) -> list:
     except Exception:
         return []
 
+    tkg_curate = True
+    try:
+        from gnom_hub.core.config import Config
+        tkg_curate = bool(getattr(Config, "TKG_AUTO_CURATE", True))
+    except Exception:
+        pass
+
+    store_tkg = None
+    if tkg_curate:
+        try:
+            from gnom_hub.memory_tkg.adapter import store_memory as store_tkg
+        except Exception:
+            store_tkg = None
+
     for pattern, kind, _priority in _THOUGHT_PATTERNS:
         for m in _re.finditer(pattern, text_lower, flags=_re.IGNORECASE | _re.DOTALL):
             fact = m.group(1).strip().rstrip(".!?\n")
@@ -157,15 +172,21 @@ def extract_facts_from_text(text: str, agent_name: str) -> list:
                 continue
             # Keine Duplikate pro Agent+Kind
             key = f"thought_{kind}_{_uuid.uuid4().hex[:8]}"
+            payload = f"[{kind} from {agent_name}] {fact[:250]}"
             try:
                 save_soul_fact_smart(
                     key,
-                    f"[{kind} from {agent_name}] {fact[:250]}",
+                    payload,
                     agent="SoulAG",
                 )
                 saved_keys.append(key)
             except Exception:
                 pass
+            if store_tkg is not None:
+                try:
+                    store_tkg(payload, importance=0.55)
+                except Exception:
+                    pass
             # Max 5 Fakten pro Denkprozess (Performance)
             if len(saved_keys) >= 5:
                 return saved_keys
@@ -173,10 +194,14 @@ def extract_facts_from_text(text: str, agent_name: str) -> list:
     # Zusätzlich: bei jedem Denkprozess einen Meta-Fakt über die Denkaktivität
     if len(text) > 200 and saved_keys:
         try:
+            meta = (
+                f"{agent_name} dachte intensiv nach ({len(text)} Zeichen Denkprozess, "
+                f"{len(saved_keys)} Erkenntnisse extrahiert) am "
+                f"{_dt.utcnow().strftime('%Y-%m-%d %H:%M')}"
+            )
             save_soul_fact_smart(
                 f"thought_meta_{_uuid.uuid4().hex[:6]}",
-                f"{agent_name} dachte intensiv nach ({len(text)} Zeichen Denkprozess, ",
-                f"{len(saved_keys)} Erkenntnisse extrahiert) am {_dt.utcnow().strftime('%Y-%m-%d %H:%M')}",
+                meta,
                 agent="SoulAG",
             )
         except Exception:

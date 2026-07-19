@@ -99,6 +99,17 @@ class Config:
     # overridden per-agent via the LLM provider's ``max_tokens`` later.
     OFFLOAD_MAX_TOKENS = int(os.getenv("OFFLOAD_MAX_TOKENS", "8000"))
 
+    # ── TKG im Agent-Loop (S5 local-first) ────────────────────────────────
+    # Auto-Recall: relevante TKG-Facts vor jedem LLM-Call in den System-
+    # Prompt injizieren. Auto-Curate: aus extrahierten Thought-Facts auch
+    # in den TKG schreiben. Beides best-effort, fail-open.
+    TKG_AUTO_RECALL = os.getenv("TKG_AUTO_RECALL", "true").lower() in (
+        "1", "true", "yes", "on",
+    )
+    TKG_AUTO_CURATE = os.getenv("TKG_AUTO_CURATE", "true").lower() in (
+        "1", "true", "yes", "on",
+    )
+
     # ── Routing-Determinism (opt-in Feature Flag) ─────────────────────────
     # Wenn aktiviert, läuft zusätzlich zum LLM-basierten ask_router ein
     # deterministischer Capability-Resolver

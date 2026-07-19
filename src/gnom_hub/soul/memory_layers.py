@@ -537,10 +537,11 @@ def get_coordination_db() -> CoordinationDB:
 # ══════════════════════════════════════════════════════════════════════════════
 def query_memory(msg: str, agent_name: str, top_k: int = 6) -> list[str]:
     """
-    3-Layer Memory Query:
+    4-Layer Memory Query:
     1. Cache (sofort, <1ms)
     2. Normal DB via retrieve_relevant_facts (FAISS, ~10ms)
-    3. Passive DB als Fallback (nur wenn 1+2 leer, ~50ms)
+    2b. TKG (graph/vector, best-effort) — S5 agent-loop integration
+    3. Passive DB als Fallback (nur wenn 1+2+2b leer, ~50ms)
     """
     results = []
 
@@ -562,6 +563,19 @@ def query_memory(msg: str, agent_name: str, top_k: int = 6) -> list[str]:
                     results.append(f)
         except Exception as e:
             _log.debug("[Memory] Layer 2 fehlgeschlagen: %s", e)
+
+    # Layer 2b — TKG (always try to fill remaining slots)
+    if len(results) < top_k:
+        try:
+            from gnom_hub.core.config import Config
+            if getattr(Config, "TKG_AUTO_RECALL", True):
+                from gnom_hub.memory_tkg.adapter import retrieve_relevant
+                tkg_facts = retrieve_relevant(msg, top_k=top_k - len(results))
+                for f in tkg_facts:
+                    if f not in results:
+                        results.append(f)
+        except Exception as e:
+            _log.debug("[Memory] Layer 2b TKG fehlgeschlagen: %s", e)
 
     # Layer 3 — Passive DB Fallback
     if not results:

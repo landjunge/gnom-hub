@@ -159,12 +159,14 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 
 ### Phase S5 — Später / nur auf expliziten Wunsch
 
-- Frontend TypeScript / Rewrite  
-- TKG tiefer in den Agent-Loop  
-- Externe Queue/DB  
-- Sandbox, Docker, Broker  
+| Item | Status |
+|------|--------|
+| TKG tiefer in den Agent-Loop (auto-recall + auto-curate) | ✅ `builder._inject_tkg_recall` + `router.ask_router` übergibt User-Message; `extract_facts_from_text` → TKG; Flags `TKG_AUTO_RECALL` / `TKG_AUTO_CURATE` |
+| Frontend TypeScript / Rewrite | offen |
+| Externe Queue/DB | offen |
+| Weitere Infra-Optionen | nur auf expliziten Wunsch |
 
-**Default:** nicht anfangen.
+**Default:** nicht anfangen (außer User sagt S5).
 
 ---
 
