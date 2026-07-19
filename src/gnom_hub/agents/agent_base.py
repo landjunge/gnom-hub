@@ -522,6 +522,31 @@ class BaseAgent:
                             process_actions, action_in, {"name": self.n}, perms, False, wd
                         )
 
+                        # Force real browser tool if task asked to browse but LLM
+                        # only produced prose / wrong tags (user: "ja nix").
+                        try:
+                            from gnom_hub.agents.actions.action_handlers import (
+                                ensure_browser_executed_for_task,
+                                reroute_browser_delegation,
+                            )
+                            processed = await _to_thread(
+                                ensure_browser_executed_for_task,
+                                processed or action_in,
+                                text or "",
+                                {"name": self.n},
+                                perms,
+                                wd,
+                            )
+                            if self.n.lower() == "generalag":
+                                processed = reroute_browser_delegation(
+                                    text or "", processed or "", self.n
+                                )
+                        except Exception as br_exc:
+                            ctx_logger.warning(
+                                "browser force/reroute failed msg#%s: %s",
+                                msg["msg_id"], br_exc,
+                            )
+
                         # ── READ-only → WRITE continue (R5 Coder gap) ─────
                         # Single-shot agents often emit only [READ:] then stop.
                         # If the task demanded [WRITE:] and none was produced,

@@ -19,8 +19,12 @@ import pytest
 from gnom_hub.agents.actions.action_handlers import (
     BROWSER_BLOCK_RE,
     BROWSER_PSEUDO_URL_RE,
+    ensure_browser_executed_for_task,
     expand_browser_pseudo_tags,
+    extract_browse_url,
     process_actions,
+    reroute_browser_delegation,
+    task_wants_browser,
 )
 from gnom_hub.agents.tool_registry import get_tools_for_agent
 from gnom_hub.db.chat_repo import _agent_message_filter
@@ -290,6 +294,59 @@ def _playwright_available() -> bool:
                 return False
     except Exception:
         return False
+
+
+class TestForceBrowserForTask:
+    def test_extract_url_from_german_browse_request(self):
+        assert task_wants_browser("benutze der browser und gehe auf die seite grok.ai")
+        assert extract_browse_url("benutze der browser und gehe auf die seite grok.ai") == "https://grok.ai"
+
+    def test_force_runs_when_llm_only_said_ack(self):
+        prose = "⚠️ CoderAG — Auftrag erfasst, Browser via Whitelist…"
+        agent = {"name": "ResearcherAG"}
+        perms = ["browser", "read"]
+        fake = type(
+            "R",
+            (),
+            {
+                "stdout": "URL: https://grok.ai\nSTATUS: 200\nTITLE: Grok\n",
+                "stderr": "",
+                "returncode": 0,
+            },
+        )()
+        with tempfile.TemporaryDirectory() as wd:
+            with patch(
+                "gnom_hub.agents.actions.action_browser.run_browser_in_sandbox",
+                return_value=fake,
+            ):
+                out = ensure_browser_executed_for_task(
+                    prose,
+                    "benutze der browser und gehe auf die seite grok.ai",
+                    agent,
+                    perms,
+                    wd,
+                )
+        assert "Browser-Ausgabe" in out
+        assert "STATUS: 200" in out
+
+    def test_force_notes_missing_perm_on_coder(self):
+        prose = "Auftrag erfasst"
+        out = ensure_browser_executed_for_task(
+            prose,
+            "browser https://example.com",
+            {"name": "CoderAG"},
+            ["read", "write", "run"],
+            tempfile.gettempdir(),
+        )
+        assert "keine BROWSER-Permission" in out or "ResearcherAG" in out
+        assert "Browser-Ausgabe" not in out
+
+    def test_reroute_coder_to_researcher(self):
+        user = "benutze der browser und gehe auf die seite grok.ai"
+        reply = "@CoderAG öffne via System-Browser https://grok.ai"
+        fixed = reroute_browser_delegation(user, reply, "GeneralAG")
+        assert "@ResearcherAG" in fixed
+        assert "@CoderAG" not in fixed
 
 
 @pytest.mark.skipif(not _playwright_available(), reason="playwright/chromium not installed")

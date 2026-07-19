@@ -59,6 +59,111 @@ def expand_browser_pseudo_tags(ans: str, agent: dict | None, perms: list) -> str
     return BROWSER_PSEUDO_URL_RE.sub(_repl, ans)
 
 
+_TASK_WANTS_BROWSER_RE = re.compile(
+    r"(?i)\b(browser|browse|playwright|webseite|website|navigat|"
+    r"öffne\s+(die\s+)?seite|geh(?:e)?\s+auf|goto|url\s*:)\b",
+)
+_URL_RE = re.compile(r"https?://[^\s\]\'\"<>]+", re.IGNORECASE)
+_BARE_HOST_RE = re.compile(
+    r"(?i)\b((?:www\.)?(?:[a-z0-9-]+\.)+(?:ai|com|org|net|io|de|app|dev)(?:/[^\s\]\'\"<>]*)?)\b",
+)
+
+
+def extract_browse_url(task_text: str, ans: str = "") -> str | None:
+    """Pull first URL from task or answer (scheme or bare host like grok.ai)."""
+    blob = f"{task_text or ''}\n{ans or ''}"
+    m = _URL_RE.search(blob)
+    if m:
+        return m.group(0).rstrip(".,);]")
+    m = _BARE_HOST_RE.search(blob)
+    if m:
+        host = m.group(1).strip().rstrip(".,);]")
+        if host.lower().startswith("www."):
+            return "https://" + host
+        return "https://" + host
+    return None
+
+
+def task_wants_browser(task_text: str) -> bool:
+    t = task_text or ""
+    if _TASK_WANTS_BROWSER_RE.search(t):
+        return True
+    # "seite X" / "geh auf X.ai"
+    if re.search(r"(?i)\b(seite|page)\b", t) and _BARE_HOST_RE.search(t):
+        return True
+    return False
+
+
+def ensure_browser_executed_for_task(
+    ans: str,
+    task_text: str,
+    agent: dict | None,
+    perms: list,
+    wd: str | None,
+) -> str:
+    """If the task is a browse request and no browser tool ran, force it.
+
+    Free models often only *talk* about browsing. This makes ResearcherAG
+    (and any agent with browser perm) actually execute Playwright.
+    """
+    ans = ans or ""
+    if "Browser-Ausgabe" in ans or "Browser-Timeout" in ans or "Browser-Fehler" in ans:
+        return ans
+    if not task_wants_browser(task_text) and not task_wants_browser(ans):
+        return ans
+    url = extract_browse_url(task_text, ans)
+    if not url:
+        return ans
+
+    perms = list(perms or [])
+    name = (agent or {}).get("name", "?")
+    allowed = "browser" in perms or "godmode" in perms
+    if not allowed:
+        # Orchestrators only delegate — no scary "no permission" spam on GeneralAG
+        if name.lower() in (
+            "generalag", "soulag", "watchdogag", "securityag", "general", "soul"
+        ):
+            return ans
+        note = (
+            f"\n[System: {name} soll browsen ({url}), hat aber keine BROWSER-Permission. "
+            "Richtig: @ResearcherAG mit browser-Recht.]"
+        )
+        if note.strip() not in ans:
+            ans = ans.rstrip() + note
+        return ans
+
+    # Inject pseudo-tag → expand → run handle_browser path via process_actions core
+    injected = ans.rstrip() + f"\n[browser: {url}]\n"
+    expanded = expand_browser_pseudo_tags(injected, agent, perms)
+    matches = list(BROWSER_BLOCK_RE.finditer(expanded))
+    if not matches:
+        return ans + f"\n[System: Browser-Force für {url} fehlgeschlagen (kein Tag).]"
+    return handle_browser(expanded, matches, agent, perms, wd)
+
+
+def reroute_browser_delegation(user_text: str, reply: str, agent_name: str) -> str:
+    """GeneralAG often @CoderAG for browser — Coder has no browser. Force Researcher."""
+    if (agent_name or "").lower() not in ("generalag", "general"):
+        return reply
+    if not task_wants_browser(user_text) and not task_wants_browser(reply or ""):
+        return reply
+    if not re.search(r"(?i)@CoderAG\b", reply or ""):
+        return reply
+    # Only rewrite when browser-ish
+    if not (
+        task_wants_browser(reply or "")
+        or extract_browse_url(user_text, reply or "")
+    ):
+        return reply
+    fixed = re.sub(r"(?i)@CoderAG\b", "@ResearcherAG", reply or "")
+    if fixed != reply:
+        fixed = (
+            fixed.rstrip()
+            + "\n[System: Browser-Jobs → ResearcherAG (CoderAG hat kein browser-Tool).]"
+        )
+    return fixed
+
+
 # ── Context-Offload Helpers (recovert aus experimental/tencentdb-agent-memory) ──
 # Symbolischer Kurzzeitspeicher + node_id Drill-Down — siehe docs/tencentdb-comparison.md
 def _maybe_offload_diff(before: str, after: str, tool_name: str, agent_name: str) -> None:
