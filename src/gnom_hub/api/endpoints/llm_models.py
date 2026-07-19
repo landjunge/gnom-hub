@@ -56,20 +56,85 @@ async def check_opencode_zen_models():
 
 
 async def check_and_update_models():
-    """Fetches, tests all free models (OpenRouter + OpenCode-Zen), caches working ones.
+    """Fetches free OpenRouter models, pings a few, caches working slugs.
 
-    User-Mandat 2026-06-28 06:34: OpenRouter-Pfad DEAKTIVIERT.
-    Wir nutzen NUR MiniMax. Nur OpenCode-Zen wird noch gepingt (falls vorhanden).
+    Runtime rotation (openrouter_free) still tries Config.OPENROUTER_FREE_MODELS
+    on every request; this background job keeps ``openrouter_working_models``
+    fresh so successful free models are preferred first.
     """
-    SQLiteStateRepository()
+    repo = SQLiteStateRepository()
+    or_working: list[str] = []
 
-    # ── 1. OpenRouter free models — DEAKTIVIERT (User-Mandat 2026-06-28 06:34) ──
-    or_working = []
+    # ── 1. OpenRouter free models ──────────────────────────────────────
+    keys = (repo.get_value("llm_keys") or {}).values()
+    api_key = next(
+        (k.get("key") for k in keys if isinstance(k, dict) and k.get("provider") == "openrouter" and k.get("valid")),
+        None,
+    ) or Config.OPENROUTER_API_KEY
+    if api_key:
+        free_ids: list[str] = list(Config.OPENROUTER_FREE_MODELS)
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                r = await client.get(
+                    "https://openrouter.ai/api/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                if r.status_code == 200:
+                    for m in r.json().get("data", []) or []:
+                        mid = (m or {}).get("id") or ""
+                        if mid.endswith(":free") or mid == "openrouter/free":
+                            if mid not in free_ids:
+                                free_ids.append(mid)
+        except Exception as e:
+            logging.getLogger(__name__).debug("openrouter model list fetch: %s", e)
+
+        # Prefer curated list first, then discovered free slugs (cap pings)
+        to_ping = []
+        for mid in free_ids:
+            if mid not in to_ping:
+                to_ping.append(mid)
+        to_ping = to_ping[:12]
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://127.0.0.1:3002",
+            "X-Title": "Gnom-Hub",
+        }
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            for model in to_ping:
+                try:
+                    r = await client.post(
+                        url,
+                        json={
+                            "model": model,
+                            "messages": [{"role": "user", "content": "ping"}],
+                            "max_tokens": 4,
+                        },
+                        headers=headers,
+                    )
+                    if r.status_code == 200:
+                        or_working.append(model)
+                except Exception:
+                    pass
+                if "pytest" not in sys.modules:
+                    await asyncio.sleep(0.35)
+
+        if or_working:
+            try:
+                repo.set_value("openrouter_working_models", or_working)
+            except Exception as e:
+                logging.getLogger(__name__).error("save openrouter_working_models: %s", e)
+        else:
+            # keep previous cache if all pings failed (rate limits)
+            or_working = list(repo.get_value("openrouter_working_models") or []) or list(
+                Config.OPENROUTER_FREE_MODELS
+            )
 
     # ── 2. OpenCode-Zen models ──
     zen_working = await check_opencode_zen_models()
 
-    # Return combined (legacy: list)
     return or_working + zen_working
 
 

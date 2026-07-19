@@ -122,22 +122,56 @@ async def test_router_call_retry_on_429():
 
 
 def test_openrouter_candidate_fallbacks():
-    """Verify that _resolve appends other working OpenRouter models when provider is openrouter."""
+    """_resolve expands openrouter into free-model rotation (preferred first)."""
     from gnom_hub.infrastructure.router.router import _resolve
-    
-    # Mock working models in DB
-    kdb = {}
-    with patch("gnom_hub.db.state_repo.SQLiteStateRepository.get_value", return_value=["google/gemma-4-31b-it:free", "liquid/lfm-2.5-1.2b-instruct:free"]):
-        # Case A: Requested model is not in working models -> should bypass and start with best fallback
-        cands = _resolve("openrouter", "qwen/qwen3-coder:free", kdb, "CoderAG")
-        assert cands[0] == ("openrouter", "google/gemma-4-31b-it:free")
-        assert ("openrouter", "liquid/lfm-2.5-1.2b-instruct:free") in cands
-        assert ("openrouter", "qwen/qwen3-coder:free") not in cands
-        assert cands[-1] == ("lokal", "llama3")
 
-        # Case B: Requested model is in working models -> should start with it
-        cands_ok = _resolve("openrouter", "google/gemma-4-31b-it:free", kdb, "CoderAG")
-        assert cands_ok[0] == ("openrouter", "google/gemma-4-31b-it:free")
-        assert ("openrouter", "liquid/lfm-2.5-1.2b-instruct:free") in cands_ok
+    kdb = {}
+
+    def _gv(self, key, default=None):
+        if key == "openrouter_working_models":
+            return ["tencent/hy3:free", "nvidia/nemotron-3-ultra-550b-a55b:free"]
+        if key == "openrouter_failed_models":
+            return {}
+        return default
+
+    with patch.object(SQLiteStateRepository, "get_value", _gv):
+        # Preferred always first, then other free models, lokal last
+        cands = _resolve("openrouter", "qwen/qwen3-coder:free", kdb, "CoderAG")
+        assert cands[0] == ("openrouter", "qwen/qwen3-coder:free")
+        assert ("openrouter", "tencent/hy3:free") in cands
+        assert ("openrouter", "openrouter/free") in cands  # from FREE_MODELS
+        assert cands[-1] == ("lokal", "llama3")
+        # many free models → automatic rotation on failure
+        or_models = [m for p, m in cands if p == "openrouter"]
+        assert len(or_models) >= 3
+
+        cands_ok = _resolve("openrouter", "tencent/hy3:free", kdb, "CoderAG")
+        assert cands_ok[0] == ("openrouter", "tencent/hy3:free")
         assert cands_ok[-1] == ("lokal", "llama3")
+
+
+def test_build_free_chain_skips_cooled_models_first():
+    import time
+
+    from gnom_hub.infrastructure.router import openrouter_free as of
+
+    class FakeRepo:
+        def __init__(self):
+            self.data = {
+                "openrouter_working_models": ["tencent/hy3:free"],
+                "openrouter_failed_models": {"tencent/hy3:free": time.time()},
+            }
+
+        def get_value(self, key, default=None):
+            return self.data.get(key, default)
+
+        def set_value(self, key, val):
+            self.data[key] = val
+
+    repo = FakeRepo()
+    chain = of.build_free_model_chain("openrouter/free", repo=repo)
+    assert chain[0] == "openrouter/free"
+    # cooled hy3 should still appear, but after hot free models
+    assert "tencent/hy3:free" in chain
+    assert chain.index("openrouter/free") < chain.index("tencent/hy3:free")
 

@@ -2,11 +2,11 @@ import logging
 import time
 
 from gnom_hub.agents.explainability.eo_wrap import wrap_error, wrap_response
-from gnom_hub.core.config import Config
+from gnom_hub.core.config import Config  # noqa: F401 — re-export for tests patching router.Config
 from gnom_hub.core.structured_log import AgentLogger
 from gnom_hub.core.utils.routing_override import load_routing_from_txt
 from gnom_hub.db import get_all_agents, get_state_value, set_agent_status, set_state_value
-from gnom_hub.db.state_repo import SQLiteStateRepository
+from gnom_hub.db.state_repo import SQLiteStateRepository  # noqa: F401 — tests patch this path
 from gnom_hub.infrastructure.monitoring import record_agent_request
 from gnom_hub.infrastructure.router.router_call import _call, _try_keys
 from gnom_hub.infrastructure.router.router_stage import SmartRouter
@@ -48,68 +48,49 @@ def _build_sys(n, sys, agent_name):
     )
 
 def _resolve(pvd, mdl, kdb, n):
+    """Build provider/model fallback chain.
+
+    OpenRouter always expands to the free-model rotation list so a single
+    429/404 does not kill the request — the next free slug is tried automatically.
+    """
+    from gnom_hub.infrastructure.router.openrouter_free import openrouter_provider_candidates
+
     if pvd == "auto":
         return SmartRouter.resolve_stage_candidates(mdl, kdb, n)
     if pvd == "lokal":
         return [("lokal", mdl)]
-    
-    candidates = []
-    if pvd == "openrouter":
-        try:
-            working = SQLiteStateRepository().get_value("openrouter_working_models") or []
-        except Exception:
-            working = []
-        if not working:
-            working = list(Config.OPENROUTER_FREE_MODELS)
 
-        ordered_working = SmartRouter._order_working_models(working)
-        if mdl in working:
-            candidates.append((pvd, mdl))
-            for wm in ordered_working:
-                if wm != mdl:
-                    candidates.append(("openrouter", wm))
-        else:
-            if ordered_working:
-                best_fallback = ordered_working[0]
-                candidates.append(("openrouter", best_fallback))
-                for wm in ordered_working:
-                    if wm != best_fallback:
-                        candidates.append(("openrouter", wm))
-            else:
-                candidates.append((pvd, mdl))
+    try:
+        repo = SQLiteStateRepository()
+    except Exception:
+        repo = None
+
+    candidates: list[tuple[str, str]] = []
+    if pvd == "openrouter":
+        # preferred mdl first, then all free models (cooldown-aware)
+        candidates.extend(openrouter_provider_candidates(preferred=mdl, repo=repo))
     elif pvd == "minimax":
-        # Provider-Kette (User-Mandat 2026-06-28 06:40):
-        #   1. MiniMax  2. OpenRouter  3. Ollama (lokal)
+        # Provider-Kette: MiniMax → OpenRouter free chain → Ollama
         candidates.append(("minimax", mdl))
-        # 2. OpenRouter Fallback
-        try:
-            working = SQLiteStateRepository().get_value("openrouter_working_models") or []
-        except Exception:
-            working = []
-        if not working:
-            working = list(Config.OPENROUTER_FREE_MODELS)
-        ordered_working = SmartRouter._order_working_models(working)
-        for wm in ordered_working:
-            candidates.append(("openrouter", wm))
-        # 3. Ollama als letzter Notnagel
+        candidates.extend(openrouter_provider_candidates(preferred=None, repo=repo))
         candidates.append(("lokal", "llama3"))
     elif pvd in ("deepseek", "openai", "anthropic", "gemini", "mistral"):
         candidates.append((pvd, mdl))
-        try:
-            working = SQLiteStateRepository().get_value("openrouter_working_models") or []
-        except Exception:
-            working = []
-        if not working:
-            working = list(Config.OPENROUTER_FREE_MODELS)
-        ordered_working = SmartRouter._order_working_models(working)
-        for wm in ordered_working:
-            candidates.append(("openrouter", wm))
+        candidates.extend(openrouter_provider_candidates(preferred=None, repo=repo))
     else:
         candidates.append((pvd, mdl))
 
     # Ollama als finaler Catch-All (lokal, nie offline)
-    candidates.append(("lokal", "llama3"))
-    return candidates
+    if ("lokal", "llama3") not in candidates:
+        candidates.append(("lokal", "llama3"))
+    # de-dupe while preserving order
+    seen: set[tuple[str, str]] = set()
+    out: list[tuple[str, str]] = []
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
 
 def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent_msg_id=None):
     """Einzige Routing-Funktion. Gibt immer ExplainableOutput zurück."""
@@ -146,12 +127,22 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent
         cands = _resolve(pvd, mdl, kdb, n)
         logger = AgentLogger(agent_name or "Unknown")
         
+        from gnom_hub.infrastructure.router.openrouter_free import (
+            mark_model_failed,
+            mark_model_success,
+        )
+
         for idx, (cp, cm) in enumerate(cands):
             ans = _try("lokal", cm, "", msgs, agent_name) if cp == "lokal" else _try_keys(cp, cm, kdb, msgs, agent_name)
             if ans:
                 lat = (time.time() - t0) * 1000
                 record_agent_request(n or "unknown", lat, True)
                 logger.log_event("llm_call", provider=cp, model=cm, latency_ms=lat, status="success")
+                if cp == "openrouter":
+                    try:
+                        mark_model_success(cm)
+                    except Exception:
+                        pass
                 # CRITICAL FIX: persistiere NICHT den Fallback-Provider. Wenn z.B.
                 # minimax fehlschlägt und der Fallback `lokal:llama3` antwortet,
                 # würde db["soulag"] dauerhaft auf lokal gesetzt — der nächste
@@ -174,7 +165,20 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent
                     from gnom_hub.agents.swarm.swarm_comms import process_swarm_mentions
                     process_swarm_mentions(agent_name or n, ans, depth=depth, parent_msg_id=parent_msg_id)
                 return wrap_response(ans, agent_name or n, p, lat, cp, cm, idx > 0)
-                
+
+            # Free-Model gescheitert (429/404/leer) → cooldown + nächstes Free-Modell
+            if cp == "openrouter":
+                try:
+                    mark_model_failed(cm)
+                    logger.log_event(
+                        "openrouter_free_rotate",
+                        failed_model=cm,
+                        next_index=idx + 1,
+                        remaining=max(0, len(cands) - idx - 1),
+                    )
+                except Exception:
+                    pass
+
         lat = (time.time() - t0) * 1000
         record_agent_request(n or "unknown", lat, False)
         logger.log_event("llm_call", latency_ms=lat, status="failed")

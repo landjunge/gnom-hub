@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from gnom_hub.db.state_repo import SQLiteStateRepository
+
 
 class TestGetObedienceInstructions:
     def test_level_1_blindly_follows(self):
@@ -157,24 +159,39 @@ class TestResolve:
 
     def test_openrouter_provider_uses_working_models(self):
         from gnom_hub.infrastructure.router.router import _resolve
-        with patch("gnom_hub.infrastructure.router.router.Config.OPENROUTER_FREE_MODELS",
-                   ["gpt-4", "claude-3"]):
-            with patch("gnom_hub.infrastructure.router.router.SQLiteStateRepository") as MockRepo:
-                mock_repo = MockRepo.return_value
-                mock_repo.get_value.return_value = ["gpt-4", "claude-3"]
-                candidates = _resolve("openrouter", "gpt-4", {}, "coderag")
+        free = ["openrouter/free", "tencent/hy3:free"]
+
+        def _gv(self, key, default=None):
+            if key == "openrouter_working_models":
+                return ["tencent/hy3:free"]
+            if key == "openrouter_failed_models":
+                return {}
+            return default
+
+        with patch("gnom_hub.core.config.Config.OPENROUTER_FREE_MODELS", free):
+            with patch("gnom_hub.infrastructure.router.openrouter_free.Config.OPENROUTER_FREE_MODELS", free):
+                with patch.object(SQLiteStateRepository, "get_value", _gv):
+                    candidates = _resolve("openrouter", "openrouter/free", {}, "coderag")
         assert len(candidates) >= 1
         providers = [c[0] for c in candidates]
         assert "openrouter" in providers
+        assert candidates[0] == ("openrouter", "openrouter/free")
 
     def test_named_provider_falls_back_to_openrouter_with_lokal(self):
         from gnom_hub.infrastructure.router.router import _resolve
-        with patch("gnom_hub.infrastructure.router.router.Config.OPENROUTER_FREE_MODELS",
-                   ["gpt-4"]):
-            with patch("gnom_hub.infrastructure.router.router.SQLiteStateRepository") as MockRepo:
-                mock_repo = MockRepo.return_value
-                mock_repo.get_value.return_value = ["gpt-4"]
-                candidates = _resolve("anthropic", "claude-3", {}, "coderag")
+        free = ["openrouter/free"]
+
+        def _gv(self, key, default=None):
+            if key == "openrouter_working_models":
+                return []
+            if key == "openrouter_failed_models":
+                return {}
+            return default
+
+        with patch("gnom_hub.core.config.Config.OPENROUTER_FREE_MODELS", free):
+            with patch("gnom_hub.infrastructure.router.openrouter_free.Config.OPENROUTER_FREE_MODELS", free):
+                with patch.object(SQLiteStateRepository, "get_value", _gv):
+                    candidates = _resolve("anthropic", "claude-3", {}, "coderag")
         providers = [c[0] for c in candidates]
         assert "anthropic" in providers
         assert "openrouter" in providers
@@ -188,14 +205,23 @@ class TestResolve:
 
     def test_openrouter_without_working_models_uses_defaults(self):
         from gnom_hub.infrastructure.router.router import _resolve
-        with patch("gnom_hub.infrastructure.router.router.Config.OPENROUTER_FREE_MODELS",
-                   ["gpt-4"]):
-            with patch("gnom_hub.infrastructure.router.router.SQLiteStateRepository") as MockRepo:
-                mock_repo = MockRepo.return_value
-                mock_repo.get_value.return_value = []
-                candidates = _resolve("openrouter", "other-model", {}, "coderag")
+        free = ["openrouter/free", "tencent/hy3:free"]
+
+        def _gv(self, key, default=None):
+            if key == "openrouter_working_models":
+                return []
+            if key == "openrouter_failed_models":
+                return {}
+            return default
+
+        with patch("gnom_hub.core.config.Config.OPENROUTER_FREE_MODELS", free):
+            with patch("gnom_hub.infrastructure.router.openrouter_free.Config.OPENROUTER_FREE_MODELS", free):
+                with patch.object(SQLiteStateRepository, "get_value", _gv):
+                    candidates = _resolve("openrouter", "other-model", {}, "coderag")
         providers = [c[0] for c in candidates]
         assert "openrouter" in providers
+        assert candidates[0] == ("openrouter", "other-model")
+        assert ("openrouter", "openrouter/free") in candidates
 
 
 class TestBuildSys:
