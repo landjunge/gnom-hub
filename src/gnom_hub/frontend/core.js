@@ -602,7 +602,16 @@ async function nukeHub() {
 }
 
 // ── API Discovery ──
+// Prefer GnomTS (S5); keep JS fallback identical for no-bundle cases.
 async function discoverPort() {
+  if (window.GnomTS && typeof window.GnomTS.discoverApiBase === 'function') {
+    const base = await window.GnomTS.discoverApiBase({
+      protocol: location.protocol,
+      origin: location.origin,
+    });
+    if (base) { API = base; return; }
+    return;
+  }
   if (location.protocol !== 'file:') { API = location.origin + '/api'; return; }
   for (const p of [3003, 3002, 3001, 3000]) {
     try {
@@ -616,6 +625,9 @@ async function discoverPort() {
 }
 
 async function api(method, path, body, opts) {
+  if (window.GnomTS && typeof window.GnomTS.apiRequest === 'function') {
+    return window.GnomTS.apiRequest(API, method, path, body, opts);
+  }
   opts = opts || {};
   const timeoutMs = (typeof opts.timeout === 'number') ? opts.timeout : 15000;
   const controller = (typeof AbortController === 'function') ? new AbortController() : null;
@@ -664,6 +676,9 @@ async function api(method, path, body, opts) {
 }
 
 function safeJsonParse(text) {
+  if (window.GnomTS && typeof window.GnomTS.safeJsonParse === 'function') {
+    return window.GnomTS.safeJsonParse(text);
+  }
   try { return JSON.parse(text); } catch (_e) { return text; }
 }
 
@@ -672,6 +687,9 @@ window.safeJsonParse = safeJsonParse;
 
 /** Escape HTML to prevent XSS when inserting dynamic content. */
 function escapeHtml(str) {
+  if (window.GnomTS && typeof window.GnomTS.escapeHtml === 'function') {
+    return window.GnomTS.escapeHtml(str);
+  }
   if (str == null) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
@@ -820,39 +838,62 @@ window.addEventListener('beforeunload', () => {
 // ── Stats ──
 async function updateStats() {
   const s = await api('GET', '/stats');
-  if (s) {
-    const sysNames = ['soulag', 'generalag', 'securityag', 'watchdogag'];
-    const totalA = s.agents ?? agents.length;
-    const sysA = s.sys_agents ?? agents.filter(a => sysNames.includes((a.name || '').toLowerCase())).length;
-    const workA = s.work_agents ?? (totalA - sysA);
-    document.getElementById('s-agents').textContent = `${totalA} (Sys: ${sysA} | Work: ${workA})`;
-    document.getElementById('s-memory').textContent = s.memory ?? 0;
-    if (document.getElementById('s-tokens')) {
-      const tFree = s.tokens_free ?? 0;
-      const tPay = s.tokens_pay ?? 0;
-      document.getElementById('s-tokens').textContent = `Free: ${tFree} | Pay: ${tPay}`;
-    }
-    // Ops panel: queue / leases / last error
-    if (document.getElementById('s-queue') && s.queue) {
-      const q = s.queue;
-      document.getElementById('s-queue').textContent =
-        `${q.pending || 0}/${q.processing || 0}/${q.dead_letter || 0}`;
+  if (!s) return;
+
+  // S5: pure formatters from GnomTS; DOM write stays here
+  if (window.GnomTS && typeof window.GnomTS.formatStatsPanel === 'function') {
+    const panel = window.GnomTS.formatStatsPanel(s, agents || []);
+    const elAgents = document.getElementById('s-agents');
+    if (elAgents) elAgents.textContent = panel.agents;
+    const elMem = document.getElementById('s-memory');
+    if (elMem) elMem.textContent = panel.memory;
+    const elTok = document.getElementById('s-tokens');
+    if (elTok) elTok.textContent = panel.tokens;
+    if (document.getElementById('s-queue') && panel.queue != null) {
+      document.getElementById('s-queue').textContent = panel.queue;
     }
     if (document.getElementById('s-leases')) {
-      const n = (s.leases && s.leases.length) || 0;
-      const who = (s.leases || []).map(l => l.recipient).filter(Boolean).slice(0, 3).join(',');
-      document.getElementById('s-leases').textContent = n ? `${n}${who ? ' ' + who : ''}` : '0';
-      document.getElementById('s-leases').title = (s.leases || [])
-        .map(l => `#${l.id} ${l.recipient}`).join('\n') || 'no active leases';
+      document.getElementById('s-leases').textContent = panel.leases;
+      document.getElementById('s-leases').title = panel.leasesTitle;
     }
     if (document.getElementById('s-lasterr')) {
-      if (s.last_error) {
-        const e = s.last_error;
-        document.getElementById('s-lasterr').textContent = `${e.status} ${e.recipient || ''}`.trim();
-        document.getElementById('s-lasterr').title = JSON.stringify(e);
-      } else {
-        document.getElementById('s-lasterr').textContent = '—';
-      }
+      document.getElementById('s-lasterr').textContent = panel.lastErr;
+      document.getElementById('s-lasterr').title = panel.lastErrTitle;
+    }
+    return;
+  }
+
+  const sysNames = ['soulag', 'generalag', 'securityag', 'watchdogag'];
+  const totalA = s.agents ?? agents.length;
+  const sysA = s.sys_agents ?? agents.filter(a => sysNames.includes((a.name || '').toLowerCase())).length;
+  const workA = s.work_agents ?? (totalA - sysA);
+  document.getElementById('s-agents').textContent = `${totalA} (Sys: ${sysA} | Work: ${workA})`;
+  document.getElementById('s-memory').textContent = s.memory ?? 0;
+  if (document.getElementById('s-tokens')) {
+    const tFree = s.tokens_free ?? 0;
+    const tPay = s.tokens_pay ?? 0;
+    document.getElementById('s-tokens').textContent = `Free: ${tFree} | Pay: ${tPay}`;
+  }
+  // Ops panel: queue / leases / last error
+  if (document.getElementById('s-queue') && s.queue) {
+    const q = s.queue;
+    document.getElementById('s-queue').textContent =
+      `${q.pending || 0}/${q.processing || 0}/${q.dead_letter || 0}`;
+  }
+  if (document.getElementById('s-leases')) {
+    const n = (s.leases && s.leases.length) || 0;
+    const who = (s.leases || []).map(l => l.recipient).filter(Boolean).slice(0, 3).join(',');
+    document.getElementById('s-leases').textContent = n ? `${n}${who ? ' ' + who : ''}` : '0';
+    document.getElementById('s-leases').title = (s.leases || [])
+      .map(l => `#${l.id} ${l.recipient}`).join('\n') || 'no active leases';
+  }
+  if (document.getElementById('s-lasterr')) {
+    if (s.last_error) {
+      const e = s.last_error;
+      document.getElementById('s-lasterr').textContent = `${e.status} ${e.recipient || ''}`.trim();
+      document.getElementById('s-lasterr').title = JSON.stringify(e);
+    } else {
+      document.getElementById('s-lasterr').textContent = '—';
     }
   }
 }

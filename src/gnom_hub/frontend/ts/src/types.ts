@@ -26,7 +26,23 @@ export interface HubStats {
   tokens_free?: number;
   tokens_pay?: number;
   queue_pending?: number;
+  queue?: {
+    pending?: number;
+    processing?: number;
+    dead_letter?: number;
+  };
+  leases?: Array<{ id?: number | string; recipient?: string }>;
+  last_error?: {
+    status?: string | number;
+    recipient?: string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
+}
+
+export interface ApiCallOptions {
+  timeout?: number;
+  silent?: boolean;
 }
 
 export interface ChatMessage {

@@ -21,7 +21,22 @@ import {
   stripOnlyPrefix,
   withOnlyTarget,
 } from "./chat_mentions";
-import { createApiClient } from "./api";
+import {
+  createApiClient,
+  safeJsonParse,
+  discoverApiBase,
+  apiRequest,
+} from "./api";
+import {
+  countAgentGroups,
+  formatAgentsLine,
+  formatTokensLine,
+  formatQueueLine,
+  formatLeases,
+  formatLastError,
+  formatStatsPanel,
+} from "./stats";
+import { escapeHtml } from "./security";
 
 export type * from "./types";
 export {
@@ -41,10 +56,21 @@ export {
   stripOnlyPrefix,
   withOnlyTarget,
   createApiClient,
+  safeJsonParse,
+  discoverApiBase,
+  apiRequest,
+  countAgentGroups,
+  formatAgentsLine,
+  formatTokensLine,
+  formatQueueLine,
+  formatLeases,
+  formatLastError,
+  formatStatsPanel,
+  escapeHtml,
 };
 
 const GnomTS = {
-  version: "0.1.0",
+  version: "0.2.0",
   FROZEN_AGENTS,
   SYSTEM_AGENTS,
   WORKER_AGENTS,
@@ -61,6 +87,17 @@ const GnomTS = {
   stripOnlyPrefix,
   withOnlyTarget,
   createApiClient,
+  safeJsonParse,
+  discoverApiBase,
+  apiRequest,
+  countAgentGroups,
+  formatAgentsLine,
+  formatTokensLine,
+  formatQueueLine,
+  formatLeases,
+  formatLastError,
+  formatStatsPanel,
+  escapeHtml,
 };
 
 export default GnomTS;

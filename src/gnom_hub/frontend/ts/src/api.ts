@@ -1,4 +1,5 @@
 import type {
+  ApiCallOptions,
   ApiClientOptions,
   ApiErrorShape,
   ChatMessage,
@@ -8,12 +9,89 @@ import type {
   AgentInfo,
 } from "./types";
 
-function safeJsonParse(text: string): unknown {
+/** Same contract as core.js safeJsonParse — export for progressive use. */
+export function safeJsonParse(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
     return text;
   }
+}
+
+const DEFAULT_DISCOVER_PORTS = [3003, 3002, 3001, 3000] as const;
+
+export interface DiscoverApiBaseOptions {
+  /** browser location.protocol; if not "file:", use origin + /api */
+  protocol?: string;
+  origin?: string;
+  ports?: readonly number[];
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+}
+
+/**
+ * Resolve API base URL (…/api). Parity with core.js discoverPort.
+ * Returns "" if nothing reachable (file:// probe failed).
+ */
+export async function discoverApiBase(
+  opts: DiscoverApiBaseOptions = {},
+): Promise<string> {
+  const protocol = opts.protocol ?? (typeof location !== "undefined" ? location.protocol : "http:");
+  const origin = opts.origin ?? (typeof location !== "undefined" ? location.origin : "");
+  if (protocol !== "file:") {
+    if (origin) return origin.replace(/\/$/, "") + "/api";
+    return "/api";
+  }
+  const ports = opts.ports ?? DEFAULT_DISCOVER_PORTS;
+  const fetchImpl = opts.fetchImpl ?? fetch;
+  const timeoutMs = opts.timeoutMs ?? 2000;
+  for (const p of ports) {
+    try {
+      const controller =
+        typeof AbortController === "function" ? new AbortController() : null;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      if (controller) {
+        timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      }
+      const r = await fetchImpl(`http://127.0.0.1:${p}/api/stats`, {
+        signal: controller?.signal,
+      });
+      if (timeoutId) clearTimeout(timeoutId);
+      if (r.ok) return `http://127.0.0.1:${p}/api`;
+    } catch {
+      /* try next port */
+    }
+  }
+  return "";
+}
+
+/**
+ * Drop-in for core.js `api(method, path, body, opts)`.
+ * Uses explicit baseUrl (window.API) so globals stay owned by core.js.
+ */
+export async function apiRequest(
+  baseUrl: string,
+  method: string,
+  path: string,
+  body?: unknown,
+  opts?: ApiCallOptions,
+): Promise<unknown> {
+  const options = opts || {};
+  const timeoutMs =
+    typeof options.timeout === "number" ? options.timeout : 15000;
+  const silent = !!options.silent;
+  const base = (baseUrl || "").replace(/\/$/, "");
+  const m = (method || "GET").toUpperCase() as HttpMethod;
+  const client = createApiClient({
+    baseUrl: base,
+    timeoutMs,
+    silent,
+  });
+  // Only send body when present (matches core.js: if (body) …)
+  if (body !== undefined && body !== null && body !== false) {
+    return client.request(m, path, body, { timeoutMs, silent });
+  }
+  return client.request(m, path, undefined, { timeoutMs, silent });
 }
 
 function makeError(
@@ -61,6 +139,7 @@ export function createApiClient(opts: ApiClientOptions) {
         method,
         headers: { "Content-Type": "application/json" },
       };
+      // Match core.js: only serialize when body is truthy / explicitly provided
       if (body !== undefined && body !== null) {
         fetchOpts.body = JSON.stringify(body);
       }

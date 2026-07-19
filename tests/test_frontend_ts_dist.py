@@ -20,6 +20,12 @@ def test_gnom_ts_bundle_exists_and_exports():
     assert "extractMentions" in text
     assert "createApiClient" in text
     assert "FROZEN_AGENTS" in text
+    # Slice-2 surface
+    assert "apiRequest" in text
+    assert "discoverApiBase" in text
+    assert "formatStatsPanel" in text
+    assert "escapeHtml" in text
+    assert "safeJsonParse" in text
     # Known palette parity with core.js
     assert "#FF0000" in text  # CoderAG
     assert "#FF5E00" in text  # SoulAG
@@ -38,6 +44,10 @@ def test_core_prefers_gnom_ts_agent_color():
     core = CORE.read_text(encoding="utf-8")
     assert "GnomTS" in core
     assert re.search(r"GnomTS\.agentColor", core)
+    assert re.search(r"GnomTS\.apiRequest", core)
+    assert re.search(r"GnomTS\.discoverApiBase", core)
+    assert re.search(r"GnomTS\.formatStatsPanel", core)
+    assert re.search(r"GnomTS\.escapeHtml", core)
 
 
 def test_ts_source_tree_present():
@@ -47,3 +57,5 @@ def test_ts_source_tree_present():
     assert (ts_root / "src" / "agents.ts").is_file()
     assert (ts_root / "src" / "api.ts").is_file()
     assert (ts_root / "src" / "chat_mentions.ts").is_file()
+    assert (ts_root / "src" / "stats.ts").is_file()
+    assert (ts_root / "src" / "security.ts").is_file()

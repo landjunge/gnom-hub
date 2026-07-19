@@ -1,7 +1,7 @@
 {
   "name": "gnom-hub-frontend-ts",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Gradual TypeScript layer for Gnom-Hub frontend (S5). Builds to ../gnom-ts.js",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --format=iife --global-name=GnomTS --target=es2019 --outfile=../gnom-ts.js",

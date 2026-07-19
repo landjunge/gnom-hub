@@ -27,15 +27,26 @@ var GnomTS = (() => {
     SYSTEM_AGENTS: () => SYSTEM_AGENTS,
     WORKER_AGENTS: () => WORKER_AGENTS,
     agentColor: () => agentColor,
+    apiRequest: () => apiRequest,
+    countAgentGroups: () => countAgentGroups,
     countAgentMentions: () => countAgentMentions,
     createApiClient: () => createApiClient,
     default: () => index_default,
+    discoverApiBase: () => discoverApiBase,
+    escapeHtml: () => escapeHtml,
     extractMentions: () => extractMentions,
+    formatAgentsLine: () => formatAgentsLine,
+    formatLastError: () => formatLastError,
+    formatLeases: () => formatLeases,
+    formatQueueLine: () => formatQueueLine,
+    formatStatsPanel: () => formatStatsPanel,
+    formatTokensLine: () => formatTokensLine,
     isFrozenAgent: () => isFrozenAgent,
     isMultiMention: () => isMultiMention,
     isSystemAgent: () => isSystemAgent,
     isWorkerAgent: () => isWorkerAgent,
     knownColor: () => knownColor,
+    safeJsonParse: () => safeJsonParse,
     stripOnlyPrefix: () => stripOnlyPrefix,
     withOnlyTarget: () => withOnlyTarget
   });
@@ -164,6 +175,51 @@ var GnomTS = (() => {
       return text;
     }
   }
+  var DEFAULT_DISCOVER_PORTS = [3003, 3002, 3001, 3e3];
+  async function discoverApiBase(opts = {}) {
+    var _a, _b, _c, _d, _e;
+    const protocol = (_a = opts.protocol) != null ? _a : typeof location !== "undefined" ? location.protocol : "http:";
+    const origin = (_b = opts.origin) != null ? _b : typeof location !== "undefined" ? location.origin : "";
+    if (protocol !== "file:") {
+      if (origin) return origin.replace(/\/$/, "") + "/api";
+      return "/api";
+    }
+    const ports = (_c = opts.ports) != null ? _c : DEFAULT_DISCOVER_PORTS;
+    const fetchImpl = (_d = opts.fetchImpl) != null ? _d : fetch;
+    const timeoutMs = (_e = opts.timeoutMs) != null ? _e : 2e3;
+    for (const p of ports) {
+      try {
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        let timeoutId = null;
+        if (controller) {
+          timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        }
+        const r = await fetchImpl(`http://127.0.0.1:${p}/api/stats`, {
+          signal: controller == null ? void 0 : controller.signal
+        });
+        if (timeoutId) clearTimeout(timeoutId);
+        if (r.ok) return `http://127.0.0.1:${p}/api`;
+      } catch {
+      }
+    }
+    return "";
+  }
+  async function apiRequest(baseUrl, method, path, body, opts) {
+    const options = opts || {};
+    const timeoutMs = typeof options.timeout === "number" ? options.timeout : 15e3;
+    const silent = !!options.silent;
+    const base = (baseUrl || "").replace(/\/$/, "");
+    const m = (method || "GET").toUpperCase();
+    const client = createApiClient({
+      baseUrl: base,
+      timeoutMs,
+      silent
+    });
+    if (body !== void 0 && body !== null && body !== false) {
+      return client.request(m, path, body, { timeoutMs, silent });
+    }
+    return client.request(m, path, void 0, { timeoutMs, silent });
+  }
   function makeError(path, baseUrl, message, status, body, timeout) {
     const err = new Error(message);
     err.status = status;
@@ -251,9 +307,82 @@ var GnomTS = (() => {
     };
   }
 
+  // src/stats.ts
+  function countAgentGroups(agentList) {
+    const total = agentList.length;
+    let sys = 0;
+    for (const a of agentList) {
+      const n = (a.name || "").trim();
+      if (n && isSystemAgent(n)) sys += 1;
+    }
+    return { total, sys, work: total - sys };
+  }
+  function formatAgentsLine(stats, agentList = []) {
+    var _a, _b, _c;
+    const groups = countAgentGroups(agentList);
+    const totalA = (_a = stats.agents) != null ? _a : groups.total;
+    const sysA = (_b = stats.sys_agents) != null ? _b : groups.sys;
+    const workA = (_c = stats.work_agents) != null ? _c : totalA - sysA;
+    return `${totalA} (Sys: ${sysA} | Work: ${workA})`;
+  }
+  function formatTokensLine(stats) {
+    var _a, _b;
+    const tFree = (_a = stats.tokens_free) != null ? _a : 0;
+    const tPay = (_b = stats.tokens_pay) != null ? _b : 0;
+    return `Free: ${tFree} | Pay: ${tPay}`;
+  }
+  function formatQueueLine(queue) {
+    if (!queue || typeof queue !== "object") return null;
+    return `${queue.pending || 0}/${queue.processing || 0}/${queue.dead_letter || 0}`;
+  }
+  function formatLeases(leases) {
+    const list = Array.isArray(leases) ? leases : [];
+    const n = list.length;
+    const who = list.map((l) => l.recipient).filter(Boolean).slice(0, 3).join(",");
+    const text = n ? `${n}${who ? " " + who : ""}` : "0";
+    const title = list.map((l) => `#${l.id} ${l.recipient || ""}`.trim()).join("\n") || "no active leases";
+    return { text, title };
+  }
+  function formatLastError(lastError) {
+    var _a;
+    if (!lastError) return { text: "\u2014", title: "" };
+    const text = `${(_a = lastError.status) != null ? _a : ""} ${lastError.recipient || ""}`.trim();
+    let title = "";
+    try {
+      title = JSON.stringify(lastError);
+    } catch {
+      title = String(lastError);
+    }
+    return { text: text || "\u2014", title };
+  }
+  function formatStatsPanel(stats, agentList = []) {
+    var _a;
+    const q = stats.queue;
+    const leases = stats.leases;
+    const lastErr = stats.last_error;
+    const leaseFmt = formatLeases(leases);
+    const errFmt = formatLastError(lastErr);
+    return {
+      agents: formatAgentsLine(stats, agentList),
+      memory: (_a = stats.memory) != null ? _a : 0,
+      tokens: formatTokensLine(stats),
+      queue: formatQueueLine(q),
+      leases: leaseFmt.text,
+      leasesTitle: leaseFmt.title,
+      lastErr: errFmt.text,
+      lastErrTitle: errFmt.title
+    };
+  }
+
+  // src/security.ts
+  function escapeHtml(str) {
+    if (str == null) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
   // src/index.ts
   var GnomTS = {
-    version: "0.1.0",
+    version: "0.2.0",
     FROZEN_AGENTS,
     SYSTEM_AGENTS,
     WORKER_AGENTS,
@@ -269,7 +398,18 @@ var GnomTS = (() => {
     isMultiMention,
     stripOnlyPrefix,
     withOnlyTarget,
-    createApiClient
+    createApiClient,
+    safeJsonParse,
+    discoverApiBase,
+    apiRequest,
+    countAgentGroups,
+    formatAgentsLine,
+    formatTokensLine,
+    formatQueueLine,
+    formatLeases,
+    formatLastError,
+    formatStatsPanel,
+    escapeHtml
   };
   var index_default = GnomTS;
   if (typeof window !== "undefined") {

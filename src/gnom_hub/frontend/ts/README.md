@@ -25,5 +25,9 @@ npm run check    # typecheck + build + node tests
 | `extractMentions` / `isMultiMention` | Multi-@ preview |
 | `withOnlyTarget` / `stripOnlyPrefix` | `only=` draft helpers |
 | `createApiClient({ baseUrl })` | Typed thin fetch client |
+| `apiRequest(base, method, path, body, opts)` | Drop-in for `core.js` `api()` |
+| `discoverApiBase(opts)` | Port / origin discovery |
+| `safeJsonParse` / `escapeHtml` | Shared pure helpers |
+| `formatStatsPanel(stats, agents)` | Stats panel string model |
 
 Runtime does **not** require `npm` — commit the built `gnom-ts.js`.
