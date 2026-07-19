@@ -29,5 +29,10 @@ npm run check    # typecheck + build + node tests
 | `discoverApiBase(opts)` | Port / origin discovery |
 | `safeJsonParse` / `escapeHtml` | Shared pure helpers |
 | `formatStatsPanel(stats, agents)` | Stats panel string model |
+| `pushChatHistory` / `navigateChatHistory` | localStorage history |
+| `classifyLocalCommand` / `isLocalCommand` | client-only cmds |
+| `formatChatResponseToast` | POST `/chat` toast text |
+| `prepareOutgoingChat` | trim + multi-@ toast |
+| `extractThoughtsAndClean` / speech filters | render/TTS pure helpers |
 
 Runtime does **not** require `npm` — commit the built `gnom-ts.js`.

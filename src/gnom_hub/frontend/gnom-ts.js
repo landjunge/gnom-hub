@@ -21,6 +21,8 @@ var GnomTS = (() => {
   // src/index.ts
   var index_exports = {};
   __export(index_exports, {
+    CHAT_HISTORY_KEY: () => CHAT_HISTORY_KEY,
+    CHAT_HISTORY_MAX: () => CHAT_HISTORY_MAX,
     FROZEN_AGENTS: () => FROZEN_AGENTS,
     KNOWN_COLORS: () => KNOWN_COLORS,
     P_COLORS: () => P_COLORS,
@@ -28,6 +30,8 @@ var GnomTS = (() => {
     WORKER_AGENTS: () => WORKER_AGENTS,
     agentColor: () => agentColor,
     apiRequest: () => apiRequest,
+    classifyLocalCommand: () => classifyLocalCommand,
+    cleanActionTagsForSpeech: () => cleanActionTagsForSpeech,
     countAgentGroups: () => countAgentGroups,
     countAgentMentions: () => countAgentMentions,
     createApiClient: () => createApiClient,
@@ -35,18 +39,28 @@ var GnomTS = (() => {
     discoverApiBase: () => discoverApiBase,
     escapeHtml: () => escapeHtml,
     extractMentions: () => extractMentions,
+    extractThoughtsAndClean: () => extractThoughtsAndClean,
     formatAgentsLine: () => formatAgentsLine,
+    formatChatResponseToast: () => formatChatResponseToast,
     formatLastError: () => formatLastError,
     formatLeases: () => formatLeases,
     formatQueueLine: () => formatQueueLine,
     formatStatsPanel: () => formatStatsPanel,
     formatTokensLine: () => formatTokensLine,
+    isAgentToAgentMessage: () => isAgentToAgentMessage,
     isFrozenAgent: () => isFrozenAgent,
+    isLocalCommand: () => isLocalCommand,
     isMultiMention: () => isMultiMention,
     isSystemAgent: () => isSystemAgent,
+    isSystemLogMessage: () => isSystemLogMessage,
     isWorkerAgent: () => isWorkerAgent,
     knownColor: () => knownColor,
+    loadChatHistory: () => loadChatHistory,
+    navigateChatHistory: () => navigateChatHistory,
+    prepareOutgoingChat: () => prepareOutgoingChat,
+    pushChatHistory: () => pushChatHistory,
     safeJsonParse: () => safeJsonParse,
+    stripInvisibleTrailing: () => stripInvisibleTrailing,
     stripOnlyPrefix: () => stripOnlyPrefix,
     withOnlyTarget: () => withOnlyTarget
   });
@@ -380,9 +394,219 @@ var GnomTS = (() => {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   }
 
+  // src/chat_history.ts
+  var CHAT_HISTORY_KEY = "chatHistory";
+  var CHAT_HISTORY_MAX = 50;
+  function loadChatHistory(storage, key = CHAT_HISTORY_KEY) {
+    try {
+      const raw = storage.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }
+  function pushChatHistory(storage, msg, max = CHAT_HISTORY_MAX, key = CHAT_HISTORY_KEY) {
+    if (!msg) return loadChatHistory(storage, key);
+    let history = loadChatHistory(storage, key);
+    if (history.length === 0 || history[history.length - 1] !== msg) {
+      history = history.concat([msg]);
+      if (history.length > max) {
+        history = history.slice(history.length - max);
+      }
+      try {
+        storage.setItem(key, JSON.stringify(history));
+      } catch {
+      }
+    }
+    return history;
+  }
+  function navigateChatHistory(direction, history, state, currentValue) {
+    if (!history.length) {
+      return { state, value: currentValue, changed: false };
+    }
+    let idx = state.idx;
+    let draft = state.draft;
+    let value = currentValue;
+    let changed = false;
+    if (direction === "up") {
+      if (idx === -1) {
+        draft = currentValue;
+        idx = history.length - 1;
+        value = history[idx];
+        changed = true;
+      } else if (idx > 0) {
+        idx -= 1;
+        value = history[idx];
+        changed = true;
+      }
+    } else {
+      if (idx === -1) {
+        return { state, value: currentValue, changed: false };
+      }
+      if (idx < history.length - 1) {
+        idx += 1;
+        value = history[idx];
+        changed = true;
+      } else {
+        idx = -1;
+        value = draft;
+        changed = true;
+      }
+    }
+    return { state: { idx, draft }, value, changed };
+  }
+
+  // src/chat_commands.ts
+  var SHOWBOX_NAME_RE = /^[a-zA-Z0-9_-]+$/;
+  function classifyLocalCommand(msg) {
+    const m = (msg || "").toLowerCase().trim();
+    if (!m) return { kind: "none" };
+    if (m === "@tts on") return { kind: "tts_on" };
+    if (m === "@tts off") return { kind: "tts_off" };
+    if (m === "@tts") return { kind: "tts_toggle" };
+    if (m === "/ufo") return { kind: "easter", cmd: "ufo" };
+    if (m === "/ghost") return { kind: "easter", cmd: "ghost" };
+    if (m === "/coffee") return { kind: "easter", cmd: "coffee" };
+    if (m === "@system save") return { kind: "system_save" };
+    if (m === "@system unsave") return { kind: "system_unsave" };
+    if (m.startsWith("@showbox speed ")) {
+      const speedVal = parseFloat(m.substring("@showbox speed ".length).trim());
+      const valid = !Number.isNaN(speedVal) && speedVal > 0;
+      return { kind: "showbox_speed", seconds: speedVal, valid };
+    }
+    if (m.startsWith("@showbox ")) {
+      const name = msg.trim().substring("@showbox ".length).trim();
+      return {
+        kind: "showbox_load",
+        name,
+        valid: SHOWBOX_NAME_RE.test(name)
+      };
+    }
+    if (m === "@@slides" || m === "@@hilfe-slides" || m === "@@hilfeslides") {
+      return { kind: "help_slides" };
+    }
+    if (m === "@@artshow" || m === "@@art" || m === "@@art-show") {
+      return { kind: "art_show" };
+    }
+    return { kind: "none" };
+  }
+  function isLocalCommand(msg) {
+    return classifyLocalCommand(msg).kind !== "none";
+  }
+
+  // src/chat_response.ts
+  function formatChatResponseToast(res) {
+    if (!res) {
+      return { message: "Hub unreachable", type: "error" };
+    }
+    if (res.status === "role_set") {
+      return {
+        message: `\u{1F451} ${res.agent || "?"} \u2192 ${res.role || "?"}`,
+        type: "success"
+      };
+    }
+    if (res.status === "idea_saved") {
+      return { message: "\u{1F4A1} Idea saved", type: "success" };
+    }
+    if (res.status === "job_created") {
+      const task = (res.task || "").substring(0, 60);
+      return {
+        message: `\u{1F4CB} Job \u2192 ${res.general || "?"}: ${task}`,
+        type: "success"
+      };
+    }
+    if (res.msg) {
+      return { message: `\u26A0\uFE0F ${res.msg}`, type: "error" };
+    }
+    if (res.status === "cleared") {
+      return { message: "\u{1F5D1} Chat cleared", type: "success" };
+    }
+    if (res.status === "agents" && Array.isArray(res.agents)) {
+      const list = res.agents.map((a) => `${a.name || "?"}(${a.role || "?"})`).join(", ");
+      return { message: `\u{1F4CA} ${list}`, type: "info" };
+    }
+    const target = res.target ? `\u2192 ${res.target}` : `\u2192 ${(res.asked || []).join(", ") || "nobody"}`;
+    const icon = res.mode === "brainstorm" ? "\u{1F9E0}" : res.mode === "research" ? "\u{1F50D}" : "\u{1F4AC}";
+    return { message: `${icon} ${target}`, type: "success" };
+  }
+
+  // src/chat_content.ts
+  var INVISIBLE_TRAIL_RE = /[\u200B-\u200D\uFEFF\u2060\u2061\u2062\u2063\u2064\u00AD\u034F\u115F\u1160\u17B4\u17B5\u180E\u2028\u2029\u202A-\u202E\u2066-\u2069\u2800\u3164\uFFA0]+$/g;
+  var THINK_STRIP_RE = /<think>[\s\S]*?<\/think>/gi;
+  function stripInvisibleTrailing(text) {
+    if (!text) return "";
+    return text.replace(INVISIBLE_TRAIL_RE, "");
+  }
+  function extractThoughtsAndClean(content) {
+    const thoughts = [];
+    const cleaned = content || "";
+    let match;
+    const re = /<think>([\s\S]*?)<\/think>/gi;
+    while ((match = re.exec(cleaned)) !== null) {
+      const t = (match[1] || "").trim();
+      if (t) thoughts.push(t);
+    }
+    const finalCleaned = cleaned.replace(THINK_STRIP_RE, "").trim();
+    return { thoughts, cleaned: finalCleaned };
+  }
+  function isSystemLogMessage(text) {
+    const cleaned = text || "";
+    const lower = cleaned.toLowerCase().trim();
+    return cleaned.includes("[AUTO-APPROVED]") || cleaned.includes("heartbeat") || cleaned.includes("status=") || lower.includes("status online") || lower.includes("status busy");
+  }
+  var AGENT_AT_PREFIXES = [
+    "@coderag",
+    "@researcherag",
+    "@writerag",
+    "@editorag",
+    "@generalag",
+    "@watchdogag",
+    "@securityag",
+    "@soulag"
+  ];
+  function isAgentToAgentMessage(text) {
+    const lower = (text || "").toLowerCase().trim();
+    return AGENT_AT_PREFIXES.some((p) => lower.startsWith(p));
+  }
+  function cleanActionTagsForSpeech(text) {
+    let speechText = text || "";
+    speechText = speechText.replace(
+      /\[WRITE:\s*([^\]\n]+)\]([\s\S]*?)\[\/WRITE\]/gi,
+      "schreibt Datei $1"
+    ).replace(/\[SHELL:\s*([^\]\n]+)\]/gi, "f\xFChrt Befehl $1 aus").replace(/\[READ:\s*([^\]\n]+)\]/gi, "liest Datei $1").replace(/\[BROWSER:\s*([^\]\n]+)\]/gi, "f\xFChrt Browser-Aktion $1 aus").replace(/\[IMAGE:\s*([^\]\n]+)\]/gi, "generiert Bild $1").replace(/<SHOWBOX[\s\S]*?<\/SHOWBOX>/gi, "").trim();
+    speechText = speechText.replace(/^@user\s*/gi, "").replace(/^@\w+\s*/g, "").trim();
+    return speechText;
+  }
+  function prepareOutgoingChat(raw, opts) {
+    const trimmed = (raw || "").trim();
+    if (!trimmed) {
+      return {
+        trimmed: "",
+        empty: true,
+        multiMentionToast: null,
+        localCommand: false
+      };
+    }
+    const localFn = opts == null ? void 0 : opts.isLocalCommand;
+    const localCommand = localFn ? localFn(trimmed) : false;
+    let multiMentionToast = null;
+    if (!localCommand && isMultiMention(trimmed)) {
+      const names = extractMentions(trimmed).join(", ");
+      multiMentionToast = `\u{1F3AF} Multi-@ \u2192 ${names} (targeted only=)`;
+    }
+    return {
+      trimmed,
+      empty: false,
+      multiMentionToast,
+      localCommand
+    };
+  }
+
   // src/index.ts
   var GnomTS = {
-    version: "0.2.0",
+    version: "0.3.0",
     FROZEN_AGENTS,
     SYSTEM_AGENTS,
     WORKER_AGENTS,
@@ -409,7 +633,21 @@ var GnomTS = (() => {
     formatLeases,
     formatLastError,
     formatStatsPanel,
-    escapeHtml
+    escapeHtml,
+    CHAT_HISTORY_KEY,
+    CHAT_HISTORY_MAX,
+    loadChatHistory,
+    pushChatHistory,
+    navigateChatHistory,
+    classifyLocalCommand,
+    isLocalCommand,
+    formatChatResponseToast,
+    stripInvisibleTrailing,
+    extractThoughtsAndClean,
+    isSystemLogMessage,
+    isAgentToAgentMessage,
+    cleanActionTagsForSpeech,
+    prepareOutgoingChat
   };
   var index_default = GnomTS;
   if (typeof window !== "undefined") {

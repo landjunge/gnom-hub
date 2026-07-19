@@ -162,7 +162,7 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 | Item | Status |
 |------|--------|
 | TKG tiefer in den Agent-Loop (auto-recall + auto-curate) | ✅ `builder._inject_tkg_recall` + `router.ask_router` übergibt User-Message; `extract_facts_from_text` → TKG; Flags `TKG_AUTO_RECALL` / `TKG_AUTO_CURATE` |
-| Frontend TypeScript (graduell) | ✅ Slice-1+2: `GnomTS` agentColor/mentions + **apiRequest/discoverApiBase/stats formatters/escapeHtml**; core.js progressive wire; `scripts/build_frontend_ts.sh` |
+| Frontend TypeScript (graduell) | ✅ Slice-1–3: api/stats/security + **chat history/commands/response/content** (`prepareOutgoingChat`, `formatChatResponseToast`, thoughts/TTS filters); chat.js progressive wire |
 | Externe Queue/DB | offen |
 | Weitere Infra-Optionen | nur auf expliziten Wunsch |
 

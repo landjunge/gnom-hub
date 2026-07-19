@@ -26,6 +26,13 @@ def test_gnom_ts_bundle_exists_and_exports():
     assert "formatStatsPanel" in text
     assert "escapeHtml" in text
     assert "safeJsonParse" in text
+    # Slice-3 chat
+    assert "pushChatHistory" in text
+    assert "navigateChatHistory" in text
+    assert "classifyLocalCommand" in text
+    assert "formatChatResponseToast" in text
+    assert "prepareOutgoingChat" in text
+    assert "extractThoughtsAndClean" in text
     # Known palette parity with core.js
     assert "#FF0000" in text  # CoderAG
     assert "#FF5E00" in text  # SoulAG
@@ -50,6 +57,16 @@ def test_core_prefers_gnom_ts_agent_color():
     assert re.search(r"GnomTS\.escapeHtml", core)
 
 
+def test_chat_js_wires_gnom_ts_chat_helpers():
+    chat = (ROOT / "src" / "gnom_hub" / "frontend" / "chat.js").read_text(encoding="utf-8")
+    assert "classifyLocalCommand" in chat
+    assert "prepareOutgoingChat" in chat
+    assert "formatChatResponseToast" in chat
+    assert "pushChatHistory" in chat
+    assert "navigateChatHistory" in chat
+    assert "extractThoughtsAndClean" in chat
+
+
 def test_ts_source_tree_present():
     ts_root = ROOT / "src" / "gnom_hub" / "frontend" / "ts"
     assert (ts_root / "package.json").is_file()
@@ -59,3 +76,7 @@ def test_ts_source_tree_present():
     assert (ts_root / "src" / "chat_mentions.ts").is_file()
     assert (ts_root / "src" / "stats.ts").is_file()
     assert (ts_root / "src" / "security.ts").is_file()
+    assert (ts_root / "src" / "chat_history.ts").is_file()
+    assert (ts_root / "src" / "chat_commands.ts").is_file()
+    assert (ts_root / "src" / "chat_response.ts").is_file()
+    assert (ts_root / "src" / "chat_content.ts").is_file()

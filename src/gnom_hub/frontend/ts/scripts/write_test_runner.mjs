@@ -135,6 +135,71 @@ test('apiRequest uses baseUrl + path', async () => {
     globalThis.fetch = prev;
   }
 });
+
+test('chat history push + navigate', () => {
+  const store = new Map();
+  const storage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => { store.set(k, v); },
+  };
+  api.pushChatHistory(storage, 'one');
+  api.pushChatHistory(storage, 'two');
+  api.pushChatHistory(storage, 'two'); // dedupe last
+  const hist = api.loadChatHistory(storage);
+  assert.deepEqual(hist, ['one', 'two']);
+  let state = { idx: -1, draft: '' };
+  let nav = api.navigateChatHistory('up', hist, state, 'drafting');
+  assert.equal(nav.value, 'two');
+  assert.equal(nav.state.draft, 'drafting');
+  nav = api.navigateChatHistory('up', hist, nav.state, nav.value);
+  assert.equal(nav.value, 'one');
+  nav = api.navigateChatHistory('down', hist, nav.state, nav.value);
+  assert.equal(nav.value, 'two');
+  nav = api.navigateChatHistory('down', hist, nav.state, nav.value);
+  assert.equal(nav.value, 'drafting');
+  assert.equal(nav.state.idx, -1);
+});
+
+test('classifyLocalCommand', () => {
+  assert.equal(api.classifyLocalCommand('@tts on').kind, 'tts_on');
+  assert.equal(api.classifyLocalCommand('/coffee').kind, 'easter');
+  assert.equal(api.classifyLocalCommand('@CoderAG fix it').kind, 'none');
+  assert.equal(api.isLocalCommand('@@slides'), true);
+  const sp = api.classifyLocalCommand('@showbox speed 2.5');
+  assert.equal(sp.kind, 'showbox_speed');
+  assert.equal(sp.valid, true);
+  assert.equal(sp.seconds, 2.5);
+});
+
+test('formatChatResponseToast', () => {
+  assert.equal(api.formatChatResponseToast(null).type, 'error');
+  assert.match(api.formatChatResponseToast({ status: 'role_set', agent: 'A', role: 'r' }).message, /👑/);
+  assert.match(api.formatChatResponseToast({ mode: 'brainstorm', asked: ['CoderAG'] }).message, /🧠/);
+});
+
+test('extractThoughtsAndClean + speech helpers', () => {
+  const r = api.extractThoughtsAndClean('hi <think>secret</think> out');
+  assert.deepEqual(r.thoughts, ['secret']);
+  assert.ok(r.cleaned.includes('hi'));
+  assert.ok(r.cleaned.includes('out'));
+  assert.ok(!r.cleaned.includes('secret'));
+  assert.ok(!r.cleaned.includes('<think>'));
+  assert.equal(api.isSystemLogMessage('agent heartbeat ok'), true);
+  assert.equal(api.isAgentToAgentMessage('@CoderAG do x'), true);
+  assert.match(api.cleanActionTagsForSpeech('[WRITE: a.html]x[/WRITE]'), /schreibt Datei/);
+});
+
+test('prepareOutgoingChat multi-@', () => {
+  const p = api.prepareOutgoingChat('@CoderAG and @WriterAG please', {
+    isLocalCommand: api.isLocalCommand,
+  });
+  assert.equal(p.empty, false);
+  assert.ok(p.multiMentionToast);
+  assert.match(p.multiMentionToast, /Multi-@/);
+  const local = api.prepareOutgoingChat('@tts on', { isLocalCommand: api.isLocalCommand });
+  assert.equal(local.localCommand, true);
+  assert.equal(local.multiMentionToast, null);
+});
 `;
 
 writeFileSync(out, src);

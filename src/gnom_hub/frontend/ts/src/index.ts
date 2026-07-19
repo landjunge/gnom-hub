@@ -37,6 +37,23 @@ import {
   formatStatsPanel,
 } from "./stats";
 import { escapeHtml } from "./security";
+import {
+  CHAT_HISTORY_KEY,
+  CHAT_HISTORY_MAX,
+  loadChatHistory,
+  pushChatHistory,
+  navigateChatHistory,
+} from "./chat_history";
+import { classifyLocalCommand, isLocalCommand } from "./chat_commands";
+import { formatChatResponseToast } from "./chat_response";
+import {
+  stripInvisibleTrailing,
+  extractThoughtsAndClean,
+  isSystemLogMessage,
+  isAgentToAgentMessage,
+  cleanActionTagsForSpeech,
+  prepareOutgoingChat,
+} from "./chat_content";
 
 export type * from "./types";
 export {
@@ -67,10 +84,24 @@ export {
   formatLastError,
   formatStatsPanel,
   escapeHtml,
+  CHAT_HISTORY_KEY,
+  CHAT_HISTORY_MAX,
+  loadChatHistory,
+  pushChatHistory,
+  navigateChatHistory,
+  classifyLocalCommand,
+  isLocalCommand,
+  formatChatResponseToast,
+  stripInvisibleTrailing,
+  extractThoughtsAndClean,
+  isSystemLogMessage,
+  isAgentToAgentMessage,
+  cleanActionTagsForSpeech,
+  prepareOutgoingChat,
 };
 
 const GnomTS = {
-  version: "0.2.0",
+  version: "0.3.0",
   FROZEN_AGENTS,
   SYSTEM_AGENTS,
   WORKER_AGENTS,
@@ -98,6 +129,20 @@ const GnomTS = {
   formatLastError,
   formatStatsPanel,
   escapeHtml,
+  CHAT_HISTORY_KEY,
+  CHAT_HISTORY_MAX,
+  loadChatHistory,
+  pushChatHistory,
+  navigateChatHistory,
+  classifyLocalCommand,
+  isLocalCommand,
+  formatChatResponseToast,
+  stripInvisibleTrailing,
+  extractThoughtsAndClean,
+  isSystemLogMessage,
+  isAgentToAgentMessage,
+  cleanActionTagsForSpeech,
+  prepareOutgoingChat,
 };
 
 export default GnomTS;

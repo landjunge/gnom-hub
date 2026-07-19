@@ -232,36 +232,61 @@ function onChatKey(e) {
       const ta = document.getElementById('chat-input');
       if (ta) {
         try {
-          const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
-          if (history.length > 0) {
-            if (window.chatHistoryIdx === undefined) {
-              window.chatHistoryIdx = -1;
-              window.chatHistoryDraft = "";
-            }
-            if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              if (window.chatHistoryIdx === -1) {
-                window.chatHistoryDraft = ta.value;
-                window.chatHistoryIdx = history.length - 1;
-              } else if (window.chatHistoryIdx > 0) {
-                window.chatHistoryIdx--;
-              } else {
-                return;
-              }
-              ta.value = history[window.chatHistoryIdx];
-              ta.selectionStart = ta.selectionEnd = ta.value.length;
-            } else if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              if (window.chatHistoryIdx === -1) {
-                return;
-              } else if (window.chatHistoryIdx < history.length - 1) {
-                window.chatHistoryIdx++;
-                ta.value = history[window.chatHistoryIdx];
-              } else {
+          if (window.GnomTS && typeof window.GnomTS.navigateChatHistory === 'function') {
+            const history = window.GnomTS.loadChatHistory
+              ? window.GnomTS.loadChatHistory(localStorage)
+              : JSON.parse(localStorage.getItem('chatHistory') || '[]');
+            if (history.length > 0) {
+              if (window.chatHistoryIdx === undefined) {
                 window.chatHistoryIdx = -1;
-                ta.value = window.chatHistoryDraft;
+                window.chatHistoryDraft = "";
               }
-              ta.selectionStart = ta.selectionEnd = ta.value.length;
+              const nav = window.GnomTS.navigateChatHistory(
+                e.key === 'ArrowUp' ? 'up' : 'down',
+                history,
+                { idx: window.chatHistoryIdx, draft: window.chatHistoryDraft || "" },
+                ta.value,
+              );
+              if (nav.changed) {
+                e.preventDefault();
+                window.chatHistoryIdx = nav.state.idx;
+                window.chatHistoryDraft = nav.state.draft;
+                ta.value = nav.value;
+                ta.selectionStart = ta.selectionEnd = ta.value.length;
+              }
+            }
+          } else {
+            const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+            if (history.length > 0) {
+              if (window.chatHistoryIdx === undefined) {
+                window.chatHistoryIdx = -1;
+                window.chatHistoryDraft = "";
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (window.chatHistoryIdx === -1) {
+                  window.chatHistoryDraft = ta.value;
+                  window.chatHistoryIdx = history.length - 1;
+                } else if (window.chatHistoryIdx > 0) {
+                  window.chatHistoryIdx--;
+                } else {
+                  return;
+                }
+                ta.value = history[window.chatHistoryIdx];
+                ta.selectionStart = ta.selectionEnd = ta.value.length;
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (window.chatHistoryIdx === -1) {
+                  return;
+                } else if (window.chatHistoryIdx < history.length - 1) {
+                  window.chatHistoryIdx++;
+                  ta.value = history[window.chatHistoryIdx];
+                } else {
+                  window.chatHistoryIdx = -1;
+                  ta.value = window.chatHistoryDraft;
+                }
+                ta.selectionStart = ta.selectionEnd = ta.value.length;
+              }
             }
           }
         } catch (err) {
@@ -308,6 +333,93 @@ function handleShowboxLoadCommand(m, ta) {
 }
 
 function handleChatCommands(msg, ta) {
+  // S5: classify in GnomTS; side effects stay here
+  const cmd = (window.GnomTS && typeof window.GnomTS.classifyLocalCommand === 'function')
+    ? window.GnomTS.classifyLocalCommand(msg)
+    : null;
+
+  if (cmd) {
+    switch (cmd.kind) {
+      case 'tts_on': {
+        const cb = document.getElementById('tts-enabled');
+        if (cb) { cb.checked = true; localStorage.setItem('ttsEnabled', 'true'); }
+        ta.value = ''; toast('🗣️ TTS Aktiviert', 'success'); return true;
+      }
+      case 'tts_off': {
+        const cb = document.getElementById('tts-enabled');
+        if (cb) { cb.checked = false; localStorage.setItem('ttsEnabled', 'false'); }
+        stopTTS(); ta.value = ''; toast('🔇 TTS Deaktiviert', 'info'); return true;
+      }
+      case 'tts_toggle': {
+        const cb = document.getElementById('tts-enabled');
+        if (cb) {
+          cb.checked = !cb.checked;
+          localStorage.setItem('ttsEnabled', cb.checked ? 'true' : 'false');
+          if (!cb.checked) stopTTS();
+          toast(cb.checked ? '🗣️ TTS Aktiviert' : '🔇 TTS Deaktiviert', cb.checked ? 'success' : 'info');
+        }
+        ta.value = ''; return true;
+      }
+      case 'easter':
+        if (cmd.cmd === 'ufo' && window.showUfoAttack) window.showUfoAttack();
+        if (cmd.cmd === 'ghost' && window.showGhost) window.showGhost();
+        if (cmd.cmd === 'coffee' && window.showCoffeeBreak) window.showCoffeeBreak();
+        return true;
+      case 'system_save':
+        ta.value = '';
+        toast('🔐 Signiere Systemdateien…', 'info');
+        api('POST', '/system/save').then(res => {
+          if (res && res.status === 'saved') {
+            toast(`✅ ${res.files?.length ?? 0} Dateien signiert & geschützt`, 'success');
+          } else {
+            toast('❌ Fehler beim Signieren: ' + (res?.message || 'Unbekannt'), 'error');
+          }
+          refreshChat();
+        });
+        return true;
+      case 'system_unsave':
+        ta.value = '';
+        toast('⚠️ Integritätsschutz wird deaktiviert…', 'info');
+        api('POST', '/system/unsave').then(res => {
+          if (res && res.status === 'unsaved') {
+            toast('🔓 Schutz deaktiviert — Systemdateien editierbar', 'info');
+          } else {
+            toast('❌ Fehler: ' + (res?.message || 'Unbekannt'), 'error');
+          }
+          refreshChat();
+        });
+        return true;
+      case 'showbox_speed':
+        handleShowboxSpeedCommand(msg.toLowerCase().trim(), ta);
+        return true;
+      case 'showbox_load':
+        handleShowboxLoadCommand(msg.toLowerCase().trim(), ta);
+        return true;
+      case 'help_slides':
+        ta.value = '';
+        if (typeof window.showHelpSlides === 'function') {
+          window.showHelpSlides();
+          toast('📚 Hilfe-Slides im User-Layer', 'success');
+        } else {
+          toast('Showbox noch nicht bereit', 'warning');
+        }
+        return true;
+      case 'art_show':
+        ta.value = '';
+        if (typeof window.triggerAgentArtShow === 'function') {
+          window.triggerAgentArtShow('generalag');
+          toast('🎬 Agent Art Show — Slide 1 / 8', 'success');
+        } else {
+          toast('Showbox noch nicht bereit', 'warning');
+        }
+        return true;
+      case 'none':
+      default:
+        break;
+    }
+  }
+
+  // Fallback (no GnomTS): legacy path
   const m = msg.toLowerCase().trim();
   if (m === '@tts on') { const cb = document.getElementById('tts-enabled'); if (cb) { cb.checked = true; localStorage.setItem('ttsEnabled', 'true'); } ta.value = ''; toast('🗣️ TTS Aktiviert', 'success'); return true; }
   if (m === '@tts off') { const cb = document.getElementById('tts-enabled'); if (cb) { cb.checked = false; localStorage.setItem('ttsEnabled', 'false'); } stopTTS(); ta.value = ''; toast('🔇 TTS Deaktiviert', 'info'); return true; }
@@ -315,17 +427,12 @@ function handleChatCommands(msg, ta) {
   if (m === '/ufo') { if (window.showUfoAttack) window.showUfoAttack(); return true; }
   if (m === '/ghost') { if (window.showGhost) window.showGhost(); return true; }
   if (m === '/coffee') { if (window.showCoffeeBreak) window.showCoffeeBreak(); return true; }
-
-  // ── @system save / unsave ────────────────────────────────────────────────
   if (m === '@system save') {
     ta.value = '';
     toast('🔐 Signiere Systemdateien…', 'info');
     api('POST', '/system/save').then(res => {
-      if (res && res.status === 'saved') {
-        toast(`✅ ${res.files?.length ?? 0} Dateien signiert & geschützt`, 'success');
-      } else {
-        toast('❌ Fehler beim Signieren: ' + (res?.message || 'Unbekannt'), 'error');
-      }
+      if (res && res.status === 'saved') toast(`✅ ${res.files?.length ?? 0} Dateien signiert & geschützt`, 'success');
+      else toast('❌ Fehler beim Signieren: ' + (res?.message || 'Unbekannt'), 'error');
       refreshChat();
     });
     return true;
@@ -334,43 +441,24 @@ function handleChatCommands(msg, ta) {
     ta.value = '';
     toast('⚠️ Integritätsschutz wird deaktiviert…', 'info');
     api('POST', '/system/unsave').then(res => {
-      if (res && res.status === 'unsaved') {
-        toast('🔓 Schutz deaktiviert — Systemdateien editierbar', 'info');
-      } else {
-        toast('❌ Fehler: ' + (res?.message || 'Unbekannt'), 'error');
-      }
+      if (res && res.status === 'unsaved') toast('🔓 Schutz deaktiviert — Systemdateien editierbar', 'info');
+      else toast('❌ Fehler: ' + (res?.message || 'Unbekannt'), 'error');
       refreshChat();
     });
     return true;
   }
-  // ────────────────────────────────────────────────────────────────────────
-
-  if (m.startsWith('@showbox speed ')) {
-    handleShowboxSpeedCommand(m, ta);
-    return true;
-  }
-  if (m.startsWith('@showbox ')) {
-    handleShowboxLoadCommand(m, ta);
-    return true;
-  }
+  if (m.startsWith('@showbox speed ')) { handleShowboxSpeedCommand(m, ta); return true; }
+  if (m.startsWith('@showbox ')) { handleShowboxLoadCommand(m, ta); return true; }
   if (m === '@@slides' || m === '@@hilfe-slides' || m === '@@hilfeslides') {
     ta.value = '';
-    if (typeof window.showHelpSlides === 'function') {
-      window.showHelpSlides();
-      toast('📚 Hilfe-Slides im User-Layer', 'success');
-    } else {
-      toast('Showbox noch nicht bereit', 'warning');
-    }
+    if (typeof window.showHelpSlides === 'function') { window.showHelpSlides(); toast('📚 Hilfe-Slides im User-Layer', 'success'); }
+    else toast('Showbox noch nicht bereit', 'warning');
     return true;
   }
   if (m === '@@artshow' || m === '@@art' || m === '@@art-show') {
     ta.value = '';
-    if (typeof window.triggerAgentArtShow === 'function') {
-      window.triggerAgentArtShow('generalag');
-      toast('🎬 Agent Art Show — Slide 1 / 8', 'success');
-    } else {
-      toast('Showbox noch nicht bereit', 'warning');
-    }
+    if (typeof window.triggerAgentArtShow === 'function') { window.triggerAgentArtShow('generalag'); toast('🎬 Agent Art Show — Slide 1 / 8', 'success'); }
+    else toast('Showbox noch nicht bereit', 'warning');
     return true;
   }
   return false;
@@ -378,6 +466,16 @@ function handleChatCommands(msg, ta) {
 
 function addToChatHistory(msg) {
   if (!msg) return;
+  if (window.GnomTS && typeof window.GnomTS.pushChatHistory === 'function') {
+    try {
+      window.GnomTS.pushChatHistory(localStorage, msg);
+    } catch (e) {
+      console.error(e);
+    }
+    window.chatHistoryIdx = -1;
+    window.chatHistoryDraft = "";
+    return;
+  }
   try {
     let history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
     if (history.length === 0 || history[history.length - 1] !== msg) {
@@ -395,23 +493,41 @@ function addToChatHistory(msg) {
 async function sendChat() {
   const ta = document.getElementById('chat-input');
   if (!ta) return;
-  const msg = ta.value.trim();
-  if (!msg) return;
+
+  let msg = ta.value;
+  let multiToast = null;
+  if (window.GnomTS && typeof window.GnomTS.prepareOutgoingChat === 'function') {
+    const prep = window.GnomTS.prepareOutgoingChat(msg, {
+      isLocalCommand: window.GnomTS.isLocalCommand,
+    });
+    if (prep.empty) return;
+    msg = prep.trimmed;
+    multiToast = prep.multiMentionToast;
+  } else {
+    msg = ta.value.trim();
+    if (!msg) return;
+  }
+
   addToChatHistory(msg);
   if (handleChatCommands(msg, ta)) return;
   ta.value = '';
 
-  // S5: multi-@ preview via GnomTS (backend still uses only= for fanout control)
-  try {
-    if (window.GnomTS && typeof window.GnomTS.isMultiMention === 'function'
-        && window.GnomTS.isMultiMention(msg)) {
-      const names = window.GnomTS.extractMentions(msg).join(', ');
-      toast('🎯 Multi-@ → ' + names + ' (targeted only=)', 'info');
-    }
-  } catch (_e) { /* non-fatal */ }
+  if (multiToast) {
+    try { toast(multiToast, 'info'); } catch (_e) { /* non-fatal */ }
+  }
 
   document.getElementById('ac-dropdown')?.classList.remove('show');
   const res = await api('POST', '/chat', { content: msg });
+  if (window.GnomTS && typeof window.GnomTS.formatChatResponseToast === 'function') {
+    const t = window.GnomTS.formatChatResponseToast(res);
+    toast(t.message, t.type);
+    if (res) {
+      refreshChat();
+      if (typeof loadAgents === 'function') loadAgents();
+      updateProjectIndicator();
+    }
+    return;
+  }
   if (res) {
     if (res.status === 'role_set') toast(`👑 ${res.agent} → ${res.role}`, 'success');
     else if (res.status === 'idea_saved') toast('💡 Idea saved', 'success');
@@ -450,7 +566,11 @@ function parseShowboxInMsg(m, overrideId) {
   let showBoxFound = false;
   let showData = null;
   // Strip invisible Unicode chars (zero-width spaces, joiners, etc.) from end of content
-  rawContent = rawContent.replace(/[\u200B-\u200D\uFEFF\u2060\u2061\u2062\u2063\u2064\u00AD\u034F\u115F\u1160\u17B4\u17B5\u180E\u2028\u2029\u202A-\u202E\u2066-\u2069\u2800\u3164\uFFA0]+$/g, '');
+  if (window.GnomTS && typeof window.GnomTS.stripInvisibleTrailing === 'function') {
+    rawContent = window.GnomTS.stripInvisibleTrailing(rawContent);
+  } else {
+    rawContent = rawContent.replace(/[\u200B-\u200D\uFEFF\u2060\u2061\u2062\u2063\u2064\u00AD\u034F\u115F\u1160\u17B4\u17B5\u180E\u2028\u2029\u202A-\u202E\u2066-\u2069\u2800\u3164\uFFA0]+$/g, '');
+  }
 
   const showboxMatch = rawContent.match(/<SHOWBOX(?::(\w+))?>([\s\S]*?)<\/SHOWBOX>/i);
   
@@ -484,6 +604,9 @@ function parseShowboxInMsg(m, overrideId) {
 }
 
 function extractThoughtsAndClean(content) {
+  if (window.GnomTS && typeof window.GnomTS.extractThoughtsAndClean === 'function') {
+    return window.GnomTS.extractThoughtsAndClean(content);
+  }
   const thoughts = [];
   const cleaned = content || "";
   const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
@@ -910,24 +1033,32 @@ async function refreshChat() {
       const isRecent = msgTime > (window._pageLoadTime - 5000);
       
       // Determine if we should speak this message (only speak decisive/user-directed info)
-      const lowercaseCleaned = cleaned.toLowerCase().trim();
-      const isSystemLog = cleaned.includes('[AUTO-APPROVED]') || 
-                          cleaned.includes('heartbeat') || 
-                          cleaned.includes('status=') || 
-                          lowercaseCleaned.includes('status online') || 
-                          lowercaseCleaned.includes('status busy');
-      
-      const isAgentToAgent = lowercaseCleaned.startsWith('@coderag') || 
-                             lowercaseCleaned.startsWith('@researcherag') || 
-                             lowercaseCleaned.startsWith('@writerag') || 
-                             lowercaseCleaned.startsWith('@editorag') || 
-                             lowercaseCleaned.startsWith('@generalag') || 
-                             lowercaseCleaned.startsWith('@watchdogag') || 
-                             lowercaseCleaned.startsWith('@securityag') || 
-                             lowercaseCleaned.startsWith('@soulag');
-      
+      const isSystemLog = (window.GnomTS && typeof window.GnomTS.isSystemLogMessage === 'function')
+        ? window.GnomTS.isSystemLogMessage(cleaned)
+        : (cleaned.includes('[AUTO-APPROVED]') ||
+           cleaned.includes('heartbeat') ||
+           cleaned.includes('status=') ||
+           cleaned.toLowerCase().includes('status online') ||
+           cleaned.toLowerCase().includes('status busy'));
+
+      const isAgentToAgent = (window.GnomTS && typeof window.GnomTS.isAgentToAgentMessage === 'function')
+        ? window.GnomTS.isAgentToAgentMessage(cleaned)
+        : (() => {
+            const lowercaseCleaned = cleaned.toLowerCase().trim();
+            return lowercaseCleaned.startsWith('@coderag') ||
+              lowercaseCleaned.startsWith('@researcherag') ||
+              lowercaseCleaned.startsWith('@writerag') ||
+              lowercaseCleaned.startsWith('@editorag') ||
+              lowercaseCleaned.startsWith('@generalag') ||
+              lowercaseCleaned.startsWith('@watchdogag') ||
+              lowercaseCleaned.startsWith('@securityag') ||
+              lowercaseCleaned.startsWith('@soulag');
+          })();
+
       if (isRecent && !isSystemLog && !isAgentToAgent) {
-        let speechText = cleaned.replace(/\[WRITE:\s*([^\]\n]+)\]([\s\S]*?)\[\/WRITE\]/gi, 'schreibt Datei $1')
+        let speechText = (window.GnomTS && typeof window.GnomTS.cleanActionTagsForSpeech === 'function')
+          ? window.GnomTS.cleanActionTagsForSpeech(cleaned)
+          : cleaned.replace(/\[WRITE:\s*([^\]\n]+)\]([\s\S]*?)\[\/WRITE\]/gi, 'schreibt Datei $1')
                                 .replace(/\[SHELL:\s*([^\]\n]+)\]/gi, 'führt Befehl $1 aus')
                                 .replace(/\[READ:\s*([^\]\n]+)\]/gi, 'liest Datei $1')
                                 .replace(/\[BROWSER:\s*([^\]\n]+)\]/gi, 'führt Browser-Aktion $1 aus')
