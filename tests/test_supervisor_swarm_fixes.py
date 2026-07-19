@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import inspect
-import os
 import time
 
-import pytest
 
 
 def test_soul_auto_dispatch_default_off():
@@ -41,7 +39,6 @@ def test_recover_stuck_default_timeout_120():
 def test_recover_stuck_requeues_old_processing(tmp_path, monkeypatch):
     """Stuck processing row becomes pending after recovery."""
     import sqlite3
-    from gnom_hub.core import config as cfg
 
     db = tmp_path / "t.db"
     conn = sqlite3.connect(str(db))
