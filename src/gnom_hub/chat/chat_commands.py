@@ -38,6 +38,45 @@ def get_ideas(): return SQLiteStateRepository().get_value("ideas", [])
 def get_jobs():
     return sorted(SQLiteStateRepository().get_value("jobs", []), key=lambda j: j.get("ts",""), reverse=True)[:20]
 
+def handle_queue(q=""):
+    """@@queue [clear|stats] [agent] — Wave A ops command (no admin token needed on localhost)."""
+    parts = (q or "").strip().split()
+    action = (parts[0] if parts else "stats").lower()
+    agent = parts[1] if len(parts) > 1 else None
+    from gnom_hub.agents.swarm.swarm_comms import clear_queue
+    from gnom_hub.db.connection import get_db_conn
+
+    if action in ("clear", "purge", "flush"):
+        r = clear_queue(
+            statuses=("pending", "processing"),
+            recipient=agent,
+        )
+        _post_chat(
+            "System",
+            f"🧹 **Queue clear:** {r.get('moved_to_dlq', 0)} → dead_letter"
+            + (f" (agent={agent})" if agent else " (alle)"),
+        )
+        return {"status": "ok", **r}
+
+    with get_db_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT status, COUNT(*) AS c FROM agent_messages
+            WHERE status IN ('pending','processing','dead_letter','failed')
+            GROUP BY status
+            """
+        ).fetchall()
+        by = {r["status"]: r["c"] for r in rows}
+    _post_chat(
+        "System",
+        "📊 **Queue:** "
+        f"pending={by.get('pending', 0)} processing={by.get('processing', 0)} "
+        f"dlq={by.get('dead_letter', 0)} failed={by.get('failed', 0)}. "
+        "Befehl: `@@queue clear` oder `@@queue clear CoderAG`.",
+    )
+    return {"status": "ok", "queue": by}
+
+
 def handle_free(q):
     from gnom_hub.infrastructure.process.process_manager import AGENTS, restart_single_agent
     t = q.replace("@","").strip().lower()

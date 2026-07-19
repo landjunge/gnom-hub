@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from gnom_hub.db.connection import get_db_conn
+from gnom_hub.db.write_serial import serialized_db_write
 
 router = APIRouter()
 logger = logging.getLogger("gnom_hub.api.registry")
@@ -20,7 +20,7 @@ class RegisterPayload(BaseModel):
 def _touch_agent(name: str, port: int = 0, description: str = "") -> dict:
     """Lightweight online/last_seen update — avoids full INSERT OR REPLACE storms."""
     now = datetime.now(timezone.utc).isoformat()
-    with get_db_conn() as c:
+    with serialized_db_write() as c:
         cur = c.execute(
             "UPDATE agents SET status='online', last_seen=?, port=COALESCE(NULLIF(?, 0), port), "
             "description=CASE WHEN ?!='' THEN ? ELSE description END WHERE name=? OR lower(name)=lower(?)",
@@ -76,7 +76,7 @@ def heartbeat(a_id: str):
     """Cheap last_seen touch — never overwrite busy/processing/running status."""
     try:
         now = datetime.now(timezone.utc).isoformat()
-        with get_db_conn() as c:
+        with serialized_db_write() as c:
             # Keep busy/processing/running; only force online when idle/stale.
             cur = c.execute(
                 """

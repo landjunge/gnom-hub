@@ -47,16 +47,43 @@ def _build_sys(n, sys, agent_name):
         runtime_settings=runtime_settings,
     )
 
+def _has_provider_key(kdb: dict, provider: str) -> bool:
+    """True if any usable key exists for provider (Wave A: prefer paid)."""
+    if not isinstance(kdb, dict):
+        return False
+    p = provider.lower()
+    for k, v in kdb.items():
+        kl = str(k).lower()
+        if isinstance(v, dict):
+            key = v.get("key") or v.get("api_key") or ""
+            if not key or len(str(key)) < 8:
+                continue
+            if str(v.get("provider", "")).lower() == p:
+                return True
+            if p in kl:  # e.g. key id minimax_…
+                return True
+        elif isinstance(v, str) and len(v) > 8 and p in kl:
+            return True
+    return False
+
+
 def _resolve(pvd, mdl, kdb, n):
     """Build provider/model fallback chain.
 
-    OpenRouter always expands to the free-model rotation list so a single
-    429/404 does not kill the request — the next free slug is tried automatically.
+    Wave A: prefer stable/paid (MiniMax, then paid providers) before OpenRouter free.
+    Free rotation remains a fallback, not the default primary when a paid key exists.
     """
+    import os
+
     from gnom_hub.infrastructure.router.openrouter_free import openrouter_provider_candidates
 
+    prefer_paid = os.environ.get("GNOM_PREFER_PAID", "1").lower() not in ("0", "false", "no")
+
     if pvd == "auto":
-        return SmartRouter.resolve_stage_candidates(mdl, kdb, n)
+        cands = list(SmartRouter.resolve_stage_candidates(mdl, kdb, n))
+        if prefer_paid and _has_provider_key(kdb, "minimax"):
+            cands = [("minimax", "MiniMax-M3")] + cands
+        return _dedupe_cands(cands)
     if pvd == "lokal":
         return [("lokal", mdl)]
 
@@ -66,12 +93,18 @@ def _resolve(pvd, mdl, kdb, n):
         repo = None
 
     candidates: list[tuple[str, str]] = []
+    # Paid-first injection when routing still points at openrouter/free
+    paid_first = prefer_paid and (
+        pvd == "openrouter"
+        or (isinstance(mdl, str) and ("free" in mdl.lower() or mdl == "openrouter/free"))
+    )
+    if paid_first and _has_provider_key(kdb, "minimax"):
+        candidates.append(("minimax", "MiniMax-M3"))
+
     if pvd == "openrouter":
-        # preferred mdl first, then all free models (cooldown-aware)
         candidates.extend(openrouter_provider_candidates(preferred=mdl, repo=repo))
     elif pvd == "minimax":
-        # Provider-Kette: MiniMax → OpenRouter free chain → Ollama
-        candidates.append(("minimax", mdl))
+        candidates.append(("minimax", mdl or "MiniMax-M3"))
         candidates.extend(openrouter_provider_candidates(preferred=None, repo=repo))
         candidates.append(("lokal", "llama3"))
     elif pvd in ("deepseek", "openai", "anthropic", "gemini", "mistral"):
@@ -80,10 +113,12 @@ def _resolve(pvd, mdl, kdb, n):
     else:
         candidates.append((pvd, mdl))
 
-    # Ollama als finaler Catch-All (lokal, nie offline)
     if ("lokal", "llama3") not in candidates:
         candidates.append(("lokal", "llama3"))
-    # de-dupe while preserving order
+    return _dedupe_cands(candidates)
+
+
+def _dedupe_cands(candidates: list[tuple[str, str]]) -> list[tuple[str, str]]:
     seen: set[tuple[str, str]] = set()
     out: list[tuple[str, str]] = []
     for c in candidates:
@@ -158,12 +193,16 @@ def ask_router(p, sys="Du bist ein Assistent.", agent_name=None, depth=0, parent
                 elif idx == 0 and cfg.get("provider") != cp:
                     adb[n] = {"provider": cp, "model": cm}
                     set_state_value("llm_agents", adb)
-                if n:
-                    # Swarm mention detection has a circular import loop:
-                    # router -> swarm_comms -> brainstorm -> brainstorm_helpers -> router
-                    # Therefore we keep this specific import local to break the loop.
-                    from gnom_hub.agents.swarm.swarm_comms import process_swarm_mentions
-                    process_swarm_mentions(agent_name or n, ans, depth=depth, parent_msg_id=parent_msg_id)
+                if n and ans and len(ans) <= 6000:
+                    # Wave A: only GeneralAG (conductor) may auto-dispatch @mentions
+                    # from LLM output — workers re-mentioning each other = queue storm.
+                    role = _get_agent_role(n)
+                    allow_mentions = n in ("generalag",) or role in ("general", "conductor")
+                    if allow_mentions:
+                        from gnom_hub.agents.swarm.swarm_comms import process_swarm_mentions
+                        process_swarm_mentions(
+                            agent_name or n, ans, depth=depth, parent_msg_id=parent_msg_id
+                        )
                 return wrap_response(ans, agent_name or n, p, lat, cp, cm, idx > 0)
 
             # Free-Model gescheitert (429/404/leer) → cooldown + nächstes Free-Modell

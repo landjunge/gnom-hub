@@ -124,3 +124,54 @@ def purge_dead_letters(request: Request, _=Depends(verify_admin)):
         ).rowcount
         db.commit()
     return {"status": "purged", "deleted_count": count}
+
+
+@router.post("/queue/clear")
+def clear_agent_queue(
+    request: Request,
+    _=Depends(verify_admin),
+    older_than_s: float | None = None,
+    recipient: str | None = None,
+    include_processing: bool = True,
+):
+    """Wave A: move pending/processing to dead_letter (ops storm recovery).
+
+    Localhost admin. Optional filters: older_than_s, recipient.
+    """
+    from gnom_hub.agents.swarm.swarm_comms import clear_queue
+
+    statuses = ("pending", "processing") if include_processing else ("pending",)
+    result = clear_queue(
+        statuses=statuses,
+        older_than_s=older_than_s,
+        recipient=recipient,
+    )
+    return {"status": "ok", **result}
+
+
+@router.get("/queue/stats")
+def queue_stats(request: Request, _=Depends(verify_admin)):
+    """Quick queue breakdown for ops."""
+    from gnom_hub.db.connection import get_db_conn
+
+    with get_db_conn() as db:
+        by_status = {
+            r["status"]: r["c"]
+            for r in db.execute(
+                "SELECT status, COUNT(*) AS c FROM agent_messages GROUP BY status"
+            )
+        }
+        by_agent = [
+            dict(r)
+            for r in db.execute(
+                """
+                SELECT recipient, status, COUNT(*) AS c
+                FROM agent_messages
+                WHERE status IN ('pending', 'processing')
+                GROUP BY recipient, status
+                ORDER BY c DESC
+                LIMIT 40
+                """
+            )
+        ]
+    return {"by_status": by_status, "by_agent": by_agent}

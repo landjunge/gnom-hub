@@ -24,11 +24,11 @@ def main():
         stats = reconcile_keys_on_startup()
         if stats.get("added", 0) > 0:
             print(f"[Startup] Key-Reconcile: {stats['added']} key(s) merged from Desktop → DB")
-        # Optional: MiniMax-M3 als Default-Provider setzen. Auskommentiert
-        # standardmäßig. Aktivieren via env: GNOM_HUB_FORCE_MINIMAX=1
-        if os.environ.get("GNOM_HUB_FORCE_MINIMAX") == "1":
+        # Wave A: prefer paid MiniMax when key exists (opt-out: GNOM_HUB_FORCE_MINIMAX=0)
+        force = os.environ.get("GNOM_HUB_FORCE_MINIMAX", "1")
+        if force not in ("0", "false", "no"):
             if force_minimax_routing():
-                print("[Startup] Force-Routing: all 8 agents → minimax/MiniMax-M3")
+                print("[Startup] Force-Routing: all 8 agents → minimax/MiniMax-M3 (Wave A)")
     except Exception as e:
         print(f"[Startup] Reconcile skipped: {e}", file=sys.stderr)
 

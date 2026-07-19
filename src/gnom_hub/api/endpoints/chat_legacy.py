@@ -14,6 +14,7 @@ from gnom_hub.chat.chat_commands import (
     handle_git,
     handle_help,
     handle_job,
+    handle_queue,
     handle_reject_decision,
     handle_resume,
     handle_spass,
@@ -94,7 +95,32 @@ def handle_workflow(q):
     except Exception as e:
         logging.getLogger(__name__).error("Workflow-Erstellung fehlgeschlagen: %s", e)
         return {"status": "error", "message": str(e)}
-CMDS = {"status": lambda q: handle_status(), "job": handle_job, "free": handle_free, "git": handle_git, "project": lambda q: _handle_sys(q, "proj"), "bs": handle_bs, "resume": handle_resume, "approve_decision": handle_approve_decision, "reject_decision": handle_reject_decision, "bake": handle_bake, "emergency": handle_emergency, "notfall": handle_emergency, "diagnose": handle_diagnose, "confirmations": handle_confirmations, "spass": handle_spass, "worker": handle_worker, "workers": handle_worker, "blockade": handle_blockade, "blokade": handle_blockade, "workflow": handle_workflow, "help": handle_help, "hilfe": handle_help, "allclear000": handle_allclear}
+CMDS = {
+    "status": lambda q: handle_status(),
+    "job": handle_job,
+    "free": handle_free,
+    "queue": handle_queue,
+    "git": handle_git,
+    "project": lambda q: _handle_sys(q, "proj"),
+    "bs": handle_bs,
+    "resume": handle_resume,
+    "approve_decision": handle_approve_decision,
+    "reject_decision": handle_reject_decision,
+    "bake": handle_bake,
+    "emergency": handle_emergency,
+    "notfall": handle_emergency,
+    "diagnose": handle_diagnose,
+    "confirmations": handle_confirmations,
+    "spass": handle_spass,
+    "worker": handle_worker,
+    "workers": handle_worker,
+    "blockade": handle_blockade,
+    "blokade": handle_blockade,
+    "workflow": handle_workflow,
+    "help": handle_help,
+    "hilfe": handle_help,
+    "allclear000": handle_allclear,
+}
 @router.post("/api/chat")
 def post_chat(msg: ChatMsg):
     import logging

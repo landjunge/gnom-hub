@@ -322,10 +322,24 @@ class BaseAgent:
                 processed = ""
                 raw_content = (getattr(r, "content", None) or "").strip() if r is not None else ""
                 job_ok = True
+                import re as _re
+
+                # Wave A anti-spam: hard cap + think-only detection
+                MAX_REPLY = 6000
+                if raw_content and len(raw_content) > MAX_REPLY * 3:
+                    # pathological free-model dump — refuse to amplify
+                    job_ok = False
+                    self._req("post", "/api/chat", {
+                        "content": (
+                            f"⚠️ **[{self.n}]** Antwort verworfen (Spam/Überlänge "
+                            f"{len(raw_content)} Zeichen). Nachricht #{msg['msg_id']} → NACK."
+                        ),
+                        "sender": "System",
+                    })
+                    ctx_logger.warning("Spam-length reply msg#%s len=%d", msg["msg_id"], len(raw_content))
+                    raw_content = ""
 
                 # ── Prio-1: nie still schlucken ────────────────────────────
-                # Router-Fehler / leere LLM-Antwort wurden früher ge-ackt ohne
-                # Chat-Post → User sieht „Agent schweigt“, Queue ist „fertig“.
                 if not raw_content:
                     job_ok = False
                     self._req("post", "/api/chat", {
@@ -350,69 +364,77 @@ class BaseAgent:
                     })
                     ctx_logger.error("ROUTER-FEHLER für msg#%s: %s", msg["msg_id"], raw_content[:200])
                 else:
-                    from gnom_hub.agents.actions.action_handlers import process_actions
-                    from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
-                    soul = get_soul(self.n) or {"permissions": ["read"]}
-                    perms = soul.get("permissions", [])
-                    wd = get_workspace_dir()  # Phase-2-Bugfix: wd war im alten Injections-Block definiert
-                    processed = await _to_thread(process_actions, raw_content, {"name": self.n}, perms, False, wd)
-
-                    import re as _re
-                    raw = processed or raw_content
-                    think_display = _re.sub(
-                        r'<think>([\s\S]*?)</think>',
-                        r'\n[💭 \1]\n',
-                        raw, flags=_re.IGNORECASE | _re.DOTALL
+                    # Strip think blocks for substance check
+                    without_think = _re.sub(
+                        r'<think>[\s\S]*?</think>', '', raw_content,
+                        flags=_re.IGNORECASE | _re.DOTALL,
                     ).strip()
-                    if not think_display.strip():
-                        # process_actions hat alles zu System-Tags reduziert?
+                    # Also strip zero-width / garbage
+                    without_think = _re.sub(r'[\u200b-\u200d\ufeff]+', '', without_think).strip()
+                    if len(without_think) < 8 and len(raw_content) > 80:
+                        job_ok = False
                         self._req("post", "/api/chat", {
                             "content": (
-                                f"⚠️ **[{self.n}]** Antwort war nach Action-Processing leer "
-                                f"(msg #{msg['msg_id']}). Roh-Länge: {len(raw_content)}."
+                                f"⚠️ **[{self.n}]** Nur Think-Spam ohne Nutzinhalt "
+                                f"(msg #{msg['msg_id']}) → NACK, kein Dispatch."
                             ),
                             "sender": "System",
                         })
-                        job_ok = False
+                        ctx_logger.warning("think-only spam msg#%s", msg["msg_id"])
                     else:
-                        self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
-                        # Prio-5: GeneralAG hat Worker beauftragt → Timeout-Watch
-                        if self.n.lower() == "generalag":
+                        from gnom_hub.agents.actions.action_handlers import process_actions
+                        from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
+                        soul = get_soul(self.n) or {"permissions": ["read"]}
+                        perms = soul.get("permissions", [])
+                        wd = get_workspace_dir()
+                        # Cap input to action processor
+                        action_in = raw_content[:MAX_REPLY]
+                        processed = await _to_thread(
+                            process_actions, action_in, {"name": self.n}, perms, False, wd
+                        )
+
+                        raw = processed or action_in
+                        think_display = _re.sub(
+                            r'<think>([\s\S]*?)</think>',
+                            r'\n[💭 \1]\n',
+                            raw, flags=_re.IGNORECASE | _re.DOTALL
+                        ).strip()
+                        # Truncate chat post — never dump 50k tokens into war-room
+                        if len(think_display) > MAX_REPLY:
+                            think_display = think_display[:MAX_REPLY] + "\n… [gekürzt]"
+                        if not think_display.strip():
+                            self._req("post", "/api/chat", {
+                                "content": (
+                                    f"⚠️ **[{self.n}]** Antwort war nach Action-Processing leer "
+                                    f"(msg #{msg['msg_id']}). Roh-Länge: {len(raw_content)}."
+                                ),
+                                "sender": "System",
+                            })
+                            job_ok = False
+                        else:
+                            self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
+                            # Only GeneralAG may fan-out worker watches; workers never storm
+                            if self.n.lower() == "generalag" and job_ok:
+                                try:
+                                    _schedule_worker_reply_watch(
+                                        self._req, think_display, msg.get("context_id") or "default"
+                                    )
+                                except Exception:
+                                    pass
+
+                        # SoulAG observation — only on successful short-enough thoughts
+                        think_match = _re.search(
+                            r'<think>([\s\S]*?)</think>', raw, flags=_re.IGNORECASE | _re.DOTALL
+                        )
+                        if job_ok and think_match and think_match.group(1).strip():
                             try:
-                                _schedule_worker_reply_watch(
-                                    self._req, think_display, msg.get("context_id") or "default"
+                                from gnom_hub.soul.zwc_soul import extract_facts_from_text
+                                thought = think_match.group(1).strip()[:800]
+                                await _to_thread(extract_facts_from_text, thought, self.n)
+                            except Exception as e:
+                                logging.getLogger(__name__).debug(
+                                    "SoulAG-Thought-Extract fehlgeschlagen: %s", e
                                 )
-                            except Exception:
-                                pass
-
-                    # ── SoulAG sieht Denkprozesse ────────────────────────
-                    # Nach jeder Agent-Antwort den Denkprozess extrahieren
-                    # und an SoulAG zur Fakten-Extraktion weiterleiten.
-                    think_match = _re.search(r'<think>([\s\S]*?)</think>', raw, flags=_re.IGNORECASE | _re.DOTALL)
-                    if think_match and think_match.group(1).strip():
-                        try:
-                            from gnom_hub.soul.zwc_soul import extract_facts_from_text
-                            thought = think_match.group(1).strip()[:1500]
-                            facts = await _to_thread(extract_facts_from_text, thought, self.n)
-                            if facts:
-                                logging.getLogger(__name__).info(
-                                    "SoulAG extrahierte %d Fakt(en) aus Denkprozess von %s",
-                                    len(facts), self.n,
-                                )
-                        except Exception as e:
-                            logging.getLogger(__name__).debug("SoulAG-Thought-Extract fehlgeschlagen: %s", e)
-
-                        try:
-                            from gnom_hub.soul.soul_observer import analyze_agent_thought, notify_generalag
-                            analysis = await _to_thread(analyze_agent_thought, self.n, thought)
-                            if analysis.get("alerts"):
-                                await _to_thread(notify_generalag, analysis)
-                                logging.getLogger(__name__).info(
-                                    "SoulAG-Observation für %s: %d Alerts",
-                                    self.n, len(analysis["alerts"]),
-                                )
-                        except Exception as e:
-                            logging.getLogger(__name__).debug("SoulAG-Observer fehlgeschlagen: %s", e)
 
                 # P0: empty / ROUTER-FEHLER must NACK (retry/backoff), never ACK done.
                 if job_ok:

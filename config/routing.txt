@@ -1,17 +1,18 @@
 # =====================================================================
-# GNOM-HUB - Agent LLM Routing (Direkt, kein Auto-Routing)
+# GNOM-HUB - Agent LLM Routing (Wave A: stable first, free fallback)
 # =====================================================================
 # Format: agent_name = provider | model
 #
-# Alle Agents → OpenRouter FREE (openrouter/free = Auto-Free-Router).
-# Fallback: Config.OPENROUTER_FREE_MODELS → Ollama lokal.
+# Prefer MiniMax when key is present (router also injects MiniMax before
+# openrouter/free if GNOM_PREFER_PAID=1, default on).
+# Fallback chain inside router: MiniMax → OpenRouter free rotation → Ollama.
 # =====================================================================
 
-coderag = openrouter | openrouter/free
-securityag = openrouter | openrouter/free
-researcherag = openrouter | openrouter/free
-generalag = openrouter | openrouter/free
-soulag = openrouter | openrouter/free
-writerag = openrouter | openrouter/free
-editorag = openrouter | openrouter/free
-watchdogag = openrouter | openrouter/free
+coderag = minimax | MiniMax-M3
+securityag = minimax | MiniMax-M3
+researcherag = minimax | MiniMax-M3
+generalag = minimax | MiniMax-M3
+soulag = minimax | MiniMax-M3
+writerag = minimax | MiniMax-M3
+editorag = minimax | MiniMax-M3
+watchdogag = minimax | MiniMax-M3

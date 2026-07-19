@@ -37,7 +37,8 @@ from gnom_hub.db.connection import get_db_connection
 
 # ── Test-Konfiguration ─────────────────────────────────────────────────────
 NUM_AGENTS = 5
-TASKS_PER_AGENT = 30
+# Wave A: MAX_QUEUE_DEPTH=20 — stay under per-agent cap
+TASKS_PER_AGENT = min(15, MAX_QUEUE_DEPTH - 2)
 TASKS_WITH_DEPENDENCIES = 10
 SIMULATED_PROCESSING_TIME = 0.01
 STUCK_AGENTS = ["SlowAG", "CrashAG"]
@@ -590,7 +591,7 @@ class TestQueueStability:
             conn.close()
 
         db_path = str(isolated_db)
-        priorities = {"critical": 5, "normal": 15, "low": 10}
+        priorities = {"critical": 3, "normal": 8, "low": 5}  # total <= MAX_QUEUE_DEPTH
 
         print("\n  Phase 1: Dispatche Tasks mit gemischten Prioritäten...")
         for prio, count in priorities.items():
@@ -1226,13 +1227,14 @@ class TestQueueStability:
 
         db_path = str(isolated_db)
 
-        # Phase 1: Messages dispatchen
-        print("\n  Phase 1: 30 Messages dispatchen...")
-        for i in range(30):
+        # Phase 1: stay under Wave-A MAX_QUEUE_DEPTH
+        n1 = min(12, MAX_QUEUE_DEPTH - 5)
+        print(f"\n  Phase 1: {n1} Messages dispatchen...")
+        for i in range(n1):
             dispatch_mention("User", f"@VacAG vac_task_{i}", "vac_test", db_path)
 
         # Phase 2: Einige Messages fetchen + acken (damit VACUUM was zu tun hat)
-        for _ in range(10):
+        for _ in range(min(5, n1)):
             msg = fetch_next_message("VacAG", db_path, timeout=0.3)
             if msg:
                 ack_message(msg["msg_id"], db_path)
@@ -1252,7 +1254,8 @@ class TestQueueStability:
         vac_thread = threading.Thread(target=vacuum_worker, daemon=True)
         vac_thread.start()
 
-        for i in range(10):
+        n2 = 5
+        for i in range(n2):
             dispatch_mention("User", f"@VacAG concurrent_{i}", "vac_concurrent", db_path)
 
         vac_thread.join(timeout=30)
@@ -1265,18 +1268,16 @@ class TestQueueStability:
                 r["status"]: r["cnt"]
                 for r in conn.execute("SELECT status, COUNT(*) as cnt FROM agent_messages WHERE context_id IN ('vac_test', 'vac_concurrent') GROUP BY status").fetchall()
             }
-            # 30 + 10 = 40 Messages insgesamt
-            # Davon 10 geackt (done), 30 pending
             status_sum = sum(by_status.values())
         finally:
             conn.close()
 
-        assert total == 40, f"Erwartet 40 Messages, gefunden {total}"
+        assert total == n1 + n2, f"Erwartet {n1 + n2} Messages, gefunden {total}"
         assert status_sum == total, f"Status-Summe ({status_sum}) != Total ({total})"
-        print(f"    ✅ {total} Messages konsistent (10 done, {status_sum - by_status.get('done', 0)} pending) nach VACUUM")
+        print(f"    ✅ {total} Messages konsistent nach VACUUM")
 
         # Alle restlichen verarbeiten
-        for _ in range(30):
+        for _ in range(n1 + n2):
             msg = fetch_next_message("VacAG", db_path, timeout=0.3)
             if msg:
                 ack_message(msg["msg_id"], db_path)

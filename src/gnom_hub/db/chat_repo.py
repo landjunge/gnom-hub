@@ -257,16 +257,15 @@ def add_chat_message(project: str, sender: str, agent_id: str, msg_type: str, co
             meta_val = {}
     ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     last_err = None
-    # Short write + brief retries so user chat survives multi-writer storms
-    # without blocking the hub for a full busy_timeout window.
+    # Wave A: process-local write serialization + short retries
+    from gnom_hub.db.write_serial import serialized_db_write
     for _attempt in range(2):
         try:
-            with get_db_conn() as conn:
-                with conn:
-                    conn.execute("""
-                        INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (msg_id, project, sender, agent_id, msg_type, content, ts, json.dumps(meta_val)))
+            with serialized_db_write() as conn:
+                conn.execute("""
+                    INSERT INTO chat (id, project, sender, agent_id, msg_type, content, timestamp, metadata)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (msg_id, project, sender, agent_id, msg_type, content, ts, json.dumps(meta_val)))
             last_err = None
             break
         except sqlite3.OperationalError as e:

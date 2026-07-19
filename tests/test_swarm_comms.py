@@ -151,16 +151,18 @@ class TestCanAcceptMessage:
         assert can_accept_message("coderag", self.conn) is False
 
     def test_accepts_when_processing_under_limit(self):
-        from gnom_hub.agents.swarm.swarm_comms import can_accept_message
-        for _ in range(7):
+        from gnom_hub.agents.swarm.swarm_comms import MAX_CONCURRENT, can_accept_message
+        under = max(0, MAX_CONCURRENT - 1)
+        for _ in range(under):
             self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'processing')")
         assert can_accept_message("coderag", self.conn) is True
 
-    def test_accepts_when_processing_at_limit(self):
-        from gnom_hub.agents.swarm.swarm_comms import can_accept_message
-        for _ in range(8):
+    def test_rejects_when_processing_at_limit(self):
+        """Wave A: concurrent limit is hard (return False)."""
+        from gnom_hub.agents.swarm.swarm_comms import MAX_CONCURRENT, can_accept_message
+        for _ in range(MAX_CONCURRENT):
             self.conn.execute("INSERT INTO agent_messages (recipient, status) VALUES ('coderag', 'processing')")
-        assert can_accept_message("coderag", self.conn) is True  # no hard reject on processing, just log
+        assert can_accept_message("coderag", self.conn) is False
 
 
 # ==============================================================================

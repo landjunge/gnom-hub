@@ -19,12 +19,14 @@ logger = logging.getLogger(__name__)
 
 # ── Konfiguration (statt Magic Numbers im Code) ────────────────────────────
 MAX_DEPTH           = 15
-MAX_CONCURRENT      = 8       # (war 12) — nur 8 Agenten
+MAX_CONCURRENT      = 2       # hard cap concurrent jobs per agent (Wave A)
 RETRY_MAX           = 3
-RETRY_BACKOFF_BASE  = 3.0     # (war 5.0) — schnellere Retries
-MAX_QUEUE_DEPTH     = 100     # (war 30) — höhere Backpressure-Grenze
-DEPENDENCY_TIMEOUT  = 120.0  # Max. Wartezeit auf eine Abhängigkeit (Sekunden)
-DEPENDENCY_POLL_S   = 1.0     # (war 3.0) — schnellere Dependency-Auflösung    # Poll-Intervall für Dependency-Checks
+RETRY_BACKOFF_BASE  = 3.0
+MAX_QUEUE_DEPTH     = 20      # Wave A: prevent pending storms (was 100)
+STALE_PENDING_S     = 600.0   # Auto-DLQ pending older than 10 min
+STALE_PROCESSING_S  = 300.0   # Align recover default
+DEPENDENCY_TIMEOUT  = 120.0
+DEPENDENCY_POLL_S   = 1.0
 
 # ── Notification-Bus: Agenten warten auf dieses Event statt zu pollen ──────
 _new_message_event: dict[str, threading.Event] = {}
@@ -56,10 +58,11 @@ def can_accept_message(agent_name: str, conn: sqlite3.Connection) -> bool:
         (agent_name,)
     ).fetchone()[0]
     if active >= MAX_CONCURRENT:
-        logger.info(
-            "Auslastung Agent '%s': %d processing (Limit %d) – wird gepuffert",
+        logger.warning(
+            "Concurrent-Limit Agent '%s': %d processing (Limit %d) – abgelehnt",
             agent_name, active, MAX_CONCURRENT
         )
+        return False
     return True
 
 
@@ -748,6 +751,7 @@ def dispatch_by_capability(
 def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
     """
     Findet blockierte/abgestürzte Nachrichten und gibt sie wieder frei oder schiebt sie in die DLQ.
+    Wave A: also auto-DLQ stale pending (storm leftovers).
     """
     conn = get_db_connection()
     try:
@@ -793,7 +797,81 @@ def recover_stuck_messages(db_path: str, timeout: float = 300.0) -> None:
                 )
                 notify_agent(recipient)
 
+        # Wave A: pending older than STALE_PENDING_S → dead_letter (no infinite storms)
+        stale_pending = now - STALE_PENDING_S
+        n_stale = conn.execute("""
+            UPDATE agent_messages
+            SET status='dead_letter', completed_at=?, retry_count=retry_count
+            WHERE status='pending' AND created_at <= ? AND deliver_after <= ?
+        """, (now, stale_pending, now)).rowcount
+        if n_stale:
+            logger.warning("Auto-DLQ: %d stale pending messages (>%ss)", n_stale, int(STALE_PENDING_S))
+
+        # Cap total pending globally: if still over 8*MAX_QUEUE_DEPTH, DLQ oldest excess
+        cap = MAX_QUEUE_DEPTH * 8
+        total_pending = conn.execute(
+            "SELECT COUNT(*) FROM agent_messages WHERE status='pending'"
+        ).fetchone()[0]
+        if total_pending > cap:
+            excess = total_pending - cap
+            conn.execute("""
+                UPDATE agent_messages SET status='dead_letter', completed_at=?
+                WHERE id IN (
+                    SELECT id FROM agent_messages
+                    WHERE status='pending'
+                    ORDER BY created_at ASC
+                    LIMIT ?
+                )
+            """, (now, excess))
+            logger.warning("Auto-DLQ: %d excess pending over global cap %d", excess, cap)
+
         conn.commit()
+    finally:
+        conn.close()
+
+
+def clear_queue(
+    *,
+    statuses: tuple[str, ...] = ("pending", "processing"),
+    older_than_s: float | None = None,
+    recipient: str | None = None,
+) -> dict:
+    """Admin/ops: move matching queue rows to dead_letter. Returns counts."""
+    allowed = {"pending", "processing", "failed"}
+    statuses = tuple(s for s in statuses if s in allowed) or ("pending",)
+    conn = get_db_connection()
+    try:
+        now = time.time()
+        # Fixed allow-list only — no user-controlled SQL fragments.
+        if statuses == ("pending", "processing"):
+            where = "status IN ('pending', 'processing')"
+        elif statuses == ("pending",):
+            where = "status = 'pending'"
+        elif statuses == ("processing",):
+            where = "status = 'processing'"
+        else:
+            where = "status = 'pending'"
+        # where is a fixed allow-list string only (see branches above).
+        sql = f"SELECT COUNT(*) FROM agent_messages WHERE {where}"  # noqa: S608
+        params: list = []
+        if older_than_s is not None:
+            sql += " AND created_at <= ?"
+            params.append(now - older_than_s)
+        if recipient:
+            sql += " AND lower(recipient)=lower(?)"
+            params.append(recipient)
+        before = conn.execute(sql, params).fetchone()[0]
+        upd = f"UPDATE agent_messages SET status='dead_letter', completed_at=? WHERE {where}"  # noqa: S608
+        uparams: list = [now]
+        if older_than_s is not None:
+            upd += " AND created_at <= ?"
+            uparams.append(now - older_than_s)
+        if recipient:
+            upd += " AND lower(recipient)=lower(?)"
+            uparams.append(recipient)
+        n = conn.execute(upd, uparams).rowcount
+        conn.commit()
+        return {"moved_to_dlq": n, "matched": before, "statuses": list(statuses)}
     finally:
         conn.close()
 

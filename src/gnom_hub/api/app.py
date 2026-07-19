@@ -74,7 +74,7 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
     while True:
         try:
             loop = asyncio.get_running_loop()
-            # 1. Stuck messages recovery (Visibility Timeout)
+            # 1. Stuck + stale-pending recovery (Wave A: STALE_PENDING auto-DLQ)
             await loop.run_in_executor(None, recover_stuck_messages, str(db_path), 300.0)
 
             # 2. Watchdog / heartbeats check
