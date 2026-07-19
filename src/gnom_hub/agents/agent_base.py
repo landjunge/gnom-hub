@@ -151,13 +151,25 @@ class BaseAgent:
 
         await _to_thread(self._register_capabilities)
 
+        _last_hb = 0.0
         while True:
-            self._req("post", f"/api/agents/{self.n}/heartbeat")
+            # Heartbeat max 1× / 10s — was every poll (~2/s × 8 agents = DB storm)
+            now_ts = time.time()
+            if now_ts - _last_hb >= 10.0:
+                self._req("post", f"/api/agents/{self.n}/heartbeat")
+                _last_hb = now_ts
 
-            # Hole nächste Nachricht (Timeout 3s, war 5s)
-            msg = await _to_thread(fetch_next_message, self.n, str(DB_PATH), 3.0)
+            # Hole nächste Nachricht (Timeout 3s). Lock errors return None — never crash.
+            try:
+                msg = await _to_thread(fetch_next_message, self.n, str(DB_PATH), 3.0)
+            except Exception as fetch_exc:
+                logging.getLogger(__name__).warning(
+                    "%s fetch_next_message: %s", self.n, fetch_exc
+                )
+                await asyncio.sleep(1.0)
+                continue
             if msg is None:
-                await asyncio.sleep(0.5)  # (war 1.0)
+                await asyncio.sleep(1.0)
                 continue
 
             self._req("put", f"/api/agents/{self.n}/status?status=busy")
@@ -489,12 +501,24 @@ class BaseAgent:
                 self._req("put", f"/api/agents/{self.n}/status?status=online")
 
     def _register_capabilities(self):
+        import sqlite3
+        import time as _t
         from gnom_hub.db.connection import get_db_conn
-        with get_db_conn() as db:
-            db.execute("DELETE FROM agent_capabilities WHERE agent_name = ?", (self.n,))
-            for capability, confidence in getattr(self, "CAPABILITIES", []):
-                db.execute("""
-                    INSERT OR REPLACE INTO agent_capabilities (agent_name, capability, confidence)
-                    VALUES (?, ?, ?)
-                """, (self.n, capability, confidence))
-            db.commit()
+        for _attempt in range(4):
+            try:
+                with get_db_conn() as db:
+                    db.execute("DELETE FROM agent_capabilities WHERE agent_name = ?", (self.n,))
+                    for capability, confidence in getattr(self, "CAPABILITIES", []):
+                        db.execute("""
+                            INSERT OR REPLACE INTO agent_capabilities (agent_name, capability, confidence)
+                            VALUES (?, ?, ?)
+                        """, (self.n, capability, confidence))
+                    db.commit()
+                return
+            except sqlite3.OperationalError as e:
+                if "locked" not in str(e).lower() or _attempt == 3:
+                    logging.getLogger(__name__).warning(
+                        "%s capability register soft-fail: %s", self.n, e
+                    )
+                    return
+                _t.sleep(0.15 * (2 ** _attempt))

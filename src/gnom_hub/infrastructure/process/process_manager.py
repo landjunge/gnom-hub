@@ -12,15 +12,60 @@ from gnom_hub.core.constants import PROCESS_KILL_SLEEP, PROCESS_TERMINATE_TIMEOU
 AGENTS = ["generalAG", "soulAG", "researcherAG", "writerAG", "editorAG", "coderAG", "watchdogAG", "securityAG"]
 AGENT_DEFINITIONS_KEYS = list(AGENT_DEFINITIONS.keys())
 
+def _reap_zombies() -> None:
+    """Reap child zombies so they don't pin PID files and thrash health checks."""
+    try:
+        while True:
+            pid, _ = os.waitpid(-1, os.WNOHANG)
+            if pid <= 0:
+                break
+    except ChildProcessError:
+        pass
+    except OSError:
+        pass
+
+
+def _cmdline_is_agent(cmdline: list, matched: str) -> bool:
+    """Match both launch styles: agents.run_agent --name X  and  agents.XAG."""
+    if not cmdline:
+        return False
+    needle = matched.lower()
+    joined = " ".join(cmdline).lower()
+    # Style A: python -m agents.run_agent --name generalag
+    if "agents.run_agent" in joined and needle in joined:
+        return True
+    # Style B: python -m agents.generalAG
+    if f"agents.{needle}" in joined:
+        return True
+    return False
+
+
 def _get_proc(name: str):
     matched = next((a for a in AGENTS if a.lower() == name.lower()), name)
+    _reap_zombies()
     try:
         pid = int((RUN_DIR / f"{matched}.pid").read_text().strip())
         p = psutil.Process(pid)
-        if any("run_agent" in arg and matched.lower() in arg.lower() for arg in p.cmdline()): return p
-        if any(f"agents.{matched}" in arg for arg in p.cmdline()): return p
-    except (ValueError, OSError, psutil.Error) as e:
-        logging.getLogger(__name__).warning('PID-Datei fehlt oder Prozess nicht erreichbar (erwartet nach Cleanup): %s', e)
+        # Zombie / dead: clear pid file quietly (was spamming logs every health poll)
+        if not p.is_running() or p.status() == psutil.STATUS_ZOMBIE:
+            (RUN_DIR / f"{matched}.pid").unlink(missing_ok=True)
+            return None
+        if _cmdline_is_agent(p.cmdline() or [], matched):
+            return p
+        # Stale pid file for unrelated process
+        (RUN_DIR / f"{matched}.pid").unlink(missing_ok=True)
+    except (ValueError, OSError, psutil.Error):
+        pass
+    # Fallback: scan process table (pid file missing / overwritten by double-start)
+    try:
+        for p in psutil.process_iter(["pid", "cmdline"]):
+            try:
+                if _cmdline_is_agent(p.info.get("cmdline") or [], matched):
+                    return p
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception:
+        pass
     return None
 
 def _kill_proc(name: str) -> None:
@@ -58,19 +103,21 @@ def _kill_all_agents_by_pid_files() -> None:
 def _kill_orphans_by_cmdline(agent_name: str, already_killed: set) -> None:
     """Fängt Waisen-Prozesse ab, deren PID-Datei verloren ging
     (z.B. nach Crash oder überschriebener PID-Datei)."""
-    needle = f"agents.{agent_name}"
     for p in psutil.process_iter(["pid", "cmdline"]):
         if p.info["pid"] in already_killed:
             continue
         try:
             cmdline = p.info.get("cmdline") or []
-            if any(needle in arg for arg in cmdline):
-                p.terminate()
+            if not _cmdline_is_agent(cmdline, agent_name):
+                continue
+            p.terminate()
+            try:
+                p.wait(timeout=PROCESS_TERMINATE_TIMEOUT)
+            except psutil.Error:
                 try:
-                    p.wait(timeout=PROCESS_TERMINATE_TIMEOUT)
-                except psutil.Error:
-                    try: p.kill()
-                    except OSError: pass
+                    p.kill()
+                except OSError:
+                    pass
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
@@ -178,11 +225,22 @@ def restart_single_agent(name: str) -> None:
     if not matched:
         logging.getLogger(__name__).warning("Restart abgelehnt: Agent '%s' unbekannt.", name)
         return
+    # Kill all instances of this agent (both launch styles) before respawn
     _kill_proc(matched)
+    _kill_orphans_by_cmdline(matched, set())
     log_dir = PROJECT_ROOT / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    with open(log_dir / f"logs_{matched}.txt", "a") as f:
-        p = subprocess.Popen([sys.executable, "-u", "-m", f"agents.{matched}"], stdout=f, stderr=subprocess.STDOUT, cwd=str(PROJECT_ROOT))
+    agent_name = next((k for k in AGENT_DEFINITIONS_KEYS if k.lower() == matched.lower()), matched)
+    log_file = log_dir / f"logs_{matched}.txt"
+    with open(log_file, "a") as f:
+        p = subprocess.Popen(
+            [sys.executable, "-u", "-m", "agents.run_agent", "--name", agent_name],
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            cwd=str(PROJECT_ROOT),
+            env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "src")},
+            start_new_session=True,
+        )
         (RUN_DIR / f"{matched}.pid").write_text(str(p.pid))
     logging.getLogger(__name__).info("Watchdog hat Agent '%s' (PID %d) neu gestartet.", matched, p.pid)
 

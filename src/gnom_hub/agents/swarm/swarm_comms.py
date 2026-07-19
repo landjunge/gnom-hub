@@ -445,14 +445,19 @@ def fetch_next_message(
     while time.time() < deadline:
         conn = get_db_connection()
         try:
-            for _lock_try in range(8):
-                try:
-                    conn.execute("BEGIN IMMEDIATE")
-                    break
-                except sqlite3.OperationalError as _le:
-                    if "locked" not in str(_le).lower() or _lock_try == 7:
-                        raise
-                    time.sleep(0.05 * (2 ** _lock_try))
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+            except sqlite3.OperationalError as _le:
+                # Never crash the agent loop on lock — wait and poll again.
+                if "locked" in str(_le).lower():
+                    conn.close()
+                    remaining = deadline - time.time()
+                    if remaining <= 0:
+                        return None
+                    evt.wait(timeout=min(remaining, 0.5))
+                    evt.clear()
+                    continue
+                raise
             try:
                 row = conn.execute("""
                     SELECT id, sender, payload, context_id, depth,

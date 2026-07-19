@@ -24,17 +24,17 @@ for pid in $(pgrep -f "gnom_hub" 2>/dev/null | grep -v "agents.run_agent" 2>/dev
     kill -TERM "$pid" 2>/dev/null && echo "  Hub-Main gestoppt (PID $pid)"
 done
 
-# 3. Agent-Subprozesse (auch Waisen)
-for pid in $(pgrep -f "agents.run_agent" 2>/dev/null); do
+# 3. Agent-Subprozesse (beide Launch-Stile: run_agent und agents.*AG)
+for pid in $(pgrep -f "agents.run_agent|agents\.[a-zA-Z]+AG" 2>/dev/null); do
     kill -TERM "$pid" 2>/dev/null && echo "  Agent gestoppt (PID $pid)"
 done
 
 sleep 3
 
 # 4. Hard-Kill für Überlebende
-remaining=$(pgrep -f "gnom_hub|agents.run_agent" 2>/dev/null)
+remaining=$(pgrep -f "gnom_hub|agents.run_agent|agents\.[a-zA-Z]+AG" 2>/dev/null)
 if [ -n "$remaining" ]; then
-    echo "  ⚠️  ${#remaining[@]} Prozess(e) überlebend — SIGKILL..."
+    echo "  ⚠️  Überlebende Prozesse — SIGKILL..."
     for pid in $remaining; do
         kill -KILL "$pid" 2>/dev/null
     done

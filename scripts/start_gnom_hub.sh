@@ -48,14 +48,14 @@ echo "🧹 Total-Kill: alle Hub-Mains + Agent-Subprozesse..."
 for pid in $(pgrep -f "python.*-m gnom_hub" 2>/dev/null); do
     kill -TERM "$pid" 2>/dev/null
 done
-for pid in $(pgrep -f "agents.run_agent" 2>/dev/null); do
+for pid in $(pgrep -f "agents.run_agent|agents\.[a-zA-Z]+AG" 2>/dev/null); do
     kill -TERM "$pid" 2>/dev/null
 done
 sleep 2
 for pid in $(pgrep -f "python.*-m gnom_hub" 2>/dev/null); do
     kill -KILL "$pid" 2>/dev/null
 done
-for pid in $(pgrep -f "agents.run_agent" 2>/dev/null); do
+for pid in $(pgrep -f "agents.run_agent|agents\.[a-zA-Z]+AG" 2>/dev/null); do
     kill -KILL "$pid" 2>/dev/null
 done
 for port in 3002 3003 3004 3005 3006 3012; do
