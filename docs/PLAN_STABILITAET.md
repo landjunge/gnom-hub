@@ -112,12 +112,12 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 
 **Ziel:** Jobs enden korrekt; kein Storm; kein stilles Verschwinden.
 
-| # | Arbeit | Done when |
-|---|--------|-----------|
-| S2.1 | Limits halten (pending/concurrent) — schon da, im Alltag prüfen | unter Last stabil |
-| S2.2 | NACK-Pfad beobachten (Free-LLM Spam) | keine Endlos-Retry-Stürme |
-| S2.3 | Worker dürfen sich nicht gegenseitig volldispatchen | nur GeneralAG auto-@ (schon) |
-| S2.4 | Hub-Claim-API (Default `GNOM_QUEUE_MODE=hub`) — Claim/Ack/Nack nur im Hub | weniger BEGIN IMMEDIATE von 8 Prozessen | ✅ live + README/Ops |
+| # | Arbeit | Done when | Stand |
+|---|--------|-----------|--------|
+| S2.1 | Limits halten (pending/concurrent) — schon da, im Alltag prüfen | unter Last stabil | Limits im Code; Burst-Drain ok |
+| S2.2 | NACK-Pfad beobachten (Free-LLM Spam) | keine Endlos-Retry-Stürme | NACK empty/ROUTER aktiv |
+| S2.3 | Worker dürfen sich nicht gegenseitig volldispatchen | nur GeneralAG auto-@ (schon) | ✅ |
+| S2.4 | Hub-Claim-API (Default `GNOM_QUEUE_MODE=hub`) | Claim/Ack/Nack nur im Hub | ✅ live + README/Ops |
 | S2.5 | `@@queue clear` / admin clear als Ops-Routine | dokumentiert, 1 Befehl | ✅ README + Chat-Befehl |
 
 **Exit:** 1 h Dauerbetrieb: Chat ok, Queue nicht permanent &gt; Limits, 8 Agenten nicht zombie.
