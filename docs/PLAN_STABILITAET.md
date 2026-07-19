@@ -95,12 +95,14 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 
 **Ziel:** Chat POST p99 lokal &lt; ~300 ms; kein 15s-Timeout.
 
-| # | Arbeit | Done when |
-|---|--------|-----------|
-| S1.1 | Lock-Hotspots messen (wann blockiert Chat?) | 1 Seite Log-Muster / Repro |
-| S1.2 | Verbleibende lange Writes aus Chat-Pfad halten | Chat bleibt &lt;300 ms unter Agent-Last |
-| S1.3 | Heartbeat/Register/Audit nicht Chat blockieren | Register soft + kurz |
-| S1.4 | Nach Restart: Queue prüfen (`@@queue stats`) | pending nicht im Hunderter-Bereich |
+| # | Arbeit | Done when | Stand 2026-07-19 |
+|---|--------|-----------|------------------|
+| S1.1 | Lock-Hotspots messen (wann blockiert Chat?) | 1 Seite Log-Muster / Repro | ✅ Burst 10× POST: p50 **35 ms**, max **41 ms** (idle) |
+| S1.2 | Verbleibende lange Writes aus Chat-Pfad halten | Chat bleibt &lt;300 ms unter Agent-Last | ✅ Concurrent Chat+HB: max **216 ms** Chat; nach Last **23 ms** |
+| S1.3 | Heartbeat/Register/Audit nicht Chat blockieren | Register soft + kurz | ✅ HB parallel max ~135 ms; Chat bleibt dispatched |
+| S1.4 | Nach Restart: Queue prüfen (`@@queue stats`) | pending nicht im Hunderter-Bereich | ✅ pending/processing sinken; DLQ-Altlast geleert |
+
+**Messung (lokal :3002, hub-claim, openrouter/free):** Chat-POST bleibt unter 300 ms-Ziel. Queue-Backlog unter Free-LLM-Latenz normal (drain in ~1 min nach 15er Burst).
 
 **Nicht in S1:** neuer Store, neuer Broker, Frontend-Rewrite.
 
@@ -115,8 +117,8 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 | S2.1 | Limits halten (pending/concurrent) — schon da, im Alltag prüfen | unter Last stabil |
 | S2.2 | NACK-Pfad beobachten (Free-LLM Spam) | keine Endlos-Retry-Stürme |
 | S2.3 | Worker dürfen sich nicht gegenseitig volldispatchen | nur GeneralAG auto-@ (schon) |
-| S2.4 | Hub-Claim-API (Default `GNOM_QUEUE_MODE=hub`) — Claim/Ack/Nack nur im Hub | weniger BEGIN IMMEDIATE von 8 Prozessen |
-| S2.5 | `@@queue clear` / admin clear als Ops-Routine | dokumentiert, 1 Befehl |
+| S2.4 | Hub-Claim-API (Default `GNOM_QUEUE_MODE=hub`) — Claim/Ack/Nack nur im Hub | weniger BEGIN IMMEDIATE von 8 Prozessen | ✅ live + README/Ops |
+| S2.5 | `@@queue clear` / admin clear als Ops-Routine | dokumentiert, 1 Befehl | ✅ README + Chat-Befehl |
 
 **Exit:** 1 h Dauerbetrieb: Chat ok, Queue nicht permanent &gt; Limits, 8 Agenten nicht zombie.
 
@@ -187,11 +189,12 @@ Erwartung: `healthy: 8`, `pending` klein, Chat-Send &lt; 1 s.
 
 ## 7. Nächste konkrete Schritte (Reihenfolge)
 
-1. **S0:** Root-README an Code angleichen (GeneralAG, Routing, Zahlen) — 1 Commit Doku  
-2. **S1:** Unter Last Chat-POST messen + restliche Lock-Quellen im Hub  
-3. **S2:** 1 h Smoke (Chat alle 30 s) + Queue beobachten  
-4. **S2.4 nur bei erneutem Lock-Sturm:** Hub-Claim-API (lokal, kein Docker)  
-5. **S4:** Tote Pfade / Startstil / ARCHITECTURE  
+1. ~~**S0** README~~ ✅  
+2. ~~**S1** Chat-Latenz unter Last~~ ✅ (siehe Tabelle; p95 ≪ 300 ms)  
+3. ~~**S2.4/S2.5** hub-claim + @@queue~~ ✅  
+4. **S2.1–S2.2** Queue-Limits + NACK unter Free-LLM weiter im Live-Betrieb absichern  
+5. **S4** Tote Chat-Pfade / Startstil (Watchdog-Restart = `run_agent`) / ARCHITECTURE (GeneralAG schon)  
+6. Quarantäne-Recovery ✅ (Commit `b810741`); Claim-HTTP-Timeout Agent ≥ Claim-Wartezeit
 
 ---
 

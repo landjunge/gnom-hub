@@ -109,9 +109,13 @@ class BaseAgent:
         else:
             self.CAPABILITIES = []
 
-    def _req(self, method, p, j=None):
+    def _req(self, method, p, j=None, timeout=None):
+        # Claim may block on hub up to ~2s (+ DB wait). Under lock storms 10s
+        # was too tight → SoulAG "Read timed out" on /api/queue/claim.
+        if timeout is None:
+            timeout = 20 if p and "/queue/claim" in p else 10
         try:
-            r = getattr(requests, method)(f"{HUB_URL}{p}", json=j, timeout=10)
+            r = getattr(requests, method)(f"{HUB_URL}{p}", json=j, timeout=timeout)
             if r.status_code == 200: return r.json()
         except Exception as e: logging.getLogger(__name__).error('Fehler in _req (%s %s): %s', method, p, e)
         return None
