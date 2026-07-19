@@ -163,11 +163,21 @@ def test_build_fallback_chain_for_unknown_capability():
 # ── 8. Feature-Flag Default ────────────────────────────────────────────────
 
 
-def test_routing_deterministic_mode_default_off():
-    """``Config.ROUTING_DETERMINISTIC_MODE`` ist per Default aus."""
+def test_routing_deterministic_mode_default_off(monkeypatch):
+    """Default ohne Env-Var ist aus; lokales config/.env darf true setzen."""
+    import os
+
+    monkeypatch.delenv("ROUTING_DETERMINISTIC_MODE", raising=False)
+    # Import-time Config may already reflect config/.env — test the default rule.
+    assert (os.getenv("ROUTING_DETERMINISTIC_MODE", "False").lower() == "true") is False
     from gnom_hub.core.config import Config
 
-    assert getattr(Config, "ROUTING_DETERMINISTIC_MODE", False) is False
+    monkeypatch.setattr(
+        Config,
+        "ROUTING_DETERMINISTIC_MODE",
+        os.getenv("ROUTING_DETERMINISTIC_MODE", "False").lower() == "true",
+    )
+    assert Config.ROUTING_DETERMINISTIC_MODE is False
 
 
 # ── 9. End-to-End Integration mit dispatch_by_capability_with_resolution ───

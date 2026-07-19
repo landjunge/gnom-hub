@@ -152,7 +152,7 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 |---|--------|-----------|------------------|
 | S4.1 | Tote Chat-Pfade mergen/löschen | ein Chat-Pfad | ✅ Live = `chat_legacy` only; `chat.py` DEAD not mounted |
 | S4.2 | Ein Agent-Startstil überall | kein agents.*AG-Doppelstart | ✅ nur `agents.run_agent`; `start_agents.sh` kill+PID; `start_gnom_hub` startet Agents |
-| S4.3 | CI-Ignore-Liste schrumpfen (nur echte Live-Tests draußen) | weniger blinde Flecken | ⏸ bewusst belassen (Browser/Preset-data/Stress) |
+| S4.3 | CI-Ignore-Liste schrumpfen (nur echte Live-Tests draußen) | weniger blinde Flecken | ✅ `test_permissions_repo` + `test_routing` wieder in CI; Browser/Preset/Stress bleiben draußen |
 | S4.4 | ARCHITECTURE.md = Default GeneralAG | Doku = Code | ✅ §5 Chat-Flow korrigiert (war noch SoulAG-Default) |
 
 ---

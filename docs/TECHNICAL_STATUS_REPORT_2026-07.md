@@ -11,17 +11,19 @@
 
 Gnom-Hub ist ein **lokal laufender Multi-Agent-Orchestrator**: ein FastAPI-Hub, acht Agent-Subprozesse, eine gemeinsame SQLite-Datenbank und ein monolithes Web-UI. Das Produkt ist **funktionsreich und aktiv** (Chat, Showbox, Permissions, Workflows, OpenRouter/MiniMax/Ollama, Memory/TKG).
 
-**Aktueller Betriebszustand (Messung 2026-07-19):**
+**Aktueller Betriebszustand (Messung 2026-07-19, nach Stabilitäts-Welle):**
 
 | Metrik | Wert |
 |--------|------|
-| Health API | `ok`, 8/8 healthy (nach Stabilitäts-Fixes) |
-| DB | `~/.gnom-hub/data/gnomhub.db` ≈ **66 MB** |
-| Queue | u. a. pending/processing unter Last (volatile) |
-| CI (pre-push) | ~515 Tests grün; **21 Testmodule bewusst ignoriert** |
+| Health API | `ok`, **8/8 healthy** |
+| Agent-Start | nur `agents.run_agent`, `scripts/start_agents.sh` → exakt 8 PIDs |
+| Queue | `GNOM_QUEUE_MODE=hub`; Ops: `./scripts/ops_check.sh` |
+| Chat-Default | **GeneralAG**; `SOUL_AUTO_DISPATCH=0` |
+| Delivery | `[WRITE:]` / `[SCREENSHOT:]` / `[VERIFY:]`; Fanout `only=`; Path-Doppelprefix-Fix |
+| CI (pre-push / GH) | ~**559+** Tests grün; Ignore-Liste schrumpft (permissions_repo, routing wieder drin) |
 
 **Kernurteil:**  
-Die Architektur ist **ambitioniert und erklärbar**, aber der **Betriebspfad ist überlastet durch Multi-Writer-SQLite + Prozess-Chaos + synchrone Chat-Pipeline**. In den letzten Tagen wurden schwere Symptome (Chat „Hub unreachable“, Zombie-Agenten, Doppel-Spawn) **teilweise behoben**. Die **strukturelle Ursache** (eine DB für Hub + 8 Writer + Heartbeats + Queue-Claim) bleibt **P0**.
+Schwere Symptome (Hub unreachable, Zombies, Doppel-Spawn, User-Fanout, 6k-WRITE-Cut, Nested-Paths) sind **adressiert**. Multi-Writer-SQLite bleibt architektonische Last, ist aber mit hub-claim und Limits **betriebsfähig**. Arbeitsplan: `docs/PLAN_STABILITAET.md`.
 
 ---
 
