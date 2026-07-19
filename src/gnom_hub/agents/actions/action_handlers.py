@@ -23,6 +23,33 @@ BROWSER_PSEUDO_URL_RE = re.compile(
 )
 
 
+def build_browser_probe_script(url: str, shot_rel: str = "shots/browse_last.png") -> str:
+    """Self-contained Playwright script: goto + status + title + screenshot."""
+    return (
+        "from playwright.sync_api import sync_playwright\n"
+        "import os\n"
+        f"url = {url!r}\n"
+        f"shot = {shot_rel!r}\n"
+        "os.makedirs(os.path.dirname(shot) or '.', exist_ok=True)\n"
+        "with sync_playwright() as p:\n"
+        "    b = p.chromium.launch(headless=True)\n"
+        "    page = b.new_page()\n"
+        "    resp = page.goto(url, wait_until='domcontentloaded', timeout=45000)\n"
+        "    status = resp.status if resp else 'no-response'\n"
+        "    title = page.title()\n"
+        "    final = page.url\n"
+        "    try:\n"
+        "        page.screenshot(path=shot, full_page=True)\n"
+        "        print('SCREENSHOT:', shot)\n"
+        "    except Exception as se:\n"
+        "        print('SCREENSHOT_ERROR:', se)\n"
+        "    print('URL:', final)\n"
+        "    print('STATUS:', status)\n"
+        "    print('TITLE:', title)\n"
+        "    b.close()\n"
+    )
+
+
 def expand_browser_pseudo_tags(ans: str, agent: dict | None, perms: list) -> str:
     """Turn LLM fakes ``[browser: https://…]`` into real ``[BROWSER:]`` scripts.
 
@@ -41,22 +68,24 @@ def expand_browser_pseudo_tags(ans: str, agent: dict | None, perms: list) -> str
                 f"[System: {name} hat keine BROWSER-Berechtigung für {url}. "
                 "Nur ResearcherAG (browser) oder SecurityAG (godmode).]"
             )
-        # Minimal headless probe — stdout becomes [Browser-Ausgabe:…]
-        script = (
-            "from playwright.sync_api import sync_playwright\n"
-            "with sync_playwright() as p:\n"
-            "    b = p.chromium.launch(headless=True)\n"
-            "    page = b.new_page()\n"
-            f"    resp = page.goto({url!r}, wait_until='domcontentloaded', timeout=45000)\n"
-            "    status = resp.status if resp else 'no-response'\n"
-            "    print('URL:', page.url)\n"
-            "    print('STATUS:', status)\n"
-            "    print('TITLE:', page.title())\n"
-            "    b.close()\n"
-        )
+        script = build_browser_probe_script(url)
         return f"[BROWSER:]\n{script}[/BROWSER]"
 
     return BROWSER_PSEUDO_URL_RE.sub(_repl, ans)
+
+
+def make_browser_job_payload(url: str, user_text: str = "") -> str:
+    """Deterministic task text for ResearcherAG — forces tool use."""
+    u = (user_text or "").strip()[:400]
+    return (
+        f"BROWSER-JOB (deterministic — tool Pflicht)\n"
+        f"URL: {url}\n"
+        f"User: {u or '(browse request)'}\n\n"
+        f"Du MUSST genau dieses Tag ausführen (nicht nur darüber reden):\n"
+        f"[browser: {url}]\n\n"
+        f"Danach 2–4 Sätze Status: STATUS, TITLE, URL, SCREENSHOT-Pfad.\n"
+        f"Kein Fake. Kein 'Auftrag erfasst' ohne Tool-Output."
+    )
 
 
 _TASK_WANTS_BROWSER_RE = re.compile(

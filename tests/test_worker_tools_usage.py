@@ -301,6 +301,12 @@ class TestForceBrowserForTask:
         assert task_wants_browser("benutze der browser und gehe auf die seite grok.ai")
         assert extract_browse_url("benutze der browser und gehe auf die seite grok.ai") == "https://grok.ai"
 
+    def test_make_browser_job_payload_contains_tool_tag(self):
+        from gnom_hub.agents.actions.action_handlers import make_browser_job_payload
+        p = make_browser_job_payload("https://grok.ai", "browse grok")
+        assert "[browser: https://grok.ai]" in p
+        assert "deterministic" in p.lower() or "PFLICHT" in p
+
     def test_force_runs_when_llm_only_said_ack(self):
         prose = "⚠️ CoderAG — Auftrag erfasst, Browser via Whitelist…"
         agent = {"name": "ResearcherAG"}

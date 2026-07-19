@@ -366,6 +366,76 @@ def post_chat(msg: ChatMsg):
             return None  # signal failure without raising
 
     _SYS = ("soulag", "generalag", "watchdogag")
+
+    # ── Deterministic browser path (no flaky GeneralAG free-model) ─────
+    # User: "browser … grok.ai" → ResearcherAG + forced Playwright, always.
+    if msg.sender == "user" and not cmd:
+        try:
+            from gnom_hub.agents.actions.action_handlers import (
+                extract_browse_url,
+                make_browser_job_payload,
+                task_wants_browser,
+            )
+            raw_for_browse = msg.content or ""
+            if task_wants_browser(raw_for_browse) or (
+                tgt and tgt.lower() in ("researcherag", "coderag")
+                and extract_browse_url(raw_for_browse)
+            ):
+                url = extract_browse_url(raw_for_browse)
+                if url:
+                    # Never send browser jobs to CoderAG (no browser perm)
+                    target_worker = "researcherag"
+                    if tgt and tgt.lower() in ("researcherag", "securityag"):
+                        target_worker = tgt.lower()
+                    researcher = next(
+                        (
+                            x for x in ags
+                            if x.get("name", "").lower() == "researcherag"
+                            and x.get("status") in ("online", "busy", "running")
+                        ),
+                        None,
+                    )
+                    if researcher is None and target_worker == "researcherag":
+                        _notify_dispatch_fail(
+                            "ResearcherAG offline — Browser-Job unmöglich. "
+                            "./scripts/start_gnom_hub.sh"
+                        )
+                        return {
+                            "status": "error",
+                            "msg": "ResearcherAG offline (Browser-Worker)",
+                            "mode": "browser",
+                            "url": url,
+                        }
+                    payload = make_browser_job_payload(url, raw_for_browse)
+                    asked = _safe_dispatch(
+                        payload, target=target_worker, sender=msg.sender
+                    )
+                    if asked is None:
+                        return _db_fail(
+                            "dispatch_browser", RuntimeError("database is locked")
+                        )
+                    try:
+                        add_chat_message(
+                            get_active_project(),
+                            "System",
+                            "system",
+                            "chat",
+                            f"🌐 **Browser-Job** → @{asked[0] if asked else 'ResearcherAG'}: `{url}` "
+                            f"(deterministisch, Playwright)",
+                            {"type": "chat", "sender": "System", "browser_job": True, "url": url},
+                        )
+                    except Exception:
+                        pass
+                    return {
+                        "status": "dispatched" if asked else "error",
+                        "asked": asked or [],
+                        "target": target_worker,
+                        "mode": "browser",
+                        "url": url,
+                    }
+        except Exception as browse_exc:
+            _chat_log.warning("deterministic browser path failed: %s", browse_exc)
+
     if cmd == "research":
         asked = []
         for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS]:
