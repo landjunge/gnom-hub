@@ -250,18 +250,21 @@ async def check_and_update_models():
 
 
 def _summarize_agent_llms(agents_map: dict) -> str:
-    """e.g. 'openrouter/free ×8' or 'openrouter/free ×6, tencent/hy3:free ×2'."""
+    """e.g. 'openrouter · openrouter/free ×8' (provider · model, no double slash)."""
     if not isinstance(agents_map, dict) or not agents_map:
         return "—"
     counts: dict[str, int] = {}
     for cfg in agents_map.values():
         if not isinstance(cfg, dict):
             continue
-        p = cfg.get("provider") or "?"
-        m = cfg.get("model") or "?"
-        # short model tail for display
-        short = m if len(m) <= 36 else ("…" + m[-32:])
-        key = f"{p}/{short}"
+        p = (cfg.get("provider") or "?").strip()
+        m = (cfg.get("model") or "?").strip()
+        # model may already contain provider prefix (openrouter/free)
+        short = m if len(m) <= 40 else ("…" + m[-36:])
+        if short.startswith(p + "/"):
+            key = short
+        else:
+            key = f"{p} · {short}"
         counts[key] = counts.get(key, 0) + 1
     if not counts:
         return "—"
