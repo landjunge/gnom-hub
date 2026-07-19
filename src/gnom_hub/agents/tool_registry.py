@@ -171,10 +171,9 @@ def format_tools_prompt(soul: dict, name: str):
         syn += "\n  [IMAGE: prompt] — Generate image"
     if "browser" in t:
         syn += (
-            '\n  [BROWSER: <python_code>] — Playwright sync-API script. Runs in subprocess, '
-            "captured stdout/stderr returned."
-            "\n    Body MUST be a self-contained Python script. Use `print()` to emit results. "
-            "Screenshots write to the workspace cwd."
+            "\n  [BROWSER:]python_script[/BROWSER] — Playwright sync-API (real tool)."
+            "\n  Short form (auto-expanded): [browser: https://example.com]"
+            "\n  NOT a tool: prose like 'Browser via Whitelist öffnen' does NOTHING."
             "\n    Minimal example:"
             "\n      [BROWSER:]"
             "\n      from playwright.sync_api import sync_playwright"

@@ -11,6 +11,53 @@ from .action_verify import handle_verify
 from .action_video import handle_screen_record, handle_video_edit, handle_video_merge
 from .action_write import handle_read, handle_write
 
+# Canonical Playwright block: [BROWSER:]\ncode\n[/BROWSER] (case-insensitive)
+BROWSER_BLOCK_RE = re.compile(
+    r"\[BROWSER:\s*\]([\s\S]*?)\[/BROWSER\]",
+    re.IGNORECASE,
+)
+# LLM pseudo-tags that previously did nothing: [browser: https://…]
+BROWSER_PSEUDO_URL_RE = re.compile(
+    r"\[\s*browser\s*:\s*(https?://[^\]\s]+)\s*\]",
+    re.IGNORECASE,
+)
+
+
+def expand_browser_pseudo_tags(ans: str, agent: dict | None, perms: list) -> str:
+    """Turn LLM fakes ``[browser: https://…]`` into real ``[BROWSER:]`` scripts.
+
+    Without this, workers "use the browser" only in prose and the user sees
+    nothing. If the agent lacks browser/godmode, leave a clear system note.
+    """
+    if not ans or not BROWSER_PSEUDO_URL_RE.search(ans):
+        return ans
+    name = (agent or {}).get("name", "?")
+    allowed = "browser" in (perms or []) or "godmode" in (perms or [])
+
+    def _repl(m: re.Match) -> str:
+        url = (m.group(1) or "").strip()
+        if not allowed:
+            return (
+                f"[System: {name} hat keine BROWSER-Berechtigung für {url}. "
+                "Nur ResearcherAG (browser) oder SecurityAG (godmode).]"
+            )
+        # Minimal headless probe — stdout becomes [Browser-Ausgabe:…]
+        script = (
+            "from playwright.sync_api import sync_playwright\n"
+            "with sync_playwright() as p:\n"
+            "    b = p.chromium.launch(headless=True)\n"
+            "    page = b.new_page()\n"
+            f"    resp = page.goto({url!r}, wait_until='domcontentloaded', timeout=45000)\n"
+            "    status = resp.status if resp else 'no-response'\n"
+            "    print('URL:', page.url)\n"
+            "    print('STATUS:', status)\n"
+            "    print('TITLE:', page.title())\n"
+            "    b.close()\n"
+        )
+        return f"[BROWSER:]\n{script}[/BROWSER]"
+
+    return BROWSER_PSEUDO_URL_RE.sub(_repl, ans)
+
 
 # ── Context-Offload Helpers (recovert aus experimental/tencentdb-agent-memory) ──
 # Symbolischer Kurzzeitspeicher + node_id Drill-Down — siehe docs/tencentdb-comparison.md
@@ -370,14 +417,18 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     ans = handle_screen_record(ans, sr_ms, agent, perms, wd)
     ans = handle_video_merge(ans, mg_ms, agent, perms, wd)
     ans = handle_video_edit(ans, ed_ms, agent, perms, wd)
+    # Expand LLM pseudo-tags before real browser dispatch
+    # (e.g. "[browser: https://grok.ai]" from ResearcherAG free-model output)
+    ans = expand_browser_pseudo_tags(ans, agent if isinstance(agent, dict) else {"name": str(agent)}, perms)
+
     # ── SecurityAG-Audit: [BROWSER:] pre-dispatch (Refactor-Schritt 4) ─────
-    browser_matches = list(re.finditer(r"\[BROWSER:\s*\]([\s\S]*?)\[/BROWSER\]", ans))
+    browser_matches = list(BROWSER_BLOCK_RE.finditer(ans))
     for m in browser_matches:
-        url = (m.group(1) or "").strip()[:200]
-        if "write" in perms or "godmode" in perms:
-            _audit_security(agent, perms, "browser", url or "<browser-block>", "allowed")
+        body = (m.group(1) or "").strip()[:200]
+        if "browser" in perms or "godmode" in perms:
+            _audit_security(agent, perms, "browser", body or "<browser-block>", "allowed")
         else:
-            _audit_security(agent, perms, "browser", url or "<browser-block>", "denied")
+            _audit_security(agent, perms, "browser", body or "<browser-block>", "denied")
     # ── Context-Offload: [OFFLOAD_RECALL:node_id] Action-Tag ─────────────
     # Agenten können ausgelagerte Tool-Outputs per node_id zurückholen.
     ans = _handle_offload_recall(ans)
