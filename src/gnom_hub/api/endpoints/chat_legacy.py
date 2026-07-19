@@ -267,10 +267,28 @@ def post_chat(msg: ChatMsg):
     add_chat_message(get_active_project(), msg.sender, "war-room", cmd or "chat", msg.content, {"type": cmd or "chat", "sender": msg.sender})
     if msg.sender != "user": return {"status": "saved"}
     if cmd in CMDS: return CMDS[cmd](q)
+
+    def _notify_dispatch_fail(reason: str) -> None:
+        """Prio-1: leerer Dispatch darf nicht still bleiben."""
+        add_chat_message(
+            get_active_project(),
+            "System",
+            "system",
+            "chat",
+            f"⚠️ **Dispatch fehlgeschlagen:** {reason}",
+            {"type": "chat", "sender": "System", "dispatch_failed": True},
+        )
+
     _SYS = ("soulag", "generalag", "watchdogag")
     if cmd == "research":
         asked = [n for n in [x["name"] for x in ags if x.get("status") == "online" and x["name"].lower() not in _SYS] if dispatch(q, target=n, sender=msg.sender)]
-        return {"status": "dispatched", "asked": asked, "target": None, "mode": "research"}
+        if not asked:
+            online = [x["name"] for x in ags if x.get("status") in ("online", "busy", "running")]
+            _notify_dispatch_fail(
+                "Kein Worker online für Research. "
+                f"Online: {', '.join(online) if online else '(keine)'} — Hub/Agents prüfen."
+            )
+        return {"status": "dispatched" if asked else "error", "asked": asked, "target": None, "mode": "research"}
     if not cmd and not tgt:
         # User-Chat ohne @target: Default-Routing an GeneralAG (Dirigent).
         # Vorher: SoulAG-Default → *still* auf Direkt-Fragen, weil SoulAG-Mandat
@@ -281,11 +299,38 @@ def post_chat(msg: ChatMsg):
         # Re-enable: alte SoulAG-Default-Route (siehe git log).
         generalag = next((x for x in ags if x["name"].lower() == "generalag"), None)
         asked: list[str] = []
-        if generalag and generalag.get("status") in ("online", "busy"):
+        if generalag and generalag.get("status") in ("online", "busy", "running"):
             if dispatch(msg.content, target="generalag", sender=msg.sender):
                 asked.append("GeneralAG")
-        return {"status": "dispatched", "asked": asked, "target": "generalag", "mode": "chat"}
-    return {"status": "dispatched", "asked": dispatch(q, target=tgt, sender=msg.sender), "target": tgt, "mode": "brainstorm" if cmd == "bs" else "chat"}
+        if not asked:
+            if generalag is None:
+                _notify_dispatch_fail(
+                    "GeneralAG fehlt in der Agenten-DB. Hub neu starten oder Agents seeden."
+                )
+            else:
+                st = generalag.get("status") or "unknown"
+                _notify_dispatch_fail(
+                    f"GeneralAG ist nicht erreichbar (status=`{st}`). "
+                    "Agent-Prozess prüfen (`./start_gnom_hub.sh` / Logs unter logs/)."
+                )
+        return {
+            "status": "dispatched" if asked else "error",
+            "asked": asked,
+            "target": "generalag",
+            "mode": "chat",
+        }
+    asked = dispatch(q, target=tgt, sender=msg.sender)
+    if not asked and tgt:
+        _notify_dispatch_fail(
+            f"@{tgt} ist offline, unbekannt oder Queue voll. "
+            "Online-Agents prüfen oder mit `@GeneralAG …` neu versuchen."
+        )
+    return {
+        "status": "dispatched" if asked else "error",
+        "asked": asked,
+        "target": tgt,
+        "mode": "brainstorm" if cmd == "bs" else "chat",
+    }
 @router.get("/api/chat")
 def get_chat(limit: int = 50):
     rm = get_chat_history(get_active_project(), limit)

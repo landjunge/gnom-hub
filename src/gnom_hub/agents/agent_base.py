@@ -239,28 +239,66 @@ class BaseAgent:
                     raise TimeoutError(f"Verarbeitung von msg#{msg['msg_id']} dauerte >10 Min (msg_id={msg['msg_id']})")
 
                 processed = ""
-                if r.content and not r.content.startswith("[ROUTER-FEHLER]"):
+                raw_content = (getattr(r, "content", None) or "").strip() if r is not None else ""
+                job_ok = True
+
+                # ── Prio-1: nie still schlucken ────────────────────────────
+                # Router-Fehler / leere LLM-Antwort wurden früher ge-ackt ohne
+                # Chat-Post → User sieht „Agent schweigt“, Queue ist „fertig“.
+                if not raw_content:
+                    job_ok = False
+                    self._req("post", "/api/chat", {
+                        "content": (
+                            f"⚠️ **[{self.n}]** Keine Antwort vom LLM (leerer Content). "
+                            f"Nachricht #{msg['msg_id']} — bitte erneut senden oder "
+                            f"Provider/Key prüfen."
+                        ),
+                        "sender": "System",
+                    })
+                    ctx_logger.warning("Leere LLM-Antwort für msg#%s", msg["msg_id"])
+                elif raw_content.startswith("[ROUTER-FEHLER]"):
+                    job_ok = False
+                    self._req("post", "/api/chat", {
+                        "content": (
+                            f"⚠️ **[{self.n}]** LLM-Router fehlgeschlagen.\n"
+                            f"{raw_content[:400]}\n"
+                            f"→ Keys/Routing prüfen (`config/routing.txt`, Desktop-Keys). "
+                            f"Nachricht #{msg['msg_id']}."
+                        ),
+                        "sender": "System",
+                    })
+                    ctx_logger.error("ROUTER-FEHLER für msg#%s: %s", msg["msg_id"], raw_content[:200])
+                else:
                     from gnom_hub.agents.actions.action_handlers import process_actions
                     from gnom_hub.chat.brainstorm.brainstorm_helpers import get_workspace_dir
                     soul = get_soul(self.n) or {"permissions": ["read"]}
                     perms = soul.get("permissions", [])
                     wd = get_workspace_dir()  # Phase-2-Bugfix: wd war im alten Injections-Block definiert
-                    processed = await _to_thread(process_actions, r.content, {"name": self.n}, perms, False, wd)
+                    processed = await _to_thread(process_actions, raw_content, {"name": self.n}, perms, False, wd)
 
                     import re as _re
-                    raw = processed or r.content
+                    raw = processed or raw_content
                     think_display = _re.sub(
                         r'<think>([\s\S]*?)</think>',
                         r'\n[💭 \1]\n',
                         raw, flags=_re.IGNORECASE | _re.DOTALL
                     ).strip()
-                    self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
+                    if not think_display.strip():
+                        # process_actions hat alles zu System-Tags reduziert?
+                        self._req("post", "/api/chat", {
+                            "content": (
+                                f"⚠️ **[{self.n}]** Antwort war nach Action-Processing leer "
+                                f"(msg #{msg['msg_id']}). Roh-Länge: {len(raw_content)}."
+                            ),
+                            "sender": "System",
+                        })
+                        job_ok = False
+                    else:
+                        self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
 
                     # ── SoulAG sieht Denkprozesse ────────────────────────
                     # Nach jeder Agent-Antwort den Denkprozess extrahieren
                     # und an SoulAG zur Fakten-Extraktion weiterleiten.
-                    # So entstehen langfristig Muster über Strategien,
-                    # Erkenntnisse und wiederkehrende Themen.
                     think_match = _re.search(r'<think>([\s\S]*?)</think>', raw, flags=_re.IGNORECASE | _re.DOTALL)
                     if think_match and think_match.group(1).strip():
                         try:
@@ -275,10 +313,6 @@ class BaseAgent:
                         except Exception as e:
                             logging.getLogger(__name__).debug("SoulAG-Thought-Extract fehlgeschlagen: %s", e)
 
-                        # ── SoulAG Behavior-Analyst ─────────────────────
-                        # Analysiert Denkprozess auf Auffälligkeiten
-                        # (Injection, Tool-Mismatch, Failure-Loop, Stuck)
-                        # und benachrichtigt GeneralAG wenn nötig.
                         try:
                             from gnom_hub.soul.soul_observer import analyze_agent_thought, notify_generalag
                             analysis = await _to_thread(analyze_agent_thought, self.n, thought)
@@ -296,20 +330,29 @@ class BaseAgent:
                 self._req("post", "/api/swarm/complete", {
                     "context_id": msg["context_id"],
                     "agent_name": self.n,
-                    "result": {"status": "success", "content": processed}
+                    "result": {
+                        "status": "success" if job_ok else "error",
+                        "content": processed if job_ok else raw_content[:500],
+                    },
                 })
-                # Job-Erfolg in CoordinationDB + ContextDB aufzeichnen
+                # Job in CoordinationDB + ContextDB aufzeichnen
                 try:
                     from gnom_hub.soul.memory_layers import get_context_db, get_coordination_db
                     get_coordination_db().record_job(
                         worker=self.n,
                         task_summary=text[:100],
-                        result="success",
+                        result="success" if job_ok else "failed",
                         duration_s=round(time.time() - _processing_start, 1),
-                        context_id=msg.get("context_id")
+                        context_id=msg.get("context_id"),
+                        notes="" if job_ok else (raw_content[:200] or "empty/router error"),
                     )
-                    get_context_db().add_event(msg["context_id"], "completed", self.n, processed[:100] if processed else "")
-                    if self.n.lower() == "generalag":
+                    get_context_db().add_event(
+                        msg["context_id"],
+                        "completed" if job_ok else "failed",
+                        self.n,
+                        (processed or raw_content)[:100],
+                    )
+                    if self.n.lower() == "generalag" and job_ok:
                         get_context_db().close_context(msg["context_id"], "completed", processed[:200] if processed else "")
                 except Exception:
                     pass
@@ -338,9 +381,10 @@ class BaseAgent:
                 except Exception:
                     pass
 
-                # Dead-Letter Benachrichtigung im Chat wenn retry_count >= 3
+                # Sofort sichtbare Fehler-Zeile (nicht erst bei Dead-Letter)
                 try:
                     retry_count = msg.get("retry_count", 0) or 0
+                    _task_text = text[:100] if "text" in dir() else "unknown"
                     if retry_count >= 2:
                         self._req("post", "/api/chat", {
                             "content": (
@@ -351,6 +395,15 @@ class BaseAgent:
                                 f"→ Admin: `/api/admin/dead-letters` für Details + Retry."
                             ),
                             "sender": "System"
+                        })
+                    else:
+                        self._req("post", "/api/chat", {
+                            "content": (
+                                f"⚠️ **[{self.n}]** Verarbeitungsfehler "
+                                f"(Versuch {retry_count + 1}, wird erneut versucht):\n"
+                                f"`{str(e)[:200]}`"
+                            ),
+                            "sender": "System",
                         })
                 except Exception:
                     pass

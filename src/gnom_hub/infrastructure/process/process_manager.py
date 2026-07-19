@@ -83,14 +83,55 @@ def start_background_agents() -> None:
         _kill_proc(a)
     import time; time.sleep(PROCESS_KILL_SLEEP)
 
-    # 2. Alle Agenten in DB auf online zurücksetzen
+    # 2. Alle Agenten in DB auf online zurücksetzen.
+    # Queue: processing → pending requeue (Agents gestorben mitten im Job).
+    # pending bleibt pending — KEIN massenhaftes status='done' mehr
+    # (Prio-2 Fix: Restart darf User-Jobs nicht still verwerfen).
     try:
         from gnom_hub.db.connection import get_db_connection
         conn = get_db_connection()
-        conn.execute("UPDATE agents SET status='online', circuit_state='CLOSED', consecutive_failures=0")
-        conn.execute("UPDATE agent_messages SET status='done', completed_at=? WHERE status IN ('processing','pending')", (time.time(),))
+        conn.execute(
+            "UPDATE agents SET status='online', circuit_state='CLOSED', consecutive_failures=0"
+        )
+        # Count before requeue for logging / user feedback
+        pending_n = conn.execute(
+            "SELECT COUNT(*) FROM agent_messages WHERE status='pending'"
+        ).fetchone()[0]
+        processing_n = conn.execute(
+            "SELECT COUNT(*) FROM agent_messages WHERE status='processing'"
+        ).fetchone()[0]
+        if processing_n:
+            conn.execute(
+                """
+                UPDATE agent_messages
+                SET status='pending', processing_since=NULL, deliver_after=0
+                WHERE status='processing'
+                """
+            )
         conn.commit()
         conn.close()
+        log = logging.getLogger(__name__)
+        if processing_n or pending_n:
+            log.warning(
+                "Agent-Start Queue: %d processing→pending requeued, %d pending preserved",
+                processing_n, pending_n,
+            )
+        if processing_n:
+            try:
+                from gnom_hub.db import add_chat_message, get_active_project
+                add_chat_message(
+                    get_active_project() or "default",
+                    "System",
+                    "system",
+                    "chat",
+                    (
+                        f"♻️ **Hub-Restart:** {processing_n} hängende Job(s) wieder in die Queue "
+                        f"gestellt ({pending_n} waren bereits pending)."
+                    ),
+                    {"type": "chat", "sender": "System", "queue_requeue": True},
+                )
+            except Exception as chat_exc:
+                log.debug("Queue-requeue Chat-Hinweis fehlgeschlagen: %s", chat_exc)
     except Exception as e:
         logging.getLogger(__name__).warning("DB cleanup bei Agent-Start fehlgeschlagen: %s", e)
 
