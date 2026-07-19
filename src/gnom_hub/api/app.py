@@ -159,14 +159,11 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                             await loop.run_in_executor(None, restart_single_agent, name)
                             await loop.run_in_executor(None, recover_quarantined, name)
                             restart_tracker.setdefault(qr_key, []).append(now_ts)
-                            history = [ts for ts in restart_tracker.get(name, []) if now_ts - ts < 600.0]
-                            history.append(now_ts)
-                            restart_tracker[name] = history
-                            if len(history) >= 3:
-                                print(
-                                    f"🚨 [WATCHDOG] Agent {name} erneut Crash-Schleife "
-                                    f"nach Quarantäne-Restart. Bleibt beobachtet."
-                                )
+                            # Fresh crash-loop budget after deliberate recovery restart.
+                            # Counting recovery itself toward the 3/10min cap re-quarantined
+                            # SoulAG/GeneralAG immediately while the new process was still
+                            # warming up (seen live: restart → "Crash-Schleife" → quarantine).
+                            restart_tracker.pop(name, None)
 
                 elif should_be_online:
                     proc = _get_proc(name)

@@ -43,8 +43,14 @@ def _total_kill_pre_start() -> int:
     Wird auch von start_gnom_hub.sh gemacht. Hier als Fallback falls jemand
     den Hub manuell startet (python3 -m gnom_hub). Returns: Anzahl gekillter
     Prozesse.
+
+    Set ``GNOM_HUB_SKIP_TOTAL_KILL=1`` for soft hub reloads that must keep
+    the 8 agent processes (code-only hub restart).
     """
     import subprocess
+    if os.environ.get("GNOM_HUB_SKIP_TOTAL_KILL") == "1":
+        print("[Pre-Start] Total-Kill übersprungen (GNOM_HUB_SKIP_TOTAL_KILL=1)")
+        return 0
     try:
         # 1. Sammle alle PIDs
         result = subprocess.run(

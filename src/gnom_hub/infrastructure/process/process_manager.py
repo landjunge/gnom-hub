@@ -232,16 +232,17 @@ def restart_single_agent(name: str) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     agent_name = next((k for k in AGENT_DEFINITIONS_KEYS if k.lower() == matched.lower()), matched)
     log_file = log_dir / f"logs_{matched}.txt"
-    with open(log_file, "a") as f:
-        p = subprocess.Popen(
-            [sys.executable, "-u", "-m", "agents.run_agent", "--name", agent_name],
-            stdout=f,
-            stderr=subprocess.STDOUT,
-            cwd=str(PROJECT_ROOT),
-            env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "src")},
-            start_new_session=True,
-        )
-        (RUN_DIR / f"{matched}.pid").write_text(str(p.pid))
+    # Match start_background_agents: pass an open file object and do not close it
+    # in a `with` block around Popen (avoids stdout races on watchdog restart).
+    p = subprocess.Popen(
+        [sys.executable, "-u", "-m", "agents.run_agent", "--name", agent_name],
+        stdout=open(log_file, "a"),  # noqa: SIM115 — same intentional pattern as bulk start
+        stderr=subprocess.STDOUT,
+        cwd=str(PROJECT_ROOT),
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "src")},
+        start_new_session=True,
+    )
+    (RUN_DIR / f"{matched}.pid").write_text(str(p.pid))
     logging.getLogger(__name__).info("Watchdog hat Agent '%s' (PID %d) neu gestartet.", matched, p.pid)
 
 
