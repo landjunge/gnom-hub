@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from gnom_hub.api.dependencies import get_admin_service
 from gnom_hub.core.security.hmac_signer import _get_or_create_secret
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 def verify_admin(request: Request):
