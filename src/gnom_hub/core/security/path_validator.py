@@ -32,12 +32,47 @@ def _has_godmode(perms) -> bool:
     return False
 
 
+def _strip_workspace_double_prefix(wd: str, rel: str) -> str:
+    """Strip accidental ``gnom-Workspace/default/…`` prefixes when *wd* is already that dir.
+
+    SUPERVISOR-R9: Coder wrote ``gnom-Workspace/default/readme-pages-…/v1/index.html``
+    while *wd* was ``~/gnom-Workspace/default`` → nested
+    ``…/default/gnom-Workspace/default/…`` and the audit tree looked empty.
+    """
+    rel = (rel or "").replace("\\", "/").lstrip("./")
+    if not rel or not wd:
+        return rel
+    try:
+        wd_real = os.path.realpath(wd).replace("\\", "/")
+    except (OSError, ValueError, TypeError):
+        return rel
+    wd_base = os.path.basename(wd_real)  # e.g. default
+    parent = os.path.basename(os.path.dirname(wd_real))  # e.g. gnom-Workspace
+    home = os.path.expanduser("~").replace("\\", "/")
+    prefixes = [
+        f"{parent}/{wd_base}/",
+        f"{wd_base}/",
+        f"~/{parent}/{wd_base}/",
+        f"{home}/{parent}/{wd_base}/",
+        # absolute-looking without leading slash (rare LLM output)
+        f"Users/{os.path.basename(home)}/{parent}/{wd_base}/",
+    ]
+    low = rel.lower()
+    for pref in prefixes:
+        if not pref or pref == "/":
+            continue
+        if low.startswith(pref.lower()):
+            return rel[len(pref) :]
+    return rel
+
+
 def _resolve_target(wd, f: str) -> str:
     """Resolve relative/absolute path to realpath (expanduser)."""
     raw = os.path.expanduser(f) if isinstance(f, str) else f
     if os.path.isabs(raw):
         return os.path.realpath(raw)
-    return os.path.realpath(os.path.join(wd, raw))
+    rel = _strip_workspace_double_prefix(wd, raw)
+    return os.path.realpath(os.path.join(wd, rel))
 
 
 def _safe(wd, f, perms, agent_name: str | None = None, *, for_read: bool = False):

@@ -230,3 +230,30 @@ class TestHighRiskExecPaths:
         from gnom_hub.core.security.gatekeeper import _is_high_risk_exec
         assert _is_high_risk_exec("mkfs", ["/dev/sda"]) is True
         assert _is_high_risk_exec("reboot", []) is True
+
+
+class TestWorkspaceDoublePrefix:
+    """LLM often prefixes gnom-Workspace/default/ when wd is already that dir."""
+
+    def test_strip_double_prefix_resolve(self, tmp_path):
+        import os
+        import gnom_hub.core.security.path_validator as pv
+
+        ws = tmp_path / "gnom-Workspace" / "default"
+        ws.mkdir(parents=True)
+        resolved = pv._resolve_target(
+            str(ws),
+            "gnom-Workspace/default/readme-pages-x/v1/index.html",
+        )
+        expected = os.path.realpath(str(ws / "readme-pages-x" / "v1" / "index.html"))
+        assert resolved == expected
+
+    def test_normal_relative_unchanged(self, tmp_path):
+        import os
+        import gnom_hub.core.security.path_validator as pv
+
+        ws = tmp_path / "gnom-Workspace" / "default"
+        ws.mkdir(parents=True)
+        resolved = pv._resolve_target(str(ws), "readme-pages-x/v1/index.html")
+        expected = os.path.realpath(str(ws / "readme-pages-x" / "v1" / "index.html"))
+        assert resolved == expected

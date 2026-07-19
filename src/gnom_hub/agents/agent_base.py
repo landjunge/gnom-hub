@@ -351,9 +351,15 @@ class BaseAgent:
                 job_ok = True
                 import re as _re
 
-                # Wave A anti-spam: hard cap + think-only detection
+                # Wave A anti-spam: chat display cap vs action-processor cap.
+                # R5/R4 bug: action_in was raw_content[:6000] → multi-file
+                # [WRITE:]...[/WRITE] for v1/v2/v3 HTML was chopped before
+                # process_actions, so Coder "wrote" nothing. Chat stays short;
+                # action tags use the full model output (bounded).
                 MAX_REPLY = 6000
-                if raw_content and len(raw_content) > MAX_REPLY * 3:
+                MAX_ACTION_INPUT = 120_000
+                MAX_RAW_ACCEPT = 100_000
+                if raw_content and len(raw_content) > MAX_RAW_ACCEPT:
                     # pathological free-model dump — refuse to amplify
                     job_ok = False
                     self._req("post", "/api/chat", {
@@ -414,11 +420,96 @@ class BaseAgent:
                         soul = get_soul(self.n) or {"permissions": ["read"]}
                         perms = soul.get("permissions", [])
                         wd = get_workspace_dir()
-                        # Cap input to action processor
-                        action_in = raw_content[:MAX_REPLY]
+                        # Full model output for actions (WRITE/SCREENSHOT tags live here)
+                        action_in = raw_content[:MAX_ACTION_INPUT]
                         processed = await _to_thread(
                             process_actions, action_in, {"name": self.n}, perms, False, wd
                         )
+
+                        # ── READ-only → WRITE continue (R5 Coder gap) ─────
+                        # Single-shot agents often emit only [READ:] then stop.
+                        # If the task demanded [WRITE:] and none was produced,
+                        # one forced follow-up with the read results.
+                        _write_pat = _re.compile(
+                            r"\[WRITE:\s*[^\]]+\][\s\S]*?\[/WRITE\]",
+                            _re.IGNORECASE,
+                        )
+                        _task_wants_write = bool(
+                            _re.search(r"\[WRITE:", text or "", _re.IGNORECASE)
+                        )
+                        _had_write = bool(_write_pat.search(raw_content or ""))
+                        _had_read = bool(
+                            _re.search(r"\[READ:\s*", raw_content or "", _re.IGNORECASE)
+                        )
+                        _workers = (
+                            "coderag", "writerag", "researcherag", "editorag",
+                        )
+                        if (
+                            job_ok
+                            and self.n.lower() in _workers
+                            and _task_wants_write
+                            and not _had_write
+                        ):
+                            try:
+                                read_excerpt = (processed or action_in or "")[:5000]
+                                cont = (
+                                    "SYSTEM-CONTINUE (einmalig): Du hast die Quelle gelesen "
+                                    "oder den Auftrag bestätigt, aber KEIN vollständiges "
+                                    "[WRITE: rel/pfad]inhalt[/WRITE] geliefert.\n"
+                                    "Original-Auftrag (gekürzt):\n"
+                                    f"{(text or '')[:2800]}\n\n"
+                                    "Kontext aus deiner vorherigen Antwort (READ/System):\n"
+                                    f"{read_excerpt}\n\n"
+                                    "JETZT PFLICHT: Schreibe ALLE geforderten Dateien mit "
+                                    "vollem Inhalt als [WRITE: pfad]...[/WRITE]. "
+                                    "Danach ggf. [SCREENSHOT: ...]. "
+                                    "Kein reines ACK, kein erneutes langes READ, kein Showbox-only."
+                                )
+                                r2 = await _to_thread(
+                                    ask_router,
+                                    cont,
+                                    None,
+                                    agent_name=self.n,
+                                    depth=msg["depth"],
+                                    parent_msg_id=msg["msg_id"],
+                                )
+                                raw2 = (
+                                    (getattr(r2, "content", None) or "").strip()
+                                    if r2 is not None
+                                    else ""
+                                )
+                                if raw2 and not raw2.startswith("[ROUTER-FEHLER]"):
+                                    if len(raw2) > MAX_RAW_ACCEPT:
+                                        ctx_logger.warning(
+                                            "WRITE-continue spam len=%d msg#%s",
+                                            len(raw2), msg["msg_id"],
+                                        )
+                                    else:
+                                        raw_content = raw_content + "\n\n" + raw2
+                                        action_in2 = raw2[:MAX_ACTION_INPUT]
+                                        processed2 = await _to_thread(
+                                            process_actions,
+                                            action_in2,
+                                            {"name": self.n},
+                                            perms,
+                                            False,
+                                            wd,
+                                        )
+                                        processed = (
+                                            (processed or "")
+                                            + "\n\n"
+                                            + (processed2 or action_in2)
+                                        )
+                                        ctx_logger.info(
+                                            "WRITE-continue after READ-only msg#%s "
+                                            "agent=%s cont_len=%d",
+                                            msg["msg_id"], self.n, len(raw2),
+                                        )
+                            except Exception as cont_exc:
+                                ctx_logger.warning(
+                                    "WRITE-continue failed msg#%s: %s",
+                                    msg["msg_id"], cont_exc,
+                                )
 
                         raw = processed or action_in
                         think_display = _re.sub(
@@ -569,9 +660,23 @@ class BaseAgent:
                 self._req("put", f"/api/agents/{self.n}/status?status=online")
 
     def _register_capabilities(self):
+        import json as _json
         import sqlite3
         import time as _t
         from gnom_hub.db.connection import get_db_conn
+        # Keep agents.capabilities column in sync with definitions (UI showed [] for CoderAG)
+        caps_list = [c for c, _conf in getattr(self, "CAPABILITIES", [])]
+        try:
+            from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+            defn = AGENT_DEFINITIONS.get(self.n.lower(), {})
+            for c in defn.get("capabilities") or []:
+                if c not in caps_list:
+                    caps_list.append(c)
+            for p in (defn.get("de") or defn.get("en") or {}).get("permissions") or []:
+                if p not in caps_list:
+                    caps_list.append(p)
+        except Exception:
+            pass
         for _attempt in range(4):
             try:
                 with get_db_conn() as db:
@@ -581,6 +686,12 @@ class BaseAgent:
                             INSERT OR REPLACE INTO agent_capabilities (agent_name, capability, confidence)
                             VALUES (?, ?, ?)
                         """, (self.n, capability, confidence))
+                    # Persist visible rights for dashboard /api/agents list
+                    if caps_list:
+                        db.execute(
+                            "UPDATE agents SET capabilities = ? WHERE lower(name) = lower(?)",
+                            (_json.dumps(caps_list), self.n),
+                        )
                     db.commit()
                 return
             except sqlite3.OperationalError as e:

@@ -1,4 +1,11 @@
 def get_tools_for_agent(soul: dict):
+    """Map soul.permissions → tool dict.
+
+    Tools are advertised ONLY when the matching permission token is present
+    (or godmode). Previously crawl_url/web_search were always injected for
+    every non-general agent while action handlers still required ``crawl`` /
+    ``web_search`` tokens — agents saw tools they could not use (R5 audit).
+    """
     # GeneralAG: schlankes Orchestrator-Set (Prio-5) — KEIN leeres Toolset mehr.
     # Vorher: role==general → {} → LLM ohne Tool-Syntax → oft stille/leere Antworten.
     if soul.get("role") == "general":
@@ -7,45 +14,95 @@ def get_tools_for_agent(soul: dict):
             "offload_recall": "Recall offloaded tool output. [OFFLOAD_RECALL:<node_id>]",
             "showbox": "Status/Ergebnis-Slides. [→ Showbox: name]{...} oder <SHOWBOX:system>…",
             "delegate": "Worker anstoßen via @Mention (siehe DELEGATION-Syntax).",
+            "verify": "Definition-of-Done file check. [VERIFY: path|must_contain=X|min_bytes=N]",
         }
-    p, tm = soul.get("permissions", []), {
+    p = list(soul.get("permissions", []) or [])
+    has = set(p)
+    god = "godmode" in has
+
+    tm = {
         "read_file": "Read files (also outside workspace with godmode)",
         "write_file": "Write files",
         "run_command": "Execute terminal commands (including pip install, brew, etc.)",
-        "war_room_chat": "Chat", "create_agent": "Create agents",
-        "screenshot": "Screenshot", "desktop_action": "Mouse & Keyboard",
-        "evolve": "Improve code", "generate_image": "Generate image",
+        "war_room_chat": "Chat",
+        "create_agent": "Create agents",
+        "screenshot": "Screenshot",
+        "desktop_action": "Mouse & Keyboard",
+        "evolve": "Improve code",
+        "generate_image": "Generate image",
         "crawl_url": "Crawl URL (fetch a webpage and extract text). [CRAWL: https://example.com]",
-        "web_search": "Search the web (Brave Search API). [WEBSEARCH: query]. ALLE Agenten dürfen das IMMER — Dauerhaft freigeschaltet.",
-        "browser": "Real browser automation via Playwright. Write a Python script that uses the Playwright sync API. The script runs in a sandboxed subprocess (cwd=workspace, no shell, no host network by default). Output is captured and returned to you. Use this for: opening pages, clicking elements, filling forms, scraping, taking screenshots, running JS in-page. NOT for: bulk file ops, system commands, anything outside a browser context.",
+        "web_search": "Search the web (Brave Search API). [WEBSEARCH: query].",
+        "browser": (
+            "Real browser automation via Playwright. Write a Python script that uses the "
+            "Playwright sync API. The script runs in a sandboxed subprocess (cwd=workspace). "
+            "Use for: pages, clicks, forms, scrape, screenshots. NOT bulk file ops / shell."
+        ),
         "sys_cmd": "System commands (install programs, change settings)",
-        # ── Video-Tools (macOS screencapture + ffmpeg fallback) ──
-        "screen_record": "Record the screen with optional TTS audio (macOS screencapture + say). [VIDEO:SCREEN:filename=out.mov|duration=20|tts=Spoken text via say]",
-        "video_merge": "Merge/concatenate multiple video files. [VIDEO:MERGE:input1.mov,input2.mp4|output=final.mp4]",
-        "video_edit": "Cut, trim, or scale a video. [VIDEO:EDIT:input.mov|output=cut.mp4|start=00:00:05|end=00:00:15]",
-        # ── Context-Offload-Tool (TencentDB-Port) ─────────────────────
-        # Erlaubt Agenten einen ausgelagerten Tool-Output per node_id
-        # zurück in den Kontext zu holen. Verfügbar für ALLE Agenten —
-        # ein Agent soll jederzeit nachschlagen können, was ein
-        # vergangenes Tool-Output war.
-        "offload_recall": "Recall an offloaded tool output by node_id. [OFFLOAD_RECALL:<8-hex-chars>]. Use this when the OFFLOAD-CANVAS in the system prompt shows a node you want to expand.",
-        # ── TTS (plattformunabhängig) ──
-        "speak":        "Speak text using the agent's assigned TTS voice (macOS say / Linux espeak / Windows SAPI). [SPEAK: text here]. SoulAG nutzt das für direkte Sprachausgabe an User.",
-        "set_voice":    "Change the agent's default TTS voice. [SET_VOICE: Anna|rate=180]. Available voices depend on platform.",
-        "list_voices":  "List all available TTS voices on this system. [LIST_VOICES]",
+        "screen_record": (
+            "Record the screen with optional TTS audio (macOS screencapture + say). "
+            "[VIDEO:SCREEN:filename=out.mov|duration=20|tts=Spoken text via say]"
+        ),
+        "video_merge": (
+            "Merge/concatenate multiple video files. "
+            "[VIDEO:MERGE:input1.mov,input2.mp4|output=final.mp4]"
+        ),
+        "video_edit": (
+            "Cut, trim, or scale a video. "
+            "[VIDEO:EDIT:input.mov|output=cut.mp4|start=00:00:05|end=00:00:15]"
+        ),
+        "offload_recall": (
+            "Recall an offloaded tool output by node_id. [OFFLOAD_RECALL:<8-hex-chars>]. "
+            "Use when OFFLOAD-CANVAS shows a node you want to expand."
+        ),
+        "speak": (
+            "Speak text using the agent's assigned TTS voice. [SPEAK: text here]."
+        ),
+        "set_voice": (
+            "Change the agent's default TTS voice. [SET_VOICE: Anna|rate=180]."
+        ),
+        "list_voices": "List all available TTS voices on this system. [LIST_VOICES]",
     }
-    # ── DAUERHAFT FREIGESCHALTET für ALLE Agenten ──
-    a = ["read_file", "web_search", "crawl_url", "offload_recall"]
-    if "@job" in p: a += ["war_room_chat", "create_agent"]
-    if "write" in p: a += ["write_file", "generate_image"]
-    if "godmode" in p or "run" in p: a += ["run_command", "sys_cmd", "screen_record", "video_merge", "video_edit"]
-    if "godmode" in p: a += ["browser"]
-    # Standalone 'browser'-Token gewährt Playwright-Browser ohne godmode/desktop.
-    # Vorher gab es diesen Token als Permission-Eintrag, aber tool_registry hat
-    # ihn nie anerkannt → Inkonsistenz. ResearcherAG profitiert davon.
-    if "browser" in p: a += ["browser"]
-    if "desktop" in p: a += ["screenshot", "desktop_action", "browser", "screen_record"]
-    if "evolve" in p: a += ["evolve"]  
+
+    # Base: every agent may read workspace + recall offloads
+    a: list[str] = []
+    if "read" in has or god:
+        a.append("read_file")
+    a.append("offload_recall")
+
+    if "@job" in has or god:
+        a += ["war_room_chat", "create_agent"]
+
+    if "write" in has or god:
+        a += ["write_file"]
+    if "write" in has or "image" in has or god:
+        a += ["generate_image"]
+
+    # shell / run / code (legacy aliases)
+    if "run" in has or "shell" in has or "code" in has or god:
+        a += ["run_command", "sys_cmd"]
+
+    if "run" in has or "video" in has or god:
+        a += ["screen_record", "video_merge", "video_edit"]
+
+    if "crawl" in has or god:
+        a += ["crawl_url"]
+
+    if "web_search" in has or god:
+        a += ["web_search"]
+
+    # browser: explicit token OR godmode (SecurityAG). Not auto via desktop alone.
+    if "browser" in has or god:
+        a += ["browser"]
+
+    if "desktop" in has or god:
+        a += ["screenshot", "desktop_action", "browser", "screen_record"]
+
+    if "evolve" in has or god:
+        a += ["evolve"]
+
+    if "audio" in has or god:
+        a += ["speak", "set_voice", "list_voices"]
+
     return {t: tm.get(t, t) for t in dict.fromkeys(a)}
 
 
@@ -81,6 +138,7 @@ def _generalag_tools_prompt(soul: dict, name: str) -> str:
         "\n\n[Command Syntax]"
         "\n  [READ: path] — Kontext lesen"
         "\n  [OFFLOAD_RECALL:node_id] — Offload-Detail"
+        "\n  [VERIFY: path|path2|must_contain=X|min_bytes=N] — DoD-Check (nur lesen)"
         "\n  [→ Showbox: name]{json} — Präsentation"
         "\n  <SHOWBOX:system>…</SHOWBOX> — System-Layer"
         "\n\n[USER AUTHORITY]"
@@ -98,46 +156,70 @@ def format_tools_prompt(soul: dict, name: str):
     t = get_tools_for_agent(soul)
     lines = [f"- {n}: {d}" for n, d in t.items()]
     syn = "\nCommand Syntax:"
-    if "read_file" in t: syn += "\n  [READ: filename] — Read file (godmode: any absolute path)"
-    if "write_file" in t: syn += "\n  [WRITE: filename]content[/WRITE] — Write file"
+    if "read_file" in t:
+        syn += "\n  [READ: filename] — Read file (godmode: any absolute path)"
+    if "write_file" in t:
+        syn += "\n  [WRITE: filename]content[/WRITE] — Write file"
     if "write_file" in t or "read_file" in t:
         syn += (
-            "\n  [SCREENSHOT: path.html | out=shots/x.png] — Full-page PNG via Playwright (workspace)."
+            "\n  [SCREENSHOT: path.html | out=shots/x.png] — Full-page PNG via Playwright (needs write)."
             "\n  [VERIFY: path1|path2|must_contain=Gnom-Hub|min_bytes=500] — Definition-of-Done file check."
         )
-    if "run_command" in t: syn += "\n  [SHELL: command] — Terminal (pip install, brew, system commands)"
-    if "generate_image" in t: syn += "\n  [IMAGE: prompt] — Generate image"
-    if "browser" in t: syn += (
-        '\n  [BROWSER: <python_code>] — Playwright sync-API script. Runs in subprocess, captured stdout/stderr returned.'
-        '\n    Body MUST be a self-contained Python script. Use `print()` to emit results. Screenshots write to the workspace cwd.'
-        '\n    Minimal example:'
-        '\n      [BROWSER:]'
-        '\n      from playwright.sync_api import sync_playwright'
-        '\n      with sync_playwright() as p:'
-        '\n          b = p.chromium.launch(headless=True)'
-        '\n          page = b.new_page()'
-        '\n          page.goto("https://example.com")'
-        '\n          print("title:", page.title())'
-        '\n          b.close()'
-        '\n      [/BROWSER]'
-        '\n    Common patterns: page.goto(url) | page.click(selector) | page.fill(selector, text) | page.locator(sel).text_content() | page.screenshot(path="x.png") | page.evaluate("() => ...").'
-        '\n    Sandbox limits: no os.system/subprocess/eval/exec; only playwright + stdlib. 120s timeout.'
-    )
-    if "web_search" in t: syn += "\n  [WEBSEARCH: query] — Web search (Brave API). DAUERHAFT für alle Agenten freigeschaltet."
-    if "crawl_url" in t: syn += "\n  [CRAWL: https://example.com] — Fetch and extract text from URL. DAUERHAFT."
-    if "screen_record" in t: syn += "\n  [VIDEO:SCREEN:filename=out.mov|duration=20|audio=on] — Record screen (macOS screencapture, ffmpeg fallback)"
-    if "video_merge" in t: syn += "\n  [VIDEO:MERGE:input1.mov,input2.mp4|output=final.mp4] — Concatenate videos (ffmpeg)"
-    if "video_edit" in t: syn += "\n  [VIDEO:EDIT:input.mov|output=cut.mp4|start=00:00:05|end=00:00:15|scale=1280x720] — Cut/trim/scale (ffmpeg)"
-    if "offload_recall" in t: syn += "\n  [OFFLOAD_RECALL:<8-hex-chars>] — Volltext eines ausgelagerten Tool-Outputs zurückholen (node_id aus OFFLOAD-CANVAS)."
+    if "run_command" in t:
+        syn += "\n  [SHELL: command] — Terminal (pip install, brew, system commands)"
+    if "generate_image" in t:
+        syn += "\n  [IMAGE: prompt] — Generate image"
+    if "browser" in t:
+        syn += (
+            '\n  [BROWSER: <python_code>] — Playwright sync-API script. Runs in subprocess, '
+            "captured stdout/stderr returned."
+            "\n    Body MUST be a self-contained Python script. Use `print()` to emit results. "
+            "Screenshots write to the workspace cwd."
+            "\n    Minimal example:"
+            "\n      [BROWSER:]"
+            "\n      from playwright.sync_api import sync_playwright"
+            "\n      with sync_playwright() as p:"
+            "\n          b = p.chromium.launch(headless=True)"
+            "\n          page = b.new_page()"
+            '\n          page.goto("https://example.com")'
+            '\n          print("title:", page.title())'
+            "\n          b.close()"
+            "\n      [/BROWSER]"
+            "\n    Common patterns: page.goto(url) | page.click(selector) | page.fill(selector, text) "
+            '| page.locator(sel).text_content() | page.screenshot(path="x.png") | page.evaluate("() => ...").'
+            "\n    Sandbox limits: no os.system/subprocess/eval/exec; only playwright + stdlib. 120s timeout."
+        )
+    if "web_search" in t:
+        syn += "\n  [WEBSEARCH: query] — Web search (Brave API)."
+    if "crawl_url" in t:
+        syn += "\n  [CRAWL: https://example.com] — Fetch and extract text from URL."
+    if "screen_record" in t:
+        syn += (
+            "\n  [VIDEO:SCREEN:filename=out.mov|duration=20|audio=on] — "
+            "Record screen (macOS screencapture, ffmpeg fallback)"
+        )
+    if "video_merge" in t:
+        syn += "\n  [VIDEO:MERGE:input1.mov,input2.mp4|output=final.mp4] — Concatenate videos (ffmpeg)"
+    if "video_edit" in t:
+        syn += (
+            "\n  [VIDEO:EDIT:input.mov|output=cut.mp4|start=00:00:05|end=00:00:15|scale=1280x720] "
+            "— Cut/trim/scale (ffmpeg)"
+        )
+    if "offload_recall" in t:
+        syn += (
+            "\n  [OFFLOAD_RECALL:<8-hex-chars>] — Volltext eines ausgelagerten "
+            "Tool-Outputs zurückholen (node_id aus OFFLOAD-CANVAS)."
+        )
     syn += '\n  <SHOWBOX:lamp_index>["Slide 1 HTML", "Slide 2 HTML"]</SHOWBOX> — Showbox update.'
-    syn += '\n  3-LAYER-SYSTEM (hart durchgesetzt):'
-    syn += '\n    <SHOWBOX:worker> (orange) → Worker (CoderAG, WriterAG, ResearcherAG, EditorAG)'
-    syn += '\n    <SHOWBOX:system> (cyan) → System (GeneralAG, SoulAG)'
-    syn += '\n    <SHOWBOX:user> (grün) → FÜR ALLE AGENTEN FREIGEGEBEN. Jeder Agent darf hier schreiben!'
-    syn += '\n  Jeder Agent liefert NUR in SEINEM Layer.'
+    syn += "\n  3-LAYER-SYSTEM (hart durchgesetzt):"
+    syn += "\n    <SHOWBOX:worker> (orange) → Worker (CoderAG, WriterAG, ResearcherAG, EditorAG)"
+    syn += "\n    <SHOWBOX:system> (cyan) → System (GeneralAG, SoulAG)"
+    syn += "\n    <SHOWBOX:user> (grün) → FÜR ALLE AGENTEN FREIGEGEBEN. Jeder Agent darf hier schreiben!"
+    syn += "\n  Jeder Agent liefert NUR in SEINEM Layer."
     char = f" – {soul['character']}" if soul.get("character") else ""
     intro = f"You are {name} ({soul.get('role', 'Agent')}{char})."
-    if soul.get("directive"): intro += f"\n[PERSONALITY] {soul['directive']}"
+    if soul.get("directive"):
+        intro += f"\n[PERSONALITY] {soul['directive']}"
 
     # ── USER AUTHORITY (gilt absolut, überschreibt alle anderen Regeln) ────
     user_authority = (
@@ -157,11 +239,13 @@ def format_tools_prompt(soul: dict, name: str):
     sys_prompt = intro + "\nAvailable Tools:\n" + "\n".join(lines) + syn + user_authority
 
     sys_prompt += "\n\n[THINKING PROCESS / DENKPROZESS]:\n"
-    sys_prompt += ("Beginne deine Antwort IMMER mit deinen detaillierten Überlegungen, "
-                   "Gedankengängen und Planungen bezüglich der Aufgabe. "
-                   "Umschließe diesen gesamten Denkprozess zwingend mit den XML-Tags "
-                   "<think> und </think> (Beispiel: <think>Meine Überlegungen...</think>). "
-                   "Erst danach folgt deine eigentliche Antwort und die Ausführung von Aktionen.")
+    sys_prompt += (
+        "Beginne deine Antwort IMMER mit deinen detaillierten Überlegungen, "
+        "Gedankengängen und Planungen bezüglich der Aufgabe. "
+        "Umschließe diesen gesamten Denkprozess zwingend mit den XML-Tags "
+        "<think> und </think> (Beispiel: <think>Meine Überlegungen...</think>). "
+        "Erst danach folgt deine eigentliche Antwort und die Ausführung von Aktionen."
+    )
 
     # ── ARBEITSPROTOKOLL (eiserne Regeln) ──────
     sys_prompt += (
@@ -174,12 +258,16 @@ def format_tools_prompt(soul: dict, name: str):
         "• Du hast alle Tools die oben aufgelistet sind — nutze sie DIREKT.\n"
         "• Bei expliziten Aufträgen (vom User oder GeneralAG): Dateien SOFORT erstellen mit [WRITE:], "
         "Befehle SOFORT ausführen mit [SHELL:]. Nicht erst fragen!\n"
-        "• Bei Doku/README-HTML: zuerst [READ:] der echten Quelle, dann [WRITE:]. Keine erfundenen APIs.\n"
+        "• GeneralAG-Delegation mit [WRITE:] zählt wie User-Befehl — Datei PFLICHT, nicht optional.\n"
+        "• Bei Doku/README-HTML: [READ:] nur wenn nötig, dann in DIESER Antwort [WRITE: pfad]…[/WRITE] "
+        "für JEDE geforderte Datei. Close-Tag [/WRITE] ist Pflicht. Nie nur lesen und stoppen.\n"
+        "• PFAD-DISZIPLIN (R8): [WRITE:] und [SCREENSHOT: out=] Pfade ZEICHENGENAU aus dem Auftrag. "
+        "Keine Aliase (shots/≠screenshots/, research_extract≠source_extract). "
+        "HTML/Markdown mit Thema Gnom-Hub: exakter Substring `Gnom-Hub` (nicht nur gnom-hub).\n"
         "• Multi-File: nach Writes [SCREENSHOT:] und/oder [VERIFY:] nutzen. Showbox-ACK ≠ Delivery.\n"
-        "• ERGEBNIS-AUSLIEFERUNG: Jedes Ergebnis, jeder Code, jedes Konzept wird AUSSCHLIESSLICH "
-        "via <SHOWBOX> geliefert. NIEMALS langen Code, HTML, CSS, Konzepte oder Erklärungen "
-        "direkt in den Chat schreiben. Der Chat ist NUR für kurze Statusmeldungen, "
-        "Fragen und @Mentions da.\n"
+        "• ERGEBNIS-AUSLIEFERUNG: Dateien primär via [WRITE:]…[/WRITE] (Workspace). "
+        "Chat nur kurze Statusmeldungen. Lange Erklärungen ohne Datei = Fail.\n"
+        "• Showbox optional NACH Writes — nie statt Writes.\n"
         "• 3-LAYER-SYSTEM (hart durchgesetzt): Worker liefern in <SHOWBOX:worker> (orange). "
         "System-Agenten (GeneralAG) nutzen <SHOWBOX:system> (cyan). "
         "<SHOWBOX:user> (grün) ist EXKLUSIV für den User — Agenten schreiben NIEMALS dort. "
@@ -191,4 +279,3 @@ def format_tools_prompt(soul: dict, name: str):
         "Melde es kurz im Chat und arbeite mit dem weiter was du hast.\n"
     )
     return sys_prompt
-

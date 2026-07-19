@@ -19,11 +19,12 @@
   "permissions": [
     "read",
     "write",
-    "showbox_write"
+    "showbox_write",
+    "web_search"
   ],
   "allowed_contexts": [
     "workspace_summary",
     "chat_history_tail"
   ],
-  "notes": "EditorAG v9.0 — QA/Polish-Worker. TKG recall für Style-Guidelines. Worker-Sprech via Showbox/[WRITE:]/Inline."
+  "notes": "EditorAG v9.1 — synced with AGENT_DEFINITIONS. QA/Polish + web_search. No godmode/run."
 }

@@ -96,3 +96,107 @@ def test_slice_text_for_mention_isolates_agents():
     assert "Baue v1" in c
     assert "@ResearcherAG" not in c
     assert "@WriterAG" not in c
+
+
+def test_dispatch_only_restricts_user_fanout(tmp_path, monkeypatch):
+    """User plan with nested @Workers must not queue every worker when only=GeneralAG."""
+    import sqlite3
+
+    db = tmp_path / "fanout.db"
+    conn = sqlite3.connect(str(db))
+    conn.row_factory = sqlite3.Row
+    conn.executescript(
+        """
+        CREATE TABLE agents (
+            name TEXT PRIMARY KEY, status TEXT
+        );
+        CREATE TABLE agent_messages (
+            id INTEGER PRIMARY KEY, sender TEXT, recipient TEXT, payload TEXT,
+            priority INTEGER, status TEXT DEFAULT 'pending', retry_count INTEGER DEFAULT 0,
+            created_at REAL, deliver_after REAL DEFAULT 0, context_id TEXT,
+            depth INTEGER DEFAULT 0, processing_since REAL, parent_msg_id INTEGER,
+            completed_at REAL
+        );
+        """
+    )
+    for n in ("GeneralAG", "CoderAG", "WriterAG", "ResearcherAG", "EditorAG"):
+        conn.execute("INSERT INTO agents(name,status) VALUES (?,?)", (n, "online"))
+    conn.commit()
+    conn.close()
+
+    from gnom_hub.agents.swarm import swarm_comms as sc
+
+    def _conn():
+        c = sqlite3.connect(str(db))
+        c.row_factory = sqlite3.Row
+        return c
+
+    monkeypatch.setattr(sc, "get_db_connection", _conn)
+    monkeypatch.setattr(sc, "notify_agent", lambda *_a, **_k: None)
+
+    plan = (
+        "@GeneralAG SUPERVISOR plan\n"
+        "@ResearcherAG [READ: x]\n"
+        "@CoderAG [WRITE: v1/index.html]\n"
+        "@WriterAG [WRITE: overview.html]\n"
+        "@EditorAG [VERIFY: v1/index.html]\n"
+    )
+    got = sc.dispatch_mention(
+        "user", plan, "default", str(db), only=["GeneralAG"]
+    )
+    assert got == ["GeneralAG"], got
+
+    c = sqlite3.connect(str(db))
+    rows = c.execute("SELECT recipient FROM agent_messages ORDER BY id").fetchall()
+    c.close()
+    assert [r[0] for r in rows] == ["GeneralAG"]
+
+
+def test_dispatch_generalag_still_slices_workers(tmp_path, monkeypatch):
+    """GeneralAG multi-@ without only= still slices to each worker."""
+    import sqlite3
+
+    db = tmp_path / "slice.db"
+    conn = sqlite3.connect(str(db))
+    conn.row_factory = sqlite3.Row
+    conn.executescript(
+        """
+        CREATE TABLE agents (name TEXT PRIMARY KEY, status TEXT);
+        CREATE TABLE agent_messages (
+            id INTEGER PRIMARY KEY, sender TEXT, recipient TEXT, payload TEXT,
+            priority INTEGER, status TEXT DEFAULT 'pending', retry_count INTEGER DEFAULT 0,
+            created_at REAL, deliver_after REAL DEFAULT 0, context_id TEXT,
+            depth INTEGER DEFAULT 0, processing_since REAL, parent_msg_id INTEGER,
+            completed_at REAL
+        );
+        """
+    )
+    for n in ("CoderAG", "WriterAG"):
+        conn.execute("INSERT INTO agents(name,status) VALUES (?,?)", (n, "online"))
+    conn.commit()
+    conn.close()
+
+    from gnom_hub.agents.swarm import swarm_comms as sc
+    import json
+
+    def _conn():
+        c = sqlite3.connect(str(db))
+        c.row_factory = sqlite3.Row
+        return c
+
+    monkeypatch.setattr(sc, "get_db_connection", _conn)
+    monkeypatch.setattr(sc, "notify_agent", lambda *_a, **_k: None)
+
+    text = "@CoderAG write v1\n@WriterAG write overview\n"
+    got = sc.dispatch_mention("GeneralAG", text, "default", str(db))
+    assert set(got) == {"CoderAG", "WriterAG"}
+    c = sqlite3.connect(str(db))
+    for rec, payload in c.execute("SELECT recipient, payload FROM agent_messages"):
+        body = json.loads(payload)["text"]
+        if rec == "CoderAG":
+            assert "write v1" in body
+            assert "@WriterAG" not in body
+        if rec == "WriterAG":
+            assert "write overview" in body
+            assert "@CoderAG" not in body
+    c.close()

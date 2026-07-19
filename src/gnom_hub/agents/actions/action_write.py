@@ -23,20 +23,13 @@ def handle_write(answer, matches, agent, perms, bs_mode, wd):
                     os.makedirs(os.path.dirname(fpath), exist_ok=True)
 
                     base = os.path.basename(fname).lower()
-                    if base == "index.html" and os.path.exists(fpath):
-                        base_name = os.path.splitext(fname)[0]
-                        ext = os.path.splitext(fname)[1]
-                        counter = 1
-                        while True:
-                            new_name = f"{base_name}{counter}{ext}"
-                            new_fpath = _safe(wd, new_name, perms, agent_name=agent_name)
-                            if new_fpath and not os.path.exists(new_fpath):
-                                fpath = new_fpath
-                                fname = os.path.basename(fpath)
-                                break
-                            counter += 1
-                    elif os.path.exists(fpath):
-                        import shutil; shutil.copy2(fpath, fpath + ".bak")
+                    # Uniform overwrite: .bak then rewrite. (Previously index.html
+                    # was versioned to index1.html on re-write — dual fanout
+                    # user→Coder + GeneralAG→Coder produced index1.html clutter
+                    # and screenshots targeted the wrong file.)
+                    if os.path.exists(fpath):
+                        import shutil
+                        shutil.copy2(fpath, fpath + ".bak")
 
                     sealed_content = seal_content(content)
                     with open(fpath, "w", encoding="utf-8") as f:

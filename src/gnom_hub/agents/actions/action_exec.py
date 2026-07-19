@@ -13,7 +13,7 @@ from gnom_hub.agents.agent_names import normalize_showbox_name
 def handle_shell(ans, ms, ag, perms, bs, wd):
     for m in ms:
         c, o = m.group(1).strip(), m.group(0)
-        if "run" not in perms:
+        if "run" not in perms and "shell" not in perms and "godmode" not in perms:
             ans = ans.replace(o, f"[System: {ag['name']} hat keine SHELL-Berechtigung.]")
             continue
 
@@ -39,7 +39,9 @@ def handle_shell(ans, ms, ag, perms, bs, wd):
 def handle_crawl(ans, ms, ag, perms):
     for m in ms:
         u, o = m.group(1).strip(), m.group(0)
-        if "crawl" not in perms: ans = ans.replace(o, f"[System: {ag['name']} hat keine CRAWL-Berechtigung.]"); continue
+        if "crawl" not in perms and "godmode" not in perms:
+            ans = ans.replace(o, f"[System: {ag['name']} hat keine CRAWL-Berechtigung.]")
+            continue
         try:
             from gnom_hub.infrastructure.utils.crawler_engine import crawl_data, crawl_smart
             t = crawl_data(u) if "data" in ag["name"].lower() else crawl_smart(u)

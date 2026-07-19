@@ -347,10 +347,16 @@ def dispatch_mention(
     current_depth: int = 0,
     parent_msg_id: int | None = None,
     priority: str | int | None = None,
+    only: list[str] | None = None,
 ) -> list[str]:
     """
     Parst @Mentions und legt Nachrichten in die persistente Queue.
     Gibt Liste der angesprochenen Agenten zurück (für Logging).
+
+    ``only``: optional allow-list of agent names. When set, nested @Worker
+    mentions inside the text are NOT fanout targets — only those recipients
+    get a queue row. Used for user-chat → GeneralAG (plan text may list
+    @CoderAG/@WriterAG as *instructions* for GeneralAG, not as user fanout).
     """
     if current_depth >= MAX_DEPTH:
         logger.warning(
@@ -364,6 +370,13 @@ def dispatch_mention(
     mentions = re.findall(r'@(\w+)', clean_text)
     if not mentions:
         return []
+
+    only_set = {n.lower() for n in only} if only else None
+    if only_set is not None:
+        # Keep order from allow-list; ignore other @ in body
+        mentions = [n for n in only if n.lower() in only_set]
+        if not mentions:
+            return []
 
     dispatched: list[str] = []
     last_err = None
@@ -388,6 +401,9 @@ def dispatch_mention(
 
                 for mention in set(mentions):
                     tgt_lower = mention.lower()
+
+                    if only_set is not None and tgt_lower not in only_set:
+                        continue
 
                     if tgt_lower == sender.lower():
                         continue
@@ -426,7 +442,12 @@ def dispatch_mention(
                         if prio_val is None:
                             prio_val = 7 if active_count >= MAX_CONCURRENT else 5
 
-                    agent_text = _slice_text_for_mention(clean_text, mention)
+                    # When only= is set (targeted user dispatch), deliver full text —
+                    # nested @Worker lines are instructions for GeneralAG, not slices.
+                    if only_set is not None:
+                        agent_text = clean_text
+                    else:
+                        agent_text = _slice_text_for_mention(clean_text, mention)
                     conn.execute(
                         """
                         INSERT INTO agent_messages

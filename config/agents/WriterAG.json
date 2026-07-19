@@ -20,11 +20,12 @@
     "read",
     "write",
     "crawl",
+    "web_search",
     "showbox_write"
   ],
   "allowed_contexts": [
     "workspace_summary",
     "chat_history_tail"
   ],
-  "notes": "WriterAG v9.0 — Text-Worker. TKG recall für User-Stil + Brand-Voice. Worker-Sprech via Showbox/[WRITE:]/Inline-Text. Workspace-frei via Whitelist."
+  "notes": "WriterAG v9.1 — synced with AGENT_DEFINITIONS. Text-Worker + web_search. No godmode."
 }

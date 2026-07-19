@@ -257,7 +257,7 @@ def process_actions(ans, agent, perms, bs_mode, wd):
     crawl_matches_pre = list(re.finditer(r"\[CRAWL:\s*(.*?)\]", ans))
     for m in crawl_matches_pre:
         url = m.group(1).strip()
-        if "write" in perms or "godmode" in perms:
+        if "crawl" in perms or "godmode" in perms:
             _audit_security(agent, perms, "crawl", url, "allowed")
         else:
             _audit_security(agent, perms, "crawl", url, "denied")

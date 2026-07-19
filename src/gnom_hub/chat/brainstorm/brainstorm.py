@@ -38,9 +38,21 @@ def dispatch(q, target=None, depth=0, sender="GeneralAG", context_id=None):
         from gnom_hub.core.config import DB_PATH
         from gnom_hub.db import get_active_project
         proj = context_id or get_active_project() or "default"
+        # Targeted dispatch: only agents in ``s`` — do NOT expand nested @Worker
+        # mentions inside the plan text (SUPERVISOR-R6 fanout bug: user→GeneralAG
+        # with @CoderAG/@WriterAG in body was queueing every worker as user→).
+        asked: list[str] = []
         for a in s:
-            dispatch_mention(sender, f"@{a['name']} {q}", proj, str(DB_PATH), depth)
-        return [a["name"] for a in s]
+            got = dispatch_mention(
+                sender,
+                f"@{a['name']} {q}",
+                proj,
+                str(DB_PATH),
+                depth,
+                only=[a["name"]],
+            )
+            asked.extend(got)
+        return asked
     # @bs Brainstorming: NUR GeneralAG analysiert und delegiert
     g = [a for a in ao if a["name"] == "GeneralAG"]
     if g:

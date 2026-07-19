@@ -592,7 +592,7 @@
       },
       "writerag": {
         "role": "writer",
-        "permissions": ["read", "write", "crawl", "showbox_write"],
+        "permissions": ["read", "write", "crawl", "web_search", "showbox_write"],
         "character": "Der Texter",
         "directive": "Schreiben von Texten",
         "soul": "Du schreibst klar, präzise und auf den Punkt.",
@@ -600,7 +600,7 @@
       },
       "editorag": {
         "role": "editor",
-        "permissions": ["read", "write", "showbox_write"],
+        "permissions": ["read", "write", "showbox_write", "web_search"],
         "character": "Der Editor",
         "directive": "Qualitätssicherung & Überarbeitung",
         "soul": "Du prüfst alles mit scharfem Blick. Fehler und schwache Formulierungen werden gnadenlos korrigiert.",
@@ -608,10 +608,10 @@
       },
       "coderag": {
         "role": "coder",
-        "permissions": ["read", "write", "run", "showbox_write"],
+        "permissions": ["read", "write", "run", "shell", "code", "showbox_write", "web_search"],
         "character": "Der Coder",
         "directive": "Programmieren & Code schreiben",
-        "soul": "Du schreibst sauberen, funktionierenden Code. KEIN godmode — nur SecurityAG.",
+        "soul": "Du schreibst sauberen, funktionierenden Code mit [WRITE:]/[SCREENSHOT:]. Volle Worker-Rechte (read/write/run/shell/code/web_search/showbox). KEIN godmode — nur SecurityAG.",
         "level": "Core Worker"
       }
     };

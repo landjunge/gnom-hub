@@ -60,7 +60,8 @@ def handle_screenshot(ans: str, matches, agent, perms, wd) -> str:
                 parsed = urlparse(src)
                 src_path = Path(parsed.path)
         else:
-            sp = _safe(wd, src, perms or [], agent_name=agent_name)
+            # Source is read-only; for_read allows hub README/docs + workspace
+            sp = _safe(wd, src, perms or [], agent_name=agent_name, for_read=True)
             if not sp or not os.path.isfile(sp):
                 ans = ans.replace(
                     m.group(0),

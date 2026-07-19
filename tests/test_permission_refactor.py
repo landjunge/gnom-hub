@@ -159,18 +159,20 @@ class TestAllAgentsMatrix:
         ("securityag",
          ["read", "write", "run", "godmode", "showbox_write", "crawl", "web_search", "browser", "image", "video", "audio", "evolve", "@job", "code", "shell", "db_write", "grant_perm"],
          ["read", "write", "run", "godmode", "showbox_write", "crawl", "web_search", "browser", "image", "video", "audio", "evolve", "@job", "code", "shell", "db_write", "grant_perm"]),
+        # 2026-07-19: web_search token aligned with tool_registry (no always-on
+        # crawl/web_search ads for agents that cannot execute them).
         ("coderag",
-         ["read", "write", "run", "showbox_write"],
-         ["read", "write", "run", "showbox_write"]),
+         ["read", "write", "run", "shell", "code", "showbox_write", "web_search"],
+         ["read", "write", "run", "shell", "code", "showbox_write", "web_search"]),
         ("writerag",
-         ["read", "write", "crawl", "showbox_write"],
-         ["read", "write", "crawl", "showbox_write"]),
+         ["read", "write", "crawl", "web_search", "showbox_write"],
+         ["read", "write", "crawl", "web_search", "showbox_write"]),
         ("researcherag",
          ["read", "write", "crawl", "web_search", "browser", "showbox_write"],
          ["read", "write", "crawl", "web_search", "browser", "showbox_write"]),
         ("editorag",
-         ["read", "write", "showbox_write"],
-         ["read", "write", "showbox_write"]),
+         ["read", "write", "showbox_write", "web_search"],
+         ["read", "write", "showbox_write", "web_search"]),
     ])
     def test_agent_permissions_match_matrix(self, agent_key, expected_de, expected_en):
         from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
@@ -193,3 +195,62 @@ class TestAllAgentsMatrix:
         assert godmode_agents == ["securityag"], (
             f"Only SecurityAG must have godmode, got: {godmode_agents}"
         )
+
+    def test_tools_never_exceed_permissions(self):
+        """Advertised tools must be backed by a permission token (or godmode)."""
+        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+        from gnom_hub.agents.tool_registry import get_tools_for_agent
+
+        for key, defn in AGENT_DEFINITIONS.items():
+            if defn.get("role") == "general":
+                continue
+            perms = set(defn["de"]["permissions"])
+            tools = get_tools_for_agent(
+                {"role": defn["role"], "permissions": defn["de"]["permissions"]}
+            )
+            if "crawl_url" in tools:
+                assert "crawl" in perms or "godmode" in perms, key
+            if "web_search" in tools:
+                assert "web_search" in perms or "godmode" in perms, key
+            if "write_file" in tools:
+                assert "write" in perms or "godmode" in perms, key
+            if "run_command" in tools:
+                assert perms & {"run", "shell", "code", "godmode"}, key
+            if "browser" in tools:
+                assert perms & {"browser", "desktop", "godmode"}, key
+
+    def test_config_agents_json_matches_definitions(self):
+        """config/agents/*.json permissions for the 8 core agents == AGENT_DEFINITIONS."""
+        import json
+        from pathlib import Path
+
+        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+
+        root = Path(__file__).resolve().parents[1] / "config" / "agents"
+        for _key, defn in AGENT_DEFINITIONS.items():
+            path = root / f"{defn['name']}.json"
+            if not path.exists():
+                continue
+            data = json.loads(path.read_text(encoding="utf-8"))
+            cfg = set(data.get("permissions") or [])
+            de = set(defn["de"]["permissions"])
+            assert cfg == de, f"{path.name}: {sorted(cfg)} != {sorted(de)}"
+
+    def test_preset_permissions_json_matches_definitions(self):
+        import json
+        from pathlib import Path
+
+        from gnom_hub.agents.agent_definitions import AGENT_DEFINITIONS
+
+        path = (
+            Path(__file__).resolve().parents[1]
+            / "data"
+            / "presets"
+            / "default"
+            / "permissions.json"
+        )
+        matrix = json.loads(path.read_text(encoding="utf-8"))["matrix"]
+        for _key, defn in AGENT_DEFINITIONS.items():
+            name = defn["name"]
+            assert name in matrix, f"missing {name} in permissions.json"
+            assert set(matrix[name]) == set(defn["de"]["permissions"]), name

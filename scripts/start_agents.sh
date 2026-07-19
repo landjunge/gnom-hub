@@ -6,13 +6,15 @@ set -a
 [ -f config/.env ] && source config/.env
 set +a
 
-# Alte Agenten per PID-File killen
+# Alte Agenten per PID-File + Prozessname killen (vermeidet Doppel-PIDs)
 for pidfile in "$HOME"/.gnom-hub/run/*.pid "$HOME"/.gnom-hub-*/run/*.pid; do
   [ -f "$pidfile" ] || continue
   pid=$(cat "$pidfile" 2>/dev/null)
   [ -n "$pid" ] && kill "$pid" 2>/dev/null
   rm -f "$pidfile"
 done
+# Fallback: alle run_agent-Prozesse (PID-Files können fehlen)
+pkill -f "python.*-m agents.run_agent" 2>/dev/null || true
 sleep 1
 
 # Start in background with -u for unbuffered output
