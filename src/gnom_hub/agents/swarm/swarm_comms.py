@@ -434,7 +434,14 @@ def fetch_next_message(
     while time.time() < deadline:
         conn = get_db_connection()
         try:
-            conn.execute('BEGIN IMMEDIATE')
+            for _lock_try in range(8):
+                    try:
+                        conn.execute('BEGIN IMMEDIATE')
+                        break
+                    except sqlite3.OperationalError as _le:
+                        if 'locked' not in str(_le).lower() or _lock_try == 7:
+                            raise
+                        time.sleep(0.05 * (2 ** _lock_try))
             try:
                 row = conn.execute("""
                     SELECT id, sender, payload, context_id, depth,
