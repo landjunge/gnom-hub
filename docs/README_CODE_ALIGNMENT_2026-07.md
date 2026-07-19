@@ -1,35 +1,75 @@
 # README-Inventar vs. Code (Abgleich 2026-07-19)
 
-**Zweck:** Alle jemals im Repo relevanten READMEs erfassen, Kernaussagen zusammenfassen, mit aktuellem Code abgleichen.  
+**Zweck:** Alle READMEs — lokal **und auf GitHub** (Branches + Git-Historie) — erfassen, zusammenfassen, mit Code abgleichen.  
+**Quellen:** `origin/master`, `origin/main`, `git log --all`, GitHub Trees API.  
 **Priorität User:** schnell + fehlerfrei — Doku-Drift ist Risiko, kein Feature.
 
 ---
 
-## 1. Welche READMEs gibt es?
+## 0. GitHub-Stand (Remote)
 
-### Aktiv (aktuell im Tree)
+### `origin/master` (aktuell, Default)
+
+10 README-Pfade:
+
+- `README.md`, `README.de.md`
+- `docs/README_CODE_ALIGNMENT_2026-07.md`
+- `docs/diagrams/README.md`
+- `docs/archive/2026-06-19-initial-snapshot/README.md`
+- `docs/archive/2026-06-22-failed-analysis/README.md`
+- `playwright-live/README.md`
+- `showbox/README.md`, `showbox/flash/README.md`, `showbox/buttons/dynamic/README.md`
+
+### `origin/main` (älterer/paralleler Branch auf GitHub)
+
+- `README.md` (~633 Zeilen) — **ANDERE** Marketing-README als master (Forge/Swarm/„Sandboxed Workers“, 681 Tests, …)
+- `README.de.md`
+- Showbox + playwright + Archive — **ohne** `docs/diagrams/README.md` und ohne dieses Alignment-Doc
+
+### `origin/gh-pages`
+
+- **kein** README (nur GitHub-Pages HTML/Screenshots)
+
+### Historisch jemals im Git (heute gelöscht / verschoben)
+
+| Pfad | Letzter Commit | Kurzinhalt |
+|------|----------------|------------|
+| `README_EN.md` | 2026-05-24 | EN-Marketing, „40-Line Rule“, 8 Agents, ~1800 LOC Story |
+| `Gnom-Hub/README.md` | 2026-05-14 | DE Mini-Orchestrator, `pip install -e .`, `gnom-hub` |
+| `Gnom-Hub_bak/README.md` | 2026-05-14 | „Cortex“ Install-Notiz |
+| `gnom_workspace/readme.md` | 2026-05-16 | **To-Do List App** (User-Workspace-Demo, nicht Hub) |
+| `src/mc707/README.md` | 2026-06-24 | Roland MC-707 MIDI-Lib (später eigenes Repo) |
+| `showbox/*.bak` | 2026-06-28 | Backups der Showbox-READMEs |
+
+---
+
+## 1. Welche READMEs gibt es? (aktiv)
+
+### Aktiv auf `master` (SoT-Branch)
 
 | Datei | ~Zeilen | Rolle |
 |-------|---------|--------|
-| `README.md` | ~497 | Hauptdoku EN (Marketing + Architektur + TKG) |
-| `README.de.md` | ~487 | Deutsche Parallelversion von README.md |
+| `README.md` | ~497 | Hauptdoku EN (Memory/TKG-lastig) |
+| `README.de.md` | ~487 | DE-Parallelversion |
 | `showbox/README.md` | ~22 | Kanon Showbox-Tag/Buttons |
-| `showbox/flash/README.md` | ~48 | 1px Agent-Flash CSS/JS |
-| `showbox/buttons/dynamic/README.md` | ~34 | Archiv dynamischer Buttons |
-| `playwright-live/README.md` | ~49 | Playwright Maus-Demo (Standalone) |
-| `docs/diagrams/README.md` | ~51 | Mermaid-Quellen + Palette |
-| `docs/archive/2026-06-19-initial-snapshot/README.md` | ~36 | Index alter Snapshots |
-| `docs/archive/2026-06-22-failed-analysis/README.md` | ~12 | Index fehlerhafte Analyse |
+| `showbox/flash/README.md` | ~48 | 1px Agent-Flash |
+| `showbox/buttons/dynamic/README.md` | ~34 | Dynamic Buttons Archiv |
+| `playwright-live/README.md` | ~49 | Playwright Maus-Demo |
+| `docs/diagrams/README.md` | ~51 | Mermaid-Quellen |
+| `docs/archive/.../README.md` | Index | Historische Snapshots |
+| `docs/README_CODE_ALIGNMENT_2026-07.md` | dieses Doc | Abgleich |
 
-### Historisch (git / Backup, nicht primäre SoT)
+### Branch `main` (GitHub) — extra beachten
 
-| Quelle | Inhalt |
-|--------|--------|
-| Git: `README_EN.md` (früher) | Vorgänger EN |
-| Git: `Gnom-Hub/README.md`, `Gnom-Hub_bak/` | alte Kopien |
-| `showbox/README.md.bak`, `flash/README.md.bak` | Backups |
-| Archiv 19.06. | alte ARCHITECTURE, CONTRIBUTING, Briefings … |
-| `.pytest_cache/README.md` | pytest intern — irrelevant |
+| Claim auf `main` README | vs. Code / master |
+|-------------------------|-------------------|
+| „Worker Agents (Sandboxed)“ | **Marketing** — keine Sandbox-Roadmap (User-Verbot) |
+| 681 Tests Badge | veraltet |
+| Forge/Immutable Products Vision | Vision, nicht Betriebs-SoT |
+| ZWC / Steganography als Feature | Code hat ZWC-Reste — nicht primärer Stabilitätsfokus |
+| „44 Providers“ | Registry existiert; nicht = 44 live verdrahtet |
+
+**Wichtig:** Wer GitHub öffnet und auf **`main`** schaut, sieht **andere** Story als auf **`master`**.
 
 **SoT für Architektur (laut Archiv selbst):** `docs/ARCHITECTURE.md` + Status/Strategie-Docs — **nicht** alle README-Claims.
 
