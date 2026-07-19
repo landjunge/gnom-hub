@@ -56,7 +56,7 @@ Zwei Recovery-Loops laufen parallel (siehe §7).
 Permissions-Matrix (Role × Action). Implementierungsstand siehe §9.
 
 ### Worker (WriterAG / CoderAG / ResearcherAG / EditorAG)
-Spezialisierte Auftragsbearbeitung. Werden über SoulAG-Delegation oder
+Spezialisierte Auftragsbearbeitung. Werden über **GeneralAG**-Delegation oder
 direkten `@<agent>`-Override angesprochen.
 
 ---

@@ -20,6 +20,7 @@ from . import (
     nudge,
     observability,
     presets,
+    queue_api,
     registry,
     showbox,
     system_info,
@@ -39,6 +40,7 @@ for r in [
     admin_system.router, admin_config.router, workspace.router, llm_keys.router,
     llm_agents.router, llm_models.router, system_info.router, showbox.router, admin.router,
     metrics.router, integrity.router, workflows.router, observability.router,
+    queue_api.router,
 ]:
     router.include_router(r)
 

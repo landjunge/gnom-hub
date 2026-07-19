@@ -129,10 +129,30 @@ class BaseAgent:
 
         from gnom_hub.agents.swarm.swarm_comms import ack_message, fetch_next_message, nack_message
         from gnom_hub.core.config import DB_PATH
+        from gnom_hub.queue import use_hub_claim
 
         async def _to_thread(func, *args, **kwargs):
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+
+        def _hub_claim(timeout: float = 0.5):
+            """Claim via hub HTTP — only hub process holds SQLite lease locks."""
+            r = self._req("post", "/api/queue/claim", {"agent": self.n, "timeout": timeout})
+            if not r or r.get("status") != "ok":
+                return None
+            return r.get("message")
+
+        def _hub_ack(msg_id: int):
+            self._req("post", "/api/queue/ack", {"msg_id": msg_id, "agent": self.n})
+
+        def _hub_nack(msg_id: int, reason: str = ""):
+            self._req("post", "/api/queue/nack", {
+                "msg_id": msg_id, "agent": self.n, "reason": (reason or "")[:300],
+            })
+
+        hub_claim = use_hub_claim()
+        if hub_claim:
+            print(f"📡 {self.n}: Queue-Modus hub-claim (kein SQLite-Write im Agent)")
 
         # Register: accept soft-OK dict (even on DB contention) so we don't spin-lock the hub
         _reg_backoff = 3
@@ -159,17 +179,20 @@ class BaseAgent:
                 self._req("post", f"/api/agents/{self.n}/heartbeat")
                 _last_hb = now_ts
 
-            # Hole nächste Nachricht (Timeout 3s). Lock errors return None — never crash.
+            # Claim next message: hub API (default) or legacy direct SQLite
             try:
-                msg = await _to_thread(fetch_next_message, self.n, str(DB_PATH), 3.0)
+                if hub_claim:
+                    msg = await _to_thread(_hub_claim, 0.8)
+                else:
+                    msg = await _to_thread(fetch_next_message, self.n, str(DB_PATH), 3.0)
             except Exception as fetch_exc:
                 logging.getLogger(__name__).warning(
-                    "%s fetch_next_message: %s", self.n, fetch_exc
+                    "%s fetch/claim: %s", self.n, fetch_exc
                 )
                 await asyncio.sleep(1.0)
                 continue
             if msg is None:
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(0.8 if hub_claim else 1.0)
                 continue
 
             self._req("put", f"/api/agents/{self.n}/status?status=busy")
@@ -438,12 +461,18 @@ class BaseAgent:
 
                 # P0: empty / ROUTER-FEHLER must NACK (retry/backoff), never ACK done.
                 if job_ok:
-                    await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))
+                    if hub_claim:
+                        await _to_thread(_hub_ack, msg["msg_id"])
+                    else:
+                        await _to_thread(ack_message, msg["msg_id"], str(DB_PATH))
                 else:
                     reason = raw_content[:200] if raw_content else "empty_llm_response"
-                    await _to_thread(
-                        nack_message, msg["msg_id"], str(DB_PATH), reason
-                    )
+                    if hub_claim:
+                        await _to_thread(_hub_nack, msg["msg_id"], reason)
+                    else:
+                        await _to_thread(
+                            nack_message, msg["msg_id"], str(DB_PATH), reason
+                        )
                     ctx_logger.warning(
                         "msg#%s nack (llm fail): %s", msg["msg_id"], reason[:80]
                     )
@@ -480,7 +509,10 @@ class BaseAgent:
 
             except Exception as e:
                 ctx_logger.error(f"Fehler bei Verarbeitung: {e}", exc_info=True)
-                await _to_thread(nack_message, msg["msg_id"], str(DB_PATH), str(e))
+                if hub_claim:
+                    await _to_thread(_hub_nack, msg["msg_id"], str(e))
+                else:
+                    await _to_thread(nack_message, msg["msg_id"], str(DB_PATH), str(e))
                 self._req("post", "/api/swarm/complete", {
                     "context_id": msg["context_id"],
                     "agent_name": self.n,

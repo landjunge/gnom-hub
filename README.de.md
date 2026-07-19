@@ -4,7 +4,9 @@
 > *8 Agenten · Symbolischer Kurzzeitspeicher · Geschichteter Langzeitspeicher · Null Cloud-Abhängigkeit.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-730_passed_(Vollsuite),_496_(CI),_54_pre--existing-yellow.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-CI_local__ci.sh-yellow.svg)](#-tests)
+
+**Arbeitsplan (Stabilität zuerst):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#-agenten-übersicht)
 [![Speicher](https://img.shields.io/badge/Speicher-Geschichtet_+_Offload-brightgreen.svg)](#-speicher-architektur)
@@ -51,9 +53,9 @@ curl http://localhost:3002/api/health
 ┌─────────────────────────────────────────────────────────────┐
 │  Browser (index.html + 9 JS-Module)                        │
 └────────────────────────┬────────────────────────────────────┘
-                         │ HTTP/WS
+                         │ HTTP (+ optional SSE Chat)
 ┌────────────────────────▼────────────────────────────────────┐
-│  FastAPI-Hub (src/gnom_hub/api) — 30 Router, 220+ Endpoints │
+│  FastAPI-Hub (src/gnom_hub/api) — ~30 Router, ~160 Routen   │
 │  ├─ chat         ├─ llm_agents    ├─ showbox                │
 │  ├─ llm_keys     ├─ llm_models    ├─ audio (TTS, STT)       │
 │  ├─ agents       ├─ state         ├─ workflows              │
@@ -63,13 +65,13 @@ curl http://localhost:3002/api/health
 ┌────────────────────────▼────────────────────────────────────┐
 │  8 Agenten (src/gnom_hub/agents)                            │
 │  Worker:  CoderAG · WriterAG · EditorAG · ResearcherAG       │
-│  System:  SoulAG · GeneralAG · SecurityAG · WatchdogAG      │
+│  System:  GeneralAG (Default-Chat) · SoulAG · Security…     │
 │  Routing: deterministischer Capability-Resolver (557 LOC)   │
 └────────────────────────┬────────────────────────────────────┘
                          │
 ┌────────────────────────▼────────────────────────────────────┐
 │  LLM-Router (Provider-Fallback-Kette)                       │
-│  MiniMax → OpenAI-Compat → DeepSeek → Ollama (lokal)        │
+│  LLM laut routing.txt / UI (kein erzwungener Provider)      │
 │  + Key-Reconciler aus ~/Desktop/api_keys.txt                │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -320,8 +322,8 @@ pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_r
 
 | Agent | Rolle | Verantwortlichkeit |
 |-------|-------|--------------------|
-| **SoulAG** | Orchestrator | Routet User-Intent an den richtigen Worker, überwacht Soul-Invariants |
-| **GeneralAG** | Multi-Capability | Generischer Fallback für unspezialisierte Tasks, hält Worker-Performance-Stats |
+| **GeneralAG** | **Default-Chat-Orchestrator** | User-Nachrichten ohne `@target` landen hier; delegiert an Worker |
+| **SoulAG** | Beobachter / Memory | Fakten, Nudge-Loop — nicht Default-Chat-Eingang |
 | **WatchdogAG** | Self-Healing | Startet abgestürzte Agenten neu, überwacht Heartbeats, recovered stuck tasks |
 | **SecurityAG** | Permissions | Gewährt/entzogen Pfad- + Shell-Permissions, auditiert jeden Write |
 | **CoderAG** | Code-Worker | Code-Generierung, Refactoring, Debugging, `[WRITE:]`-Actions |
@@ -333,7 +335,7 @@ pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_r
 
 ## 🗄️ Datenbank-Architektur
 
-Der Hub nutzt **6 spezialisierte SQLite-Datenbanken** in `~/.gnom-hub-3003/data/`. Jede hat genau eine Verantwortung — kein Multi-Tenant-Chaos, keine geteilten Tabellen. So fließt eine User-Anfrage durch sie hindurch:
+Der Hub nutzt **6 spezialisierte SQLite-Datenbanken** unter `~/.gnom-hub/data/` (port-spezifisch wenn nicht 3002). Jede hat eine Hauptverantwortung. So fließt eine User-Anfrage durch sie:
 
 ```mermaid
 sequenceDiagram

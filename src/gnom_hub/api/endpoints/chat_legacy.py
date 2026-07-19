@@ -39,14 +39,13 @@ def handle_workflow(q):
 
     from gnom_hub.agents.swarm.workflow_engine import create_workflow, start_workflow
     from gnom_hub.chat.chat_commands import _post_chat
-    from gnom_hub.db.connection import get_db_connection
+    from gnom_hub.db.connection import get_db_conn
     q = q.strip()
     if not q:
         return {"status": "error", "message": "Bitte gib eine Aufgabe an: @@workflow <Aufgabe>"}
     # Capabilities aus der DB laden
-    conn = get_db_connection()
-    caps = conn.execute('SELECT DISTINCT capability FROM agent_capabilities').fetchall()
-    conn.close()
+    with get_db_conn() as conn:
+        caps = conn.execute('SELECT DISTINCT capability FROM agent_capabilities').fetchall()
     available_caps = [r["capability"] for r in caps]
     if not available_caps:
         return {"status": "error", "message": "Keine Capabilities registriert. Starte den Hub neu."}

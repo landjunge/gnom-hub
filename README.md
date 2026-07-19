@@ -1,12 +1,14 @@
 # 🧠 Gnom-Hub
 
-> *Local-first multi-agent backend. 8 agents, 3 memory layers, 6 SQLite databases, zero cloud dependency.*
+> *Local-first multi-agent backend. 8 agents on localhost. Native Python + SQLite — no Docker required.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#-agent-roster)
 [![Memory](https://img.shields.io/badge/Memory-3_Layers_(Symbolic+Tiered+TKG)-brightgreen.svg)](#-memory-architecture)
-[![Tests](https://img.shields.io/badge/Tests-496_passed_(CI),_51_pre--existing-yellow.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-CI_local__ci.sh-yellow.svg)](#-tests)
+
+**Working plan (stability-first):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)
 
 🇬🇧 **English** • 🇩🇪 **[Deutsch (README.de.md)](README.de.md)**
 
@@ -14,7 +16,7 @@
 
 ## What is Gnom-Hub?
 
-Gnom-Hub is a FastAPI backend that runs 8 specialized agents on `localhost`. The agents share a SQLite-backed memory (3 layers) and a graph-based knowledge layer (TKG) for structured retrieval. Everything is local — no cloud calls in the core path.
+Gnom-Hub is a FastAPI backend that runs 8 specialized agents on `localhost`. The agents share SQLite-backed state/memory and optional TKG retrieval. The **host runs locally**; LLM providers are whatever you configure in `config/routing.txt` / the UI (often cloud APIs).
 
 The agents don't drown in their own tool-output history. Long bash results, search hits, and file contents are offloaded to disk; the agent's context keeps only a Mermaid canvas with `node_id` references for drill-down.
 
@@ -47,11 +49,11 @@ curl http://localhost:3002/api/health
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Browser (index.html + 9 JS modules)                        │
+│  Browser (index.html + JS modules)                          │
 └────────────────────────┬────────────────────────────────────┘
-                         │ HTTP/WS
+                         │ HTTP (+ optional SSE chat stream)
 ┌────────────────────────▼────────────────────────────────────┐
-│  FastAPI Hub (src/gnom_hub/api) — 30 routers, 220+ endpoints│
+│  FastAPI Hub (src/gnom_hub/api) — ~30 routers, ~160 routes  │
 │  ├─ chat         ├─ llm_agents    ├─ showbox                │
 │  ├─ llm_keys     ├─ llm_models    ├─ audio (TTS, STT)       │
 │  ├─ agents       ├─ state         ├─ workflows              │
@@ -62,16 +64,15 @@ curl http://localhost:3002/api/health
 │  8 Runtime Agents              │    │  Memory (3 layers)     │
 │  Worker: CoderAG · WriterAG ·  │    │  1. Symbolic Short-Term│
 │          EditorAG · ResearcherAG│    │  2. Tiered Long-Term   │
-│  System: SoulAG · GeneralAG ·  │    │     (3-tier SQLite)    │
-│          SecurityAG · WatchdogAG│    │  3. TKG (graph + vector│
-│  Routing: deterministic        │    │     + symbolic, RRF)   │
-│  capability resolver (557 LOC) │    │                        │
+│  System: GeneralAG (default    │    │     (3-tier SQLite)    │
+│    chat) · SoulAG · SecurityAG │    │  3. TKG (optional)     │
+│    · WatchdogAG                │    │                        │
 └────────┬───────────────────────┘    └────────────┬───────────┘
          │                                         │
 ┌────────▼─────────────────────────────────────────────────────┐
-│  LLM Router (provider-fallback chain)                       │
-│  MiniMax → OpenAI-Compat → DeepSeek → Ollama (local)        │
-│  + Key-Reconciler from ~/Desktop/api_keys.txt               │
+│  LLM Router — follows config/routing.txt + UI llm_agents     │
+│  Fallback chain per provider (e.g. OpenRouter free rotation, │
+│  then Ollama if configured). Key-reconcile: Desktop api_keys │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -323,8 +324,8 @@ pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_r
 
 | Agent | Role | Responsibility |
 |-------|------|----------------|
-| **SoulAG** | Orchestrator | Routes user intent to the right worker, monitors soul-level invariants |
-| **GeneralAG** | Multi-capability | Generic fallback for non-specialist tasks, holds worker performance stats |
+| **GeneralAG** | **Default chat orchestrator** | User messages without `@target` go here; delegates to workers |
+| **SoulAG** | Observer / memory | Facts, nudge loop, background observation — not default chat entry |
 | **WatchdogAG** | Self-healing | Restarts failed agents, monitors heartbeat, recovers stuck tasks |
 | **SecurityAG** | Permissions | Grants/revokes path + shell permissions, audits every write |
 | **CoderAG** | Code worker | Code generation, refactoring, debugging, `[WRITE:]` actions |
@@ -338,7 +339,7 @@ Five additional TKG-domain role configs live in `config/agents/` (MemoryArchitec
 
 ## 🗄️ Database Architecture
 
-The hub uses **6 specialized SQLite databases** in `~/.gnom-hub-3003/data/`. Each has exactly one responsibility — no multi-tenant chaos, no shared tables. Here's how a user query flows through them:
+The hub uses **6 specialized SQLite databases** under `~/.gnom-hub/data/` (port-specific home if not 3002). Each has one main responsibility. Here's how a user query flows through them:
 
 ```mermaid
 sequenceDiagram
@@ -414,26 +415,22 @@ The **bootstrap mode** is what makes the system resilient: legacy DBs without `s
 ## 🧪 Tests
 
 ```bash
-# Full suite (730 passed, 54 pre-existing failures ignored — FAISS, /Users, etc.)
-python3 -m pytest tests/ --ignore=tests/test_faiss_lock.py
-
-# Same sequence GitHub CI runs (496 passed, 7 skipped):
+# Same sequence as CI / pre-push (authoritative green bar):
 ./scripts/local_ci.sh
 # (install as pre-push hook: ./scripts/install-pre-push-hook.sh)
 
-# Just the TKG tests (52 passed, canary included):
+# Just the TKG tests:
 pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_repository.py tests/test_tkg_brain_correctness.py
 
 # Smoke against running hub
 curl http://localhost:3002/api/health
 curl http://localhost:3002/api/agents
-curl http://localhost:3002/api/memory/kpis
+curl http://localhost:3002/api/stats
 ```
 
-**Test counts (real, last run 2026-07-11):**
-- Full suite (FAISS skipped): **730 passed, 23 skipped, 54 failed** (fails are pre-existing: Mac-only paths, missing sentence-transformers, golden-prompt outdated)
-- CI sequence (with full ignore list): **496 passed, 7 skipped, 0 failed**
-- TKG only: **52 passed, 0 failed** (4 files: test_memory_tkg, test_memory_tkg_phase2, test_kpi_repository, test_tkg_brain_correctness)
+**Test counts (approx., 2026-07-19):**
+- CI sequence (`local_ci.sh` ignore list): **~537 passed, 3 skipped, 0 failed**
+- Counts drift; always trust the last green `local_ci.sh` run
 
 ---
 
@@ -485,10 +482,11 @@ gnom-hub/
 
 ## 📚 Further Reading
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — verified architecture (sync with code)
-- [`docs/tencentdb-comparison.md`](docs/tencentdb-comparison.md) — how the memory system maps to TencentDB Agent Memory research
-- [`audit/02-functional-tests.md`](audit/02-functional-tests.md) — last functional-test sweep
-- [`README.de.md`](README.de.md) — diese Datei auf Deutsch
+- [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md) — **working plan** (speed + reliability first)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture (sync with code)
+- [`docs/README_CODE_ALIGNMENT_2026-07.md`](docs/README_CODE_ALIGNMENT_2026-07.md) — README vs code audit
+- [`docs/tencentdb-comparison.md`](docs/tencentdb-comparison.md) — memory architecture notes
+- [`README.de.md`](README.de.md) — German version
 
 ---
 

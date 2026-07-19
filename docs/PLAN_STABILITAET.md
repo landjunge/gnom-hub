@@ -84,7 +84,7 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 - [x] READMEs inventarisiert + Code-Abgleich  
 - [x] Strategie ohne Docker/Sandbox  
 - [x] MiniMax-Force entfernt  
-- [ ] Root-README an Code anpassen (GeneralAG-Default, Routing, Testzahlen) — **offen**  
+- [x] Root-README + README.de an Code anpassen (GeneralAG-Default, Routing, Testzahlen)  
 - [ ] Branch `main` vs `master` klären (main veraltet/marketing) — **offen, nur wenn User will**  
 
 **Exit:** Keine Doku behauptet mehr Sandbox/Docker/SoulAG-Default als Wahrheit.
@@ -115,7 +115,7 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 | S2.1 | Limits halten (pending/concurrent) — schon da, im Alltag prüfen | unter Last stabil |
 | S2.2 | NACK-Pfad beobachten (Free-LLM Spam) | keine Endlos-Retry-Stürme |
 | S2.3 | Worker dürfen sich nicht gegenseitig volldispatchen | nur GeneralAG auto-@ (schon) |
-| S2.4 | Optional **nur wenn nötig:** Hub-Claim-API (Claim nur im Hub-Prozess, HTTP) — **ohne** Docker/NATS | weniger BEGIN IMMEDIATE von 8 Prozessen |
+| S2.4 | Hub-Claim-API (Default `GNOM_QUEUE_MODE=hub`) — Claim/Ack/Nack nur im Hub | weniger BEGIN IMMEDIATE von 8 Prozessen |
 | S2.5 | `@@queue clear` / admin clear als Ops-Routine | dokumentiert, 1 Befehl |
 
 **Exit:** 1 h Dauerbetrieb: Chat ok, Queue nicht permanent &gt; Limits, 8 Agenten nicht zombie.
