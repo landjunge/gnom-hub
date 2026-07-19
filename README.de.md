@@ -1,7 +1,7 @@
 # 🧠 Gnom-Hub
 
 > **Die lokale Multi-Agenten-Schmiede.**
-> *8 Agenten · Symbolischer Kurzzeitspeicher · Geschichteter Langzeitspeicher · Null Cloud-Abhängigkeit.*
+> *8 Agenten · Core auf localhost (nativ, kein Docker) · LLM nur wie in `routing.txt` / UI konfiguriert.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-CI_local__ci.sh-yellow.svg)](#-tests)
@@ -19,7 +19,7 @@
 
 ## Was ist Gnom-Hub?
 
-Gnom-Hub ist ein **lokales Multi-Agenten-Backend** mit Web-UI. Acht spezialisierte Agenten (4 Worker + 4 System) arbeiten über einen zentralen FastAPI-Server zusammen. Alles läuft auf `localhost`, persistiert in SQLite, und hat **keine Cloud-Abhängigkeit** für den Core-Betrieb.
+Gnom-Hub ist ein **lokales Multi-Agenten-Backend** mit Web-UI. Acht spezialisierte Agenten (4 Worker + 4 System) arbeiten über einen zentralen FastAPI-Server zusammen. Der **Hub läuft auf `localhost`** (nativ, SQLite) — **ohne Docker**. LLM-Aufrufe gehen nur an Provider, die du in `config/routing.txt` / der UI setzt (oft Cloud-APIs, optional lokal z. B. Ollama).
 
 **Kernidee:** die Agenten ertrinken nicht in ihrer eigenen Tool-Output-Historie. Gnom-Hub übernimmt ein Konzept aus der [TencentDB Agent Memory](docs/tencentdb-comparison.md)-Forschung: ein **symbolischer Kurzzeitspeicher** (Mermaid-Canvas + node_id Drill-Down) komprimiert lange Tool-Outputs in kompakte Symbole, und ein **geschichteter Langzeitspeicher** hält häufig genutztes Wissen (L0 Konversation → L3 Persona) griffbereit.
 
@@ -45,6 +45,26 @@ curl http://localhost:3002/api/health
 ```
 
 **Browser:** `http://localhost:3002` — Single-Page-App mit Chat, Agent-Dashboards, Showbox (Präsentations-Layer).
+
+### Betrieb (nach Start / bei Problemen)
+
+```bash
+# Erwartung: status ok, healthy: 8
+curl -s http://127.0.0.1:3002/api/health | python3 -m json.tool
+curl -s http://127.0.0.1:3002/api/stats | python3 -m json.tool
+
+# Chat (Default → GeneralAG). Feld heißt content:
+curl -s -X POST http://127.0.0.1:3002/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"ping"}'
+# → {"status":"dispatched","asked":["GeneralAG"], ...}
+
+# Im UI-Chat (Ops):
+#   @@queue stats
+#   @@queue clear          # pending/processing → DLQ (bei Queue-Storm)
+```
+
+Queue-Claim läuft standardmäßig über den Hub (`GNOM_QUEUE_MODE=hub`): weniger SQLite-Writer-Konflikte von 8 Agenten-Prozessen. Details: [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md).
 
 ---
 
@@ -343,7 +363,7 @@ sequenceDiagram
     participant U as 🌐 User
     participant H as ⚡ Hub
     participant R as 📋 Rules
-    participant S as 🧠 SoulAG
+    participant G as 🧠 GeneralAG
     participant M as 💾 gnomhub
     participant C as 📍 Context
     participant L as 📊 Coordination
@@ -351,21 +371,23 @@ sequenceDiagram
     U->>H: "Schreib ein Python-Script"
     H->>R: Check rules
     R-->>H: ✓ erlaubt
-    H->>S: Routing
-    S->>C: open_context(id)
+    H->>G: Default-Chat-Dispatch
+    G->>C: open_context(id)
     C->>C: log "started"
-    S->>M: SELECT workers
-    M-->>S: CoderAG: 0.95
-    S->>L: get_worker_stats
-    L-->>S: 23 jobs · 96%
-    S->>M: INSERT chat
-    S->>CoderAG: delegieren
+    G->>M: SELECT workers
+    M-->>G: CoderAG: 0.95
+    G->>L: get_worker_stats
+    L-->>G: 23 jobs · 96%
+    G->>M: INSERT chat
+    G->>CoderAG: delegieren
     CoderAG->>M: WRITE script.py
     CoderAG-->>H: response
     H->>M: audit_log
     H->>C: log "completed"
     H-->>U: Antwort
 ```
+
+> **SoulAG** ist Beobachter/Memory — **nicht** der Default-Chat-Eingang. User-Nachrichten ohne `@target` gehen an **GeneralAG**.
 
 ### Wie ein Hub-Start die Datenbank behandelt
 
@@ -412,16 +434,19 @@ Der **Bootstrap-Modus** macht das System resilient: Legacy-DBs ohne `schema_migr
 ## 🧪 Tests
 
 ```bash
-# Komplette Suite (660+ grün, pre-existing numpy/FAISS-Failures ignoriert)
-python3 -m pytest tests/ --ignore=tests/test_faiss_lock.py
+# Wie CI / pre-push (maßgeblich grün):
+./scripts/local_ci.sh
 
-# Nur die neuen tencentdb-agent-memory Tests (35 Tests)
+# Nur Offload + Routing
 python3 -m pytest tests/test_offload.py tests/test_routing.py
 
 # Smoke gegen laufenden Hub
 curl http://localhost:3002/api/health
 curl http://localhost:3002/api/agents
+curl http://localhost:3002/api/stats
 ```
+
+**Testzahlen (ca. 2026-07):** CI-Sequenz `local_ci.sh` ~537 passed — Zahlen driften; letzte grüne `local_ci.sh`-Lauf ist maßgeblich.
 
 **Test-Coverage-Highlights:**
 - `tests/test_offload.py` — 14 Tests: Mermaid-Canvas, node_id-Resolution, Path-Traversal-Defense, Atomic-Writes
@@ -433,17 +458,21 @@ curl http://localhost:3002/api/agents
 ## 🔧 Konfiguration
 
 ```bash
-# .env (lebt in config/.env)
-MINIMAX_API_KEY=sk-...
-BRAVE_SEARCH_API_KEY=BSA...
-DEEPSEEK_API_KEY=sk-...
-ELEVENLABS_API_KEY=sk-...     # optional, für TTS-Fallback
+# config/.env — Keys nur was du nutzt (kein Provider wird erzwungen)
+OPENROUTER_API_KEY=sk-or-...   # oft Default in routing.txt: openrouter/free
+# MINIMAX_API_KEY=sk-...       # optional, nur wenn du MiniMax in routing/UI setzt
+BRAVE_SEARCH_API_KEY=BSA...    # optional
+ELEVENLABS_API_KEY=sk-...      # optional TTS
 
-# Optional: Context-Offload aktivieren
+# Queue: Claim über Hub (Default wenn gesetzt)
+GNOM_QUEUE_MODE=hub
+
+# Optional: Context-Offload
 GNOM_HUB_OFFLOAD_ENABLED=true
 ```
 
-**LLM-Key-Quelle:** der Key-Reconciler liest beim Start aus `~/Desktop/api_keys.txt`, so kannst du API-Keys in deinen Desktop-Notes halten statt sie zu committen.
+**LLM-Routing:** `config/routing.txt` + UI. **Kein** erzwungener MiniMax-Default.  
+**Key-Quelle:** Reconciler kann beim Start `~/Desktop/api_keys.txt` mergen (nicht committen).
 
 ---
 
@@ -464,7 +493,7 @@ gnom-hub/
 │   ├── audio/                       # TTS (ElevenLabs + Provider-Fallback)
 │   ├── chat/                        # Chat-Router + Brainstorm
 │   └── infrastructure/              # Hub-App, Logging, Process-Manager
-├── tests/                           # 47 Test-Files, 660+ Tests grün
+├── tests/                           # Test-Suite (siehe local_ci.sh)
 ├── docs/                            # Architektur-Doku
 │   ├── tencentdb-comparison.md      # Memory-Architecture-Referenz
 │   └── ARCHITECTURE.md              # Verifizierte Architektur (nicht das Marketing)
@@ -478,10 +507,11 @@ gnom-hub/
 
 ## 📚 Mehr Lesen
 
+- [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md) — Stabilität zuerst (verbindlicher Arbeitsplan)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — verifizierte Architektur (sync mit Code)
-- [`docs/tencentdb-comparison.md`](docs/tencentdb-comparison.md) — wie unser Speicher-System zur TencentDB-Agent-Memory-Forschung mappt
-- [`audit/02-functional-tests.md`](audit/02-functional-tests.md) — letzter Functional-Test-Sweep
-- [`README.md`](README.md) — diese Datei auf Englisch
+- [`docs/tencentdb-comparison.md`](docs/tencentdb-comparison.md) — Speicher vs. TencentDB-Agent-Memory-Forschung
+- [`docs/README_CODE_ALIGNMENT_2026-07.md`](docs/README_CODE_ALIGNMENT_2026-07.md) — README vs. Code
+- [`README.md`](README.md) — English
 
 ---
 

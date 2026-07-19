@@ -44,6 +44,26 @@ curl http://localhost:3002/api/health
 
 **Browser:** `http://localhost:3002` — single-page app with chat, agent dashboards, showbox (presentation layer).
 
+### Ops (after start / when something feels wrong)
+
+```bash
+# Expect: status ok, healthy: 8
+curl -s http://127.0.0.1:3002/api/health | python3 -m json.tool
+curl -s http://127.0.0.1:3002/api/stats | python3 -m json.tool
+
+# Chat (default → GeneralAG). Body field is content:
+curl -s -X POST http://127.0.0.1:3002/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"content":"ping"}'
+# → {"status":"dispatched","asked":["GeneralAG"], ...}
+
+# In UI chat:
+#   @@queue stats
+#   @@queue clear          # pending/processing → DLQ (queue storm)
+```
+
+Queue claims go through the hub by default (`GNOM_QUEUE_MODE=hub`) so eight agents do not all `BEGIN IMMEDIATE` on SQLite. See [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md).
+
 ---
 
 ## 🏗️ Architecture
@@ -347,29 +367,31 @@ sequenceDiagram
     participant U as 🌐 User
     participant H as ⚡ Hub
     participant R as 📋 Rules
-    participant S as 🧠 SoulAG
+    participant G as 🧠 GeneralAG
     participant M as 💾 gnomhub
     participant C as 📍 Context
     participant L as 📊 Coordination
 
-    U->>H: "Schreib ein Python-Script"
+    U->>H: "Write a Python script"
     H->>R: Check rules
-    R-->>H: ✓ erlaubt
-    H->>S: Routing
-    S->>C: open_context(id)
+    R-->>H: ✓ allowed
+    H->>G: Default chat dispatch
+    G->>C: open_context(id)
     C->>C: log "started"
-    S->>M: SELECT workers
-    M-->>S: CoderAG: 0.95
-    S->>L: get_worker_stats
-    L-->>S: 23 jobs · 96%
-    S->>M: INSERT chat
-    S->>CoderAG: delegieren
+    G->>M: SELECT workers
+    M-->>G: CoderAG: 0.95
+    G->>L: get_worker_stats
+    L-->>G: 23 jobs · 96%
+    G->>M: INSERT chat
+    G->>CoderAG: delegate
     CoderAG->>M: WRITE script.py
     CoderAG-->>H: response
     H->>M: audit_log
     H->>C: log "completed"
-    H-->>U: Antwort
+    H-->>U: Answer
 ```
+
+> **SoulAG** is observer/memory — **not** the default chat entry. Messages without `@target` go to **GeneralAG**.
 
 ### How a Hub-Start handles the Database
 
@@ -438,17 +460,21 @@ curl http://localhost:3002/api/stats
 ## 🔧 Configuration
 
 ```bash
-# .env (lives in config/.env)
-MINIMAX_API_KEY=sk-...
-BRAVE_SEARCH_API_KEY=BSA...
-DEEPSEEK_API_KEY=sk-...
-ELEVENLABS_API_KEY=sk-...     # optional, for TTS fallback
+# config/.env — only keys you use (no provider is forced)
+OPENROUTER_API_KEY=sk-or-...   # common default in routing.txt: openrouter/free
+# MINIMAX_API_KEY=sk-...       # optional — only if you set MiniMax in routing/UI
+BRAVE_SEARCH_API_KEY=BSA...    # optional
+ELEVENLABS_API_KEY=sk-...      # optional TTS
 
-# Optional: enable context-offload
+# Queue: hub-side claim (default when set)
+GNOM_QUEUE_MODE=hub
+
+# Optional: context offload
 GNOM_HUB_OFFLOAD_ENABLED=true
 ```
 
-**LLM key source:** the key-reconciler reads from `~/Desktop/api_keys.txt` at startup, so you can keep API keys in your desktop notes rather than committing them.
+**LLM routing:** `config/routing.txt` + UI. **No** forced MiniMax default.  
+**Key source:** reconciler may merge `~/Desktop/api_keys.txt` at startup (do not commit).
 
 ---
 
@@ -484,6 +510,7 @@ gnom-hub/
 ## 📚 Further Reading
 
 - [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md) — **working plan** (speed + reliability first)
+- [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md) — stability-first working plan
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture (sync with code)
 - [`docs/README_CODE_ALIGNMENT_2026-07.md`](docs/README_CODE_ALIGNMENT_2026-07.md) — README vs code audit
 - [`docs/tencentdb-comparison.md`](docs/tencentdb-comparison.md) — memory architecture notes

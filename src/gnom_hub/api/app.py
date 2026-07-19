@@ -113,35 +113,60 @@ async def start_recovery_and_watchdog_loop(db_path: Path):
                         await loop.run_in_executor(None, recover_degraded, name)
 
                 elif status == "quarantined":
-                    # Auto-Recovery: quarantined Agents kommen nach 5 Min wieder,
-                    # sofern der zugrundeliegende Process läuft. Vorher: Quarantäne
-                    # war permanent (3 Restarts in 10 Min → für immer tot).
-                    # User-Mandat 2026-07-11: System soll sich selbst heilen.
-                    # 2026-07-11 20:49 — Bug-Fix: drift < 600s entfernt. Wenn der
-                    # Process nach 5+ Min noch lebt, sofort recovern — kein oberes
-                    # Drift-Limit. Wenn der Process tot ist, hart restarten.
-                    quarantine_limit = 300.0
-                    if drift > quarantine_limit:
-                        proc = _get_proc(name)
-                        if proc is not None:
-                            print(f"♻️  [WATCHDOG] Agent {name} war {int(drift)}s in Quarantäne, Process läuft. Auto-Recovery → online.")
-                            def recover_quarantined(n):
-                                conn = get_db_connection()
-                                try:
-                                    conn.execute("""
-                                        UPDATE agents
-                                        SET status = 'online', circuit_state = 'HALF_OPEN', consecutive_failures = 0, last_seen = ?
-                                        WHERE name = ? AND status = 'quarantined'
-                                    """, (datetime.now(timezone.utc).isoformat(), n))
-                                    conn.commit()
-                                finally:
-                                    conn.close()
-                            await loop.run_in_executor(None, recover_quarantined, name)
-                            restart_tracker.pop(name, None)
-                        else:
-                            # Process tot — hart restarten, dann HALF_OPEN lassen
-                            print(f"♼ [WATCHDOG] Agent {name} quarantined, Process tot. Hart-Restart.")
+                    # Auto-Recovery (Stabilität 2026-07-19):
+                    # Früher: Recovery hing an last_seen-Drift > 300s. Heartbeats
+                    # nach Hard-Restart setzten last_seen frisch → Drift blieb klein
+                    # → Agent blieb dauerhaft quarantined trotz laufendem Prozess
+                    # (Chat: "GeneralAG ist nicht erreichbar status=quarantined").
+                    #
+                    # Neu:
+                    # 1) Process läuft + frischer Heartbeat → sofort HALF_OPEN/online
+                    # 2) Process tot → Hard-Restart UND Status auf online setzen
+                    #    (sonst bleibt Quarantäne nach Restart hängen)
+                    # Crash-Schleifen-Schutz bleibt über restart_tracker (3/10 Min).
+                    proc = _get_proc(name)
+                    now_ts = time.time()
+
+                    def recover_quarantined(n):
+                        conn = get_db_connection()
+                        try:
+                            conn.execute("""
+                                UPDATE agents
+                                SET status = 'online', circuit_state = 'HALF_OPEN',
+                                    consecutive_failures = 0, last_seen = ?
+                                WHERE name = ? AND status = 'quarantined'
+                            """, (datetime.now(timezone.utc).isoformat(), n))
+                            conn.commit()
+                        finally:
+                            conn.close()
+
+                    if proc is not None and drift < 120.0:
+                        print(
+                            f"♻️  [WATCHDOG] Agent {name} quarantined, Process lebt "
+                            f"(heartbeat drift {int(drift)}s). Auto-Recovery → online."
+                        )
+                        await loop.run_in_executor(None, recover_quarantined, name)
+                        restart_tracker.pop(name, None)
+                    elif proc is None:
+                        # Throttle hard-restarts while quarantined (max 1 / 90s)
+                        qr_key = f"qr:{name}"
+                        last_qr = (restart_tracker.get(qr_key) or [0.0])[-1]
+                        if now_ts - last_qr >= 90.0:
+                            print(
+                                f"♼ [WATCHDOG] Agent {name} quarantined, Process tot. "
+                                f"Hart-Restart + Status → online (HALF_OPEN)."
+                            )
                             await loop.run_in_executor(None, restart_single_agent, name)
+                            await loop.run_in_executor(None, recover_quarantined, name)
+                            restart_tracker.setdefault(qr_key, []).append(now_ts)
+                            history = [ts for ts in restart_tracker.get(name, []) if now_ts - ts < 600.0]
+                            history.append(now_ts)
+                            restart_tracker[name] = history
+                            if len(history) >= 3:
+                                print(
+                                    f"🚨 [WATCHDOG] Agent {name} erneut Crash-Schleife "
+                                    f"nach Quarantäne-Restart. Bleibt beobachtet."
+                                )
 
                 elif should_be_online:
                     proc = _get_proc(name)
