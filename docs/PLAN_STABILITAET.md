@@ -152,7 +152,7 @@ Browser ──HTTP──► Hub (FastAPI, nativ, :3002)
 |---|--------|-----------|------------------|
 | S4.1 | Tote Chat-Pfade mergen/löschen | ein Chat-Pfad | ✅ Live = `chat_legacy` only; `chat.py` DEAD not mounted |
 | S4.2 | Ein Agent-Startstil überall | kein agents.*AG-Doppelstart | ✅ nur `agents.run_agent`; `start_agents.sh` kill+PID; `start_gnom_hub` startet Agents |
-| S4.3 | CI-Ignore-Liste schrumpfen (nur echte Live-Tests draußen) | weniger blinde Flecken | ✅ `test_permissions_repo` + `test_routing` wieder in CI; Browser/Preset/Stress bleiben draußen |
+| S4.3 | CI-Ignore-Liste schrumpfen (nur echte Live-Tests draußen) | weniger blinde Flecken | ✅ +`permissions_repo` +`routing` +`security_suite` (an Ist angepasst); Browser/Preset/Stress draußen |
 | S4.4 | ARCHITECTURE.md = Default GeneralAG | Doku = Code | ✅ §5 Chat-Flow korrigiert (war noch SoulAG-Default) |
 
 ---
@@ -204,9 +204,10 @@ Erwartung: `healthy: 8`, `pending` klein, Chat-Send &lt; 1 s, `ops_check` Exit
 4. ~~**S2.1–S2.3** Limits/NACK/Fanout~~ ✅ (Code + Supervisor R10 STRICT)  
 5. ~~**S4.1/S4.2/S4.4** Chat-Pfad / Startstil / ARCHITECTURE~~ ✅  
 6. ~~**S3** Fail-Meldungen + Anti-Spam + ops_check~~ ✅  
-7. **S4.3** CI-Ignore nur bei Bedarf schrumpfen  
-8. Quarantäne-Recovery ✅; Claim-Timeout Agent ≥ Hub-Wartezeit  
-9. Alltag: `./scripts/ops_check.sh` nach Restart
+7. ~~**S4.3** CI-Ignore schrumpfen~~ ✅ (+security_suite)  
+8. ~~Claim HTTP ≥ long-poll~~ ✅ (`agent_base._hub_claim`)  
+9. Alltag: `./scripts/ops_check.sh` nach Restart  
+10. **S5** nur auf expliziten User-Wunsch
 
 ---
 

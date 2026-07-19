@@ -140,8 +140,17 @@ class BaseAgent:
             return await loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
 
         def _hub_claim(timeout: float = 0.5):
-            """Claim via hub HTTP — only hub process holds SQLite lease locks."""
-            r = self._req("post", "/api/queue/claim", {"agent": self.n, "timeout": timeout})
+            """Claim via hub HTTP — only hub process holds SQLite lease locks.
+
+            HTTP client timeout must exceed long-poll wait (PLAN claim HTTP ≥ claim wait).
+            """
+            http_to = max(float(timeout) + 2.0, 5.0)
+            r = self._req(
+                "post",
+                "/api/queue/claim",
+                {"agent": self.n, "timeout": timeout},
+                timeout=http_to,
+            )
             if not r or r.get("status") != "ok":
                 return None
             return r.get("message")

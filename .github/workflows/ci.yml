@@ -74,9 +74,8 @@ jobs:
           #  - test_gnom_hub: braucht DB-State
           #  - test_migrations: file-not-found im Linux-CI layout
           #  - test_openrouter: network call
-          #  - test_security_suite: prompts + permissions teilweise veraltet
           #  - test_workspace_config: /private/var-Pfad-Validierung (Mac-only)
-          # permissions_repo + routing wieder in CI (2026-07-19)
+          # permissions_repo + routing + security_suite wieder in CI (2026-07-19)
           pytest tests/ -q \
             --ignore=tests/test_stress_50.py \
             --ignore=tests/test_faiss_lock.py \
@@ -91,7 +90,6 @@ jobs:
             --ignore=tests/test_gnom_hub.py \
             --ignore=tests/test_migrations.py \
             --ignore=tests/test_openrouter.py \
-            --ignore=tests/test_security_suite.py \
             --ignore=tests/test_workspace_config.py
 
       - name: Ruff format check
