@@ -34,7 +34,7 @@
 - 8 Agenten, FastAPI-Hub, Chat, Queue (`agent_messages`), Showbox  
 - Security (Path + Grants), LLM-Routing, Health/Ops  
 - Memory/TKG/Offload als Module (teilweise optional / nicht im Kern-Loop)  
-- Start/Stop-Scripts, Tests (CI ~537 grün mit Ignore-Liste)
+- Start/Stop-Scripts, Tests (CI ~559 grün mit Ignore-Liste, 3.10+3.11)
 
 ### Bereits verbessert (behalten)
 - Doppel-Agent-Spawn weitgehend behoben  
@@ -45,15 +45,22 @@
 - Ops: Queue/Leases in Sidebar, SSE-Chat  
 - MiniMax-Force **rückgängig** (Routing = Config/UI)  
 - Strategie: Docker/Sandbox raus  
+- **GNOM_QUEUE_MODE=hub** (Claims über Hub)  
+- **SOUL_AUTO_DISPATCH=0** (Default; Soul schiebt keine Worker-Tasks)  
+- User-Chat-Fanout: nur Ziel-Agent (`only=`), multi-@ Slices  
+- WRITE-Continue nach READ-only; Action-Input nicht mehr bei 6k abgeschnitten  
+- Workspace-Pfad-Doppelprefix (`gnom-Workspace/default/…` unter wd) normalisiert  
+- Runtime-Permissions-Matrix in `agent_definitions` + Tests  
+- Root-README DE/EN an Ist-Stand 2026-07-19  
 
 ### Offene Risiken (das ist der Plan-Inhalt)
-1. SQLite Multi-Writer unter Last (Hub + 8 Agenten)  
+1. SQLite Multi-Writer unter Last (Hub + 8 Agenten) — gemildert durch hub-queue  
 2. Connection-Hygiene / verbleibende Lock-Hotspots  
-3. Queue kann wieder volllaufen (Spam, Worker-Mentions)  
+3. Queue kann wieder volllaufen (Spam)  
 4. Free-LLM liefert oft Müll → NACK hilft, UX bleibt schwach  
-5. Doku-Drift (Root-README, Branch `main` vs `master`)  
-6. Halb tote Pfade / ignorierte Tests  
-7. Optional: Agenten claimen noch direkt in SQLite (BEGIN IMMEDIATE)  
+5. Halb tote Pfade / ignorierte Tests  
+6. Doppelte `run_agent`-PIDs wenn Start-Skript mehrfach läuft  
+
 
 ---
 

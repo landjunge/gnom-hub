@@ -3,13 +3,13 @@
 > *Local-first multi-agent backend. 8 agents on localhost. Native Python + SQLite — no Docker required.*
 
 [![License](https://img.shields.io/badge/License-Private_Use-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](#)
+[![Python](https://img.shields.io/badge/Python-3.10%2B_(CI)_·_≥3.9-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#-agent-roster)
 [![Memory](https://img.shields.io/badge/Memory-3_Layers_(Symbolic+Tiered+TKG)-brightgreen.svg)](#-memory-architecture)
-[![Tests](https://img.shields.io/badge/Tests-CI_local__ci.sh-yellow.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-CI_~559_pass-brightgreen.svg)](#-tests)
 
-**Working plan (stability-first):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)  
-**GitHub:** default branch is **`master`** (`main` tracks the same tip).
+**Docs as of:** 2026-07-19 · default branch **`master`**  
+**Working plan (stability-first):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)
 
 🇬🇧 **English** • 🇩🇪 **[Deutsch (README.de.md)](README.de.md)**
 
@@ -343,18 +343,36 @@ pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_r
 
 ## 👥 Agent Roster
 
-| Agent | Role | Responsibility |
-|-------|------|----------------|
-| **GeneralAG** | **Default chat orchestrator** | User messages without `@target` go here; delegates to workers |
-| **SoulAG** | Observer / memory | Facts, nudge loop, background observation — not default chat entry |
-| **WatchdogAG** | Self-healing | Restarts failed agents, monitors heartbeat, recovers stuck tasks |
-| **SecurityAG** | Permissions | Grants/revokes path + shell permissions, audits every write |
-| **CoderAG** | Code worker | Code generation, refactoring, debugging, `[WRITE:]` actions |
-| **WriterAG** | Text worker | Long-form text, blog posts, documentation |
-| **EditorAG** | Polish worker | Proofreading, style cleanup, formatting |
-| **ResearcherAG** | Research worker | Web search, GitHub research, fact gathering |
+Runtime permissions are defined **only** in `src/gnom_hub/agents/agent_definitions.py` → `get_soul()` (not the optional gitignored preset under `data/`).
 
-Five additional TKG-domain role configs live in `config/agents/` (MemoryArchitect, GraphEngineer, CuratorAgent, RetrievalEngineer, PerfArchitect) but are not registered as runtime agents — they are invoked through their Python classes (`CuratorAgent.curate(...)`, `RetrievalEngine.query(...)`, etc.) by code that wants the TKG behaviour, not through the Hub's orchestrator.
+| Agent | Role | Core runtime permissions | Typical actions |
+|-------|------|--------------------------|-----------------|
+| **GeneralAG** | **Default chat orchestrator** | `read`, `@job`, `general_memory`, `showbox_write` | Delegates; **no** self `[WRITE:]`/`[SHELL:]` |
+| **SoulAG** | Observer / memory / TKG | `read`, `write`, `showbox_write` | Facts, nudge; **not** default chat entry; auto-dispatch **off** (`SOUL_AUTO_DISPATCH=0`) |
+| **WatchdogAG** | Self-healing | `read`, `showbox_write` | Heartbeats, stuck recovery; **no** shell/write |
+| **SecurityAG** | Operator / grants | full toolbox including **`godmode`**, `db_write`, `grant_perm` | Only agent with godmode |
+| **CoderAG** | Code worker | `read`, `write`, `run`/`shell`/`code`, `web_search`, `showbox_write` | `[WRITE:]`, `[READ:]`, `[SCREENSHOT:]`, `[SHELL:]` |
+| **WriterAG** | Text worker | `read`, `write`, `crawl`, `web_search`, `showbox_write` | `[WRITE:]` long-form / overview HTML |
+| **EditorAG** | QA worker | `read`, `write`, `web_search`, `showbox_write` | `[VERIFY:]`, review writes; **no** shell |
+| **ResearcherAG** | Research worker | `read`, `write`, `crawl`, `web_search`, `browser`, `showbox_write` | `[READ:]`, extract `[WRITE:]`, web/browser |
+
+Five additional TKG-domain role configs live in `config/agents/` (MemoryArchitect, GraphEngineer, CuratorAgent, RetrievalEngineer, PerfArchitect) but are **not** runtime hub agents — call their Python classes directly if needed.
+
+### Multi-agent collaboration (as of 2026-07)
+
+```
+User chat  ──►  GeneralAG only   (nested @Workers in the plan are instructions, not fan-out)
+GeneralAG  ──►  atomic slices    (one queue row per @Worker)
+Workers    ──►  files under ~/gnom-Workspace/<project>/
+```
+
+- **Queue:** `GNOM_QUEUE_MODE=hub` — claims via hub, fewer SQLite writer collisions  
+- **Soul:** `SOUL_AUTO_DISPATCH` defaults to **`0`** — SoulAG does not auto-fan workers  
+- **Delivery tags:** `[WRITE: path]…[/WRITE]`, `[READ: …]`, `[SCREENSHOT: html | out=…png]`, `[VERIFY: …|must_contain=Gnom-Hub]`  
+- **Paths:** relative to workspace root (e.g. `demo/v1/index.html`). Leading `gnom-Workspace/default/` is stripped so agents do not create nested doubles  
+- **Hub README:** workers may **read-only** hub `README*.md` paths  
+
+Default workspace project: `~/gnom-Workspace/default/`.
 
 ---
 
@@ -438,22 +456,20 @@ The **bootstrap mode** is what makes the system resilient: legacy DBs without `s
 ## 🧪 Tests
 
 ```bash
-# Same sequence as CI / pre-push (authoritative green bar):
+# Same sequence as GitHub Actions / pre-push (authoritative green bar):
 ./scripts/local_ci.sh
-# (install as pre-push hook: ./scripts/install-pre-push-hook.sh)
+# = ruff check src/ tests/  +  pytest with the CI ignore list
 
-# Just the TKG tests:
-pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_repository.py tests/test_tkg_brain_correctness.py
-
-# Smoke against running hub
-curl http://localhost:3002/api/health
-curl http://localhost:3002/api/agents
-curl http://localhost:3002/api/stats
+# Smoke against a running hub
+curl -s http://127.0.0.1:3002/api/health | python3 -m json.tool
 ```
 
-**Test counts (approx., 2026-07-19):**
-- CI sequence (`local_ci.sh` ignore list): **~537 passed, 3 skipped, 0 failed**
-- Counts drift; always trust the last green `local_ci.sh` run
+**CI (GitHub Actions on `master`):** Python **3.10** and **3.11**, job “Lint + Test”.  
+**Counts (2026-07-19):** CI ignore list ≈ **559 passed**, 3 skipped — drifts; trust the latest green run on `master`.
+
+Intentionally ignored in CI (not “secret red tests”): browser/Playwright suites, `test_default_preset_content` (gitignored `data/`), `test_permissions_repo`, stress/golden/mac-only pieces.
+
+**In-CI highlights:** permission matrix, swarm fan-out/`only=`, path validator (incl. workspace double-prefix), delivery VERIFY/SCREENSHOT, offload, TKG unit tests.
 
 ---
 
@@ -466,15 +482,19 @@ OPENROUTER_API_KEY=sk-or-...   # common default in routing.txt: openrouter/free
 BRAVE_SEARCH_API_KEY=BSA...    # optional
 ELEVENLABS_API_KEY=sk-...      # optional TTS
 
-# Queue: hub-side claim (default when set)
-GNOM_QUEUE_MODE=hub
+# Queue: hub-side claim (recommended)
+export GNOM_QUEUE_MODE=hub
+
+# Soul: no automatic worker orchestration (default)
+export SOUL_AUTO_DISPATCH=0
 
 # Optional: context offload
 GNOM_HUB_OFFLOAD_ENABLED=true
 ```
 
 **LLM routing:** `config/routing.txt` + UI. **No** forced MiniMax default.  
-**Key source:** reconciler may merge `~/Desktop/api_keys.txt` at startup (do not commit).
+**Key source:** reconciler may merge `~/Desktop/api_keys.txt` at startup (do not commit).  
+**Workspace:** `~/gnom-Workspace/` (project folder, often `default`).
 
 ---
 
@@ -482,37 +502,31 @@ GNOM_HUB_OFFLOAD_ENABLED=true
 
 ```
 gnom-hub/
-├── src/gnom_hub/                    # 207 Python modules
-│   ├── api/                         # FastAPI endpoints (30 routers)
-│   ├── agents/                      # 8 agents + routing + swarm
-│   ├── memory/                      # offload, mermaid_canvas, embeddings, FAISS
-│   │   ├── offload.py              # Context-Offload-Mechanik
-│   │   ├── mermaid_canvas.py       # Mermaid-Symbolgraph
-│   │   └── node_resolver.py        # node_id Drill-Down
-│   ├── soul/                        # SoulAG + memory_layers
-│   ├── db/                          # 6 SQLite connections + migrations
-│   ├── showbox/                     # Presentation layer + buttons[]
-│   ├── audio/                       # TTS (ElevenLabs + provider-fallback)
-│   ├── chat/                        # Chat router + brainstorm
-│   └── infrastructure/              # Hub-app, logging, process manager
-├── tests/                           # 47 test files, 660+ tests passing
-├── docs/                            # Architecture docs
-│   ├── tencentdb-comparison.md      # Memory-architecture reference
-│   └── ARCHITECTURE.md              # Verified architecture (not the marketing)
-├── config/.env                      # Local config (do not commit)
-├── install.py                       # Cross-platform installer
-├── start_gnom_hub.sh                # Hub launcher (port 3002)
-└── stop_gnom_hub.sh                 # Hub stopper
+├── src/gnom_hub/                    # ~230 Python modules
+│   ├── api/                         # FastAPI endpoints (~30 routers)
+│   ├── agents/                      # 8 agents, swarm, tool_registry, actions
+│   ├── memory/                      # offload, mermaid canvas, embeddings, FAISS
+│   ├── memory_tkg/                  # temporal knowledge graph
+│   ├── soul/                        # SoulAG + memory layers
+│   ├── db/                          # SQLite + migrations
+│   ├── chat/                        # chat + brainstorm dispatch
+│   ├── core/security/               # path validator, gatekeeper
+│   └── infrastructure/              # hub app, router, process manager
+├── tests/                           # see local_ci.sh / GitHub Actions
+├── docs/                            # PLAN_STABILITAET, ARCHITECTURE, …
+├── config/agents/                   # slider/identity JSON (permissions SSOT = agent_definitions)
+├── install.py
+├── start_gnom_hub.sh                # hub + browser :3002
+└── stop_gnom_hub.sh
 ```
 
 ---
 
 ## 📚 Further Reading
 
-- [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md) — **working plan** (speed + reliability first)
 - [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md) — stability-first working plan
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture (sync with code)
-- [`docs/README_CODE_ALIGNMENT_2026-07.md`](docs/README_CODE_ALIGNMENT_2026-07.md) — README vs code audit
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — architecture (keep in sync with code)
+- [`docs/README_CODE_ALIGNMENT_2026-07.md`](docs/README_CODE_ALIGNMENT_2026-07.md) — README vs code notes
 - [`docs/tencentdb-comparison.md`](docs/tencentdb-comparison.md) — memory architecture notes
 - [`README.de.md`](README.de.md) — German version
 

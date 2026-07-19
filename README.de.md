@@ -4,14 +4,13 @@
 > *8 Agenten · Core auf localhost (nativ, kein Docker) · LLM nur wie in `routing.txt` / UI konfiguriert.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-CI_local__ci.sh-yellow.svg)](#-tests)
-
-**Arbeitsplan (Stabilität zuerst):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)  
-**GitHub:** Default-Branch ist **`master`** (`main` zeigt denselben Stand).
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-CI_~559_pass-brightgreen.svg)](#-tests)
+[![Python](https://img.shields.io/badge/Python-3.10%2B_(CI)_·_≥3.9-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#-agenten-übersicht)
 [![Speicher](https://img.shields.io/badge/Speicher-Geschichtet_+_Offload-brightgreen.svg)](#-speicher-architektur)
-[![Backups](https://img.shields.io/badge/Backups-Unveränderlich-orange.svg)](#)
+
+**Stand Doku:** 2026-07-19 · Default-Branch **`master`**  
+**Arbeitsplan (Stabilität zuerst):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)
 
 🇬🇧 **[English (README.md)](README.md)** • 🇩🇪 **Deutsch**
 
@@ -341,16 +340,34 @@ pytest tests/test_memory_tkg.py tests/test_memory_tkg_phase2.py tests/test_kpi_r
 
 ## 👥 Agenten-Übersicht
 
-| Agent | Rolle | Verantwortlichkeit |
-|-------|-------|--------------------|
-| **GeneralAG** | **Default-Chat-Orchestrator** | User-Nachrichten ohne `@target` landen hier; delegiert an Worker |
-| **SoulAG** | Beobachter / Memory | Fakten, Nudge-Loop — nicht Default-Chat-Eingang |
-| **WatchdogAG** | Self-Healing | Startet abgestürzte Agenten neu, überwacht Heartbeats, recovered stuck tasks |
-| **SecurityAG** | Permissions | Gewährt/entzogen Pfad- + Shell-Permissions, auditiert jeden Write |
-| **CoderAG** | Code-Worker | Code-Generierung, Refactoring, Debugging, `[WRITE:]`-Actions |
-| **WriterAG** | Text-Worker | Lange Texte, Blog-Posts, Dokumentation |
-| **EditorAG** | Polish-Worker | Korrekturlesen, Style-Cleanup, Formatierung |
-| **ResearcherAG** | Research-Worker | Web-Suche, GitHub-Recherche, Fact-Gathering |
+Runtime-Rechte kommen **nur** aus `src/gnom_hub/agents/agent_definitions.py` → `get_soul()` (nicht aus der UI-Preset-Matrix unter `data/`, die gitignored sein kann).
+
+| Agent | Rolle | Runtime-Permissions (Kern) | Typische Actions |
+|-------|-------|----------------------------|------------------|
+| **GeneralAG** | **Default-Chat-Orchestrator** | `read`, `@job`, `general_memory`, `showbox_write` | Delegiert; **kein** `[WRITE:]`/`[SHELL:]` selbst |
+| **SoulAG** | Beobachter / Memory / TKG | `read`, `write`, `showbox_write` | Fakten, Nudge; **kein** Default-Chat-Eingang; Auto-Dispatch **aus** (`SOUL_AUTO_DISPATCH=0`) |
+| **WatchdogAG** | Self-Healing | `read`, `showbox_write` | Heartbeats, Stuck-Recovery; **kein** Shell/Write |
+| **SecurityAG** | Operator / Grants | voller Kasten inkl. **`godmode`**, `db_write`, `grant_perm` | Einziger Agent mit godmode |
+| **CoderAG** | Code-Worker | `read`, `write`, `run`/`shell`/`code`, `web_search`, `showbox_write` | `[WRITE:]`, `[READ:]`, `[SCREENSHOT:]`, `[SHELL:]` |
+| **WriterAG** | Text-Worker | `read`, `write`, `crawl`, `web_search`, `showbox_write` | `[WRITE:]` Texte/HTML/Overview |
+| **EditorAG** | QA-Worker | `read`, `write`, `web_search`, `showbox_write` | `[VERIFY:]`, Review-Writes; **kein** Shell |
+| **ResearcherAG** | Research-Worker | `read`, `write`, `crawl`, `web_search`, `browser`, `showbox_write` | `[READ:]`, `[WRITE:]` Extrakte, Web/Browser |
+
+### Multi-Agent-Kollaboration (Ist 2026-07)
+
+```
+User-Chat  ──►  nur GeneralAG   (nested @Worker im Plan-Text = Anweisung, kein Fanout)
+GeneralAG  ──►  atomare Slices  (@CoderAG … / @WriterAG … je eigene Queue-Zeile)
+Worker     ──►  Workspace-Dateien unter ~/gnom-Workspace/<projekt>/
+```
+
+- **Queue:** `GNOM_QUEUE_MODE=hub` — Claims über den Hub, weniger SQLite-Writer-Konflikte  
+- **Soul:** `SOUL_AUTO_DISPATCH` Default **`0`** — SoulAG schiebt keine eigenen Worker-Tasks  
+- **Delivery-Tags:** `[WRITE: pfad]…[/WRITE]`, `[READ: …]`, `[SCREENSHOT: html | out=…png]`, `[VERIFY: …|must_contain=Gnom-Hub]`  
+- **Pfade:** relativ zum Workspace-Root (z. B. `demo/v1/index.html`). Prefix `gnom-Workspace/default/` wird normalisiert (kein Doppelordner)  
+- **Hub-README:** Worker dürfen `README*.md` unter dem Hub-Repo **read-only** lesen  
+
+Workspace-Default: `~/gnom-Workspace/default/`.
 
 ---
 
@@ -434,24 +451,25 @@ Der **Bootstrap-Modus** macht das System resilient: Legacy-DBs ohne `schema_migr
 ## 🧪 Tests
 
 ```bash
-# Wie CI / pre-push (maßgeblich grün):
+# Wie GitHub Actions / pre-push (maßgeblich grün):
 ./scripts/local_ci.sh
-
-# Nur Offload + Routing
-python3 -m pytest tests/test_offload.py tests/test_routing.py
+# = ruff check src/ tests/  +  pytest mit CI-Ignore-Liste
 
 # Smoke gegen laufenden Hub
-curl http://localhost:3002/api/health
-curl http://localhost:3002/api/agents
-curl http://localhost:3002/api/stats
+curl -s http://127.0.0.1:3002/api/health | python3 -m json.tool
 ```
 
-**Testzahlen (ca. 2026-07):** CI-Sequenz `local_ci.sh` ~537 passed — Zahlen driften; letzte grüne `local_ci.sh`-Lauf ist maßgeblich.
+**CI (GitHub Actions, Branch `master`):** Python **3.10** und **3.11**, Job „Lint + Test“.  
+**Testzahlen (2026-07-19):** `local_ci.sh` / CI-Ignore-Liste ≈ **559 passed**, 3 skipped — Zahlen driften; letzter grüner CI-Lauf auf `master` ist maßgeblich.
 
-**Test-Coverage-Highlights:**
-- `tests/test_offload.py` — 14 Tests: Mermaid-Canvas, node_id-Resolution, Path-Traversal-Defense, Atomic-Writes
-- `tests/test_routing.py` — 21 Tests: deterministische Capability-Resolution, Fallback-Chains, Deutsch/Englisch-Keywords
-- `tests/test_security_suite.py` — Permission-Grants, denied Writes, Godmode-Audit
+Aus der CI-Ignore-Liste (bewusst, nicht „alles grün ohne Filter“): u. a. Browser-/Playwright-Suiten, `test_default_preset_content` (gitignored `data/`), `test_permissions_repo`, Teile von Stress/Golden/Mac-only.
+
+**Highlights (in CI):**
+- `tests/test_offload.py` — Offload / Canvas  
+- `tests/test_permission_refactor.py` — Rechte-Matrix der 8 Agenten  
+- `tests/test_supervisor_swarm_fixes.py` — Fanout-`only=`, Slices, Stuck-Recovery  
+- `tests/test_path_validator_security.py` — Path-Boundaries + Workspace-Doppelprefix  
+- `tests/test_delivery_verify_screenshot.py` — WRITE / VERIFY / SCREENSHOT  
 
 ---
 
@@ -464,15 +482,19 @@ OPENROUTER_API_KEY=sk-or-...   # oft Default in routing.txt: openrouter/free
 BRAVE_SEARCH_API_KEY=BSA...    # optional
 ELEVENLABS_API_KEY=sk-...      # optional TTS
 
-# Queue: Claim über Hub (Default wenn gesetzt)
-GNOM_QUEUE_MODE=hub
+# Queue: Claim über Hub (empfohlen / üblich)
+export GNOM_QUEUE_MODE=hub
+
+# Soul: keine automatische Worker-Orchestrierung (Default)
+export SOUL_AUTO_DISPATCH=0
 
 # Optional: Context-Offload
 GNOM_HUB_OFFLOAD_ENABLED=true
 ```
 
 **LLM-Routing:** `config/routing.txt` + UI. **Kein** erzwungener MiniMax-Default.  
-**Key-Quelle:** Reconciler kann beim Start `~/Desktop/api_keys.txt` mergen (nicht committen).
+**Key-Quelle:** Reconciler kann beim Start `~/Desktop/api_keys.txt` mergen (nicht committen).  
+**Workspace:** `~/gnom-Workspace/` (Projektordner, oft `default`).
 
 ---
 
@@ -480,27 +502,22 @@ GNOM_HUB_OFFLOAD_ENABLED=true
 
 ```
 gnom-hub/
-├── src/gnom_hub/                    # 207 Python-Module
-│   ├── api/                         # FastAPI-Endpoints (30 Router)
-│   ├── agents/                      # 8 Agenten + Routing + Swarm
+├── src/gnom_hub/                    # ~230 Python-Module
+│   ├── api/                         # FastAPI-Endpoints (~30 Router)
+│   ├── agents/                      # 8 Agenten, Swarm, tool_registry, actions
 │   ├── memory/                      # Offload, Mermaid-Canvas, Embeddings, FAISS
-│   │   ├── offload.py              # Context-Offload-Mechanik
-│   │   ├── mermaid_canvas.py       # Mermaid-Symbolgraph
-│   │   └── node_resolver.py        # node_id Drill-Down
+│   ├── memory_tkg/                  # Temporal Knowledge Graph
 │   ├── soul/                        # SoulAG + Memory-Layers
-│   ├── db/                          # 6 SQLite-Connections + Migrations
-│   ├── showbox/                     # Präsentations-Layer + Buttons[]
-│   ├── audio/                       # TTS (ElevenLabs + Provider-Fallback)
-│   ├── chat/                        # Chat-Router + Brainstorm
-│   └── infrastructure/              # Hub-App, Logging, Process-Manager
-├── tests/                           # Test-Suite (siehe local_ci.sh)
-├── docs/                            # Architektur-Doku
-│   ├── tencentdb-comparison.md      # Memory-Architecture-Referenz
-│   └── ARCHITECTURE.md              # Verifizierte Architektur (nicht das Marketing)
-├── config/.env                      # Lokale Config (nicht committen)
-├── install.py                       # Cross-Platform-Installer
-├── start_gnom_hub.sh                # Hub-Launcher (Port 3002)
-└── stop_gnom_hub.sh                 # Hub-Stopper
+│   ├── db/                          # SQLite + Migrations
+│   ├── chat/                        # Chat + Brainstorm-Dispatch
+│   ├── core/security/               # Path-Validator, Gatekeeper
+│   └── infrastructure/              # Hub-App, Router, Process-Manager
+├── tests/                           # siehe local_ci.sh / GitHub Actions
+├── docs/                            # PLAN_STABILITAET, ARCHITECTURE, …
+├── config/agents/                   # Slider + Identity-JSON (Permissions-SSOT = agent_definitions)
+├── install.py
+├── start_gnom_hub.sh                # Hub + Browser :3002
+└── stop_gnom_hub.sh
 ```
 
 ---
