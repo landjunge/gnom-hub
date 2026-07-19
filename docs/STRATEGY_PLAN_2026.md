@@ -1,8 +1,15 @@
 # Gnom-Hub — Strategieplan 2026
 
-**Stand:** 2026-07-19  
-**Zielbild:** Schlank · Stabil · State-of-the-Art · ohne Kompromisse an der Kernqualität  
+**Stand:** 2026-07-19 (aktualisiert: **kein Docker, keine Sandbox** als Ziel)  
+**Zielbild:** Schlank · Stabil · local-first · ohne Extra-Infrastruktur  
 **Bezug:** [TECHNICAL_STATUS_REPORT_2026-07.md](./TECHNICAL_STATUS_REPORT_2026-07.md)
+
+**Randbedingungen (verbindlich):**
+
+- **Kein Docker** (kein Compose, kein Container-Stack, kein „one more service“)  
+- **Keine Sandbox** (kein bubblewrap, Firecracker, OS-Isolation als Roadmap-Ziel)  
+- Security bleibt **Path-Validator + Grants** im bestehenden Code  
+- Alles läuft **nativ** (Python-Hub + Agent-Prozesse auf dem Host)
 
 ---
 
@@ -12,335 +19,232 @@
    Der Hub orchestriert; er speichert nicht jede Agent-Nebenwirkung im gleichen Write-Pfad wie die User-Chat-Latenz.
 
 2. **Exactly-once wo es zählt, at-least-once wo es erlaubt ist**  
-   Jobs dürfen nicht „done“ werden, wenn das LLM leer war. User-Chat muss **immer** < 200 ms speichern.
+   Jobs dürfen nicht „done“ werden, wenn das LLM leer war. User-Chat muss **immer** schnell speichern.
 
-3. **Ein Launch-Modell, ein Queue-Backend, ein Observability-Pfad**  
+3. **Ein Launch-Modell, ein Queue-Pfad, ein Observability-Pfad**  
    Keine dualen Chat-Stacks, keine dualen Agent-Startstile, keine stillen Fallbacks.
 
-4. **Local-first, cloud-optional**  
-   2026: lokaler Orchestrator bleibt USP — aber mit **professionellem** Storage/Queue/API-Design.
+4. **Local-first, zero extra daemons**  
+   Kein zwingender Zweitprozess (Message-Broker, Container, VM). Verbesserungen im bestehenden Python-/SQLite-Stack.
 
 5. **Delete ruthlessly**  
-   Features ohne Owner, unverdrahtete Module und 4k-LOC-JS-Monolithen bremsen mehr als sie bringen.
+   Features ohne Owner und unverdrahtete Module raus.
+
+6. **Nur was der User will**  
+   Keine Provider-Defaults, keine Infra-Stack-Empfehlungen ohne expliziten Auftrag.
 
 ---
 
-## 2. Zielarchitektur (2026, ohne Kompromiss)
+## 2. Zielarchitektur (local-first)
 
 ### 2.1 Logische Schichten
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  Web UI (TypeScript, Vite, Web Components or Svelte/React)  │
-│  - Chat stream (SSE/WebSocket)  - Showbox  - Ops dashboard  │
+│  Web UI (bestehend → später optional typed)                   │
+│  - Chat (SSE)  - Showbox  - Ops (Queue/Health)              │
 └───────────────────────────┬─────────────────────────────────┘
-                            │ OpenAPI 3.1 + typed client
+                            │ HTTP localhost
 ┌───────────────────────────▼─────────────────────────────────┐
-│  Control Plane (async FastAPI / Starlette)                  │
-│  - Authn local token   - Chat command API   - Agent control │
-│  - Health / metrics (OpenTelemetry)                         │
-└───────┬─────────────────────┬─────────────────────┬─────────┘
-        │                     │                     │
-   ┌────▼────┐          ┌─────▼─────┐         ┌─────▼─────┐
-   │ Chat DB │          │ Job Queue │         │ Object /  │
-   │ (OLTP)  │          │ (NATS/    │         │ Workspace │
-   │ Postgres│          │  Redis    │         │ FS + blob │
-   │ o. libSQL│         │  Streams) │         │           │
-   └─────────┘          └─────┬─────┘         └───────────┘
-                              │ pull / push
-                    ┌─────────▼─────────┐
-                    │  Agent Runtime    │
-                    │  (1 image, N      │
-                    │   workers)        │
-                    │  tool sandbox     │
-                    └─────────┬─────────┘
-                              │
-                    ┌─────────▼─────────┐
-                    │  LLM Gateway      │
-                    │  (LiteLLM-style)  │
-                    │  MiniMax/OR/Ollama│
-                    └───────────────────┘
+│  Hub (FastAPI, nativ)                                       │
+│  - Chat, Registry, Queue-Ops, LLM-Routing                   │
+└───────┬─────────────────────┬───────────────────────────────┘
+        │                     │
+   ┌────▼────┐          ┌─────▼─────┐
+   │ SQLite  │          │ Workspace │
+   │ (WAL)   │          │ FS lokal  │
+   └────┬────┘          └───────────┘
+        │ agent_messages (gehärtet)
+   ┌────▼────────────────────────────┐
+   │  8 Agent-Prozesse (run_agent)   │
+   │  Path-Validator + Grants        │
+   └─────────────────────────────────┘
 ```
 
-### 2.2 Technologie-Empfehlungen (2026)
+### 2.2 Technologie-Empfehlungen (ohne Docker/Sandbox)
 
-| Bereich | Empfehlung | Warum (2026) |
-|---------|------------|--------------|
-| **API** | FastAPI **async-first**, Pydantic v2, OpenAPI als Vertrag | Bereits im Stack; sync-Chat-Handler raus |
-| **Chat/State OLTP** | **PostgreSQL 17** *oder* **libSQL/Turso embedded** (SQLite-Protokoll, multi-writer-fähig) | SQLite-Datei ist bei 9 Prozessen ausgereizt |
-| **Job Queue** | **NATS JetStream** oder **Redis Streams** (lokal Docker/one-binary) | Persistente Jobs, Consumer Groups, Retry/Backoff, kein `BEGIN IMMEDIATE`-Kampf |
-| **Realtime** | **SSE** primär, WebSocket optional | Chat-Updates ohne Poll-Sturm |
-| **Agent Runtime** | Ein Binary/`run_agent`, **N Worker-Threads oder Prozesse** hinter der Queue — *nicht* 8 getrennte Lebenszyklen mit Watchdog-Races | Weniger Spawn-Chaos |
-| **Sandbox** | OS-level: `bubblewrap`/Seatbelt oder **Firecracker microVM** für `run`/`write` high-risk | Path-Regex allein ist 2019 |
-| **LLM Gateway** | Eigenes dünnes Gateway **oder** LiteLLM-kompatible Schicht: Timeouts, Budget, Structured Outputs, Tool Calling | Free-Model-Rotation bleibt Feature, nicht Chaos |
-| **Observability** | **OpenTelemetry** Traces + Prometheus Metrics + strukturierte Logs (JSON) | „database is locked“ muss Trace-ID haben |
-| **Frontend** | **Vite + TypeScript +** schlankes Framework (Svelte 5 *oder* React 19) | 12k LOC unbundled JS ist nicht wartbar |
-| **Schema/Migration** | **Alembic** (Postgres) oder **Atlas/goose** | Dual-Init `schema.py` + ad-hoc Migrations beenden |
-| **Testing** | CI-Matrix: unit | contract | e2e (Testcontainers) | 21 ignorierte Module schließen |
-| **Config** | 12-factor, **Pydantic Settings**, keine Desktop-Key-Magie ohne Audit | Reconciler bleibt, aber deterministisch |
-| **Memory/TKG** | Behalten als **optionales Addon**; Default-Pfad darf nicht FAISS/Kuzu brauchen | Kern schlanker |
+| Bereich | Empfehlung | Warum |
+|---------|------------|--------|
+| **API** | FastAPI, Pydantic v2, OpenAPI | bereits im Stack |
+| **Persistenz** | **SQLite WAL** weiter; Writes serialisieren / Limits | kein neuer DB-Server |
+| **Job Queue** | **`agent_messages` in SQLite**, gehärtet (Limits, NACK, DLQ, optional Hub-Claim-API) | bleibt ein Prozess-Modell, kein Broker |
+| **Realtime** | SSE (bereits) | weniger Polling |
+| **Agent Runtime** | Ein Startstil `run_agent`; Watchdog nur wenn nötig | kein Doppel-Spawn |
+| **Security** | Path-Validator + `security_permissions` + Injection-Checks | **kein** Sandbox-Ziel |
+| **LLM** | Was in `routing.txt` / UI steht — **kein Force-Provider** | User entscheidet |
+| **Observability** | strukturierte Logs + Health + Queue-Stats in der UI | ohne Prometheus-Pflicht |
+| **Frontend** | bestehendes JS zuerst stabil; optional später TypeScript | kein Big-Bang |
+| **Memory/TKG** | optional, nicht Boot-Pflicht | Kern schlanker |
 
-### 2.3 Was explizit *nicht* mehr Ziel ist
+### 2.3 Was explizit *nicht* Ziel ist
 
-- SQLite als Message-Bus zwischen 9 Prozessen  
-- Zwei Agent-Startstile (`run_agent` vs `agents.*AG`)  
-- Sync-HTTP Self-Calls Hub→Hub (historisch Soul-Pulse)  
-- Polling alle 0,5–2 s als Wakeup-Ersatz  
-- „Soft-OK online“ ohne ehrlichen Degradation-Status in der UI  
-- Monolith-JS ohne Typecheck  
+- Docker / Compose / Container-Runtime  
+- Sandbox / microVM / bubblewrap als Roadmap  
+- Externe Message-Broker (NATS, Redis, …) als Pflicht  
+- SQLite als unkontrollierter Message-Bus ohne Limits (schon angegangen)  
+- Zwei Agent-Startstile  
+- Sync-HTTP Self-Calls Hub→Hub  
+- Monolith-JS ohne Not umschreiben  
 
 ---
 
 ## 3. Schlanker machen: Cut-Liste
 
-### Sofort löschen / mergen (Woche 1–2)
-
 | Item | Aktion |
 |------|--------|
-| Unverdrahtetes `api/endpoints/chat.py` (Orchestrator) | Mergen in einen Chat-Service **oder** löschen |
-| Legacy `agents.*AG` Startpfad | Nur noch `run_agent --name` |
-| Tote Doku-Aussagen (SoulAG-Default) | ARCHITECTURE.md sync |
-| Doppelte Provider-Pfade / Re-Exports | Ein `ask_router` Import-Pfad |
-| Browser-/Stress-Tests in ignore, die nie laufen | Reparieren **oder** aus Repo entfernen |
+| Unverdrahtetes `chat.py` (Orchestrator) | mergen oder löschen |
+| Legacy `agents.*AG` Startpfad | nur `run_agent` |
+| Doku-Drift | ARCHITECTURE.md am Code halten |
+| Doppelte Provider-Pfade | ein `ask_router`-Pfad |
+| Dead Tests in ignore | reparieren oder entfernen |
 
-### Produkt-Fokus (was bleibt)
+### Produkt-Fokus
 
-1. **War-Room Chat** (User ↔ GeneralAG ↔ Workers)  
-2. **Showbox** (strukturierte Agent-Outputs)  
-3. **Job Queue** mit sichtbarem Status  
-4. **Security Grants** für Workspace außerhalb Default  
-5. **LLM Routing** mit Budget und Failover  
-6. **Ops Health** (process + queue + model)  
-
-Alles andere (TKG, Offload-Canvas, Token-Economy-UI, Bake, …) wird **Feature-Flag + Addon**, nicht Boot-Pflicht.
+1. War-Room Chat  
+2. Showbox  
+3. Job Queue (sichtbar, begrenzt)  
+4. Security Grants  
+5. LLM Routing (konfigurierbar)  
+6. Ops Health  
 
 ---
 
-## 4. Stabiler machen: Engineering-Standards
+## 4. Stabiler machen
 
 ### 4.1 Zuverlässigkeit
 
 | Regel | Umsetzung |
 |-------|-----------|
-| User-Chat-Write ≤ 100 ms p99 | Dedizierte Chat-Store-Connection / separates Topic; nie hinter Agent-LLM |
-| Jobs: empty LLM → **NACK + backoff** | Nie `ack` bei `[ROUTER-FEHLER]` / leerem Content |
-| Poison messages | Nach N Retries → DLQ + UI-Badge |
-| Idempotenz | `msg_id` / `client_request_id` auf Chat + Jobs |
-| Backpressure | Harte Queue-Limits pro Agent + 429 an API |
+| User-Chat schnell | kurze Transaktionen, Write-Serialisierung im Hub |
+| Empty / Router-Fehler | **NACK**, nicht ACK |
+| Poison | DLQ + Limits |
+| Backpressure | max pending / concurrent pro Agent |
+| Storm | Auto-DLQ stale pending; `@@queue clear` |
 
 ### 4.2 Prozessmodell
 
-**Heute:** 1 Hub + 8 OS-Prozesse + Watchdog-Restart-Races.  
-**Ziel:**
-
 ```
-hub (API)
- └─ agent-supervisor (ein Supervisor)
-      ├─ worker pool size = f(CPU, config)
-      └─ je Worker: pull job → tools → complete
+hub (API, nativ)
+ └─ start_background_agents → run_agent × 8
+      (ein Startstil, sauberes Kill/Reap)
 ```
 
-- Supervisor owned PID-Lifecycle (kein PID-File-Zoo)  
-- Health = Supervisor-Report, nicht 8 Heartbeat-Writer  
-- Optional: Agents als **Plugins** im selben Prozess *mit* Thread/Process-Pool — Queue bleibt extern
+Kein Container, kein Supervisor-Cluster.
 
-### 4.3 Observability (non-negotiable)
+### 4.3 Observability (leicht)
 
-- Trace pro User-Message: `chat_id → job_id → llm_span → tool_spans`  
-- Metrics: `chat_post_seconds`, `queue_depth`, `llm_errors_total`, `db_busy_total`  
-- Alert: queue depth > N, no healthy workers, p99 chat > 1 s  
+- Queue depth / leases / last error in der Sidebar  
+- Health: process + heartbeat + queue  
+- Logs unter `logs/`  
 
 ---
 
-## 5. Phasen-Roadmap (klare Reihenfolge)
+## 5. Phasen-Roadmap
 
-### Phase 0 — Freeze & Truth (3–5 Tage) ✅ teilweise erledigt
+### Phase 0 — Freeze & Truth ✅ weitgehend erledigt
 
-**Ziel:** Messbare Baseline, keine neuen Features.
+Doppel-Spawn, busy_timeout, Soft-Register, NACK, Recovery-Fix, SSE, Ops-Panel, Queue-Hygiene (Welle A).
 
-- [x] Doppel-Agent-Spawn killen  
-- [x] busy_timeout / Soft-Register / Chat-Fail-fast  
-- [ ] **Alle** `get_db_connection()`-Leaks → `get_db_conn()`  
-- [ ] Empty-LLM → NACK (nicht ACK)  
-- [ ] `processing_since IS NULL` Recovery-Fix  
-- [ ] ARCHITECTURE.md + Status-Report im Repo (dieses Dokument)  
-- [ ] Dashboard: Queue depth + last chat latency  
+### Phase 1 — Reliability auf SQLite (aktueller Fokus)
 
-**Exit-Kriterium:** 30 min Dauerlast (1 Chat / 5 s) ohne „Hub unreachable“, 8 Agenten konstant.
+1. Hub Write-Serialisierung weiter ziehen (wo noch nötig)  
+2. Optional: **Hub-Claim-API** (Claim nur im Hub-Prozess — **ohne** Broker/Docker)  
+3. Chat SSE nutzen / Polls drosseln  
+4. Job-State klar: pending → processing → done|dead_letter  
+5. Frontend-Hotfixes (API-Prefix etc.)  
 
----
+**Exit:** Dauerbetrieb ohne „Hub unreachable“, Queue nicht permanent > Limits.
 
-### Phase 1 — Reliability Hardening (1–2 Wochen)
+### Phase 2 — SQLite sauber halten (kein neuer Server)
 
-**Ziel:** Auf SQLite *noch* betreibbar, aber korrekt.
+- Schema/Migrationen aufräumen  
+- weniger Connection-Leaks  
+- Queue-Tabellen/Indizes optimieren  
+- **Nicht:** Postgres/NATS/Redis/Docker  
 
-1. **Write-Serialisierung im Hub**  
-   - Single Writer Thread / `asyncio.Queue` für alle Hub-DB-Writes  
-   - Agenten schreiben Jobs nur über Hub-API *oder* getrennte Queue-DB  
+### Phase 3 — Runtime & Security (ohne Sandbox)
 
-2. **Chat-API async + SSE**  
-   - `POST /api/chat` speichert + enqueued, returned `202` + `message_id`  
-   - Client subscribed `GET /api/chat/stream`  
+1. Ein Launch-Modell festzurren  
+2. Path-Validator + Grants schärfen (bestehend)  
+3. Gatekeeper nur wenn gewollt, policy im Code  
+4. Kein OS-Sandbox-Projekt  
 
-3. **Job-State-Machine**  
-   - `pending → leased → succeeded|failed|dead_letter`  
-   - Lease-Timeout mit Owner-Token (kein blindes Requeue)  
+### Phase 4 — UI (optional, später)
 
-4. **LLM Gateway Hardening**  
-   - Structured timeouts, circuit breaker pro Provider  
-   - Budget/day; Free-Pool bleibt, Paid bevorzugen wenn Key da  
+Strangler nur wenn stabil; kein Docker-Dev-Stack.
 
-5. **Frontend Hotfix**  
-   - `workspace.js` API-Prefix  
-   - Chat send: optimistic UI + Retry  
+### Phase 5 — Intelligence (optional)
 
-**Exit-Kriterium:** Kein Job-Verlust bei erzwungenem 429; Chat p99 < 300 ms.
+TKG/Memory erst nach Stabilität.
 
 ---
 
-### Phase 2 — Storage & Queue Modernisierung (2–4 Wochen)
+## 6. Konkrete nächste Schritte
 
-**Ziel:** SQLite-als-Bus ablösen.
-
-#### Option A — Empfohlen für Single-Machine 2026
-
-| Component | Choice |
-|-----------|--------|
-| OLTP | **libSQL** (embedded, multi-client) *oder* Postgres via Docker Desktop |
-| Queue | **NATS JetStream** (eine Binary, persist streams) |
-| Blobs | Workspace-FS + Content-Addressed Cache |
-
-#### Option B — Maximal einfach, etwas weniger „pro“
-
-| Component | Choice |
-|-----------|--------|
-| OLTP + Queue | **Postgres** only (`LISTEN/NOTIFY` + `FOR UPDATE SKIP LOCKED`) |
-
-**Migrationspfad:**
-
-1. Schema in Migrationstool  
-2. Dual-write Queue (SQLite + NATS) eine Woche  
-3. Read-cutover Agents → NATS  
-4. SQLite-Queue-Tabellen deprecated  
-
-**Exit-Kriterium:** 8 Agenten + Chat + Showbox ohne `database is locked` in 24 h Log.
+| # | Schritt | Done when |
+|---|---------|-----------|
+| 1 | Nur User-gewollte Routing-Änderungen | kein Force-MiniMax etc. |
+| 2 | Queue-Limits + `@@queue` im Alltag nutzen | Storm bleibt aus |
+| 3 | Weitere Lock-Quellen im Hub (ohne neue Infra) | Chat p99 niedrig |
+| 4 | Optional Hub-Claim (HTTP), Agents ohne `BEGIN IMMEDIATE` | weniger Multi-Writer |
+| 5 | CI-Ignore-Liste schrumpfen | weniger blinde Flecken |
 
 ---
 
-### Phase 3 — Runtime & Security (2–3 Wochen)
+## 7. Zielmetriken
 
-1. **Supervisor-basiertes Agent-Modell** (ein Lifecycle)  
-2. **Tool Sandbox** für `run`/`write` (OS isolation)  
-3. **Capability tokens** statt nur DB-Grants-Strings  
-4. Gatekeeper wieder aktiv, aber **policy-as-code** (z. B. Cedar/OPA-lite), nicht ad-hoc  
-5. Local auth token für API (auch single-user)  
-
-**Exit-Kriterium:** Malicious path escape Tests grün; kein Tool-Call außerhalb Grant.
-
----
-
-### Phase 4 — UI & DX (2–3 Wochen, parallel ab Phase 2)
-
-1. Vite + TypeScript Scaffold, OpenAPI-Client generieren  
-2. Chat + Showbox + Agents als getrennte Packages  
-3. `dashboard.js` schrittweise ersetzen (Strangler)  
-4. Storybook/Playwright E2E **in CI** (nicht ignore)  
-5. Design-Tokens / Showbox-Spec als versionsierte Schemas (JSON Schema 2020-12)
-
-**Exit-Kriterium:** Kein untyped 4k-LOC-Dashboard mehr im kritischen Pfad.
+| Metrik | Ziel |
+|--------|------|
+| Chat POST p99 | < 200 ms lokal |
+| Job-Verlust bei LLM-Fehler | 0 (NACK/DLQ) |
+| Agenten | 8, ein Startstil, 0 Zombies |
+| `database is locked` im Chat-Pfad | ≈ 0 |
+| Extra-Dienste | **0** (kein Docker, kein Broker) |
 
 ---
 
-### Phase 5 — Intelligence Layer (optional, nach Stabilität)
+## 8. ADRs
 
-Erst **nach** Phase 2:
+Empfohlen nur wenn wirklich nötig:
 
-- TKG/Memory als Service mit eigenem Store  
-- Deterministic routing + LLM fallback (bereits ansatzweise in `routing.py`)  
-- Evaluation harness: golden tasks, regression scores  
-- Cost/latency dashboards pro Agent  
+1. Queue bleibt SQLite (+ optional Hub-Claim) — **kein** Broker  
+2. OLTP bleibt SQLite — **kein** Postgres-Server  
+3. Agent Runtime: multi-process `run_agent`  
+4. Frontend: später optional typed  
 
----
+**Nicht vorgesehen:** Sandbox-ADR, Docker-ADR.
 
-## 6. Konkrete nächste Schritte (diese Woche)
-
-Priorisiert, umsetzbar, messbar:
-
-| # | Schritt | Owner-Fokus | Done when |
-|---|---------|-------------|-----------|
-| 1 | Leak-Audit: `rg "with get_db_connection"` → `get_db_conn` | DB | 0 Leaks, FD-Count stabil |
-| 2 | `agent_base`: empty/ROUTER-FEHLER → `nack_message` + backoff | Agents | Job erscheint wieder als pending |
-| 3 | Recovery-SQL: `processing_since IS NULL` nur mit `created_at`-Alter | Queue | Kein Thrash in Logs |
-| 4 | Heartbeat setzt **nicht** status=online wenn busy/processing | Registry | Status konsistent |
-| 5 | Chat SSE Prototype (auch nur Hub→Browser) | API/UI | Poll-Intervall kann ≥5 s |
-| 6 | ADR: „Queue = NATS vs Postgres SKIP LOCKED“ entscheiden | Architecture | ADR in `docs/plans/` |
-| 7 | CI: 3 kritische ignore-Tests reaktivieren oder löschen | QA | Ignorierliste schrumpft |
-| 8 | Ops-Panel: queue depth, agent lease, last error | Frontend | Sichtbar ohne Log-Lesen |
+Bestehende ADR-001 (NATS) gilt als **verworfen / obsolet** zugunsten local-only.
 
 ---
 
-## 7. Zielmetriken (Definition of Done für „deutlich besser“)
-
-| Metrik | Heute (ca.) | Ziel 90 Tage |
-|--------|-------------|--------------|
-| Chat POST p99 | oft >15 s unter Lock, sonst ~30 ms | **< 200 ms** |
-| Job-Verlust bei LLM-Fehler | häufig (ACK) | **0** (NACK/DLQ) |
-| Agent-Prozesse | 8 (+historisch 16) | **Supervisor + N workers**, deterministisch |
-| `database is locked` / h | häufig unter Last | **≈ 0** im Chat-Pfad |
-| Frontend critical path | untyped monolithe | **typed modules** |
-| CI ignore-Liste | 21 Module | **≤ 5** (nur echte Live-Akzeptanz) |
-| Trace-Coverage kritische Pfade | nein | **ja** (OTel) |
-
----
-
-## 8. Architektur-Entscheidungen (ADRs vorbereiten)
-
-Empfohlene ADRs in `docs/plans/adr/`:
-
-1. **ADR-001** Queue-Backend (NATS JetStream vs Postgres)  
-2. **ADR-002** OLTP (libSQL vs Postgres)  
-3. **ADR-003** Agent Runtime (multi-process vs supervisor pool)  
-4. **ADR-004** Frontend stack (Svelte 5 vs React 19)  
-5. **ADR-005** Sandbox model (OS bubblewrap vs microVM)  
-6. **ADR-006** LLM Gateway boundaries & budget policy  
-
-Keine große Migration ohne ADR + Rollback-Plan.
-
----
-
-## 9. Risiko der Modernisierung (ehrlich)
+## 9. Risiken
 
 | Risiko | Gegenmaßnahme |
 |--------|----------------|
-| Big-Bang Rewrite tötet Momentum | Strangler: Queue zuerst, UI zuletzt |
-| libSQL/NATS Lernkurve | Phase 1 bleibt auf gehärtetem SQLite lauffähig |
-| Feature-Verlust | Cut-Liste nur mit User-OK; Flags statt Delete wo unklar |
-| CI bricht | Dual-run Migrations + Feature flags |
+| SQLite bleibt Multi-Writer | Limits, Serialisierung, optional Hub-Claim |
+| Feature-Creep | Cut-Liste + User-OK |
+| Doku drängt Infra | dieser Plan: Docker/Sandbox explizit raus |
 
 ---
 
-## 10. Strategisches Nordstern-Statement
+## 10. Nordstern
 
-> **Gnom-Hub 2026** ist ein local-first Multi-Agent Control Plane mit professioneller Job-Queue, typsicherem UI und sandboxed Tools — nicht eine SQLite-Datei, die von neun Prozessen um die Wette beschrieben wird.
-
-Der Wert des Projekts (Agenten-Rollen, Showbox, Security-Grants, Router) bleibt.  
-Was sich ändert: **die Tragstruktur**.
+> **Gnom-Hub** bleibt ein **lokaler** Multi-Agent-Hub: ein Python-Prozess (Hub), Agenten als normale Prozesse, eine SQLite-DB, Workspace auf der Platte — ohne Docker und ohne Sandbox-Roadmap.
 
 ---
 
-## 11. Anhang — Mapping Status → Strategie
+## 11. Mapping Status → Strategie
 
-| Status-Problem | Strategie-Antwort |
-|----------------|-------------------|
-| P0.1 SQLite Multi-Writer | Phase 1 Write-Queue → Phase 2 NATS/Postgres |
-| P0.2 Connection Leaks | Phase 0 Audit |
-| P0.3 ACK on LLM fail | Phase 0 NACK |
-| P1.1 Fake notify | Phase 2 echte Queue-Consumer-Wakeup |
-| P1.3 Process races | Phase 3 Supervisor |
-| P1.4 Free LLM | Phase 1 Gateway + Budget |
-| P2 Frontend | Phase 4 Strangler |
-| P2 Tests ignore | Phase 0–1 CI hygiene |
+| Status-Problem | Strategie |
+|----------------|-----------|
+| P0.1 SQLite Multi-Writer | Limits + Write-Serial + optional Hub-Claim |
+| P0.2 Connection Leaks | `get_db_conn` |
+| P0.3 ACK on LLM fail | NACK |
+| P1.1 Fake notify | kürzere Polls / später Hub-Claim-Wake |
+| P1.3 Process races | ein Startstil, Reap |
+| P2 Frontend | nur Hotfixes bis stabil |
 
 ---
 
-*Dieses Dokument ist die strategische Leitplanke. Operative Tickets sollten 1:1 aus Abschnitt 6 und den Phasen-Checklisten geschnitten werden.*
+*Operative Arbeit: nur Punkte aus Abschnitt 6 und Phase 1 — ohne neue Infrastruktur.*
