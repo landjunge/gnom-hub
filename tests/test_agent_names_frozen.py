@@ -70,7 +70,11 @@ def test_every_agent_has_avatar():
 
 
 def test_every_avatar_file_exists():
-    avatars_dir = Path(__file__).parent.parent / "src" / "gnom_hub" / "frontend" / "static" / "avatars"
+    # Live mount: app.py mounts config/avatars at /static/avatars
+    avatars_dir = (
+        Path(__file__).parent.parent / "src" / "gnom_hub" / "config" / "avatars"
+    )
+    assert avatars_dir.is_dir(), f"avatars dir missing: {avatars_dir}"
     for name in ALL_AGENTS:
         f = avatars_dir / AGENT_AVATARS[name]
         assert f.exists(), f"missing avatar file: {f}"

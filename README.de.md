@@ -4,7 +4,7 @@
 > *8 Agenten · Core auf localhost (nativ, kein Docker) · LLM nur wie in `routing.txt` / UI konfiguriert.*
 
 [![Lizenz](https://img.shields.io/badge/Lizenz-Private_Use-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-CI_~559_pass-brightgreen.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-CI_~680%2B_pass-brightgreen.svg)](#-tests)
 [![Python](https://img.shields.io/badge/Python-3.10%2B_(CI)_·_≥3.9-blue.svg)](#)
 [![Agenten](https://img.shields.io/badge/Agenten-8_(Feste_Topologie)-blueviolet.svg)](#-agenten-übersicht)
 [![Speicher](https://img.shields.io/badge/Speicher-Geschichtet_+_Offload-brightgreen.svg)](#-speicher-architektur)
@@ -463,9 +463,9 @@ curl -s http://127.0.0.1:3002/api/health | python3 -m json.tool
 ```
 
 **CI (GitHub Actions, Branch `master`):** Python **3.10** und **3.11**, Job „Lint + Test“.  
-**Testzahlen (2026-07-19):** `local_ci.sh` / CI-Ignore-Liste ≈ **559 passed**, 3 skipped — Zahlen driften; letzter grüner CI-Lauf auf `master` ist maßgeblich.
+**Testzahlen (2026-07-19):** `local_ci.sh` ≈ **680+ passed**, 3 skipped — Zahlen driften; letzter grüner CI-Lauf auf `master` ist maßgeblich.
 
-Aus der CI-Ignore-Liste (bewusst, nicht „alles grün ohne Filter“): u. a. Browser-/Playwright-Suiten, `test_default_preset_content` (gitignored `data/`), `test_permissions_repo`, Teile von Stress/Golden/Mac-only.
+Aus der CI-Ignore-Liste (bewusst): Browser/Playwright, `test_default_preset_content` (gitignored `data/`), Migrations-Layout, OpenRouter-Netz, Stress/Golden/Mac-only.
 
 **Highlights (in CI):**
 - `tests/test_offload.py` — Offload / Canvas  

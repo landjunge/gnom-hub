@@ -40,7 +40,7 @@ AGENT_COLORS: Final[dict[str, str]] = {
     "EditorAG":    "#ffa500",
 }
 
-# ── Avatar filenames (PNG, 1:1, 1K) im static/avatars/-Ordner ─────────────────
+# ── Avatar filenames (PNG) — files live in config/avatars/, URL /static/avatars/
 AGENT_AVATARS: Final[dict[str, str]] = {
     "SoulAG":       "soulag.png",
     "WatchdogAG":   "watchdogag.png",

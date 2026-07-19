@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B_(CI)_·_≥3.9-blue.svg)](#)
 [![Agents](https://img.shields.io/badge/Agents-8_(Fixed_Topology)-blueviolet.svg)](#-agent-roster)
 [![Memory](https://img.shields.io/badge/Memory-3_Layers_(Symbolic+Tiered+TKG)-brightgreen.svg)](#-memory-architecture)
-[![Tests](https://img.shields.io/badge/Tests-CI_~559_pass-brightgreen.svg)](#-tests)
+[![Tests](https://img.shields.io/badge/Tests-CI_~680%2B_pass-brightgreen.svg)](#-tests)
 
 **Docs as of:** 2026-07-19 · default branch **`master`**  
 **Working plan (stability-first):** [`docs/PLAN_STABILITAET.md`](docs/PLAN_STABILITAET.md)
@@ -468,9 +468,9 @@ curl -s http://127.0.0.1:3002/api/health | python3 -m json.tool
 ```
 
 **CI (GitHub Actions on `master`):** Python **3.10** and **3.11**, job “Lint + Test”.  
-**Counts (2026-07-19):** CI ignore list ≈ **559 passed**, 3 skipped — drifts; trust the latest green run on `master`.
+**Counts (2026-07-19):** CI ignore list ≈ **680+ passed**, 3 skipped — drifts; trust the latest green run on `master`.
 
-Intentionally ignored in CI (not “secret red tests”): browser/Playwright suites, `test_default_preset_content` (gitignored `data/`), `test_permissions_repo`, stress/golden/mac-only pieces.
+Intentionally ignored in CI: browser/Playwright, `test_default_preset_content` (gitignored `data/`), migrations layout, OpenRouter network, stress/golden/mac-only.
 
 **In-CI highlights:** permission matrix, swarm fan-out/`only=`, path validator (incl. workspace double-prefix), delivery VERIFY/SCREENSHOT, offload, TKG unit tests.
 
