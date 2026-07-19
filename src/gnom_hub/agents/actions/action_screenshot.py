@@ -10,7 +10,6 @@ Requires Playwright + Chromium (same stack as browser action).
 from __future__ import annotations
 
 import os
-import re
 from pathlib import Path
 from urllib.parse import urlparse
 

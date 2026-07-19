@@ -1,9 +1,6 @@
 """P0 Premium-Test fixes: VERIFY tags + SCREENSHOT wiring + soul task id prefix."""
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import pytest
 
 
