@@ -1,6 +1,13 @@
 def get_tools_for_agent(soul: dict):
+    # GeneralAG: schlankes Orchestrator-Set (Prio-5) — KEIN leeres Toolset mehr.
+    # Vorher: role==general → {} → LLM ohne Tool-Syntax → oft stille/leere Antworten.
     if soul.get("role") == "general":
-        return {}
+        return {
+            "read_file": "Read workspace files for context before delegating. [READ: path]",
+            "offload_recall": "Recall offloaded tool output. [OFFLOAD_RECALL:<node_id>]",
+            "showbox": "Status/Ergebnis-Slides. [→ Showbox: name]{...} oder <SHOWBOX:system>…",
+            "delegate": "Worker anstoßen via @Mention (siehe DELEGATION-Syntax).",
+        }
     p, tm = soul.get("permissions", []), {
         "read_file": "Read files (also outside workspace with godmode)",
         "write_file": "Write files",
@@ -41,7 +48,53 @@ def get_tools_for_agent(soul: dict):
     if "evolve" in p: a += ["evolve"]  
     return {t: tm.get(t, t) for t in dict.fromkeys(a)}
 
+
+def _generalag_tools_prompt(soul: dict, name: str) -> str:
+    """Orchestrator-Prompt: Tools + harte User-Sichtbarkeit (Prio-5)."""
+    char = f" – {soul['character']}" if soul.get("character") else ""
+    intro = f"You are {name} ({soul.get('role', 'general')}{char})."
+    if soul.get("directive"):
+        intro += f"\n[PERSONALITY] {soul['directive']}"
+    tools = get_tools_for_agent(soul)
+    lines = [f"- {n}: {d}" for n, d in tools.items()]
+    body = (
+        intro
+        + "\nAvailable Tools:\n"
+        + "\n".join(lines)
+        + "\n\n[DELEGATION — EXAKTE SYNTAX]"
+        "\n  Eine Zeile pro Worker (bevorzugt):"
+        "\n    @CoderAG -> implementiere X in pfad/y.py"
+        "\n    @WriterAG -> schreibe kurze Doku zu X"
+        "\n    @ResearcherAG -> recherchiere Y mit Quellen"
+        "\n    @EditorAG -> review Datei Z"
+        "\n  Auch erlaubt: `@CoderAG implementiere X` (ohne Pfeil)."
+        "\n  NUR diese 4 Worker. NIEMALS @SoulAG/@SecurityAG/@WatchdogAG/@GeneralAG."
+        "\n  Mehrere Worker: eine Zeile je Agent (Sequenzen warten aufeinander)."
+        "\n\n[USER-SICHTBARKEIT — PFLICHT]"
+        "\n  Du bist der Default-Chat-Empfänger. Der User muss IMMER etwas sehen:"
+        "\n  1. Kurze Chat-Antwort (1–5 Sätze) NACH </think> — Status, Plan oder Antwort."
+        "\n  2. Bei Delegation: im Chat nennen, WEN du beauftragst und WARUM."
+        "\n  3. Einfache Fragen (Erklärung, Ja/Nein, Status): SELBST antworten, ohne Worker."
+        "\n  4. Showbox optional für strukturierte Deliverables:"
+        "\n     [→ Showbox: plan]{\"slides\":[{\"title\":\"…\",\"content\":\"…\",\"buttons\":[{\"label\":\"OK\",\"action\":\"close\"}]}]}"
+        "\n  5. Nie nur <think>…</think> und dann nichts. Nie leere Showbox ohne Chat-Text."
+        "\n\n[Command Syntax]"
+        "\n  [READ: path] — Kontext lesen"
+        "\n  [OFFLOAD_RECALL:node_id] — Offload-Detail"
+        "\n  [→ Showbox: name]{json} — Präsentation"
+        "\n  <SHOWBOX:system>…</SHOWBOX> — System-Layer"
+        "\n\n[USER AUTHORITY]"
+        "\n  User-Anweisungen haben absolute Priorität. Wenn du etwas nicht kannst: ehrlich im Chat sagen."
+        "\n\n[THINKING]"
+        "\n  Optional <think>…</think> für Planung, aber die sichtbare Antwort danach ist Pflicht."
+    )
+    return body
+
+
 def format_tools_prompt(soul: dict, name: str):
+    if soul.get("role") == "general" or (name or "").lower() in ("generalag", "general"):
+        return _generalag_tools_prompt(soul, name)
+
     t = get_tools_for_agent(soul)
     lines = [f"- {n}: {d}" for n, d in t.items()]
     syn = "\nCommand Syntax:"

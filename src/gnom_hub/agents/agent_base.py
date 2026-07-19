@@ -11,6 +11,62 @@ from gnom_hub.soul import get_soul
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 HUB_URL = f"http://127.0.0.1:{os.environ.get('GNOM_HUB_PORT', '3002')}"
+
+# Prio-5: after GeneralAG delegates, warn if workers still idle.
+WORKER_WATCH_SECONDS = 90
+_WORKER_MENTION_RE = __import__("re").compile(
+    r"@(CoderAG|WriterAG|EditorAG|ResearcherAG)\b",
+    __import__("re").IGNORECASE,
+)
+
+
+def _schedule_worker_reply_watch(agent_req, content: str, context_id: str) -> None:
+    """Daemon: if delegated workers have no done msg within timeout, post System chat."""
+    workers = {m.group(1) for m in _WORKER_MENTION_RE.finditer(content or "")}
+    if not workers:
+        return
+
+    def _watch():
+        import time as _time
+        _time.sleep(WORKER_WATCH_SECONDS)
+        try:
+            from gnom_hub.db.connection import get_db_connection
+            stuck = []
+            with get_db_connection() as conn:
+                for w in workers:
+                    # Still pending/processing for this context?
+                    row = conn.execute(
+                        """
+                        SELECT COUNT(*) AS c FROM agent_messages
+                        WHERE recipient = ?
+                          AND status IN ('pending', 'processing')
+                          AND (context_id = ? OR context_id IS NULL OR context_id = '')
+                          AND created_at > ?
+                        """,
+                        (w, context_id, _time.time() - WORKER_WATCH_SECONDS - 30),
+                    ).fetchone()
+                    c = row["c"] if hasattr(row, "keys") else row[0]
+                    if c and int(c) > 0:
+                        stuck.append(f"{w}({c})")
+            if stuck:
+                agent_req(
+                    "post",
+                    "/api/chat",
+                    {
+                        "content": (
+                            f"⏱️ **[GeneralAG Watch]** Nach {WORKER_WATCH_SECONDS}s noch offene "
+                            f"Worker-Jobs: {', '.join(stuck)}. "
+                            f"Health prüfen: `GET /api/agents/health` oder Hub-Logs."
+                        ),
+                        "sender": "System",
+                    },
+                )
+        except Exception as e:
+            logging.getLogger(__name__).debug("worker reply watch failed: %s", e)
+
+    threading.Thread(target=_watch, name="worker-reply-watch", daemon=True).start()
+
+
 class BaseAgent:
     def __init__(self, name, desc, trigger, sys_prompt=None, poll=5, model="deepseek-chat"):
         from collections import OrderedDict
@@ -22,15 +78,18 @@ class BaseAgent:
         t_p = format_tools_prompt(get_soul(name), name)
         self.sys = (self.sys + "\n\n" + t_p) if self.sys else t_p
 
-        think_guideline = (
-            "\n\n[WICHTIGE GEISTIGE RICHTLINIE]\n"
-            "Beginne JEDE Antwort zwingend mit einem ausfuehrlichen Denkprozess in <think>...</think>-Tags.\n"
-            "Darin musst du deine logischen Schritte, deine Planung, deine Intentions-Abwaegungen und "
-            "deine Gedanken dokumentieren. Erst NACH dem schliessenden </think> folgt deine eigentliche Antwort."
-        )
-        self.sys += think_guideline
-
         name_lower = name.lower()
+        # GeneralAG: Orchestrator-Prompt hat bereits optionales Thinking + User-Sichtbarkeit.
+        # Harte Pflicht-<think> bläht Latenz und führt oft zu "nur Think, kein Output".
+        if "general" not in name_lower:
+            think_guideline = (
+                "\n\n[WICHTIGE GEISTIGE RICHTLINIE]\n"
+                "Beginne JEDE Antwort zwingend mit einem ausfuehrlichen Denkprozess in <think>...</think>-Tags.\n"
+                "Darin musst du deine logischen Schritte, deine Planung, deine Intentions-Abwaegungen und "
+                "deine Gedanken dokumentieren. Erst NACH dem schliessenden </think> folgt deine eigentliche Antwort."
+            )
+            self.sys += think_guideline
+
         if "coder" in name_lower:
             self.CAPABILITIES = [("code_generation", 1.0), ("code_review", 0.9), ("debugging", 0.8)]
         elif "security" in name_lower:
@@ -295,6 +354,14 @@ class BaseAgent:
                         job_ok = False
                     else:
                         self._req("post", "/api/chat", {"content": think_display, "sender": self.n})
+                        # Prio-5: GeneralAG hat Worker beauftragt → Timeout-Watch
+                        if self.n.lower() == "generalag":
+                            try:
+                                _schedule_worker_reply_watch(
+                                    self._req, think_display, msg.get("context_id") or "default"
+                                )
+                            except Exception:
+                                pass
 
                     # ── SoulAG sieht Denkprozesse ────────────────────────
                     # Nach jeder Agent-Antwort den Denkprozess extrahieren
