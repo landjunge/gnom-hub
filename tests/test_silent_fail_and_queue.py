@@ -4,8 +4,6 @@ from __future__ import annotations
 import time
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 # ── Prio-1: Dispatch-Feedback ─────────────────────────────────────────────
 
@@ -135,8 +133,6 @@ class TestAgentBaseSilentPaths:
 class TestQueueOnAgentStart:
     def test_start_requeues_processing_preserves_pending(self, tmp_path, monkeypatch):
         """processing→pending, pending bleibt; kein massenhaftes done."""
-        import sqlite3
-
         from gnom_hub.db import schema as schema_mod
 
         db_path = tmp_path / "q.db"
