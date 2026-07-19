@@ -25,17 +25,20 @@ def parse_dt(s) -> datetime | None:
 
 def get_db_connection() -> sqlite3.Connection:
     """Create a raw SQLite connection with all necessary PRAGMAs.
-    
+
     This is the single source of truth for DB connections in the entire project.
-    Use get_db_conn() context manager for automatic cleanup.
+    Prefer :func:`get_db_conn` so connections are always closed (leak guard).
     """
     db_path = str(Config.DB_PATH)
-    conn = sqlite3.connect(db_path, timeout=60.0)
+    # check_same_thread=False: agents/hub share threads; timeout+busy_timeout
+    # absorb multi-writer contention (BEGIN IMMEDIATE / WAL).
+    conn = sqlite3.connect(db_path, timeout=60.0, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-20000")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=60000")
+    conn.execute("PRAGMA temp_store=MEMORY")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -45,6 +48,19 @@ def get_db_conn():
     conn = get_db_connection()
     try:
         yield conn
+        try:
+            conn.commit()
+        except sqlite3.Error:
+            pass
+    except Exception:
+        try:
+            conn.rollback()
+        except sqlite3.Error:
+            pass
+        raise
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except sqlite3.Error:
+            pass
 

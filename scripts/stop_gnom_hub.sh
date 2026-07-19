@@ -49,7 +49,8 @@ for port in 3002 3003 3004 3005 3006 3012; do
     fi
 done
 
-# 6. Sanity-Check
-final=$(pgrep -f "gnom_hub|agents.run_agent" 2>/dev/null | wc -l | tr -d ' ')
+# 6. Sanity-Check (pgrep exit 1 when empty — never fail the script)
+final=$(pgrep -f "python.*-m gnom_hub|agents.run_agent" 2>/dev/null | wc -l | tr -d ' ' || true)
+final=${final:-0}
 echo "  Verbleibend: $final Prozess(e)"
 echo "✓ Gnom-Hub gestoppt."
