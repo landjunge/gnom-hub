@@ -40,7 +40,7 @@ def _resolve_target(wd, f: str) -> str:
     return os.path.realpath(os.path.join(wd, raw))
 
 
-def _safe(wd, f, perms, agent_name: str | None = None):
+def _safe(wd, f, perms, agent_name: str | None = None, *, for_read: bool = False):
     """Prüft ob ein Pfad im erlaubten Bereich liegt. Gibt realpath oder None.
 
     Erlaubt wenn (in dieser Reihenfolge):
@@ -50,6 +50,8 @@ def _safe(wd, f, perms, agent_name: str | None = None):
     3. ``godmode`` in perms (SecurityAG-Notfall) bzw. legacy ``perms=True``
     4. SecurityAG-Grant: ``check_permission(agent_name, path)`` —
        Directory-Grants matchen per Prefix, File-Grants exakt
+    5. **Read-only:** Hub ``PROJECT_ROOT`` docs/README (``.md``/``.txt``/``.rst``)
+       — SUPERVISOR-R3: Workers blocked on absolute README.de.md path
 
     Sonst: None (außerhalb erlaubter Roots ohne Grant).
 
@@ -76,6 +78,17 @@ def _safe(wd, f, perms, agent_name: str | None = None):
                 return p
         except Exception:
             # DB down → fail closed for outside-workspace paths
+            pass
+
+    # Read-only hub docs (README etc.) for agents with read permission
+    if for_read and ("read" in (perms or []) or _has_godmode(perms)):
+        try:
+            from gnom_hub.core.config import PROJECT_ROOT
+            if _under_root(p, PROJECT_ROOT) and p.lower().endswith(
+                (".md", ".txt", ".rst", ".mdx")
+            ):
+                return p
+        except Exception:
             pass
 
     return None

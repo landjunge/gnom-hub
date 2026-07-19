@@ -81,7 +81,8 @@ def handle_read(answer, matches, wd, perms=None, agent=None):
     elif isinstance(agent, str):
         agent_name = agent
     for m in matches:
-        fname = m.group(1).strip(); p = _safe(wd, fname, perms or [], agent_name=agent_name)
+        fname = m.group(1).strip()
+        p = _safe(wd, fname, perms or [], agent_name=agent_name, for_read=True)
         if not p:
             r = f"[System: Pfad '{fname}' blockiert.]"
         elif os.path.isdir(p):
